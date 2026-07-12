@@ -1,0 +1,127 @@
+settings:
+  # Name of the Outlands world (must exist, e.g. via Multiverse)
+  world-name: outlands
+  # Time limit in seconds per run (default 5 minutes = 300 seconds)
+  time-limit-seconds: 300
+  # Hours between runs (cooldown)
+  cooldown-hours: 24
+  # Whether PvP is enabled in the Outlands
+  pvp-enabled: false
+  # Whether players return to their last location on disconnect
+  return-on-disconnect: true
+
+# Extraction reward settings
+extraction:
+  # Base tokens earned on successful extraction
+  base-tokens: 10
+  # Bonus tokens per mob kill
+  per-kill: 2
+  # Bonus tokens per event completion
+  per-event: 5
+  # Bonus tokens per boss kill
+  per-boss: 20
+  # Hours before unclaimed loot expires
+  withdraw-expiry-hours: 24
+
+# Loadout tier definitions
+# Each slot defines an ordered list of upgrade tiers (index 0 = tier 0, the starting tier)
+# Tiers can use:
+#   material: Minecraft material name (e.g. LEATHER_HELMET)
+#   external: External plugin item (e.g. "mmoitems:SWORD:FLAME_BLADE")
+#   enchantments: List of enchantments to apply (e.g. [PROTECTION_1])
+#   amount: Stack amount (for consumables like food/potions)
+#   potion_type / level: For potion tiers
+loadout:
+  armor:
+    helmet:
+      tiers:
+        - material: LEATHER_HELMET
+        - material: CHAINMAIL_HELMET
+        - material: IRON_HELMET
+        - material: DIAMOND_HELMET
+        - material: NETHERITE_HELMET
+    chestplate:
+      tiers:
+        - material: LEATHER_CHESTPLATE
+        - material: CHAINMAIL_CHESTPLATE
+        - material: IRON_CHESTPLATE
+        - material: DIAMOND_CHESTPLATE
+        - material: NETHERITE_CHESTPLATE
+    leggings:
+      tiers:
+        - material: LEATHER_LEGGINGS
+        - material: CHAINMAIL_LEGGINGS
+        - material: IRON_LEGGINGS
+        - material: DIAMOND_LEGGINGS
+        - material: NETHERITE_LEGGINGS
+    boots:
+      tiers:
+        - material: LEATHER_BOOTS
+        - material: CHAINMAIL_BOOTS
+        - material: IRON_BOOTS
+        - material: DIAMOND_BOOTS
+        - material: NETHERITE_BOOTS
+  weapon:
+    tiers:
+      - material: WOODEN_SWORD
+      - material: STONE_SWORD
+      - material: IRON_SWORD
+      - material: DIAMOND_SWORD
+      - material: NETHERITE_SWORD
+  tool:
+    tiers:
+      - material: WOODEN_PICKAXE
+      - material: STONE_PICKAXE
+      - material: IRON_PICKAXE
+      - material: DIAMOND_PICKAXE
+      - material: NETHERITE_PICKAXE
+  food:
+    tiers:
+      - material: BREAD
+        amount: 5
+      - material: COOKED_BEEF
+        amount: 10
+      - material: GOLDEN_APPLE
+        amount: 3
+  potions:
+    tiers:
+      - material: POTION
+        potion_type: INSTANT_HEAL
+        level: 1
+      - material: POTION
+        potion_type: INSTANT_HEAL
+        level: 2
+  charm:
+    tiers: []
+  artifact:
+    tiers: []
+  pet:
+    tiers: []
+
+# Upgrade Token definitions
+# These are physical loot items found during runs
+upgrade-tokens:
+  stone_weapon:
+    material: PAPER
+    display-name: "<gray>Stone Weapon Upgrade</gray>"
+    upgrade-slot: WEAPON
+    upgrade-tier: 1
+    lore:
+      - "<gray>Apply to your weapon loadout"
+      - "<gray>to upgrade to Stone tier."
+  iron_helmet:
+    material: PAPER
+    display-name: "<gray>Iron Helmet Upgrade</gray>"
+    upgrade-slot: HELMET
+    upgrade-tier: 2
+    lore:
+      - "<gray>Apply to your helmet loadout"
+      - "<gray>to upgrade to Iron tier."
+  diamond_chestplate:
+    material: PAPER
+    display-name: "<gray>Diamond Chestplate Upgrade</gray>"
+    upgrade-slot: CHESTPLATE
+    upgrade-tier: 3
+    lore:
+      - "<gray>Apply to your chestplate loadout"
+      - "<gray>to upgrade to Diamond tier."
