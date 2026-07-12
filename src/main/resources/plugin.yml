@@ -1,0 +1,9 @@
+name: Outlands
+description: $description
+version: '${version}'
+
+main: net.omni.outlands.OutlandsPlugin
+api-version: '1.13'
+load: POSTWORLD
+
+authors: [ domninos ]
