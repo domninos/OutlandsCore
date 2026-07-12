@@ -4,23 +4,57 @@ import java.util.ArrayList;
 import java.util.List;
 
 public enum Messages {
+
     NO_PERMS("no_perms", "<red>You do not have permission to use this command.</red>"),
     ONLY_PLAYERS("only_players", "<red>Only players can use this command.</red>"),
-
     PLAYER_NOT_FOUND("player_not_found", "<red>Player %player% not found.</red>"),
     USAGE("usage", "<red>Invalid arguments. Usage: %usage%</red>"),
     UNKNOWN_COMMAND("unknown_cmd", "<red>Unknown command.</red>"),
-
     RELOADED("reloaded", "<green>config.yml and messages.yml have been reloaded.</green>"),
 
-    GOT_KEY("got_key", "<green>You have received %amount%x %key_name%. Use /keys to claim.</green>"),
+    RUN_ENTERED("run.entered", "<green>You have entered the Outlands! Extract before your time runs out.</green>"),
+    RUN_TIMER_ONE_MINUTE("run.timer-one-minute", "<yellow>1 minute remaining in the Outlands!</yellow>"),
+    RUN_TIMER_SECONDS("run.timer-seconds", "<red>%time% seconds remaining!</red>"),
+    RUN_AUTO_EXTRACT("run.auto-extract", "<gold>Time is up! Automatically extracting...</gold>"),
+    RUN_EXTRACTED("run.extracted", "<green>You have successfully extracted from the Outlands!</green>"),
+    RUN_EXTRACTED_TOKENS("run.extracted-tokens", "<gold>+%tokens% Outlands Tokens</gold>"),
+    RUN_DEATH("run.death", "<red>You died in the Outlands! All loot has been lost.</red>"),
+    RUN_DISCONNECT("run.disconnect", "<red>You disconnected during a run. All loot has been lost.</red>"),
+    RUN_ALREADY_IN("run.already-in", "<red>You are already in the Outlands.</red>"),
+    RUN_NOT_IN("run.not-in", "<red>You are not currently in the Outlands.</red>"),
+    RUN_WORLD_NOT_FOUND("run.world-not-found", "<red>The Outlands world '%world%' was not found. Contact an administrator.</red>"),
+    RUN_COOLDOWN("run.cooldown", "<red>You must wait %time% before entering the Outlands again.</red>"),
+    RUN_TELEPORT_BACK("run.teleport-back", "<gray>Teleporting you back...</gray>"),
 
-    KEY_NOT_FOUND("key_not_found", "<red>Key type '%key_id%' not found.</red>"),
-    KEY_GIVEN("key_given", "<green>Gave %amount%x %key_name% to %player%.</green>"),
-    KEY_TAKEN("key_taken", "<green>Took %amount%x %key_name% from %player%.</green>"),
-    KEY_TAKE_FAIL("key_take_fail", "<red>%player% does not have enough %key_id% keys.</red>"),
-    KEY_SET("key_set", "<green>Set %player%'s %key_name% keys to %amount%.</green>"),
-    VISIBILITY_CHANGED("visibility_changed", "<green>%key_name% is now %visibility% in /keys.</green>");
+    EXTRACT_NOT_IN("extract.not-in", "<red>You are not currently in the Outlands.</red>"),
+    EXTRACT_SUCCESS("extract.success", "<green>You have successfully extracted from the Outlands!</green>"),
+    EXTRACT_TOKENS("extract.tokens", "<gold>You earned %tokens% Outlands Tokens.</gold>"),
+    EXTRACT_LOOT_STORED("extract.loot-stored", "<gray>Your loot has been stored. Use <white>/outlands withdraw</white> to claim it.</gray>"),
+
+    LOADOUT_OPENED("loadout.opened", "<gray>Opened your Outlands loadout.</gray>"),
+    LOADOUT_UPGRADED("loadout.upgraded", "<green>Upgraded %slot% to %tier%!</green>"),
+    LOADOUT_MAX_TIER("loadout.max-tier", "<yellow>%slot% is already at maximum tier.</yellow>"),
+    LOADOUT_INVALID_TOKEN("loadout.invalid-token", "<red>This upgrade token is not valid for %slot%.</red>"),
+    LOADOUT_TOKEN_APPLIED("loadout.token-applied", "<green>Applied %token_name% to your %slot%!</green>"),
+
+    TOKENS_BALANCE("tokens.balance", "<gold>You have %tokens% Outlands Tokens.</gold>"),
+    TOKENS_INSUFFICIENT("tokens.insufficient", "<red>You need %required% tokens but only have %available%.</red>"),
+    TOKENS_SPENT("tokens.spent", "<gray>Spent %amount% Outlands Tokens.</gray>"),
+
+    WITHDRAW_OPENED("withdraw.opened", "<gray>Opened your extracted loot.</gray>"),
+    WITHDRAW_EMPTY("withdraw.empty", "<gray>You have no extracted loot to withdraw.</gray>"),
+    WITHDRAW_CLAIMED("withdraw.claimed", "<green>Claimed %item% x%amount%.</green>"),
+    WITHDRAW_CLAIMED_ALL("withdraw.claimed-all", "<green>Claimed all extracted loot.</green>"),
+    WITHDRAW_EXPIRED("withdraw.expired", "<red>Your extracted loot has expired and was lost.</red>"),
+
+    ADMIN_SET_TOKENS("admin.set-tokens", "<green>Set %player%'s tokens to %amount%.</green>"),
+    ADMIN_GIVE_TOKENS("admin.give-tokens", "<green>Gave %amount% tokens to %player%.</green>"),
+    ADMIN_GIVE_UPGRADE("admin.give-upgrade", "<green>Gave %token% to %player%.</green>"),
+    ADMIN_FORCE_EXTRACT("admin.force-extract", "<green>Force extracted %player% from the Outlands.</green>"),
+
+    HELP_HEADER("help.header", "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"),
+    HELP_FOOTER("help.footer", "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"),
+    HELP_TITLE("help.title", "  <gradient:#00AAFF:#55FFFF><bold>Outlands</bold></gradient>");
 
     private final String path;
     private final Object defaultVal;
@@ -45,47 +79,34 @@ public enum Messages {
 
     public String replace(String... pairs) {
         String result = this.toString();
-
         return replace(result, pairs);
     }
 
     @Override
     public String toString() {
-        if (cachedVal instanceof List<?>)
-            return "";
-
+        if (cachedVal instanceof List<?>) return "";
         return cachedVal instanceof String ? (String) cachedVal : (String) defaultVal;
     }
 
     private String replace(String result, String... pairs) {
-        if (result.isEmpty())
-            return "";
-
+        if (result.isEmpty()) return "";
         for (int i = 0; i < pairs.length - 1; i += 2) {
             String key = pairs[i];
             String val = pairs[i + 1];
-
             if (key != null && val != null) {
                 result = result.replace("%" + key + "%", val);
             }
         }
-
         return result;
     }
 
     public String replaceList(String... pairs) {
         List<String> originalList = this.asList();
-
-        if (originalList.isEmpty())
-            return "";
-
+        if (originalList.isEmpty()) return "";
         List<String> modifiedList = new ArrayList<>();
-
         for (String line : originalList) {
-            if (line != null)
-                modifiedList.add(replace(line, pairs));
+            if (line != null) modifiedList.add(replace(line, pairs));
         }
-
         return String.join("\n", modifiedList);
     }
 
@@ -95,12 +116,8 @@ public enum Messages {
     }
 
     public void flush() {
-        if (cachedVal instanceof List<?> cachedList)
-            cachedList.clear();
-
-        if (defaultVal instanceof List<?> defaultList)
-            defaultList.clear();
-
+        if (cachedVal instanceof List<?> cachedList) cachedList.clear();
+        if (defaultVal instanceof List<?> defaultList) defaultList.clear();
         this.cachedVal = null;
     }
 }
