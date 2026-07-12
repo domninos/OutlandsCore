@@ -17,7 +17,7 @@ public class PaperChatRenderer implements ChatRenderer {
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.builder().character('&').extractUrls().build();
     private static final Component PREFIX =
             MiniMessage.miniMessage().deserialize(
-                    "<gray>[</gray><gradient:#00AAFF:#55FFFF>CrateyBackpack</gradient><gray>]</gray> "
+                    "<gray>[</gray><gradient:#00AAFF:#55FFFF>Outlands</gradient><gray>]</gray> "
             );
 
     @Override
