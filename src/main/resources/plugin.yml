@@ -3,7 +3,34 @@ description: $description
 version: '${version}'
 
 main: net.omni.outlands.OutlandsPlugin
-api-version: '1.13'
+api-version: '1.21'
 load: POSTWORLD
 
+softdepend: [ PlaceholderAPI ]
+
 authors: [ domninos ]
+
+commands:
+  outlands:
+    description: Enter the Outlands or manage the plugin
+    aliases: [ol]
+  extract:
+    description: Extract from the Outlands early
+    aliases: [ext]
+
+permissions:
+  outlands.*:
+    description: Grants all Outlands permissions
+    children:
+      outlands.admin: true
+      outlands.play: true
+      outlands.bypass.cooldown: true
+  outlands.admin:
+    description: Allows managing the Outlands plugin
+    default: op
+  outlands.play:
+    description: Allows entering the Outlands
+    default: true
+  outlands.bypass.cooldown:
+    description: Bypass the run cooldown
+    default: false
