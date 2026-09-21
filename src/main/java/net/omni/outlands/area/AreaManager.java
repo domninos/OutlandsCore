@@ -28,6 +28,7 @@ public class AreaManager {
     private final NamespacedKey wandAreaKey;
     private final NamespacedKey wandModeKey;
     private BukkitTask autoSaveTask;
+    private BukkitTask stateTask;
 
     public AreaManager(OutlandsPlugin plugin) {
         this.plugin = plugin;
@@ -199,6 +200,31 @@ public class AreaManager {
         }
 
         saveDirty();
+    }
+
+    public void startStateTask() {
+        stopStateTask();
+
+        int seconds = plugin.getConfigUtil() == null ? 0 : plugin.getConfigUtil().getAreaStateCheckSeconds();
+        if (seconds <= 0) return;
+
+        stateTask = Bukkit.getScheduler().runTaskTimer(plugin, this::checkAreaStates, seconds * 20L, seconds * 20L);
+    }
+
+    public void stopStateTask() {
+        if (stateTask != null) {
+            stateTask.cancel();
+            stateTask = null;
+        }
+    }
+
+    private void checkAreaStates() {
+        for (Area area : areas.values()) {
+            AreaState before = area.getState();
+            area.isReady();
+
+            if (before != area.getState()) markDirty(area);
+        }
     }
 
     public Area create(String name, World world, Location first, Location second) {

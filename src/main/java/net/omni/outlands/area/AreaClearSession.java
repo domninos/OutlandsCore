@@ -4,7 +4,9 @@ import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Location;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -13,6 +15,7 @@ public class AreaClearSession {
     private final Area area;
     private final UUID owner;
     private final Set<UUID> mobs;
+    private final Map<UUID, Location> mobOrigins;
     private int totalMobs;
     private BossBar bossBar;
     private Location chestLocation;
@@ -22,6 +25,7 @@ public class AreaClearSession {
         this.area = area;
         this.owner = owner;
         this.mobs = new HashSet<>();
+        this.mobOrigins = new HashMap<>();
         this.totalMobs = 0;
         this.bossBar = null;
         this.chestLocation = null;
@@ -38,6 +42,10 @@ public class AreaClearSession {
 
     public Set<UUID> getMobs() {
         return mobs;
+    }
+
+    public Map<UUID, Location> getMobOrigins() {
+        return mobOrigins;
     }
 
     public int getTotalMobs() {

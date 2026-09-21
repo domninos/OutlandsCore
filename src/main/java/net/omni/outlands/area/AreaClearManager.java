@@ -32,6 +32,7 @@ public class AreaClearManager {
     private final Map<String, AreaClearSession> sessions;
     private final Map<UUID, AreaClearSession> mobSessions;
     private final Map<String, AreaClearSession> chestSessions;
+    private BukkitTask containmentTask;
 
     public AreaClearManager(OutlandsPlugin plugin, AreaManager areaManager) {
         this.plugin = plugin;
@@ -44,6 +45,72 @@ public class AreaClearManager {
         this.chestSessions = new HashMap<>();
     }
 
+    public void start() {
+        stop();
+
+        if (plugin.getConfigUtil() == null || !plugin.getConfigUtil().isMobContainmentEnabled()) return;
+
+        long ticks = Math.max(1, plugin.getConfigUtil().getMobContainmentCheckTicks());
+
+        containmentTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                containMobs();
+            }
+        }.runTaskTimer(plugin, ticks, ticks);
+    }
+
+    public void stop() {
+        if (containmentTask != null) {
+            containmentTask.cancel();
+            containmentTask = null;
+        }
+    }
+
+    private void containMobs() {
+        double margin = plugin.getConfigUtil() == null ? 0 : plugin.getConfigUtil().getMobContainmentMargin();
+
+        for (AreaClearSession session : sessions.values()) {
+            for (UUID mobId : session.getMobs()) {
+                Entity entity = Bukkit.getEntity(mobId);
+                if (entity == null || entity.isDead()) continue;
+
+                if (inside(session.getArea(), entity.getLocation(), margin)) continue;
+
+                Location origin = session.getMobOrigins().get(mobId);
+
+                if (origin == null || origin.getWorld() == null)
+                    origin = session.getArea().getSpawnLocation(null, random);
+
+                if (origin != null) entity.teleport(origin);
+            }
+        }
+    }
+
+    private boolean inside(Area area, Location location, double margin) {
+        if (area == null || location == null) return true;
+        if (margin <= 0) return area.contains(location);
+
+        Location min = area.getMin();
+        Location max = area.getMax();
+
+        if (min == null || max == null || location.getWorld() == null) return area.contains(location);
+        if (!location.getWorld().getName().equalsIgnoreCase(area.getWorld())) return false;
+
+        double minX = Math.min(min.getX(), max.getX()) - margin;
+        double minY = Math.min(min.getY(), max.getY()) - margin;
+        double minZ = Math.min(min.getZ(), max.getZ()) - margin;
+        double maxX = Math.max(min.getX(), max.getX()) + margin;
+        double maxY = Math.max(min.getY(), max.getY()) + margin;
+        double maxZ = Math.max(min.getZ(), max.getZ()) + margin;
+
+        double x = location.getX();
+        double y = location.getY();
+        double z = location.getZ();
+
+        return x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ;
+    }
+
     public void handleMobDeath(Entity entity, Player killer) {
         if (entity == null) return;
 
@@ -51,6 +118,7 @@ public class AreaClearManager {
         if (session == null) return;
 
         session.getMobs().remove(entity.getUniqueId());
+        session.getMobOrigins().remove(entity.getUniqueId());
         updateBossBar(session);
 
         if (session.getMobs().isEmpty()) completeClear(session, killer);
@@ -65,7 +133,7 @@ public class AreaClearManager {
         int remaining = session.getMobs().size();
 
         float progress = total <= 0 ? 0f : (float) remaining / total;
-        bossBar.progress(Math.max(0f, Math.min(1f, progress)));
+        bossBar.progress(Math.clamp(progress, 0f, 1f));
         bossBar.name(MiniMessage.miniMessage().deserialize(
                 area.getBossBarTitle()
                         .replace("%area%", area.getName())
@@ -327,6 +395,7 @@ public class AreaClearManager {
                 if (entity == null) continue;
 
                 session.getMobs().add(entity.getUniqueId());
+                session.getMobOrigins().put(entity.getUniqueId(), location.clone());
                 mobSessions.put(entity.getUniqueId(), session);
             }
         }
@@ -367,7 +436,10 @@ public class AreaClearManager {
 
         for (UUID mobId : new HashSet<>(session.getMobs())) {
             Entity entity = Bukkit.getEntity(mobId);
-            if (entity != null) entity.remove();
+
+            if (entity != null)
+                entity.remove();
+
             mobSessions.remove(mobId);
         }
 
@@ -381,11 +453,15 @@ public class AreaClearManager {
     }
 
     public void shutdown() {
+        stop();
+
         Set<UUID> mobs = new HashSet<>(mobSessions.keySet());
 
         for (UUID mobId : mobs) {
             Entity entity = Bukkit.getEntity(mobId);
-            if (entity != null) entity.remove();
+
+            if (entity != null)
+                entity.remove();
         }
 
         for (AreaClearSession session : sessions.values()) {
