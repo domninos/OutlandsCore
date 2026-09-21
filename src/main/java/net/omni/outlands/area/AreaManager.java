@@ -3,7 +3,11 @@ package net.omni.outlands.area;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.outlands.OutlandsPlugin;
+import net.omni.outlands.mobs.MobTemplate;
+import net.omni.outlands.mobs.MobTemplateManager;
 import org.bukkit.*;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -53,6 +57,7 @@ public class AreaManager {
         for (File file : files) {
             try {
                 Area area = Area.load(file);
+                migrateLegacy(area, file);
                 areas.put(area.getName().toLowerCase(Locale.ROOT), area);
             } catch (Throwable e) {
                 plugin.getLogger().warning("Failed to load area file '" + file.getName() + "': " + e.getMessage());
@@ -60,6 +65,110 @@ public class AreaManager {
         }
 
         plugin.sendConsole("<green>Loaded " + areas.size() + " area(s).</green>");
+    }
+
+    private void migrateLegacy(Area area, File file) {
+        MobTemplateManager mobs = plugin.getMobTemplateManager();
+
+        if (area == null || mobs == null) return;
+
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+
+        if (config.contains("mobs") || !config.contains("spawns")) return;
+
+        ConfigurationSection spawns = config.getConfigurationSection("spawns");
+
+        if (spawns == null) return;
+
+        for (String key : spawns.getKeys(false)) {
+            ConfigurationSection section = spawns.getConfigurationSection(key);
+            if (section == null) continue;
+
+            String templateId = uniqueTemplateId(key);
+
+            MobTemplate template = new MobTemplate(templateId);
+            template.setType(section.getString("type", ""));
+            template.setMythic(section.getBoolean("mythic", false));
+            template.setDisplayName(section.getString("display-name"));
+            template.setHealth(section.getDouble("health", 0));
+            template.setLevel(section.getInt("level", 1));
+            template.setCount(section.getInt("count", 1));
+            template.setBoss(section.getBoolean("boss", false));
+            template.setRespawnSeconds(section.getInt("respawn-seconds", 0));
+
+            ConfigurationSection equipment = section.getConfigurationSection("equipment");
+
+            if (equipment != null) {
+                for (String slot : equipment.getKeys(false))
+                    template.getEquipment().put(slot, equipment.getString(slot));
+            }
+
+            mobs.put(template);
+            area.getMobReferences().add(new AreaMobReference(templateId));
+        }
+
+        mobs.save();
+        save(area);
+
+        plugin.sendConsole("<green>Migrated area '" + area.getName() + "' spawns to mobs.yml.</green>");
+    }
+
+    private String uniqueTemplateId(String base) {
+        MobTemplateManager mobs = plugin.getMobTemplateManager();
+        String normalized = base.toLowerCase(Locale.ROOT);
+        String candidate = normalized;
+        int index = 1;
+
+        while (mobs.exists(candidate)) candidate = normalized + "_" + (index++);
+
+        return candidate;
+    }
+
+    public List<AreaSpawnDefinition> resolveSpawns(Area area) {
+        List<AreaSpawnDefinition> result = new ArrayList<>();
+
+        if (area == null) return result;
+
+        MobTemplateManager mobs = plugin.getMobTemplateManager();
+
+        for (AreaMobReference reference : area.getMobReferences()) {
+            MobTemplate template = mobs == null ? null : mobs.get(reference.getMobId());
+
+            if (template == null) {
+                plugin.getLogger().warning("Area '" + area.getName() + "' references unknown mob '"
+                        + reference.getMobId() + "'.");
+                continue;
+            }
+
+            AreaSpawnDefinition definition = new AreaSpawnDefinition(reference.getMobId());
+            definition.setType(template.getType());
+            definition.setMythic(template.isMythic());
+            definition.setDisplayName(template.getDisplayName());
+            definition.setHealth(template.getHealth());
+            definition.setDamage(template.getDamage());
+            definition.setEquipment(new HashMap<>(template.getEquipment()));
+            definition.setCount(reference.getCount() != null ? reference.getCount() : template.getCount());
+            definition.setBoss(reference.getBoss() != null ? reference.getBoss() : template.isBoss());
+            definition.setLevel(reference.getLevel() != null ? reference.getLevel() : template.getLevel());
+            definition.setRespawnSeconds(reference.getRespawnSeconds() != null
+                    ? reference.getRespawnSeconds() : template.getRespawnSeconds());
+
+            result.add(definition);
+        }
+
+        return result;
+    }
+
+    public boolean hasMobs(Area area) {
+        MobTemplateManager mobs = plugin.getMobTemplateManager();
+
+        if (area == null || mobs == null) return false;
+
+        for (AreaMobReference reference : area.getMobReferences()) {
+            if (mobs.exists(reference.getMobId())) return true;
+        }
+
+        return false;
     }
 
     public void saveDirty() {

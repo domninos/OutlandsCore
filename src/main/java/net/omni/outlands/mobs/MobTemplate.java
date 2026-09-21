@@ -1,38 +1,38 @@
-package net.omni.outlands.area;
+package net.omni.outlands.mobs;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class AreaSpawnDefinition {
+public class MobTemplate {
 
-    private final String group;
+    private final String id;
     private String type;
     private boolean mythic;
-    private int count;
-    private int level;
     private String displayName;
     private double health;
     private double damage;
+    private int level;
+    private int count;
     private boolean boss;
     private int respawnSeconds;
     private Map<String, String> equipment;
 
-    public AreaSpawnDefinition(String group) {
-        this.group = group;
+    public MobTemplate(String id) {
+        this.id = id;
         this.type = "";
         this.mythic = false;
-        this.count = 1;
-        this.level = 1;
         this.displayName = null;
         this.health = 0;
         this.damage = 0;
+        this.level = 1;
+        this.count = 1;
         this.boss = false;
         this.respawnSeconds = 0;
         this.equipment = new HashMap<>();
     }
 
-    public String getGroup() {
-        return group;
+    public String getId() {
+        return id;
     }
 
     public String getType() {
@@ -49,22 +49,6 @@ public class AreaSpawnDefinition {
 
     public void setMythic(boolean mythic) {
         this.mythic = mythic;
-    }
-
-    public int getCount() {
-        return count;
-    }
-
-    public void setCount(int count) {
-        this.count = count;
-    }
-
-    public int getLevel() {
-        return level;
-    }
-
-    public void setLevel(int level) {
-        this.level = level;
     }
 
     public String getDisplayName() {
@@ -89,6 +73,22 @@ public class AreaSpawnDefinition {
 
     public void setDamage(double damage) {
         this.damage = damage;
+    }
+
+    public int getLevel() {
+        return level;
+    }
+
+    public void setLevel(int level) {
+        this.level = level;
+    }
+
+    public int getCount() {
+        return count;
+    }
+
+    public void setCount(int count) {
+        this.count = count;
     }
 
     public boolean isBoss() {

@@ -3,6 +3,7 @@ package net.omni.outlands.area;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.integration.MythicMobsProvider;
+import net.omni.outlands.mobs.EquipmentSlots;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -35,6 +36,7 @@ public class AreaMobFactory {
 
         applyDisplayName(entity, definition.getDisplayName());
         applyHealth(entity, definition.getHealth());
+        applyDamage(entity, definition.getDamage());
         applyEquipment(entity, definition.getEquipment());
 
         return entity;
@@ -87,6 +89,14 @@ public class AreaMobFactory {
         living.setHealth(Math.min(health, living.getMaxHealth()));
     }
 
+    private void applyDamage(Entity entity, double damage) {
+        if (damage <= 0 || !(entity instanceof LivingEntity living)) return;
+
+        AttributeInstance attribute = living.getAttribute(Attribute.ATTACK_DAMAGE);
+
+        if (attribute != null) attribute.setBaseValue(damage);
+    }
+
     private void applyEquipment(Entity entity, Map<String, String> equipment) {
         if (equipment == null || equipment.isEmpty() || !(entity instanceof LivingEntity living)) return;
 
@@ -94,7 +104,7 @@ public class AreaMobFactory {
         if (entityEquipment == null) return;
 
         for (Map.Entry<String, String> entry : equipment.entrySet()) {
-            org.bukkit.inventory.EquipmentSlot slot = parseSlot(entry.getKey());
+            org.bukkit.inventory.EquipmentSlot slot = EquipmentSlots.parse(entry.getKey());
             Material material = Material.matchMaterial(entry.getValue());
 
             if (slot == null || material == null) continue;
@@ -111,19 +121,5 @@ public class AreaMobFactory {
         } catch (IllegalArgumentException e) {
             return null;
         }
-    }
-
-    private org.bukkit.inventory.EquipmentSlot parseSlot(String name) {
-        if (name == null) return null;
-
-        return switch (name.toLowerCase()) {
-            case "helmet", "head" -> org.bukkit.inventory.EquipmentSlot.HEAD;
-            case "chestplate", "chest" -> org.bukkit.inventory.EquipmentSlot.CHEST;
-            case "leggings", "legs" -> org.bukkit.inventory.EquipmentSlot.LEGS;
-            case "boots", "feet" -> org.bukkit.inventory.EquipmentSlot.FEET;
-            case "mainhand", "hand" -> org.bukkit.inventory.EquipmentSlot.HAND;
-            case "offhand", "off_hand" -> org.bukkit.inventory.EquipmentSlot.OFF_HAND;
-            default -> null;
-        };
     }
 }

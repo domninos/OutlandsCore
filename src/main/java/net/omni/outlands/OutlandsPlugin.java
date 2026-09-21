@@ -23,6 +23,7 @@ import net.omni.outlands.loot.LootManager;
 import net.omni.outlands.managers.MessagesManager;
 import net.omni.outlands.managers.TokenManager;
 import net.omni.outlands.messages.MessageUtil;
+import net.omni.outlands.mobs.MobTemplateManager;
 import net.omni.outlands.upgrade.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -44,6 +45,7 @@ public final class OutlandsPlugin extends JavaPlugin {
     private TokenManager tokenManager;
     private LootManager lootManager;
     private ExternalPluginManager externalPluginManager;
+    private MobTemplateManager mobTemplateManager;
     private AreaManager areaManager;
     private AreaClearManager areaClearManager;
     private AreaSelectionVisualizer areaSelectionVisualizer;
@@ -54,8 +56,14 @@ public final class OutlandsPlugin extends JavaPlugin {
      - fix loadout layout - i can take out glass panes
      - make onPlayerMove just have a task running per second on each areas -> check if on cooldown
      -
-     - add a spawn point on the outlands world.
+     - add a spawn point on the outlands world (the location when they do /outlands (?)
      - make Messages.VALUE.replace("key1", "value1", "key2", "value2", etc.)
+     -
+     - add /tokens
+     - add /upgrade
+     -
+     - add
+
      */
 
     @Override
@@ -98,6 +106,9 @@ public final class OutlandsPlugin extends JavaPlugin {
         this.lootManager = new LootManager(this, playerDataManager, configUtil);
         this.runManager = new RunManager(this, playerDataManager, cooldownManager, tokenManager);
         this.externalPluginManager = new ExternalPluginManager(this);
+
+        this.mobTemplateManager = new MobTemplateManager(this);
+        this.mobTemplateManager.load();
 
         this.areaManager = new AreaManager(this);
         this.areaManager.load();
@@ -204,6 +215,10 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     public AreaManager getAreaManager() {
         return areaManager;
+    }
+
+    public MobTemplateManager getMobTemplateManager() {
+        return mobTemplateManager;
     }
 
     public AreaClearManager getAreaClearManager() {

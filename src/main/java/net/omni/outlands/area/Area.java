@@ -20,7 +20,7 @@ public class Area {
 
     public static final int DEFAULT_COOLDOWN_SECONDS = 1800;
     public static final int DEFAULT_RESPAWN_SECONDS = 300;
-    private final List<AreaSpawnDefinition> spawns;
+    private final List<AreaMobReference> mobReferences;
     private final List<Location> mobSpawnLocations;
     private final List<Location> bossSpawnLocations;
     private final List<AreaLootEntry> lootEntries;
@@ -54,7 +54,7 @@ public class Area {
         this.bossBarColor = BossBar.Color.RED;
         this.bossBarOverlay = BossBar.Overlay.PROGRESS;
 
-        this.spawns = new ArrayList<>();
+        this.mobReferences = new ArrayList<>();
         this.mobSpawnLocations = new ArrayList<>();
         this.bossSpawnLocations = new ArrayList<>();
         this.lootEntries = new ArrayList<>();
@@ -100,31 +100,26 @@ public class Area {
                     config.getDouble("bounds.max.z")));
         }
 
-        ConfigurationSection spawnsSection = config.getConfigurationSection("spawns");
+        List<?> mobs = config.getList("mobs");
 
-        if (spawnsSection != null) {
-            for (String key : spawnsSection.getKeys(false)) {
-                ConfigurationSection section = spawnsSection.getConfigurationSection(key);
-                if (section == null) continue;
+        if (mobs != null) {
+            for (Object entry : mobs) {
+                if (entry instanceof String id) {
+                    area.getMobReferences().add(new AreaMobReference(id));
+                } else if (entry instanceof Map<?, ?> map) {
+                    Object id = map.get("id");
+                    if (id == null) continue;
 
-                AreaSpawnDefinition spawn = new AreaSpawnDefinition(key);
-                spawn.setType(section.getString("type", ""));
-                spawn.setMythic(section.getBoolean("mythic", false));
-                spawn.setCount(section.getInt("count", 1));
-                spawn.setLevel(section.getInt("level", 1));
-                spawn.setBoss(section.getBoolean("boss", false));
-                spawn.setRespawnSeconds(section.getInt("respawn-seconds", 0));
-                spawn.setDisplayName(section.getString("display-name"));
-                spawn.setHealth(section.getDouble("health", 0));
+                    AreaMobReference reference = new AreaMobReference(String.valueOf(id));
 
-                ConfigurationSection equipment = section.getConfigurationSection("equipment");
+                    if (map.get("count") instanceof Number count) reference.setCount(count.intValue());
+                    if (map.get("boss") instanceof Boolean boss) reference.setBoss(boss);
+                    if (map.get("level") instanceof Number level) reference.setLevel(level.intValue());
+                    if (map.get("respawn-seconds") instanceof Number respawn)
+                        reference.setRespawnSeconds(respawn.intValue());
 
-                if (equipment != null) {
-                    for (String slot : equipment.getKeys(false))
-                        spawn.getEquipment().put(slot, equipment.getString(slot));
+                    area.getMobReferences().add(reference);
                 }
-
-                area.getSpawns().add(spawn);
             }
         }
 
@@ -187,8 +182,23 @@ public class Area {
         return fallback;
     }
 
-    public List<AreaSpawnDefinition> getSpawns() {
-        return spawns;
+    public List<AreaMobReference> getMobReferences() {
+        return mobReferences;
+    }
+
+    public AreaMobReference getMobReference(String mobId) {
+        if (mobId == null) return null;
+
+        for (AreaMobReference reference : mobReferences) {
+            if (reference.getMobId().equalsIgnoreCase(mobId)) return reference;
+        }
+
+        return null;
+    }
+
+    public boolean removeMobReference(String mobId) {
+        AreaMobReference reference = getMobReference(mobId);
+        return reference != null && mobReferences.remove(reference);
     }
 
     public List<Location> getMobSpawnLocations() {
@@ -545,24 +555,26 @@ public class Area {
             config.set("bounds.max.z", max.getZ());
         }
 
-        for (AreaSpawnDefinition spawn : spawns) {
-            String base = "spawns." + spawn.getGroup() + ".";
-            config.set(base + "type", spawn.getType());
-            config.set(base + "mythic", spawn.isMythic());
-            config.set(base + "count", spawn.getCount());
-            config.set(base + "level", spawn.getLevel());
-            config.set(base + "boss", spawn.isBoss());
-            config.set(base + "respawn-seconds", spawn.getRespawnSeconds());
+        List<Object> mobList = new ArrayList<>();
 
-            if (spawn.getDisplayName() != null)
-                config.set(base + "display-name", spawn.getDisplayName());
+        for (AreaMobReference reference : mobReferences) {
+            if (!reference.hasOverrides()) {
+                mobList.add(reference.getMobId());
+                continue;
+            }
 
-            if (spawn.getHealth() > 0)
-                config.set(base + "health", spawn.getHealth());
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", reference.getMobId());
 
-            for (Map.Entry<String, String> entry : spawn.getEquipment().entrySet())
-                config.set(base + "equipment." + entry.getKey(), entry.getValue());
+            if (reference.getCount() != null) map.put("count", reference.getCount());
+            if (reference.getBoss() != null) map.put("boss", reference.getBoss());
+            if (reference.getLevel() != null) map.put("level", reference.getLevel());
+            if (reference.getRespawnSeconds() != null) map.put("respawn-seconds", reference.getRespawnSeconds());
+
+            mobList.add(map);
         }
+
+        config.set("mobs", mobList);
 
         config.set("spawn-locations", serializeLocations(mobSpawnLocations));
         config.set("boss-locations", serializeLocations(bossSpawnLocations));

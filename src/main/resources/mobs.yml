@@ -1,0 +1,30 @@
+# Global, reusable mob definitions.
+#
+# Each key under "mobs" is the reference ID used by areas, e.g.
+#   an area file:  mobs: [skeleton_guard]
+#
+# Fields:
+#   type             vanilla EntityType name, or a MythicMobs ID when mythic: true
+#   mythic           true to spawn a MythicMob instead of a vanilla entity
+#   display-name     MiniMessage display name (optional)
+#   health           max health override, 0 = default (optional)
+#   damage           attack damage override, 0 = default (optional)
+#   level            MythicMobs level (optional)
+#   count            how many to spawn (default 1)
+#   boss             true = spawn from an area's boss spawn points, false = mob points
+#   respawn-seconds  per-mob respawn override (optional)
+#   equipment        slot -> material (helmet, chestplate, leggings, boots, mainhand, offhand; "sword" = mainhand)
+mobs:
+  skeleton_guard:
+    type: SKELETON
+    mythic: false
+    display-name: "<red>Skeleton Guard</red>"
+    health: 40
+    damage: 8
+    level: 1
+    count: 1
+    boss: false
+    respawn-seconds: 0
+    equipment:
+      helmet: IRON_HELMET
+      mainhand: IRON_SWORD

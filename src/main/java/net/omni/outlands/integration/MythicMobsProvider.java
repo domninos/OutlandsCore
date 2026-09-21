@@ -7,6 +7,8 @@ import net.omni.outlands.OutlandsPlugin;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 
+import java.util.Collection;
+
 public class MythicMobsProvider {
 
     private final OutlandsPlugin plugin;
@@ -17,6 +19,10 @@ public class MythicMobsProvider {
 
     public boolean exists(String mobId) {
         return MythicBukkit.inst().getMobManager().getMythicMob(mobId).isPresent();
+    }
+
+    public Collection<String> getMobNames() {
+        return MythicBukkit.inst().getMobManager().getMobNames();
     }
 
     public Entity spawnMob(String mobId, Location location, int level) {

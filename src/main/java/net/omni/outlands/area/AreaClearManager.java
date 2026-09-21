@@ -277,7 +277,7 @@ public class AreaClearManager {
             return false;
         }
 
-        if (area.getSpawns().isEmpty()) {
+        if (!areaManager.hasMobs(area)) {
             plugin.sendMessage(owner, Messages.AREA_NO_SPAWNS.toString());
             return false;
         }
@@ -318,7 +318,7 @@ public class AreaClearManager {
     }
 
     private void spawnMobs(Area area, AreaClearSession session) {
-        for (AreaSpawnDefinition definition : area.getSpawns()) {
+        for (AreaSpawnDefinition definition : areaManager.resolveSpawns(area)) {
             for (int i = 0; i < definition.getCount(); i++) {
                 Location location = area.getSpawnLocation(definition, random);
                 if (location == null) continue;
