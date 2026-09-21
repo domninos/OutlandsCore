@@ -21,7 +21,7 @@ public class Area {
     public static final int DEFAULT_COOLDOWN_SECONDS = 1800;
     public static final int DEFAULT_RESPAWN_SECONDS = 300;
 
-    private final String name;
+    private String name;
     private String world;
     private String difficulty;
     private int cooldownSeconds;
@@ -36,6 +36,9 @@ public class Area {
     private Location max;
 
     private final List<AreaSpawnDefinition> spawns;
+
+    private final List<Location> mobSpawnLocations;
+    private final List<Location> bossSpawnLocations;
 
     private Location chestLocation;
     private int lootDespawnSeconds;
@@ -59,6 +62,8 @@ public class Area {
         this.bossBarOverlay = BossBar.Overlay.PROGRESS;
 
         this.spawns = new ArrayList<>();
+        this.mobSpawnLocations = new ArrayList<>();
+        this.bossSpawnLocations = new ArrayList<>();
         this.lootEntries = new ArrayList<>();
 
         this.chestLocation = null;
@@ -72,6 +77,10 @@ public class Area {
 
     public String getName() {
         return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getWorld() {
@@ -156,6 +165,79 @@ public class Area {
 
     public List<AreaSpawnDefinition> getSpawns() {
         return spawns;
+    }
+
+    public List<Location> getMobSpawnLocations() {
+        return mobSpawnLocations;
+    }
+
+    public List<Location> getBossSpawnLocations() {
+        return bossSpawnLocations;
+    }
+
+    public void addMobSpawnLocation(Location location) {
+        if (location != null) mobSpawnLocations.add(location);
+    }
+
+    public void addBossSpawnLocation(Location location) {
+        if (location != null) bossSpawnLocations.add(location);
+    }
+
+    public boolean removeNearestSpawnLocation(Location location, double radius) {
+        Location nearestMob = nearest(mobSpawnLocations, location, radius);
+        Location nearestBoss = nearest(bossSpawnLocations, location, radius);
+
+        if (nearestMob == null) {
+            if (nearestBoss == null) return false;
+            bossSpawnLocations.remove(nearestBoss);
+            return true;
+        }
+
+        if (nearestBoss == null || distanceSq(nearestMob, location) <= distanceSq(nearestBoss, location)) {
+            mobSpawnLocations.remove(nearestMob);
+        } else {
+            bossSpawnLocations.remove(nearestBoss);
+        }
+
+        return true;
+    }
+
+    private Location nearest(List<Location> locations, Location target, double radius) {
+        Location nearest = null;
+        double nearestDistance = radius * radius;
+
+        for (Location location : locations) {
+            double distance = distanceSq(location, target);
+
+            if (distance <= nearestDistance) {
+                nearestDistance = distance;
+                nearest = location;
+            }
+        }
+
+        return nearest;
+    }
+
+    private static double distanceSq(Location first, Location second) {
+        if (first == null || second == null || first.getWorld() == null || second.getWorld() == null) return Double.MAX_VALUE;
+        if (!first.getWorld().equals(second.getWorld())) return Double.MAX_VALUE;
+
+        double dx = first.getX() - second.getX();
+        double dy = first.getY() - second.getY();
+        double dz = first.getZ() - second.getZ();
+
+        return dx * dx + dy * dy + dz * dz;
+    }
+
+    public Location getSpawnLocation(AreaSpawnDefinition definition, Random random) {
+        if (definition != null && definition.isBoss()) {
+            if (!bossSpawnLocations.isEmpty())
+                return bossSpawnLocations.get(random.nextInt(bossSpawnLocations.size()));
+        } else if (!mobSpawnLocations.isEmpty()) {
+            return mobSpawnLocations.get(random.nextInt(mobSpawnLocations.size()));
+        }
+
+        return getRandomSpawnLocation(random);
     }
 
     public Location getChestLocation() {
@@ -307,6 +389,39 @@ public class Area {
         return getCenter();
     }
 
+    private static List<Map<String, Object>> serializeLocations(List<Location> locations) {
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Location location : locations) {
+            if (location == null) continue;
+
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("x", location.getX());
+            map.put("y", location.getY());
+            map.put("z", location.getZ());
+            result.add(map);
+        }
+
+        return result;
+    }
+
+    private static List<Location> deserializeLocations(List<Map<?, ?>> maps, World world) {
+        List<Location> result = new ArrayList<>();
+        if (world == null) return result;
+
+        for (Map<?, ?> map : maps) {
+            Object x = map.get("x");
+            Object y = map.get("y");
+            Object z = map.get("z");
+
+            if (x instanceof Number nx && y instanceof Number ny && z instanceof Number nz) {
+                result.add(new Location(world, nx.doubleValue(), ny.doubleValue(), nz.doubleValue()));
+            }
+        }
+
+        return result;
+    }
+
     public void save(File file) {
         YamlConfiguration config = new YamlConfiguration();
 
@@ -351,6 +466,9 @@ public class Area {
             for (Map.Entry<String, String> entry : spawn.getEquipment().entrySet())
                 config.set(base + "equipment." + entry.getKey(), entry.getValue());
         }
+
+        config.set("spawn-locations", serializeLocations(mobSpawnLocations));
+        config.set("boss-locations", serializeLocations(bossSpawnLocations));
 
         if (chestLocation != null) {
             config.set("loot.chest-location.x", chestLocation.getX());
@@ -442,6 +560,11 @@ public class Area {
 
                 area.getSpawns().add(spawn);
             }
+        }
+
+        if (bukkitWorld != null) {
+            area.getMobSpawnLocations().addAll(deserializeLocations(config.getMapList("spawn-locations"), bukkitWorld));
+            area.getBossSpawnLocations().addAll(deserializeLocations(config.getMapList("boss-locations"), bukkitWorld));
         }
 
         if (config.contains("loot.chest-location.x") && bukkitWorld != null) {

@@ -4,8 +4,8 @@ import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.area.Area;
 import net.omni.outlands.area.AreaManager;
 import net.omni.outlands.area.AreaState;
+import net.omni.outlands.area.WandMode;
 import net.omni.outlands.messages.Messages;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -23,7 +23,9 @@ import java.util.Locale;
 public class AreaCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "wand", "create", "delete", "list", "info", "tp", "reset", "reload");
+            "wand", "create", "rename", "resize", "update", "delete", "list", "info", "tp", "reset", "reload");
+
+    private static final List<String> MODES = List.of("corner", "spawn", "chest");
 
     private final OutlandsPlugin plugin;
 
@@ -40,13 +42,17 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas <wand|create|delete|list|info|tp|reset|reload>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage",
+                    "/areas <wand|create|rename|resize|update|delete|list|info|tp|reset|reload>"));
             return true;
         }
 
         return switch (args[0].toLowerCase(Locale.ROOT)) {
-            case "wand" -> handleWand(sender);
+            case "wand" -> handleWand(sender, args);
             case "create" -> handleCreate(sender, args);
+            case "rename" -> handleRename(sender, args);
+            case "resize" -> handleResize(sender, args);
+            case "update" -> handleUpdate(sender, args);
             case "delete" -> handleDelete(sender, args);
             case "list" -> handleList(sender);
             case "info" -> handleInfo(sender, args);
@@ -60,14 +66,31 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         };
     }
 
-    private boolean handleWand(CommandSender sender) {
+    private boolean handleWand(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
             plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
             return true;
         }
 
-        player.getInventory().addItem(plugin.getAreaManager().createWand());
-        plugin.sendMessage(player, Messages.AREA_WAND_GIVEN.toString());
+        AreaManager areaManager = plugin.getAreaManager();
+        String areaName = null;
+        WandMode mode = WandMode.CORNER;
+
+        if (args.length >= 2) {
+            Area area = areaManager.getArea(args[1]);
+
+            if (area == null) {
+                plugin.sendMessage(player, Messages.AREA_NOT_FOUND.replace("area", args[1]));
+                return true;
+            }
+
+            areaName = area.getName();
+        }
+
+        if (args.length >= 3) mode = WandMode.parse(args[2], WandMode.CORNER);
+
+        player.getInventory().addItem(areaManager.createWand(areaName, mode));
+        plugin.sendMessage(player, Messages.AREA_WAND_GIVEN.replace("mode", mode.getDisplay()));
         return true;
     }
 
@@ -108,9 +131,109 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleRename(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas rename <old> <new>"));
+            return true;
+        }
+
+        AreaManager areaManager = plugin.getAreaManager();
+        Area area = areaManager.getArea(args[1]);
+
+        if (area == null) {
+            plugin.sendMessage(sender, Messages.AREA_NOT_FOUND.replace("area", args[1]));
+            return true;
+        }
+
+        if (areaManager.isLocked(area)) {
+            plugin.sendMessage(sender, Messages.AREA_EDIT_LOCKED.replace("area", area.getName()));
+            return true;
+        }
+
+        String oldName = area.getName();
+
+        if (!areaManager.rename(args[1], args[2])) {
+            plugin.sendMessage(sender, Messages.AREA_ALREADY_EXISTS.replace("area", args[2]));
+            return true;
+        }
+
+        plugin.sendMessage(sender, Messages.AREA_RENAMED.replace("old", oldName).replace("new", args[2]));
+        return true;
+    }
+
+    private boolean handleResize(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
+            return true;
+        }
+
+        if (args.length < 2) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas resize <name>"));
+            return true;
+        }
+
+        AreaManager areaManager = plugin.getAreaManager();
+        Area area = areaManager.getArea(args[1]);
+
+        if (area == null) {
+            plugin.sendMessage(player, Messages.AREA_NOT_FOUND.replace("area", args[1]));
+            return true;
+        }
+
+        Location first = areaManager.getPos1(player.getUniqueId());
+        Location second = areaManager.getPos2(player.getUniqueId());
+
+        if (first == null || second == null || first.getWorld() == null || second.getWorld() == null
+                || !first.getWorld().equals(second.getWorld())) {
+            plugin.sendMessage(player, Messages.AREA_SELECTION_INCOMPLETE.toString());
+            return true;
+        }
+
+        if (areaManager.isLocked(area)) {
+            plugin.sendMessage(player, Messages.AREA_EDIT_LOCKED.replace("area", area.getName()));
+            return true;
+        }
+
+        areaManager.resize(area.getName(), first, second);
+        areaManager.clearSelection(player.getUniqueId());
+        plugin.sendMessage(player, Messages.AREA_RESIZED.replace("area", area.getName()));
+        return true;
+    }
+
+    private boolean handleUpdate(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas update <name>"));
+            return true;
+        }
+
+        AreaManager areaManager = plugin.getAreaManager();
+        Area area = areaManager.getArea(args[1]);
+
+        if (area == null) {
+            plugin.sendMessage(sender, Messages.AREA_NOT_FOUND.replace("area", args[1]));
+            return true;
+        }
+
+        if (areaManager.isLocked(area)) {
+            plugin.sendMessage(sender, Messages.AREA_EDIT_LOCKED.replace("area", area.getName()));
+            return true;
+        }
+
+        areaManager.update(area.getName());
+        plugin.sendMessage(sender, Messages.AREA_UPDATED.replace("area", area.getName()));
+        return true;
+    }
+
     private boolean handleDelete(CommandSender sender, String[] args) {
         if (args.length < 2) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas delete <name>"));
+            return true;
+        }
+
+        Area area = plugin.getAreaManager().getArea(args[1]);
+
+        if (area != null && plugin.getAreaManager().isLocked(area)) {
+            plugin.sendMessage(sender, Messages.AREA_EDIT_LOCKED.replace("area", area.getName()));
             return true;
         }
 
@@ -155,6 +278,9 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         plugin.sendMessage(sender, "<gray>Difficulty: <white>" + area.getDifficulty() + "</white></gray>");
         plugin.sendMessage(sender, "<gray>State: <white>" + (area.isReady() ? AreaState.READY.name() : area.getState().name()) + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Spawn groups: <white>" + area.getSpawns().size() + "</white></gray>");
+        plugin.sendMessage(sender, "<gray>Mob spawn points: <white>" + area.getMobSpawnLocations().size() + "</white></gray>");
+        plugin.sendMessage(sender, "<gray>Boss spawn points: <white>" + area.getBossSpawnLocations().size() + "</white></gray>");
+        plugin.sendMessage(sender, "<gray>Loot chest: <white>" + (area.getChestLocation() == null ? "auto (center)" : "set") + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Cooldown: <white>" + area.getCooldownSeconds() + "s</white></gray>");
         return true;
     }
@@ -227,9 +353,13 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2) {
             String sub = args[0].toLowerCase(Locale.ROOT);
 
-            if (sub.equals("delete") || sub.equals("info") || sub.equals("tp") || sub.equals("reset"))
+            if (sub.equals("wand") || sub.equals("delete") || sub.equals("info") || sub.equals("tp")
+                    || sub.equals("reset") || sub.equals("rename") || sub.equals("resize") || sub.equals("update"))
                 return filter(plugin.getAreaManager().getNames(), args[1]);
         }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("wand"))
+            return filter(MODES, args[2]);
 
         return List.of();
     }

@@ -95,7 +95,7 @@ public class AreaClearManager {
     private void spawnMobs(Area area, AreaClearSession session) {
         for (AreaSpawnDefinition definition : area.getSpawns()) {
             for (int i = 0; i < definition.getCount(); i++) {
-                Location location = area.getRandomSpawnLocation(random);
+                Location location = area.getSpawnLocation(definition, random);
                 if (location == null) continue;
 
                 Entity entity = mobFactory.spawn(definition, location);
