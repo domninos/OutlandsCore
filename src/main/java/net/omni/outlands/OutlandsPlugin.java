@@ -2,9 +2,14 @@ package net.omni.outlands;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import net.omni.outlands.area.AreaClearManager;
+import net.omni.outlands.area.AreaListener;
+import net.omni.outlands.area.AreaManager;
+import net.omni.outlands.area.AreaWandListener;
 import net.omni.outlands.chat.ChatRenderer;
 import net.omni.outlands.chat.PaperChatRenderer;
 import net.omni.outlands.chat.SpigotChatRenderer;
+import net.omni.outlands.commands.AreaCommand;
 import net.omni.outlands.commands.ExtractCommand;
 import net.omni.outlands.commands.OutlandsCommand;
 import net.omni.outlands.config.ConfigUtil;
@@ -42,6 +47,8 @@ public final class OutlandsPlugin extends JavaPlugin {
     private TokenManager tokenManager;
     private LootManager lootManager;
     private ExternalPluginManager externalPluginManager;
+    private AreaManager areaManager;
+    private AreaClearManager areaClearManager;
 
     /*
 
@@ -51,6 +58,7 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        areaClearManager.shutdown();
         runManager.shutdown();
         playerDataManager.flush();
 
@@ -86,6 +94,10 @@ public final class OutlandsPlugin extends JavaPlugin {
         this.runManager = new RunManager(this, playerDataManager, cooldownManager, tokenManager);
         this.externalPluginManager = new ExternalPluginManager(this);
 
+        this.areaManager = new AreaManager(this);
+        this.areaManager.load();
+        this.areaClearManager = new AreaClearManager(this, areaManager);
+
         registerHooks();
         registerCommands();
         registerListeners();
@@ -112,10 +124,13 @@ public final class OutlandsPlugin extends JavaPlugin {
     private void registerCommands() {
         new OutlandsCommand(this).register();
         new ExtractCommand(this).register();
+        new AreaCommand(this).register();
     }
 
     private void registerListeners() {
         new PlayerListener(this).register();
+        new AreaWandListener(this).register();
+        new AreaListener(this).register();
     }
 
     public void sendConsole(String message) {
@@ -176,6 +191,14 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     public ExternalPluginManager getExternalPluginManager() {
         return externalPluginManager;
+    }
+
+    public AreaManager getAreaManager() {
+        return areaManager;
+    }
+
+    public AreaClearManager getAreaClearManager() {
+        return areaClearManager;
     }
 
     public Gson getGson() {

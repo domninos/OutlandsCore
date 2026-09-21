@@ -1,5 +1,6 @@
 package net.omni.outlands.integration;
 
+import emanondev.itemedit.ItemEdit;
 import net.omni.outlands.OutlandsPlugin;
 import org.bukkit.inventory.ItemStack;
 
@@ -13,21 +14,15 @@ public class ItemEditProvider implements ExternalItemProvider {
 
     @Override
     public ItemStack resolveItem(String id) {
-        try {
-            String[] parts = id.split(":");
-            if (parts.length < 2) return null;
+        String[] parts = id.split(":");
+        if (parts.length < 2) return null;
 
-            String itemName = parts[1];
+        String itemName = parts[1];
 
-            Class<?> itemEdit = Class.forName("com.exerro.itemedit.ItemEdit");
-            Object instance = itemEdit.getMethod("getPlugin").invoke(null);
-            Object itemRegistry = instance.getClass().getMethod("getItemRegistry").invoke(instance);
+        ItemStack item = ItemEdit.get().getServerStorage().getItem(itemName);
+        if (item == null)
+            plugin.getLogger().warning("Unknown ItemEdit server item: " + itemName);
 
-            return (ItemStack) itemRegistry.getClass().getMethod("getItem", String.class)
-                    .invoke(itemRegistry, itemName);
-        } catch (Exception e) {
-            plugin.getLogger().warning("Failed to resolve ItemEdit item: " + id + " - " + e.getMessage());
-        }
-        return null;
+        return item;
     }
 }
