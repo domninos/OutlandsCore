@@ -219,12 +219,20 @@ public class AreaManager {
     }
 
     private void checkAreaStates() {
+        boolean changed = false;
+
         for (Area area : areas.values()) {
             AreaState before = area.getState();
             area.isReady();
 
-            if (before != area.getState()) markDirty(area);
+            if (before != area.getState()) {
+                markDirty(area);
+                changed = true;
+            }
         }
+
+        if (changed)
+            plugin.getScoreboardManager().refreshAll();
     }
 
     public Area create(String name, World world, Location first, Location second) {

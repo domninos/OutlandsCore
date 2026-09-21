@@ -130,6 +130,7 @@ public class OutlandsCommand implements CommandExecutor {
         plugin.getConfigUtil().reloadConfig();
         plugin.getMessagesManager().loadMessages();
         plugin.getUpgradeManager().reload();
+        plugin.getScoreboardManager().reload();
         plugin.sendMessage(sender, Messages.RELOADED.toString());
         return true;
     }

@@ -102,9 +102,8 @@ public class RunManager {
         Map<String, Integer> serialized = new HashMap<>();
 
         for (int i = 0; i < items.length; i++) {
-            if (items[i] != null) {
+            if (items[i] != null)
                 serialized.put(i + ":" + items[i].getType().name(), items[i].getAmount());
-            }
         }
 
         return serialized;
@@ -112,21 +111,22 @@ public class RunManager {
 
     public boolean extractPlayer(UUID uuid) {
         ActiveRun run = activeRuns.remove(uuid);
-        if (run == null) return false;
+        if (run == null)
+            return false;
 
         run.cancelTimer();
 
         Player player = Bukkit.getPlayer(uuid);
-        if (player == null) return false;
+        if (player == null)
+            return false;
 
-        List<ItemStack> loot = new ArrayList<>(Arrays.asList(player.getInventory().getContents()));
+        List<ItemStack> loot = Arrays.asList(player.getInventory().getContents());
         loot.removeAll(Collections.singleton(null));
 
         PlayerData data = playerDataManager.getOrCreate(uuid);
 
-        if (!loot.isEmpty()) {
+        if (!loot.isEmpty())
             data.setExtractedLoot(loot);
-        }
 
         int killCount = run.getKillCount();
         int eventCount = run.getEventCount();
@@ -270,7 +270,6 @@ public class RunManager {
 
         public void startTimer(OutlandsPlugin plugin, RunManager runManager, Player player) {
             timerTask = new BukkitRunnable() {
-                final int warningThreshold = 60;
                 int remaining = timeLimitSeconds;
 
                 @Override
@@ -282,11 +281,10 @@ public class RunManager {
                         return;
                     }
 
-                    if (remaining == 60) {
+                    if (remaining == 60)
                         plugin.sendMessage(player, Messages.RUN_TIMER_ONE_MINUTE.toString());
-                    } else if (remaining <= 10) {
+                    else if (remaining <= 10)
                         plugin.sendMessage(player, Messages.RUN_TIMER_SECONDS.replace("time", String.valueOf(remaining)));
-                    }
 
                     remaining--;
                 }
@@ -294,9 +292,8 @@ public class RunManager {
         }
 
         public void cancelTimer() {
-            if (timerTask != null && !timerTask.isCancelled()) {
+            if (timerTask != null && !timerTask.isCancelled())
                 timerTask.cancel();
-            }
         }
 
         public UUID getUuid() {

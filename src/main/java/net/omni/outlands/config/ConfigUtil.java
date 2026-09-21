@@ -59,11 +59,24 @@ public class ConfigUtil {
     private String upgradeGuiFillerMaterial;
     private String upgradeGuiFillerName;
 
+    private boolean scoreboardEnabled;
+    private boolean scoreboardOnlyInWorld;
+    private int scoreboardUpdateTicks;
+    private String scoreboardTitle;
+    private List<String> scoreboardLines;
+    private String scoreboardNoAreaText;
+    private String scoreboardPartyPlaceholder;
+    private String scoreboardIdleText;
+    private String scoreboardServerIp;
+    private String scoreboardTimeZone;
+    private String scoreboardTimeFormat;
+
     public ConfigUtil(OutlandsPlugin plugin) {
         this.plugin = plugin;
         this.loadoutTiers = new HashMap<>();
         this.upgradeTokenDefinitions = new HashMap<>();
         this.defaultLoadoutTiers = new HashMap<>();
+        this.scoreboardLines = new ArrayList<>();
     }
 
     public void reloadConfig() {
@@ -76,6 +89,7 @@ public class ConfigUtil {
         upgradeTokenDefinitions.clear();
         defaultLoadoutTiers.clear();
         spawnLocation = null;
+        scoreboardLines = new ArrayList<>();
     }
 
     public void load() {
@@ -120,6 +134,7 @@ public class ConfigUtil {
         loadUpgradeTokenDefinitions(savedDefaults);
         loadUpgradeGui(savedDefaults);
         loadSpawn();
+        loadScoreboard(savedDefaults);
 
         if (savedDefaults.get() > 0) {
             plugin.saveConfig();
@@ -164,6 +179,35 @@ public class ConfigUtil {
             return defaultVal;
         }
         return plugin.getConfig().getDouble(path);
+    }
+
+    private List<String> getAndDefaultStringList(String path, List<String> defaultVal, AtomicInteger counter) {
+        if (!plugin.getConfig().contains(path)) {
+            plugin.getConfig().set(path, defaultVal);
+            counter.incrementAndGet();
+            return new ArrayList<>(defaultVal);
+        }
+        return new ArrayList<>(plugin.getConfig().getStringList(path));
+    }
+
+    private void loadScoreboard(AtomicInteger savedDefaults) {
+        this.scoreboardEnabled = getAndDefaultBoolean(ConfigKeys.SCOREBOARD_ENABLED, true, savedDefaults);
+        this.scoreboardOnlyInWorld = getAndDefaultBoolean(ConfigKeys.SCOREBOARD_ONLY_IN_WORLD, true, savedDefaults);
+        this.scoreboardUpdateTicks = Math.max(1, getAndDefaultInt(ConfigKeys.SCOREBOARD_UPDATE_TICKS, 20, savedDefaults));
+        this.scoreboardTitle = getAndDefaultString(ConfigKeys.SCOREBOARD_TITLE, "Outlands", savedDefaults);
+        this.scoreboardNoAreaText = getAndDefaultString(ConfigKeys.SCOREBOARD_NO_AREA_TEXT, "Wilderness", savedDefaults);
+        this.scoreboardPartyPlaceholder = getAndDefaultString(ConfigKeys.SCOREBOARD_PARTY_PLACEHOLDER, "None", savedDefaults);
+        this.scoreboardIdleText = getAndDefaultString(ConfigKeys.SCOREBOARD_IDLE_TEXT, "Idle", savedDefaults);
+        this.scoreboardServerIp = getAndDefaultString(ConfigKeys.SCOREBOARD_SERVER_IP, "play.example.com", savedDefaults);
+        this.scoreboardTimeZone = getAndDefaultString(ConfigKeys.SCOREBOARD_TIME_ZONE, "UTC", savedDefaults);
+        this.scoreboardTimeFormat = getAndDefaultString(ConfigKeys.SCOREBOARD_TIME_FORMAT, "HH:mm:ss", savedDefaults);
+        this.scoreboardLines = getAndDefaultStringList(ConfigKeys.SCOREBOARD_LINES, List.of(
+                "<gray>Area <dark_gray>» <white>%outlands_area%",
+                "<gray>Time <dark_gray>» <white>%outlands_timer%",
+                "<gray>Party <dark_gray>» <white>%outlands_party%",
+                "<gray>Clock <dark_gray>» <white>%outlands_clock%",
+                "<gray>IP <dark_gray>» <white>%outlands_ip%"
+        ), savedDefaults);
     }
 
     private void loadLoadoutDefaults(AtomicInteger savedDefaults) {
@@ -552,5 +596,49 @@ public class ConfigUtil {
 
     public String getUpgradeGuiFillerName() {
         return upgradeGuiFillerName;
+    }
+
+    public boolean isScoreboardEnabled() {
+        return scoreboardEnabled;
+    }
+
+    public boolean isScoreboardOnlyInWorld() {
+        return scoreboardOnlyInWorld;
+    }
+
+    public int getScoreboardUpdateTicks() {
+        return scoreboardUpdateTicks;
+    }
+
+    public String getScoreboardTitle() {
+        return scoreboardTitle;
+    }
+
+    public List<String> getScoreboardLines() {
+        return scoreboardLines;
+    }
+
+    public String getScoreboardNoAreaText() {
+        return scoreboardNoAreaText;
+    }
+
+    public String getScoreboardPartyPlaceholder() {
+        return scoreboardPartyPlaceholder;
+    }
+
+    public String getScoreboardIdleText() {
+        return scoreboardIdleText;
+    }
+
+    public String getScoreboardServerIp() {
+        return scoreboardServerIp;
+    }
+
+    public String getScoreboardTimeZone() {
+        return scoreboardTimeZone;
+    }
+
+    public String getScoreboardTimeFormat() {
+        return scoreboardTimeFormat;
     }
 }

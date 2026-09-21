@@ -195,3 +195,35 @@ areas:
     color-chest: "255,215,0"
     # Radius (in blocks) used by shift + left-click to remove a spawn point
     point-remove-radius: 3
+
+# Sidebar scoreboard
+# Set enabled: false to let another plugin handle the sidebar.
+# Lines support MiniMessage and PlaceholderAPI placeholders. When PlaceholderAPI is
+# installed, any of its placeholders work; otherwise the built-in %outlands_*%
+# placeholders below are used.
+scoreboard:
+  enabled: true
+  # Only show the scoreboard while the player is in the Outlands world
+  only-in-world: true
+  # How often (in ticks) the scoreboard refreshes (20 ticks = 1 second)
+  update-ticks: 20
+  title: "Outlands"
+  # Maximum of 15 lines (client limit)
+  lines:
+    - "<gray>Area <dark_gray>» <white>%outlands_area%"
+    - "<gray>Time <dark_gray>» <white>%outlands_timer%"
+    - "<gray>Party <dark_gray>» <white>%outlands_party%"
+    - "<gray>Clock <dark_gray>» <white>%outlands_clock%"
+    - "<gray>IP <dark_gray>» <white>%outlands_ip%"
+  # Value of %outlands_area% when the player is not inside an area
+  no-area-text: "Wilderness"
+  # Value of %outlands_party% (party system is not implemented yet)
+  party-placeholder: "None"
+  # Value of %outlands_timer% when the player has no run and no cooldown
+  idle-text: "Idle"
+  # Value of %outlands_ip%
+  server-ip: "play.example.com"
+  # Timezone used by %outlands_clock% (e.g. UTC, Europe/London, America/New_York)
+  time-zone: "UTC"
+  # Clock format used by %outlands_clock% (java.time DateTimeFormatter pattern)
+  time-format: "HH:mm:ss"

@@ -55,5 +55,18 @@ public final class ConfigKeys {
     public static final String AREAS_OUTLINE_COLOR_CHEST = "areas.outline.color-chest";
     public static final String AREAS_OUTLINE_POINT_REMOVE_RADIUS = "areas.outline.point-remove-radius";
 
+    public static final String SCOREBOARD = "scoreboard";
+    public static final String SCOREBOARD_ENABLED = "scoreboard.enabled";
+    public static final String SCOREBOARD_ONLY_IN_WORLD = "scoreboard.only-in-world";
+    public static final String SCOREBOARD_UPDATE_TICKS = "scoreboard.update-ticks";
+    public static final String SCOREBOARD_TITLE = "scoreboard.title";
+    public static final String SCOREBOARD_LINES = "scoreboard.lines";
+    public static final String SCOREBOARD_NO_AREA_TEXT = "scoreboard.no-area-text";
+    public static final String SCOREBOARD_PARTY_PLACEHOLDER = "scoreboard.party-placeholder";
+    public static final String SCOREBOARD_IDLE_TEXT = "scoreboard.idle-text";
+    public static final String SCOREBOARD_SERVER_IP = "scoreboard.server-ip";
+    public static final String SCOREBOARD_TIME_ZONE = "scoreboard.time-zone";
+    public static final String SCOREBOARD_TIME_FORMAT = "scoreboard.time-format";
+
     public static final String MESSAGES_PREFIX = "messages.prefix";
 }

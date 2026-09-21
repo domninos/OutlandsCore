@@ -26,6 +26,8 @@ import net.omni.outlands.managers.MessagesManager;
 import net.omni.outlands.managers.TokenManager;
 import net.omni.outlands.messages.MessageUtil;
 import net.omni.outlands.mobs.MobTemplateManager;
+import net.omni.outlands.scoreboard.ScoreboardListener;
+import net.omni.outlands.scoreboard.ScoreboardManager;
 import net.omni.outlands.upgrade.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -51,18 +53,12 @@ public final class OutlandsPlugin extends JavaPlugin {
     private AreaManager areaManager;
     private AreaClearManager areaClearManager;
     private AreaSelectionVisualizer areaSelectionVisualizer;
+    private ScoreboardManager scoreboardManager;
 
     /*
 
     TODO:
      - migrate to MariaDB/MySQL, use plugin.yml's library loader
-     - add scoreboard
-       - Outlands - just the text
-       - show area player is in - should be in the state task
-       - show timer - current timer the user is in
-       - show party (slots - just put placeholder for now, will implement later on)
-       - add current time (personalized??)
-       - show ip (configurable)
      - add loot tables
      - /outlands storage (successful extraction sends all collected items) - paginated, add nav buttons (arrows), close button
      - fix /outlands withdraw gui, can collect Claim All and Discard All
@@ -70,6 +66,8 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (scoreboardManager != null) scoreboardManager.stop();
+
         if (areaSelectionVisualizer != null) areaSelectionVisualizer.stop();
         if (areaManager != null) {
             areaManager.stopAutoSave();
@@ -119,6 +117,7 @@ public final class OutlandsPlugin extends JavaPlugin {
         this.areaManager.load();
         this.areaClearManager = new AreaClearManager(this, areaManager);
         this.areaSelectionVisualizer = new AreaSelectionVisualizer(this);
+        this.scoreboardManager = new ScoreboardManager(this);
 
         registerHooks();
         registerCommands();
@@ -128,6 +127,7 @@ public final class OutlandsPlugin extends JavaPlugin {
         areaManager.startStateTask();
         areaSelectionVisualizer.start();
         areaClearManager.start();
+        scoreboardManager.start();
 
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
     }
@@ -160,6 +160,7 @@ public final class OutlandsPlugin extends JavaPlugin {
         new PlayerListener(this).register();
         new AreaWandListener(this).register();
         new AreaListener(this).register();
+        new ScoreboardListener(this).register();
     }
 
     public void sendConsole(String message) {
@@ -236,6 +237,10 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     public AreaSelectionVisualizer getAreaSelectionVisualizer() {
         return areaSelectionVisualizer;
+    }
+
+    public ScoreboardManager getScoreboardManager() {
+        return scoreboardManager;
     }
 
     public Gson getGson() {
