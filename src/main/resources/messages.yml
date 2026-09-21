@@ -29,6 +29,8 @@ loadout:
   max-tier: "<yellow>%slot% is already at maximum tier.</yellow>"
   invalid-token: "<red>This upgrade token is not valid for %slot%.</red>"
   token-applied: "<green>Applied %token_name% to your %slot%!</green>"
+upgrade:
+  opened: "<gray>Opened your armor upgrade menu.</gray>"
 tokens:
   balance: "<gold>You have %tokens% Outlands Tokens.</gold>"
   insufficient: "<red>You need %required% tokens but only have %available%.</red>"
@@ -96,6 +98,7 @@ admin:
   give-tokens: "<green>Gave %amount% tokens to %player%.</green>"
   give-upgrade: "<green>Gave %token% to %player%.</green>"
   force-extract: "<green>Force extracted %player% from the Outlands.</green>"
+  set-spawn: "<green>Set the Outlands entry spawn in <white>%world%</white>.</green>"
 help:
   header: "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"
   footer: "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"

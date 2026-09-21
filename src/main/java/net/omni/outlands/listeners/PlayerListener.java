@@ -5,6 +5,8 @@ import net.omni.outlands.data.PlayerData;
 import net.omni.outlands.gameplay.RunManager;
 import net.omni.outlands.loadout.LoadoutGUI;
 import net.omni.outlands.loadout.LoadoutSlot;
+import net.omni.outlands.loadout.UpgradeGUI;
+import net.omni.outlands.loadout.UpgradeGuiHolder;
 import net.omni.outlands.messages.Messages;
 import net.omni.outlands.upgrade.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
@@ -90,6 +92,12 @@ public class PlayerListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player))
             return;
 
+        if (event.getInventory().getHolder() instanceof UpgradeGuiHolder) {
+            event.setCancelled(true);
+            handleUpgradeClick(player, event);
+            return;
+        }
+
         String title = event.getView().getTitle();
 
         if (title.contains("Outlands Loadout")) {
@@ -102,6 +110,18 @@ public class PlayerListener implements Listener {
             event.setCancelled(true);
             handleWithdrawClick(player, event);
         }
+    }
+
+    private void handleUpgradeClick(Player player, InventoryClickEvent event) {
+        UpgradeGUI gui = new UpgradeGUI(plugin);
+        LoadoutSlot slot = gui.getSlotFromClick(event.getRawSlot());
+
+        if (slot == null) return;
+
+        ItemStack token = event.getCursor();
+        if (token.getType() == Material.AIR) return;
+
+        applyUpgrade(player, token, slot, event);
     }
 
     private void handleLoadoutClick(Player player, InventoryClickEvent event) {
@@ -190,12 +210,72 @@ public class PlayerListener implements Listener {
         }
     }
 
+    private void applyUpgrade(Player player, ItemStack token, LoadoutSlot slot, InventoryClickEvent event) {
+        String tokenSlot = UpgradeTokenUtil.getUpgradeSlot(token);
+        int tokenTier = UpgradeTokenUtil.getUpgradeTier(token);
+
+        if (tokenSlot == null || tokenTier <= 0 || !tokenMatches(slot, tokenSlot)) {
+            plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
+            return;
+        }
+
+        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+        boolean success = plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), tokenTier, data);
+
+        if (success) {
+            plugin.sendMessage(player, Messages.LOADOUT_TOKEN_APPLIED.replace(
+                    "token_name", token.hasItemMeta() && token.getItemMeta().hasDisplayName()
+                            ? token.getItemMeta().getDisplayName() : token.getType().name(),
+                    "slot", slot.getDisplayName()));
+
+            token.setAmount(token.getAmount() - 1);
+
+            if (event != null)
+                event.setCursor(token);
+            else
+                player.setItemOnCursor(token);
+
+            new UpgradeGUI(plugin).open(player, data);
+        } else {
+            plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
+        }
+    }
+
+    private boolean tokenMatches(LoadoutSlot slot, String tokenSlot) {
+        return slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot);
+    }
+
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player))
+            return;
+
+        if (event.getInventory().getHolder() instanceof UpgradeGuiHolder) {
+            event.setCancelled(true);
+            handleUpgradeDrag(player, event);
+            return;
+        }
+
         String title = event.getView().getTitle();
 
         if (title.contains("Outlands Loadout") || title.contains("Extracted Loot"))
             event.setCancelled(true);
+    }
+
+    private void handleUpgradeDrag(Player player, InventoryDragEvent event) {
+        UpgradeGUI gui = new UpgradeGUI(plugin);
+        ItemStack token = event.getOldCursor();
+
+        if (token.getType() == Material.AIR) return;
+
+        for (int rawSlot : event.getRawSlots()) {
+            LoadoutSlot slot = gui.getSlotFromClick(rawSlot);
+
+            if (slot != null) {
+                applyUpgrade(player, token, slot, null);
+                return;
+            }
+        }
     }
 
     @EventHandler

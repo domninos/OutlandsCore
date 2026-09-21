@@ -9,6 +9,8 @@ import net.omni.outlands.chat.SpigotChatRenderer;
 import net.omni.outlands.commands.AreaCommand;
 import net.omni.outlands.commands.ExtractCommand;
 import net.omni.outlands.commands.OutlandsCommand;
+import net.omni.outlands.commands.TokensCommand;
+import net.omni.outlands.commands.UpgradeCommand;
 import net.omni.outlands.config.ConfigUtil;
 import net.omni.outlands.config.OutlandsConfig;
 import net.omni.outlands.data.DatabaseManager;
@@ -53,23 +55,26 @@ public final class OutlandsPlugin extends JavaPlugin {
     /*
 
     TODO:
-     - fix loadout layout - i can take out glass panes
-     - make onPlayerMove just have a task running per second on each areas -> check if on cooldown
-     -
-     - add a spawn point on the outlands world (the location when they do /outlands (?)
-     - make Messages.VALUE.replace("key1", "value1", "key2", "value2", etc.)
-     -
-     - add /tokens
-     - add /upgrade
-     -
-     - add
-
+     - migrate to MariaDB/MySQL, use plugin.yml's library loader
+     - add scoreboard
+       - Outlands - just the text
+       - show area player is in - should be in the state task
+       - show timer - current timer the user is in
+       - show party (slots - just put placeholder for now, will implement later on)
+       - add current time (personalized??)
+       - show ip (configurable)
+     - add loot tables
+     - /outlands storage (successful extraction sends all collected items) - paginated, add nav buttons (arrows), close button
+     - fix /outlands withdraw gui, can collect Claim All and Discard All
      */
 
     @Override
     public void onDisable() {
         if (areaSelectionVisualizer != null) areaSelectionVisualizer.stop();
-        if (areaManager != null) areaManager.stopAutoSave();
+        if (areaManager != null) {
+            areaManager.stopAutoSave();
+            areaManager.stopStateTask();
+        }
 
         areaClearManager.shutdown();
         runManager.shutdown();
@@ -120,7 +125,9 @@ public final class OutlandsPlugin extends JavaPlugin {
         registerListeners();
 
         areaManager.startAutoSave();
+        areaManager.startStateTask();
         areaSelectionVisualizer.start();
+        areaClearManager.start();
 
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
     }
@@ -145,6 +152,8 @@ public final class OutlandsPlugin extends JavaPlugin {
         new OutlandsCommand(this).register();
         new ExtractCommand(this).register();
         new AreaCommand(this).register();
+        new TokensCommand(this).register();
+        new UpgradeCommand(this).register();
     }
 
     private void registerListeners() {
