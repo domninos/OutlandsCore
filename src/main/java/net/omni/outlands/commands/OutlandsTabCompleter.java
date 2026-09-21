@@ -35,6 +35,7 @@ public class OutlandsTabCompleter implements TabCompleter {
                 subcommands.add("givetokens");
                 subcommands.add("giveupgrade");
                 subcommands.add("forceextract");
+                subcommands.add("setspawn");
             }
 
             List<String> completions = new ArrayList<>();

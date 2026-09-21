@@ -48,6 +48,7 @@ public class OutlandsCommand implements CommandExecutor {
             case "givetokens" -> handleGiveTokens(sender, args);
             case "giveupgrade" -> handleGiveUpgrade(sender, args);
             case "forceextract" -> handleForceExtract(sender, args);
+            case "setspawn" -> handleSetSpawn(sender);
             default -> {
                 plugin.sendMessage(sender, Messages.UNKNOWN_COMMAND.toString());
                 yield true;
@@ -81,6 +82,8 @@ public class OutlandsCommand implements CommandExecutor {
             MessageUtil.append("outlands loadout", "View your loadout", help);
             MessageUtil.append("outlands withdraw", "Withdraw extracted loot", help);
             MessageUtil.append("outlands tokens", "Check your token balance", help);
+            MessageUtil.append("tokens", "Check your token balance", help);
+            MessageUtil.append("upgrade", "Upgrade your armor", help);
         }
 
         if (sender.hasPermission("outlands.admin")) {
@@ -90,6 +93,7 @@ public class OutlandsCommand implements CommandExecutor {
             MessageUtil.append("outlands givetokens {player} {amount}", "Give tokens to a player", help);
             MessageUtil.append("outlands giveupgrade {player} {token}", "Give an upgrade token", help);
             MessageUtil.append("outlands forceextract {player}", "Force extract a player", help);
+            MessageUtil.append("outlands setspawn", "Set the Outlands entry spawn", help);
         }
 
         help.append("\n").append(Messages.HELP_FOOTER);
@@ -291,6 +295,22 @@ public class OutlandsCommand implements CommandExecutor {
         else
             plugin.sendMessage(sender, Messages.EXTRACT_NOT_IN.toString());
 
+        return true;
+    }
+
+    private boolean handleSetSpawn(CommandSender sender) {
+        if (!sender.hasPermission("outlands.admin")) {
+            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
+            return true;
+        }
+
+        if (!(sender instanceof Player player)) {
+            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
+            return true;
+        }
+
+        plugin.getConfigUtil().setSpawnLocation(player.getLocation());
+        plugin.sendMessage(sender, Messages.ADMIN_SET_SPAWN.replace("world", player.getWorld().getName()));
         return true;
     }
 

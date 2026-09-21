@@ -76,7 +76,11 @@ public class RunManager {
             return false;
         }
 
-        Location spawn = outlandsWorld.getSpawnLocation();
+        Location spawn = plugin.getConfigUtil().getSpawnLocation();
+
+        if (spawn == null || spawn.getWorld() == null || !spawn.getWorld().equals(outlandsWorld))
+            spawn = outlandsWorld.getSpawnLocation();
+
         player.teleport(spawn);
 
         int timeLimit = plugin.getConfigUtil().getTimeLimitSeconds();
