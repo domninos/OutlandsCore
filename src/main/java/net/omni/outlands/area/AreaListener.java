@@ -3,7 +3,6 @@ package net.omni.outlands.area;
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.messages.Messages;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -13,55 +12,16 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
-import java.util.*;
+import java.util.UUID;
 
 public class AreaListener implements Listener {
 
     private final OutlandsPlugin plugin;
-    private final Map<UUID, String> currentArea;
 
     public AreaListener(OutlandsPlugin plugin) {
         this.plugin = plugin;
-        this.currentArea = new HashMap<>();
-    }
-
-    @EventHandler
-    public void onMove(PlayerMoveEvent event) {
-        Location from = event.getFrom();
-        Location to = event.getTo();
-
-        if (from.getWorld() == to.getWorld()
-                && from.getBlockX() == to.getBlockX()
-                && from.getBlockY() == to.getBlockY()
-                && from.getBlockZ() == to.getBlockZ()) {
-            return;
-        }
-
-        Player player = event.getPlayer();
-        UUID uuid = player.getUniqueId();
-
-        AreaManager areaManager = plugin.getAreaManager();
-        AreaClearManager clearManager = plugin.getAreaClearManager();
-
-        Area area = areaManager.getAreaAt(to);
-        String previous = currentArea.get(uuid);
-        String current = area == null ? null : area.getName().toLowerCase(Locale.ROOT);
-
-        if (Objects.equals(previous, current)) return;
-
-        if (previous != null) {
-            Area oldArea = areaManager.getArea(previous);
-            if (oldArea != null) clearManager.onPlayerLeave(player, oldArea);
-            currentArea.remove(uuid);
-        }
-
-        if (area != null) {
-            currentArea.put(uuid, current);
-            clearManager.onPlayerEnter(player, area);
-        }
     }
 
     @EventHandler
@@ -99,13 +59,7 @@ public class AreaListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-        String key = currentArea.remove(player.getUniqueId());
-
-        if (key == null) return;
-
-        Area area = plugin.getAreaManager().getArea(key);
-        if (area != null) plugin.getAreaClearManager().onPlayerLeave(player, area);
+        plugin.getAreaManager().handlePlayerQuit(event.getPlayer().getUniqueId());
     }
 
     public void register() {

@@ -8,6 +8,7 @@ import net.omni.outlands.mobs.MobTemplateManager;
 import org.bukkit.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -27,6 +28,7 @@ public class AreaManager {
     private final NamespacedKey wandKey;
     private final NamespacedKey wandAreaKey;
     private final NamespacedKey wandModeKey;
+    private final Map<UUID, String> playerAreas;
     private BukkitTask autoSaveTask;
     private BukkitTask stateTask;
 
@@ -37,6 +39,7 @@ public class AreaManager {
         this.pos1 = new HashMap<>();
         this.pos2 = new HashMap<>();
         this.dirty = new HashSet<>();
+        this.playerAreas = new HashMap<>();
         this.wandKey = new NamespacedKey(plugin, "area_wand");
         this.wandAreaKey = new NamespacedKey(plugin, "area_wand_area");
         this.wandModeKey = new NamespacedKey(plugin, "area_wand_mode");
@@ -233,6 +236,42 @@ public class AreaManager {
 
         if (changed)
             plugin.getScoreboardManager().refreshAll();
+
+        checkPlayerAreas();
+    }
+
+    private void checkPlayerAreas() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            UUID uuid = player.getUniqueId();
+            Area area = getAreaAt(player.getLocation());
+            String current = area == null ? null : area.getName().toLowerCase(Locale.ROOT);
+            String previous = playerAreas.get(uuid);
+
+            if (Objects.equals(previous, current)) continue;
+
+            if (previous != null) {
+                Area oldArea = getArea(previous);
+                if (oldArea != null) plugin.getAreaClearManager().onPlayerLeave(player, oldArea);
+            }
+
+            if (area != null) {
+                playerAreas.put(uuid, current);
+                plugin.getAreaClearManager().onPlayerEnter(player, area);
+            } else {
+                playerAreas.remove(uuid);
+            }
+        }
+    }
+
+    public void handlePlayerQuit(UUID uuid) {
+        String key = playerAreas.remove(uuid);
+        if (key == null) return;
+
+        Area area = getArea(key);
+        if (area == null) return;
+
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) plugin.getAreaClearManager().onPlayerLeave(player, area);
     }
 
     public Area create(String name, World world, Location first, Location second) {
