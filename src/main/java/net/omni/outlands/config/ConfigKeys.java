@@ -31,5 +31,15 @@ public final class ConfigKeys {
 
     public static final String UPGRADE_TOKENS = "upgrade-tokens";
 
+    public static final String AREAS_AUTO_SAVE_SECONDS = "areas.auto-save-seconds";
+    public static final String AREAS_OUTLINE_REFRESH_TICKS = "areas.outline.refresh-ticks";
+    public static final String AREAS_OUTLINE_MAX_POINTS = "areas.outline.max-points";
+    public static final String AREAS_OUTLINE_PARTICLE = "areas.outline.particle";
+    public static final String AREAS_OUTLINE_COLOR = "areas.outline.color";
+    public static final String AREAS_OUTLINE_COLOR_MOB = "areas.outline.color-mob";
+    public static final String AREAS_OUTLINE_COLOR_BOSS = "areas.outline.color-boss";
+    public static final String AREAS_OUTLINE_COLOR_CHEST = "areas.outline.color-chest";
+    public static final String AREAS_OUTLINE_POINT_REMOVE_RADIUS = "areas.outline.point-remove-radius";
+
     public static final String MESSAGES_PREFIX = "messages.prefix";
 }

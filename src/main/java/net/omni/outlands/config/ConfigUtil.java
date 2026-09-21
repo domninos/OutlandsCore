@@ -25,6 +25,16 @@ public class ConfigUtil {
     private int perBossTokens;
     private int withdrawExpiryHours;
 
+    private int areaAutoSaveSeconds;
+    private int areaOutlineRefreshTicks;
+    private int areaOutlineMaxPoints;
+    private String areaOutlineParticle;
+    private int[] areaOutlineColor;
+    private int[] areaOutlineColorMob;
+    private int[] areaOutlineColorBoss;
+    private int[] areaOutlineColorChest;
+    private int areaOutlinePointRemoveRadius;
+
     public ConfigUtil(OutlandsPlugin plugin) {
         this.plugin = plugin;
         this.loadoutTiers = new HashMap<>();
@@ -58,6 +68,21 @@ public class ConfigUtil {
         this.perEventTokens = getAndDefaultInt(ConfigKeys.EXTRACT_PER_EVENT, 5, savedDefaults);
         this.perBossTokens = getAndDefaultInt(ConfigKeys.EXTRACT_PER_BOSS, 20, savedDefaults);
         this.withdrawExpiryHours = getAndDefaultInt(ConfigKeys.EXTRACT_WITHDRAW_EXPIRY_HOURS, 24, savedDefaults);
+
+        this.areaAutoSaveSeconds = getAndDefaultInt(ConfigKeys.AREAS_AUTO_SAVE_SECONDS, 30, savedDefaults);
+        this.areaOutlineRefreshTicks = getAndDefaultInt(ConfigKeys.AREAS_OUTLINE_REFRESH_TICKS, 10, savedDefaults);
+        this.areaOutlineMaxPoints = getAndDefaultInt(ConfigKeys.AREAS_OUTLINE_MAX_POINTS, 256, savedDefaults);
+        this.areaOutlineParticle = getAndDefaultString(ConfigKeys.AREAS_OUTLINE_PARTICLE, "DUST", savedDefaults);
+        this.areaOutlineColor = parseColor(getAndDefaultString(
+                ConfigKeys.AREAS_OUTLINE_COLOR, "0,180,255", savedDefaults), 0, 180, 255);
+        this.areaOutlineColorMob = parseColor(getAndDefaultString(
+                ConfigKeys.AREAS_OUTLINE_COLOR_MOB, "0,255,0", savedDefaults), 0, 255, 0);
+        this.areaOutlineColorBoss = parseColor(getAndDefaultString(
+                ConfigKeys.AREAS_OUTLINE_COLOR_BOSS, "255,0,0", savedDefaults), 255, 0, 0);
+        this.areaOutlineColorChest = parseColor(getAndDefaultString(
+                ConfigKeys.AREAS_OUTLINE_COLOR_CHEST, "255,215,0", savedDefaults), 255, 215, 0);
+        this.areaOutlinePointRemoveRadius = getAndDefaultInt(
+                ConfigKeys.AREAS_OUTLINE_POINT_REMOVE_RADIUS, 3, savedDefaults);
 
         loadLoadoutTiers(savedDefaults);
         loadUpgradeTokenDefinitions(savedDefaults);
@@ -96,6 +121,29 @@ public class ConfigUtil {
             return defaultVal;
         }
         return plugin.getConfig().getBoolean(path);
+    }
+
+    private int[] parseColor(String value, int defaultRed, int defaultGreen, int defaultBlue) {
+        if (value != null) {
+            String[] parts = value.split(",");
+
+            if (parts.length >= 3) {
+                try {
+                    return new int[]{
+                            clamp(Integer.parseInt(parts[0].trim()), 0, 255),
+                            clamp(Integer.parseInt(parts[1].trim()), 0, 255),
+                            clamp(Integer.parseInt(parts[2].trim()), 0, 255)
+                    };
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+
+        return new int[]{defaultRed, defaultGreen, defaultBlue};
+    }
+
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private void loadLoadoutTiers(AtomicInteger savedDefaults) {
@@ -324,5 +372,41 @@ public class ConfigUtil {
 
     public Map<String, Map<String, Object>> getUpgradeTokenDefinitions() {
         return upgradeTokenDefinitions;
+    }
+
+    public int getAreaAutoSaveSeconds() {
+        return areaAutoSaveSeconds;
+    }
+
+    public int getAreaOutlineRefreshTicks() {
+        return areaOutlineRefreshTicks;
+    }
+
+    public int getAreaOutlineMaxPoints() {
+        return areaOutlineMaxPoints;
+    }
+
+    public String getAreaOutlineParticle() {
+        return areaOutlineParticle;
+    }
+
+    public int[] getAreaOutlineColor() {
+        return areaOutlineColor;
+    }
+
+    public int[] getAreaOutlineColorMob() {
+        return areaOutlineColorMob;
+    }
+
+    public int[] getAreaOutlineColorBoss() {
+        return areaOutlineColorBoss;
+    }
+
+    public int[] getAreaOutlineColorChest() {
+        return areaOutlineColorChest;
+    }
+
+    public int getAreaOutlinePointRemoveRadius() {
+        return areaOutlinePointRemoveRadius;
     }
 }

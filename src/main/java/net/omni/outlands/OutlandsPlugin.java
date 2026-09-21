@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import net.omni.outlands.area.AreaClearManager;
 import net.omni.outlands.area.AreaListener;
 import net.omni.outlands.area.AreaManager;
+import net.omni.outlands.area.AreaSelectionVisualizer;
 import net.omni.outlands.area.AreaWandListener;
 import net.omni.outlands.chat.ChatRenderer;
 import net.omni.outlands.chat.PaperChatRenderer;
@@ -49,6 +50,7 @@ public final class OutlandsPlugin extends JavaPlugin {
     private ExternalPluginManager externalPluginManager;
     private AreaManager areaManager;
     private AreaClearManager areaClearManager;
+    private AreaSelectionVisualizer areaSelectionVisualizer;
 
     /*
 
@@ -58,6 +60,9 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (areaSelectionVisualizer != null) areaSelectionVisualizer.stop();
+        if (areaManager != null) areaManager.stopAutoSave();
+
         areaClearManager.shutdown();
         runManager.shutdown();
         playerDataManager.flush();
@@ -97,10 +102,14 @@ public final class OutlandsPlugin extends JavaPlugin {
         this.areaManager = new AreaManager(this);
         this.areaManager.load();
         this.areaClearManager = new AreaClearManager(this, areaManager);
+        this.areaSelectionVisualizer = new AreaSelectionVisualizer(this);
 
         registerHooks();
         registerCommands();
         registerListeners();
+
+        areaManager.startAutoSave();
+        areaSelectionVisualizer.start();
 
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
     }
@@ -199,6 +208,10 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     public AreaClearManager getAreaClearManager() {
         return areaClearManager;
+    }
+
+    public AreaSelectionVisualizer getAreaSelectionVisualizer() {
+        return areaSelectionVisualizer;
     }
 
     public Gson getGson() {

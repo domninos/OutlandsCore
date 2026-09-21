@@ -125,3 +125,26 @@ upgrade-tokens:
     lore:
       - "<gray>Apply to your chestplate loadout"
       - "<gray>to upgrade to Diamond tier."
+
+# Area editing tools (/areas)
+areas:
+  # Pending wand edits (spawn points, chest, bounds) are flushed to disk
+  # every N seconds. Set to 0 to disable the periodic save (/areas update still works).
+  auto-save-seconds: 30
+  outline:
+    # How often (in ticks) the selection outline and point markers refresh
+    refresh-ticks: 10
+    # Maximum number of particles used to draw the selection box
+    max-points: 256
+    # Particle used for the selection box (DUST supports the colors below)
+    particle: DUST
+    # Selection box color as "r,g,b"
+    color: "0,180,255"
+    # Mob spawn point marker color as "r,g,b"
+    color-mob: "0,255,0"
+    # Boss spawn point marker color as "r,g,b"
+    color-boss: "255,0,0"
+    # Loot chest marker color as "r,g,b"
+    color-chest: "255,215,0"
+    # Radius (in blocks) used by shift + left-click to remove a spawn point
+    point-remove-radius: 3
