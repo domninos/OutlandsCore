@@ -1,7 +1,11 @@
 package net.omni.outlands.config;
 
 import net.omni.outlands.OutlandsPlugin;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,9 +15,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConfigUtil {
 
+    private static final String[] DEFAULT_LOADOUT_KEYS = {
+            "armor_helmet", "armor_chestplate", "armor_leggings", "armor_boots",
+            "weapon", "tool", "food", "potions", "charm", "artifact", "pet"
+    };
+
     private final OutlandsPlugin plugin;
     private final Map<String, List<Map<String, Object>>> loadoutTiers;
     private final Map<String, Map<String, Object>> upgradeTokenDefinitions;
+    private final Map<String, Integer> defaultLoadoutTiers;
     private String worldName;
     private int timeLimitSeconds;
     private int cooldownHours;
@@ -25,7 +35,12 @@ public class ConfigUtil {
     private int perBossTokens;
     private int withdrawExpiryHours;
 
+    private Location spawnLocation;
     private int areaAutoSaveSeconds;
+    private int areaStateCheckSeconds;
+    private boolean mobContainmentEnabled;
+    private int mobContainmentCheckTicks;
+    private double mobContainmentMargin;
     private int areaOutlineRefreshTicks;
     private int areaOutlineMaxPoints;
     private String areaOutlineParticle;
@@ -35,10 +50,20 @@ public class ConfigUtil {
     private int[] areaOutlineColorChest;
     private int areaOutlinePointRemoveRadius;
 
+    private String upgradeGuiTitle;
+    private int upgradeGuiRows;
+    private int upgradeGuiHelmetSlot;
+    private int upgradeGuiChestplateSlot;
+    private int upgradeGuiLeggingsSlot;
+    private int upgradeGuiBootsSlot;
+    private String upgradeGuiFillerMaterial;
+    private String upgradeGuiFillerName;
+
     public ConfigUtil(OutlandsPlugin plugin) {
         this.plugin = plugin;
         this.loadoutTiers = new HashMap<>();
         this.upgradeTokenDefinitions = new HashMap<>();
+        this.defaultLoadoutTiers = new HashMap<>();
     }
 
     public void reloadConfig() {
@@ -49,6 +74,8 @@ public class ConfigUtil {
     public void flush() {
         loadoutTiers.clear();
         upgradeTokenDefinitions.clear();
+        defaultLoadoutTiers.clear();
+        spawnLocation = null;
     }
 
     public void load() {
@@ -70,6 +97,10 @@ public class ConfigUtil {
         this.withdrawExpiryHours = getAndDefaultInt(ConfigKeys.EXTRACT_WITHDRAW_EXPIRY_HOURS, 24, savedDefaults);
 
         this.areaAutoSaveSeconds = getAndDefaultInt(ConfigKeys.AREAS_AUTO_SAVE_SECONDS, 30, savedDefaults);
+        this.areaStateCheckSeconds = getAndDefaultInt(ConfigKeys.AREAS_STATE_CHECK_SECONDS, 1, savedDefaults);
+        this.mobContainmentEnabled = getAndDefaultBoolean(ConfigKeys.AREAS_MOB_CONTAINMENT_ENABLED, true, savedDefaults);
+        this.mobContainmentCheckTicks = getAndDefaultInt(ConfigKeys.AREAS_MOB_CONTAINMENT_CHECK_TICKS, 20, savedDefaults);
+        this.mobContainmentMargin = getAndDefaultDouble(ConfigKeys.AREAS_MOB_CONTAINMENT_MARGIN, 0.0, savedDefaults);
         this.areaOutlineRefreshTicks = getAndDefaultInt(ConfigKeys.AREAS_OUTLINE_REFRESH_TICKS, 10, savedDefaults);
         this.areaOutlineMaxPoints = getAndDefaultInt(ConfigKeys.AREAS_OUTLINE_MAX_POINTS, 256, savedDefaults);
         this.areaOutlineParticle = getAndDefaultString(ConfigKeys.AREAS_OUTLINE_PARTICLE, "DUST", savedDefaults);
@@ -85,7 +116,10 @@ public class ConfigUtil {
                 ConfigKeys.AREAS_OUTLINE_POINT_REMOVE_RADIUS, 3, savedDefaults);
 
         loadLoadoutTiers(savedDefaults);
+        loadLoadoutDefaults(savedDefaults);
         loadUpgradeTokenDefinitions(savedDefaults);
+        loadUpgradeGui(savedDefaults);
+        loadSpawn();
 
         if (savedDefaults.get() > 0) {
             plugin.saveConfig();
@@ -121,6 +155,70 @@ public class ConfigUtil {
             return defaultVal;
         }
         return plugin.getConfig().getBoolean(path);
+    }
+
+    private double getAndDefaultDouble(String path, double defaultVal, AtomicInteger counter) {
+        if (!plugin.getConfig().contains(path)) {
+            plugin.getConfig().set(path, defaultVal);
+            counter.incrementAndGet();
+            return defaultVal;
+        }
+        return plugin.getConfig().getDouble(path);
+    }
+
+    private void loadLoadoutDefaults(AtomicInteger savedDefaults) {
+        defaultLoadoutTiers.clear();
+
+        for (String key : DEFAULT_LOADOUT_KEYS) {
+            int defaultTier = key.equals("armor_chestplate") ? 1 : 0;
+            int tier = getAndDefaultInt(ConfigKeys.LOADOUT_DEFAULTS + "." + key, defaultTier, savedDefaults);
+            defaultLoadoutTiers.put(key, Math.max(0, tier));
+        }
+    }
+
+    private void loadUpgradeGui(AtomicInteger savedDefaults) {
+        this.upgradeGuiTitle = getAndDefaultString(ConfigKeys.UPGRADE_GUI_TITLE,
+                "<gradient:#00AAFF:#55FFFF>Upgrade Armor</gradient>", savedDefaults);
+        this.upgradeGuiRows = Math.clamp(getAndDefaultInt(ConfigKeys.UPGRADE_GUI_ROWS, 3, savedDefaults), 1, 6);
+        this.upgradeGuiHelmetSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".helmet", 10, savedDefaults);
+        this.upgradeGuiChestplateSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".chestplate", 12, savedDefaults);
+        this.upgradeGuiLeggingsSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".leggings", 14, savedDefaults);
+        this.upgradeGuiBootsSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".boots", 16, savedDefaults);
+        this.upgradeGuiFillerMaterial = getAndDefaultString(ConfigKeys.UPGRADE_GUI_FILLER_MATERIAL,
+                "BLACK_STAINED_GLASS_PANE", savedDefaults);
+        this.upgradeGuiFillerName = getAndDefaultString(ConfigKeys.UPGRADE_GUI_FILLER_NAME, "", savedDefaults);
+    }
+
+    private void loadSpawn() {
+        this.spawnLocation = null;
+
+        String worldName = plugin.getConfig().getString(ConfigKeys.SPAWN + ".world");
+        if (worldName == null) return;
+
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) return;
+
+        this.spawnLocation = new Location(world,
+                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".x"),
+                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".y"),
+                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".z"),
+                (float) plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".yaw"),
+                (float) plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".pitch"));
+    }
+
+    public void setSpawnLocation(Location location) {
+        if (location == null || location.getWorld() == null) return;
+
+        this.spawnLocation = location.clone();
+
+        FileConfiguration config = plugin.getConfig();
+        config.set(ConfigKeys.SPAWN + ".world", location.getWorld().getName());
+        config.set(ConfigKeys.SPAWN + ".x", location.getX());
+        config.set(ConfigKeys.SPAWN + ".y", location.getY());
+        config.set(ConfigKeys.SPAWN + ".z", location.getZ());
+        config.set(ConfigKeys.SPAWN + ".yaw", location.getYaw());
+        config.set(ConfigKeys.SPAWN + ".pitch", location.getPitch());
+        plugin.saveConfig();
     }
 
     private int[] parseColor(String value, int defaultRed, int defaultGreen, int defaultBlue) {
@@ -404,5 +502,55 @@ public class ConfigUtil {
 
     public int getAreaOutlinePointRemoveRadius() {
         return areaOutlinePointRemoveRadius;
+    }
+
+    public Location getSpawnLocation() {
+        return spawnLocation;
+    }
+
+    public int getAreaStateCheckSeconds() {
+        return areaStateCheckSeconds;
+    }
+
+    public boolean isMobContainmentEnabled() {
+        return mobContainmentEnabled;
+    }
+
+    public int getMobContainmentCheckTicks() {
+        return mobContainmentCheckTicks;
+    }
+
+    public double getMobContainmentMargin() {
+        return mobContainmentMargin;
+    }
+
+    public int getDefaultLoadoutTier(String key) {
+        return defaultLoadoutTiers.getOrDefault(key, 0);
+    }
+
+    public String getUpgradeGuiTitle() {
+        return upgradeGuiTitle;
+    }
+
+    public int getUpgradeGuiSize() {
+        return upgradeGuiRows * 9;
+    }
+
+    public int getUpgradeGuiSlot(String slot) {
+        return switch (slot.toLowerCase()) {
+            case "helmet" -> upgradeGuiHelmetSlot;
+            case "chestplate" -> upgradeGuiChestplateSlot;
+            case "leggings" -> upgradeGuiLeggingsSlot;
+            case "boots" -> upgradeGuiBootsSlot;
+            default -> -1;
+        };
+    }
+
+    public String getUpgradeGuiFillerMaterial() {
+        return upgradeGuiFillerMaterial;
+    }
+
+    public String getUpgradeGuiFillerName() {
+        return upgradeGuiFillerName;
     }
 }

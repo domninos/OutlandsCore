@@ -54,7 +54,7 @@ public class LoadoutGUI {
     }
 
     private ItemStack createSlotItem(LoadoutSlot slot, PlayerData data) {
-        int currentTier = data.getLoadoutTier(slot.getConfigKey());
+        int currentTier = plugin.getLoadoutManager().getEffectiveTier(data, slot);
         UpgradeTier tier = currentTier > 0 ? upgradeManager.getTier(slot, currentTier) : null;
 
         ItemStack item;

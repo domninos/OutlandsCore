@@ -17,9 +17,17 @@ public class LoadoutManager {
         this.upgradeManager = upgradeManager;
     }
 
+    public int getEffectiveTier(PlayerData data, LoadoutSlot slot) {
+        int stored = data.getLoadoutTier(slot.getConfigKey());
+        int defaultTier = plugin.getConfigUtil() == null
+                ? 0 : plugin.getConfigUtil().getDefaultLoadoutTier(slot.getConfigKey());
+
+        return Math.max(stored, defaultTier);
+    }
+
     public void applyLoadout(Player player, PlayerData data) {
         for (LoadoutSlot slot : LoadoutSlot.values()) {
-            int tierLevel = data.getLoadoutTier(slot.getConfigKey());
+            int tierLevel = getEffectiveTier(data, slot);
             if (tierLevel <= 0) continue;
 
             UpgradeTier tier = upgradeManager.getTier(slot, tierLevel);
@@ -79,7 +87,7 @@ public class LoadoutManager {
     public boolean applyUpgradeToken(String tokenSlot, int tokenTier, PlayerData data) {
         for (LoadoutSlot slot : LoadoutSlot.values()) {
             if (slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot)) {
-                int currentTier = data.getLoadoutTier(slot.getConfigKey());
+                int currentTier = getEffectiveTier(data, slot);
 
                 if (tokenTier > currentTier) {
                     data.setLoadoutTier(slot.getConfigKey(), tokenTier);
