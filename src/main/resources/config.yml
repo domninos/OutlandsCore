@@ -201,29 +201,31 @@ areas:
 # Lines support MiniMessage and PlaceholderAPI placeholders. When PlaceholderAPI is
 # installed, any of its placeholders work; otherwise the built-in %outlands_*%
 # placeholders below are used.
+#
+# I used https://smallcaps.app for the font :D
 scoreboard:
   enabled: true
   # Only show the scoreboard while the player is in the Outlands world
   only-in-world: true
   # How often (in ticks) the scoreboard refreshes (20 ticks = 1 second)
   update-ticks: 20
-  title: "Outlands"
+  title: "𝐎𝐔𝐓𝐋𝐀𝐍𝐃𝐒"
   # Maximum of 15 lines (client limit)
   lines:
-    - "<gray>Area <dark_gray>» <white>%outlands_area%"
-    - "<gray>Time <dark_gray>» <white>%outlands_timer%"
-    - "<gray>Party <dark_gray>» <white>%outlands_party%"
-    - "<gray>Clock <dark_gray>» <white>%outlands_clock%"
-    - "<gray>IP <dark_gray>» <white>%outlands_ip%"
+    - "<gray>𝑨𝒓𝒆𝒂 <dark_gray>» <white>%outlands_area%"
+    - "<gray>𝑻𝒊𝒎𝒆 <dark_gray>» <white>%outlands_timer%"
+    - "<gray>𝑷𝒂𝒓𝒕𝒚 <dark_gray>» <white>%outlands_party%"
+    - "<gray>𝑪𝒍𝒐𝒄𝒌 <dark_gray>» <white>%outlands_clock%"
+    - "<gray>𝑰𝑷 <dark_gray>» <white>%outlands_ip%"
   # Value of %outlands_area% when the player is not inside an area
-  no-area-text: "Wilderness"
+  no-area-text: "𝘞𝘪𝘭𝘥𝘦𝘳𝘯𝘦𝘴𝘴"
   # Value of %outlands_party% (party system is not implemented yet)
-  party-placeholder: "None"
+  party-placeholder: "𝘕𝘰𝘯𝘦"
   # Value of %outlands_timer% when the player has no run and no cooldown
-  idle-text: "Idle"
+  idle-text: "𝘐𝘥𝘭𝘦"
   # Value of %outlands_ip%
-  server-ip: "play.example.com"
+  server-ip: "𝘱𝘭𝘢𝘺.𝘺𝘢𝘮𝘤𝘴.𝘯𝘦𝘵"
   # Timezone used by %outlands_clock% (e.g. UTC, Europe/London, America/New_York)
   time-zone: "UTC"
-  # Clock format used by %outlands_clock% (java.time DateTimeFormatter pattern)
+  # Clock format used by %outlands_clock%
   time-format: "HH:mm:ss"
