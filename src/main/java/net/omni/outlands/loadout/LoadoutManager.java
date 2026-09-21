@@ -64,25 +64,28 @@ public class LoadoutManager {
         }
     }
 
-    public void upgradeSlot(Player player, LoadoutSlot slot, PlayerData data) {
+    public void upgradeSlot(LoadoutSlot slot, PlayerData data) {
         int currentTier = data.getLoadoutTier(slot.getConfigKey());
         UpgradeTier nextTier = upgradeManager.getNextTier(slot, currentTier);
-        if (nextTier != null) {
+
+        if (nextTier != null)
             data.setLoadoutTier(slot.getConfigKey(), nextTier.getTierLevel());
-        }
     }
 
-    public boolean applyUpgradeToken(Player player, String tokenSlot, int tokenTier, PlayerData data) {
+    public boolean applyUpgradeToken(String tokenSlot, int tokenTier, PlayerData data) {
         for (LoadoutSlot slot : LoadoutSlot.values()) {
             if (slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot)) {
                 int currentTier = data.getLoadoutTier(slot.getConfigKey());
+
                 if (tokenTier > currentTier) {
                     data.setLoadoutTier(slot.getConfigKey(), tokenTier);
                     return true;
                 }
+
                 return false;
             }
         }
+
         return false;
     }
 }

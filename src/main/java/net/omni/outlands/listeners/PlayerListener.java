@@ -124,7 +124,7 @@ public class PlayerListener implements Listener {
 
         if (upgradeSlot != null && upgradeTier > 0) {
             PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
-            boolean success = plugin.getLoadoutManager().applyUpgradeToken(player, upgradeSlot, upgradeTier, data);
+            boolean success = plugin.getLoadoutManager().applyUpgradeToken(upgradeSlot, upgradeTier, data);
 
             if (success) {
                 plugin.sendMessage(player, Messages.LOADOUT_TOKEN_APPLIED

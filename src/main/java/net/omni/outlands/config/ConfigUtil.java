@@ -12,6 +12,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ConfigUtil {
 
     private final OutlandsPlugin plugin;
+    private final Map<String, List<Map<String, Object>>> loadoutTiers;
+    private final Map<String, Map<String, Object>> upgradeTokenDefinitions;
     private String worldName;
     private int timeLimitSeconds;
     private int cooldownHours;
@@ -22,8 +24,6 @@ public class ConfigUtil {
     private int perEventTokens;
     private int perBossTokens;
     private int withdrawExpiryHours;
-    private final Map<String, List<Map<String, Object>>> loadoutTiers;
-    private final Map<String, Map<String, Object>> upgradeTokenDefinitions;
 
     public ConfigUtil(OutlandsPlugin plugin) {
         this.plugin = plugin;
@@ -100,11 +100,14 @@ public class ConfigUtil {
 
     private void loadLoadoutTiers(AtomicInteger savedDefaults) {
         loadoutTiers.clear();
+
         String[] armorSlots = {"helmet", "chestplate", "leggings", "boots"};
+
         for (String slot : armorSlots) {
             String path = "loadout.armor." + slot + ".tiers";
             List<Map<String, Object>> tiers = loadTierList(path);
             loadoutTiers.put("armor_" + slot, tiers);
+
             if (tiers.isEmpty()) {
                 setDefaults(path, getDefaultArmorTiers(slot));
                 savedDefaults.incrementAndGet();
@@ -113,10 +116,12 @@ public class ConfigUtil {
         }
 
         String[] otherSlots = {"weapon", "tool", "food", "potions", "charm", "artifact", "pet"};
+
         for (String slot : otherSlots) {
             String path = "loadout." + slot + ".tiers";
             List<Map<String, Object>> tiers = loadTierList(path);
             loadoutTiers.put(slot, tiers);
+
             if (tiers.isEmpty()) {
                 setDefaults(path, getDefaultOtherTiers(slot));
                 savedDefaults.incrementAndGet();
@@ -127,7 +132,9 @@ public class ConfigUtil {
 
     private void loadUpgradeTokenDefinitions(AtomicInteger savedDefaults) {
         upgradeTokenDefinitions.clear();
+
         ConfigurationSection section = plugin.getConfig().getConfigurationSection(ConfigKeys.UPGRADE_TOKENS);
+
         if (section == null || section.getKeys(false).isEmpty()) {
             plugin.getConfig().set(ConfigKeys.UPGRADE_TOKENS, getDefaultUpgradeTokens());
             savedDefaults.incrementAndGet();
@@ -137,11 +144,14 @@ public class ConfigUtil {
         if (section != null) {
             for (String key : section.getKeys(false)) {
                 ConfigurationSection tokenSection = section.getConfigurationSection(key);
+
                 if (tokenSection != null) {
                     Map<String, Object> values = new HashMap<>();
+
                     for (String valueKey : tokenSection.getKeys(false)) {
                         values.put(valueKey, tokenSection.get(valueKey));
                     }
+
                     upgradeTokenDefinitions.put(key, values);
                 }
             }
@@ -151,25 +161,34 @@ public class ConfigUtil {
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> loadTierList(String path) {
         List<?> raw = plugin.getConfig().getList(path);
-        if (raw == null) return new ArrayList<>();
+
+        if (raw == null)
+            return new ArrayList<>();
+
         List<Map<String, Object>> result = new ArrayList<>();
+
         for (Object obj : raw) {
             if (obj instanceof Map<?, ?> map) {
                 Map<String, Object> entry = new HashMap<>();
+
                 map.forEach((k, v) -> entry.put(String.valueOf(k), v));
                 result.add(entry);
             }
         }
+
         return result;
     }
 
     private void setDefaults(String path, List<Map<String, Object>> defaults) {
-        if (plugin.getConfig().contains(path)) return;
+        if (plugin.getConfig().contains(path))
+            return;
+
         plugin.getConfig().set(path, defaults);
     }
 
     private List<Map<String, Object>> getDefaultArmorTiers(String slot) {
         List<Map<String, Object>> tiers = new ArrayList<>();
+
         switch (slot) {
             case "helmet" -> {
                 tiers.add(Map.of("material", "LEATHER_HELMET"));
@@ -234,6 +253,7 @@ public class ConfigUtil {
 
     private Map<String, Object> getDefaultUpgradeTokens() {
         Map<String, Object> tokens = new HashMap<>();
+
         tokens.put("stone_weapon", Map.of(
                 "material", "PAPER",
                 "display-name", "<gray>Stone Weapon Upgrade</gray>",

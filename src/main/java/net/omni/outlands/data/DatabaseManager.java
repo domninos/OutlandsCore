@@ -59,9 +59,8 @@ public class DatabaseManager {
     }
 
     public void close() {
-        if (dataSource != null && !dataSource.isClosed()) {
+        if (dataSource != null && !dataSource.isClosed())
             dataSource.close();
-        }
     }
 
     public void executeAsync(Runnable task) {

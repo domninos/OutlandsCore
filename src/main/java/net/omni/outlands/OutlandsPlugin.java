@@ -1,5 +1,7 @@
 package net.omni.outlands;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import net.omni.outlands.chat.ChatRenderer;
 import net.omni.outlands.chat.PaperChatRenderer;
 import net.omni.outlands.chat.SpigotChatRenderer;
@@ -26,15 +28,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class OutlandsPlugin extends JavaPlugin {
 
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private ChatRenderer chatRenderer;
-
     private OutlandsConfig messagesConfig;
     private MessagesManager messagesManager;
     private ConfigUtil configUtil;
-
     private DatabaseManager databaseManager;
     private PlayerDataManager playerDataManager;
-
     private RunManager runManager;
     private CooldownManager cooldownManager;
     private LoadoutManager loadoutManager;
@@ -43,17 +43,21 @@ public final class OutlandsPlugin extends JavaPlugin {
     private LootManager lootManager;
     private ExternalPluginManager externalPluginManager;
 
+    /*
+
+    TODO:
+     - fix loadout layout
+     */
+
     @Override
     public void onDisable() {
-        if (runManager != null) runManager.shutdown();
+        runManager.shutdown();
+        playerDataManager.flush();
 
-        if (playerDataManager != null) playerDataManager.flush();
+        configUtil.flush();
+        messagesManager.flush();
 
-        if (configUtil != null) configUtil.flush();
-
-        if (messagesManager != null) messagesManager.flush();
-
-        if (databaseManager != null) databaseManager.close();
+        databaseManager.close();
 
         sendConsole("<red>Successfully disabled.</red>");
     }
@@ -72,7 +76,7 @@ public final class OutlandsPlugin extends JavaPlugin {
         UpgradeTokenUtil.init(this);
 
         this.databaseManager = new DatabaseManager(this);
-        this.playerDataManager = new PlayerDataManager(this, databaseManager);
+        this.playerDataManager = new PlayerDataManager(this);
 
         this.cooldownManager = new CooldownManager(this, playerDataManager);
         this.tokenManager = new TokenManager(playerDataManager);
@@ -172,5 +176,9 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     public ExternalPluginManager getExternalPluginManager() {
         return externalPluginManager;
+    }
+
+    public Gson getGson() {
+        return gson;
     }
 }

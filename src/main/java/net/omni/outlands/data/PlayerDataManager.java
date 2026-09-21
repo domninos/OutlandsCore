@@ -1,12 +1,11 @@
 package net.omni.outlands.data;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.util.ItemSerializationUtil;
 import org.bukkit.inventory.ItemStack;
 
+import javax.annotation.Nullable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -20,25 +19,23 @@ import java.util.logging.Level;
 public class PlayerDataManager {
 
     private final OutlandsPlugin plugin;
-    private final DatabaseManager databaseManager;
-    private final Gson gson;
     private final Map<UUID, PlayerData> cache;
 
-    public PlayerDataManager(OutlandsPlugin plugin, DatabaseManager databaseManager) {
+    public PlayerDataManager(OutlandsPlugin plugin) {
         this.plugin = plugin;
-        this.databaseManager = databaseManager;
-        this.gson = new GsonBuilder().create();
         this.cache = new ConcurrentHashMap<>();
     }
 
-    public void loadPlayer(UUID uuid, Runnable onComplete) {
+    public void loadPlayer(UUID uuid, @Nullable Runnable onComplete) {
         if (cache.containsKey(uuid)) {
-            if (onComplete != null) onComplete.run();
+            if (onComplete != null)
+                onComplete.run();
+
             return;
         }
 
-        databaseManager.executeAsync(() -> {
-            try (Connection conn = databaseManager.getConnection();
+        plugin.getDatabaseManager().executeAsync(() -> {
+            try (Connection conn = plugin.getDatabaseManager().getConnection();
                  PreparedStatement ps = conn.prepareStatement("SELECT * FROM player_data WHERE uuid = ?")) {
                 ps.setString(1, uuid.toString());
                 ResultSet rs = ps.executeQuery();
@@ -50,10 +47,11 @@ public class PlayerDataManager {
 
                     String loadoutJson = rs.getString("loadout");
                     if (loadoutJson != null && !loadoutJson.isEmpty() && !loadoutJson.equals("{}")) {
-                        Map<String, Integer> tiers = gson.fromJson(loadoutJson,
-                                new TypeToken<Map<String, Integer>>() {
-                                }.getType());
-                        if (tiers != null) data.setLoadoutTiers(tiers);
+                        Map<String, Integer> tiers = plugin.getGson().fromJson(loadoutJson, new TypeToken<Map<String, Integer>>() {
+                        }.getType());
+
+                        if (tiers != null)
+                            data.setLoadoutTiers(tiers);
                     }
 
                     String lootJson = rs.getString("extracted_loot");
@@ -70,9 +68,8 @@ public class PlayerDataManager {
 
                 cache.put(uuid, data);
 
-                if (onComplete != null) {
-                    databaseManager.executeSync(onComplete);
-                }
+                if (onComplete != null)
+                    plugin.getDatabaseManager().executeSync(onComplete);
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to load player data for " + uuid, e);
             }
@@ -85,7 +82,10 @@ public class PlayerDataManager {
 
     public void savePlayerSync(UUID uuid) {
         PlayerData data = cache.get(uuid);
-        if (data == null) return;
+
+        if (data == null)
+            return;
+
         writePlayerToDb(uuid, data);
     }
 
@@ -95,12 +95,12 @@ public class PlayerDataManager {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
-        try (Connection conn = databaseManager.getConnection();
+        try (Connection conn = plugin.getDatabaseManager().getConnection();
              PreparedStatement ps = conn.prepareStatement(insert)) {
 
             ps.setString(1, uuid.toString());
             ps.setInt(2, data.getTokens());
-            ps.setString(3, gson.toJson(data.getLoadoutTiers()));
+            ps.setString(3, plugin.getGson().toJson(data.getLoadoutTiers()));
             ps.setString(4, serializeItems(data.getExtractedLoot()));
             ps.setLong(5, data.getCooldownUntil());
             ps.setInt(6, data.getLastKillCount());
@@ -124,9 +124,11 @@ public class PlayerDataManager {
 
     public void savePlayer(UUID uuid) {
         PlayerData data = cache.get(uuid);
-        if (data == null) return;
 
-        databaseManager.executeAsync(() -> writePlayerToDb(uuid, data));
+        if (data == null)
+            return;
+
+        plugin.getDatabaseManager().executeAsync(() -> writePlayerToDb(uuid, data));
     }
 
     public PlayerData getOrCreate(UUID uuid) {
@@ -144,6 +146,10 @@ public class PlayerDataManager {
 
     public void flush() {
         saveAllSync();
+
+        if (!cache.isEmpty())
+            cache.values().forEach(PlayerData::flush);
+
         cache.clear();
     }
 

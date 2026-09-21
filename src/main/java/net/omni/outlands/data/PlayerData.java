@@ -127,4 +127,9 @@ public class PlayerData {
     public void setLastBossCount(int count) {
         this.lastBossCount = count;
     }
+
+    public void flush() {
+        loadoutTiers.clear();
+        extractedLoot.clear();
+    }
 }
