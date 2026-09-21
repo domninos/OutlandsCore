@@ -189,7 +189,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        plugin.sendMessage(sender, Messages.AREA_RENAMED.replace("old", oldName).replace("new", args[2]));
+        plugin.sendMessage(sender, Messages.AREA_RENAMED.replace("old", oldName, "new", args[2]));
         return true;
     }
 
@@ -479,8 +479,27 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         }
 
         mobs.create(id, type, mythic);
-        plugin.sendMessage(sender, Messages.AREA_MOB_CREATED.replace("mob", id.toLowerCase(Locale.ROOT)).replace("type", type));
+
+        if (mythic) applyMythicAttributes(id, type);
+
+        plugin.sendMessage(sender, Messages.AREA_MOB_CREATED.replace("mob", id.toLowerCase(Locale.ROOT), "type", type));
         return true;
+    }
+
+    private void applyMythicAttributes(String id, String type) {
+        MythicMobsProvider provider = plugin.getExternalPluginManager().getMythicMobsProvider();
+
+        if (provider == null) return;
+
+        try {
+            MythicMobsProvider.MythicAttributes attributes = provider.getAttributes(type);
+            if (attributes == null) return;
+
+            plugin.getMobTemplateManager().applyMythicAttributes(id,
+                    attributes.getHealth(), attributes.getDamage(), attributes.getDisplayName());
+        } catch (Throwable e) {
+            plugin.getLogger().warning("Failed to copy MythicMob attributes for '" + type + "': " + e.getMessage());
+        }
     }
 
     private boolean handleMobSet(CommandSender sender, String[] args) {
@@ -505,7 +524,13 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        plugin.sendMessage(sender, Messages.AREA_MOB_SET.replace("mob", id).replace("field", field));
+        if (field.equalsIgnoreCase("type")) {
+            MobTemplate template = mobs.get(id);
+
+            if (template != null && template.isMythic()) applyMythicAttributes(id, value);
+        }
+
+        plugin.sendMessage(sender, Messages.AREA_MOB_SET.replace("mob", id, "field", field));
         return true;
     }
 
@@ -538,7 +563,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         for (String id : ids) {
             MobTemplate template = mobs.get(id);
             String type = template == null || template.getType().isBlank() ? "unset" : template.getType();
-            plugin.sendMessage(sender, Messages.AREA_MOB_LIST_ENTRY.replace("mob", id).replace("type", type));
+            plugin.sendMessage(sender, Messages.AREA_MOB_LIST_ENTRY.replace("mob", id, "type", type));
         }
 
         return true;
@@ -601,7 +626,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         }
 
         if (area.getMobReference(args[2]) != null) {
-            plugin.sendMessage(sender, Messages.AREA_MOB_ALREADY_ADDED.replace("mob", args[2]).replace("area", area.getName()));
+            plugin.sendMessage(sender, Messages.AREA_MOB_ALREADY_ADDED.replace("mob", args[2], "area", area.getName()));
             return true;
         }
 
@@ -646,7 +671,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
 
         area.getMobReferences().add(reference);
         areaManager.save(area);
-        plugin.sendMessage(sender, Messages.AREA_MOB_ADDED.replace("mob", args[2]).replace("area", area.getName()));
+        plugin.sendMessage(sender, Messages.AREA_MOB_ADDED.replace("mob", args[2], "area", area.getName()));
         return true;
     }
 
@@ -670,12 +695,12 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         }
 
         if (!area.removeMobReference(args[2])) {
-            plugin.sendMessage(sender, Messages.AREA_MOB_NOT_IN_AREA.replace("mob", args[2]).replace("area", area.getName()));
+            plugin.sendMessage(sender, Messages.AREA_MOB_NOT_IN_AREA.replace("mob", args[2], "area", area.getName()));
             return true;
         }
 
         areaManager.save(area);
-        plugin.sendMessage(sender, Messages.AREA_MOB_REMOVED_FROM_AREA.replace("mob", args[2]).replace("area", area.getName()));
+        plugin.sendMessage(sender, Messages.AREA_MOB_REMOVED_FROM_AREA.replace("mob", args[2], "area", area.getName()));
         return true;
     }
 
@@ -701,7 +726,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         AreaMobReference reference = area.getMobReference(args[2]);
 
         if (reference == null) {
-            plugin.sendMessage(sender, Messages.AREA_MOB_NOT_IN_AREA.replace("mob", args[2]).replace("area", area.getName()));
+            plugin.sendMessage(sender, Messages.AREA_MOB_NOT_IN_AREA.replace("mob", args[2], "area", area.getName()));
             return true;
         }
 
@@ -742,7 +767,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         }
 
         areaManager.save(area);
-        plugin.sendMessage(sender, Messages.AREA_MOB_OVERRIDE_SET.replace("mob", args[2]).replace("area", area.getName()));
+        plugin.sendMessage(sender, Messages.AREA_MOB_OVERRIDE_SET.replace("mob", args[2], "area", area.getName()));
         return true;
     }
 

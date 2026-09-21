@@ -137,6 +137,18 @@ public class MobTemplateManager {
         return true;
     }
 
+    public boolean applyMythicAttributes(String id, double health, double damage, String displayName) {
+        MobTemplate template = get(id);
+        if (template == null) return false;
+
+        if (health > 0) template.setHealth(health);
+        if (damage > 0) template.setDamage(damage);
+        if (displayName != null && !displayName.isBlank()) template.setDisplayName(displayName);
+
+        save();
+        return true;
+    }
+
     public boolean delete(String id) {
         if (id == null) return false;
 
