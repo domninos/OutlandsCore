@@ -73,7 +73,7 @@ public enum Messages {
     AREA_CHEST_CLEARED("area.chest-cleared", "<green>Cleared the loot chest location.</green>"),
     AREA_POINT_REMOVED("area.point-removed", "<green>Removed the nearest spawn point.</green>"),
     AREA_POINT_NONE("area.point-none", "<red>No spawn point found nearby.</red>"),
-    AREA_NOT_BOUND("area.not-bound", "<red>This wand is not bound to an area. Use <white>/areas wand <name></white>.</red>"),
+    AREA_NOT_BOUND("area.not-bound", "<red>This wand is not bound to an area. Use <white>/areas wand {name}</white>.</red>"),
     AREA_EDIT_LOCKED("area.edit-locked", "<red>You cannot edit <white>%area%</white> while a clear is active.</red>"),
     AREA_RENAMED("area.renamed", "<green>Renamed area <white>%old%</white> to <white>%new%</white>.</green>"),
     AREA_RESIZED("area.resized", "<green>Resized area <white>%area%</white>.</green>"),

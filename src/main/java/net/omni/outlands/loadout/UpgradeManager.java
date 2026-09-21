@@ -24,9 +24,8 @@ public class UpgradeManager {
             List<UpgradeTier> tiers = new ArrayList<>();
             List<Map<String, Object>> rawList = entry.getValue();
 
-            for (int i = 0; i < rawList.size(); i++) {
+            for (int i = 0; i < rawList.size(); i++)
                 tiers.add(new UpgradeTier(i + 1, rawList.get(i)));
-            }
 
             tiersBySlot.put(entry.getKey(), tiers);
         }
@@ -56,7 +55,8 @@ public class UpgradeManager {
 
     public ItemStack createUpgradeTokenItem(String tokenKey) {
         Map<String, Object> def = configUtil.getUpgradeTokenDefinitions().get(tokenKey);
-        if (def == null) return null;
+        if (def == null)
+            return null;
 
         String material = (String) def.getOrDefault("material", "PAPER");
         String displayName = (String) def.getOrDefault("display-name", "<gray>Upgrade Token</gray>");

@@ -16,11 +16,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 public class AreaListener implements Listener {
 
@@ -37,7 +33,6 @@ public class AreaListener implements Listener {
         Location from = event.getFrom();
         Location to = event.getTo();
 
-        if (to == null) return;
         if (from.getWorld() == to.getWorld()
                 && from.getBlockX() == to.getBlockX()
                 && from.getBlockY() == to.getBlockY()

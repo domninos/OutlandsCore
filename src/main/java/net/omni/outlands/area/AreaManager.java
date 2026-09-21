@@ -3,25 +3,14 @@ package net.omni.outlands.area;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.outlands.OutlandsPlugin;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class AreaManager {
 
@@ -73,18 +62,6 @@ public class AreaManager {
         plugin.sendConsole("<green>Loaded " + areas.size() + " area(s).</green>");
     }
 
-    public void save(Area area) {
-        if (!areasFolder.exists()) areasFolder.mkdirs();
-
-        File file = new File(areasFolder, area.getName().toLowerCase(Locale.ROOT) + ".yml");
-        area.save(file);
-        dirty.remove(area.getName().toLowerCase(Locale.ROOT));
-    }
-
-    public void markDirty(Area area) {
-        if (area != null) dirty.add(area.getName().toLowerCase(Locale.ROOT));
-    }
-
     public void saveDirty() {
         if (dirty.isEmpty()) return;
 
@@ -129,6 +106,14 @@ public class AreaManager {
         return area;
     }
 
+    public void save(Area area) {
+        if (!areasFolder.exists()) areasFolder.mkdirs();
+
+        File file = new File(areasFolder, area.getName().toLowerCase(Locale.ROOT) + ".yml");
+        area.save(file);
+        dirty.remove(area.getName().toLowerCase(Locale.ROOT));
+    }
+
     public boolean delete(String name) {
         Area area = areas.remove(name.toLowerCase(Locale.ROOT));
 
@@ -165,6 +150,11 @@ public class AreaManager {
         return true;
     }
 
+    public Area getArea(String name) {
+        if (name == null) return null;
+        return areas.get(name.toLowerCase(Locale.ROOT));
+    }
+
     public boolean resize(String name, Location first, Location second) {
         Area area = getArea(name);
         if (area == null) return false;
@@ -176,6 +166,10 @@ public class AreaManager {
         markDirty(area);
 
         return true;
+    }
+
+    public void markDirty(Area area) {
+        if (area != null) dirty.add(area.getName().toLowerCase(Locale.ROOT));
     }
 
     public boolean update(String name) {
@@ -191,11 +185,6 @@ public class AreaManager {
 
         AreaClearManager clearManager = plugin.getAreaClearManager();
         return clearManager != null && clearManager.isActive(area);
-    }
-
-    public Area getArea(String name) {
-        if (name == null) return null;
-        return areas.get(name.toLowerCase(Locale.ROOT));
     }
 
     public Area getAreaAt(Location location) {
@@ -252,54 +241,6 @@ public class AreaManager {
         return item;
     }
 
-    public boolean isWand(ItemStack item) {
-        if (item == null || item.getType() == Material.AIR) return false;
-
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return false;
-
-        return meta.getPersistentDataContainer().has(wandKey, PersistentDataType.BYTE);
-    }
-
-    public String getWandArea(ItemStack item) {
-        if (item == null) return null;
-
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return null;
-
-        return getWandAreaName(meta);
-    }
-
-    public WandMode getWandMode(ItemStack item) {
-        if (item == null) return WandMode.CORNER;
-
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return WandMode.CORNER;
-
-        String mode = meta.getPersistentDataContainer().get(wandModeKey, PersistentDataType.STRING);
-        return WandMode.parse(mode, WandMode.CORNER);
-    }
-
-    public WandMode cycleWandMode(ItemStack item) {
-        WandMode next = getWandMode(item).next();
-        setWandMode(item, next);
-        return next;
-    }
-
-    public void setWandMode(ItemStack item, WandMode mode) {
-        if (item == null) return;
-
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return;
-
-        applyWandDisplay(meta, getWandAreaName(meta), mode);
-        item.setItemMeta(meta);
-    }
-
-    private String getWandAreaName(ItemMeta meta) {
-        return meta.getPersistentDataContainer().get(wandAreaKey, PersistentDataType.STRING);
-    }
-
     private void applyWandDisplay(ItemMeta meta, String areaName, WandMode mode) {
         MiniMessage mini = MiniMessage.miniMessage();
 
@@ -335,5 +276,53 @@ public class AreaManager {
 
         meta.lore(lore);
         meta.getPersistentDataContainer().set(wandModeKey, PersistentDataType.STRING, mode.name());
+    }
+
+    public boolean isWand(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) return false;
+
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return false;
+
+        return meta.getPersistentDataContainer().has(wandKey, PersistentDataType.BYTE);
+    }
+
+    public String getWandArea(ItemStack item) {
+        if (item == null) return null;
+
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return null;
+
+        return getWandAreaName(meta);
+    }
+
+    private String getWandAreaName(ItemMeta meta) {
+        return meta.getPersistentDataContainer().get(wandAreaKey, PersistentDataType.STRING);
+    }
+
+    public WandMode cycleWandMode(ItemStack item) {
+        WandMode next = getWandMode(item).next();
+        setWandMode(item, next);
+        return next;
+    }
+
+    public WandMode getWandMode(ItemStack item) {
+        if (item == null) return WandMode.CORNER;
+
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return WandMode.CORNER;
+
+        String mode = meta.getPersistentDataContainer().get(wandModeKey, PersistentDataType.STRING);
+        return WandMode.parse(mode, WandMode.CORNER);
+    }
+
+    public void setWandMode(ItemStack item, WandMode mode) {
+        if (item == null) return;
+
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+
+        applyWandDisplay(meta, getWandAreaName(meta), mode);
+        item.setItemMeta(meta);
     }
 }

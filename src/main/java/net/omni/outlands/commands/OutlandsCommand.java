@@ -15,6 +15,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jspecify.annotations.NonNull;
 
+import java.util.Map;
+
 public class OutlandsCommand implements CommandExecutor {
 
     private final OutlandsPlugin plugin;
@@ -58,10 +60,12 @@ public class OutlandsCommand implements CommandExecutor {
             plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
             return true;
         }
+
         if (!player.hasPermission("outlands.play")) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
+
         plugin.getRunManager().enterRun(player);
         return true;
     }
@@ -82,10 +86,10 @@ public class OutlandsCommand implements CommandExecutor {
         if (sender.hasPermission("outlands.admin")) {
             help.append("\n  <dark_gray>Admin Commands:</dark_gray>\n");
             MessageUtil.append("outlands reload", "Reloads config.yml and messages.yml", help);
-            MessageUtil.append("outlands settokens <player> <amount>", "Set a player's token balance", help);
-            MessageUtil.append("outlands givetokens <player> <amount>", "Give tokens to a player", help);
-            MessageUtil.append("outlands giveupgrade <player> <token>", "Give an upgrade token", help);
-            MessageUtil.append("outlands forceextract <player>", "Force extract a player", help);
+            MessageUtil.append("outlands settokens {player} {amount}", "Set a player's token balance", help);
+            MessageUtil.append("outlands givetokens {player} {amount}", "Give tokens to a player", help);
+            MessageUtil.append("outlands giveupgrade {player} {token}", "Give an upgrade token", help);
+            MessageUtil.append("outlands forceextract {player}", "Force extract a player", help);
         }
 
         help.append("\n").append(Messages.HELP_FOOTER);
@@ -131,12 +135,14 @@ public class OutlandsCommand implements CommandExecutor {
             plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
             return true;
         }
+
         if (!player.hasPermission("outlands.play")) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
+
         PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
-        LoadoutGUI gui = new LoadoutGUI(plugin.getUpgradeManager());
+        LoadoutGUI gui = new LoadoutGUI(plugin);
         gui.open(player, data);
         plugin.sendMessage(player, Messages.LOADOUT_OPENED.toString());
         return true;
@@ -147,10 +153,12 @@ public class OutlandsCommand implements CommandExecutor {
             plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
             return true;
         }
+
         if (!player.hasPermission("outlands.play")) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
+
         plugin.getLootManager().openWithdrawGUI(player);
         return true;
     }
@@ -160,6 +168,7 @@ public class OutlandsCommand implements CommandExecutor {
             plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
             return true;
         }
+
         int tokens = plugin.getTokenManager().getTokens(player.getUniqueId());
         plugin.sendMessage(sender, Messages.TOKENS_BALANCE.replace("tokens", String.valueOf(tokens)));
         return true;
@@ -170,8 +179,9 @@ public class OutlandsCommand implements CommandExecutor {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
+
         if (args.length < 3) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands settokens <player> <amount>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands settokens {player} {amount}"));
             return true;
         }
 
@@ -188,8 +198,9 @@ public class OutlandsCommand implements CommandExecutor {
                     .replace("player", target.getName())
                     .replace("amount", String.valueOf(amount)));
         } catch (NumberFormatException e) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands settokens <player> <amount>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands settokens {player} {amount}"));
         }
+
         return true;
     }
 
@@ -198,8 +209,9 @@ public class OutlandsCommand implements CommandExecutor {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
+
         if (args.length < 3) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands givetokens <player> <amount>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands givetokens {player} {amount}"));
             return true;
         }
 
@@ -216,8 +228,9 @@ public class OutlandsCommand implements CommandExecutor {
                     .replace("player", target.getName())
                     .replace("amount", String.valueOf(amount)));
         } catch (NumberFormatException e) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands givetokens <player> <amount>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands givetokens {player} {amount}"));
         }
+
         return true;
     }
 
@@ -226,8 +239,9 @@ public class OutlandsCommand implements CommandExecutor {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
+
         if (args.length < 3) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands giveupgrade <player> <token_key>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands giveupgrade {player} {token_key}"));
             return true;
         }
 
@@ -238,7 +252,7 @@ public class OutlandsCommand implements CommandExecutor {
         }
 
         String tokenKey = args[2].toLowerCase();
-        var tokenDefs = plugin.getConfigUtil().getUpgradeTokenDefinitions();
+        Map<String, Map<String, Object>> tokenDefs = plugin.getConfigUtil().getUpgradeTokenDefinitions();
         if (!tokenDefs.containsKey(tokenKey)) {
             plugin.sendMessage(sender, Messages.UNKNOWN_COMMAND.toString());
             return true;
@@ -251,6 +265,7 @@ public class OutlandsCommand implements CommandExecutor {
                     .replace("player", target.getName())
                     .replace("token", tokenKey));
         }
+
         return true;
     }
 
@@ -260,7 +275,7 @@ public class OutlandsCommand implements CommandExecutor {
             return true;
         }
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands forceextract <player>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/outlands forceextract {player}"));
             return true;
         }
 
@@ -271,11 +286,11 @@ public class OutlandsCommand implements CommandExecutor {
         }
 
         boolean success = plugin.getRunManager().extractPlayer(target.getUniqueId());
-        if (success) {
+        if (success)
             plugin.sendMessage(sender, Messages.ADMIN_FORCE_EXTRACT.replace("player", target.getName()));
-        } else {
+        else
             plugin.sendMessage(sender, Messages.EXTRACT_NOT_IN.toString());
-        }
+
         return true;
     }
 

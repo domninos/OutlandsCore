@@ -10,8 +10,6 @@ import org.bukkit.entity.Player;
 
 public interface AreaGlowProvider {
 
-    void setGlowing(Player viewer, Entity entity, boolean glowing);
-
     static AreaGlowProvider create(OutlandsPlugin plugin) {
         if (plugin.getExternalPluginManager().isProtocolLib()) {
             try {
@@ -24,6 +22,8 @@ public interface AreaGlowProvider {
         plugin.getLogger().warning("ProtocolLib not found. Per-player area mob glow is disabled.");
         return new NoOp();
     }
+
+    void setGlowing(Player viewer, Entity entity, boolean glowing);
 
     class NoOp implements AreaGlowProvider {
         @Override

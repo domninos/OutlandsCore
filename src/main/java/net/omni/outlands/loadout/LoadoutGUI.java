@@ -1,10 +1,8 @@
 package net.omni.outlands.loadout;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.data.PlayerData;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -25,20 +23,22 @@ public class LoadoutGUI {
     private static final int CHARM_SLOT = 20;
     private static final int ARTIFACT_SLOT = 22;
     private static final int PET_SLOT = 24;
-    private final UpgradeManager upgradeManager;
 
-    public LoadoutGUI(UpgradeManager upgradeManager) {
-        this.upgradeManager = upgradeManager;
+    private final UpgradeManager upgradeManager;
+    private final OutlandsPlugin plugin;
+
+    public LoadoutGUI(OutlandsPlugin plugin) {
+        this.plugin = plugin;
+        this.upgradeManager = plugin.getUpgradeManager();
     }
 
     public void open(Player player, PlayerData data) {
-        Inventory inv = Bukkit.createInventory(null, 45,
-                MiniMessage.miniMessage().deserialize(INVENTORY_TITLE));
+        Inventory inv = plugin.getChatRenderer().createInventory(null, 45, plugin.getChatRenderer().parse(INVENTORY_TITLE));
 
         LoadoutSlot[] armorSlots = {LoadoutSlot.HELMET, LoadoutSlot.CHESTPLATE, LoadoutSlot.LEGGINGS, LoadoutSlot.BOOTS};
-        for (int i = 0; i < armorSlots.length; i++) {
+
+        for (int i = 0; i < armorSlots.length; i++)
             inv.setItem(ARMOR_SLOTS[i], createSlotItem(armorSlots[i], data));
-        }
 
         inv.setItem(WEAPON_SLOT, createSlotItem(LoadoutSlot.WEAPON, data));
         inv.setItem(TOOL_SLOT, createSlotItem(LoadoutSlot.TOOL, data));
@@ -58,11 +58,10 @@ public class LoadoutGUI {
         UpgradeTier tier = currentTier > 0 ? upgradeManager.getTier(slot, currentTier) : null;
 
         ItemStack item;
-        if (tier != null && tier.getMaterial() != null) {
+        if (tier != null && tier.getMaterial() != null)
             item = new ItemStack(tier.getMaterial());
-        } else {
+        else
             item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        }
 
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
@@ -80,35 +79,37 @@ public class LoadoutGUI {
                 case PET -> "<green>Pet</green>";
             };
 
-            meta.customName(MiniMessage.miniMessage().deserialize(name));
+            plugin.getChatRenderer().setDisplayName(meta, name);
 
-            List<Component> lore = new ArrayList<>();
-            lore.add(Component.empty());
-            if (tier != null) {
-                lore.add(MiniMessage.miniMessage().deserialize("<gray>Current: <white>" + tier.getTierName() + "</white></gray>"));
-            } else {
-                lore.add(MiniMessage.miniMessage().deserialize("<gray>Current: <red>None</red></gray>"));
-            }
+
+            List<String> lore = new ArrayList<>();
+            lore.add("");
+
+            if (tier != null)
+                lore.add(plugin.getChatRenderer().parse("<gray>Current: <white>" + tier.getTierName() + "</white></gray>"));
+            else
+                lore.add(plugin.getChatRenderer().parse("<gray>Current: <red>None</red></gray>"));
 
             int maxTier = upgradeManager.getMaxTier(slot);
             if (upgradeManager.canUpgrade(slot, currentTier)) {
                 UpgradeTier nextTier = upgradeManager.getNextTier(slot, currentTier);
-                if (nextTier != null) {
-                    lore.add(MiniMessage.miniMessage().deserialize("<gray>Next: <green>" + nextTier.getTierName() + "</green></gray>"));
-                }
-                lore.add(Component.empty());
-                lore.add(MiniMessage.miniMessage().deserialize("<dark_gray>Shift-click with an upgrade token</dark_gray>"));
-                lore.add(MiniMessage.miniMessage().deserialize("<dark_gray>to upgrade this slot.</dark_gray>"));
+
+                if (nextTier != null)
+                    lore.add(plugin.getChatRenderer().parse("<gray>Next: <green>" + nextTier.getTierName() + "</green></gray>"));
+
+                lore.add("");
+                lore.add(plugin.getChatRenderer().parse("<dark_gray>Shift-click with an upgrade token</dark_gray>"));
+                lore.add(plugin.getChatRenderer().parse("<dark_gray>to upgrade this slot.</dark_gray>"));
             } else if (maxTier > 0) {
-                lore.add(MiniMessage.miniMessage().deserialize("<gray>Tier: <green>" + currentTier + "/" + maxTier + "</green></gray>"));
-                lore.add(Component.empty());
-                lore.add(MiniMessage.miniMessage().deserialize("<green>MAX TIER</green>"));
+                lore.add(plugin.getChatRenderer().parse("<gray>Tier: <green>" + currentTier + "/" + maxTier + "</green></gray>"));
+                lore.add("");
+                lore.add(plugin.getChatRenderer().parse("<green>MAX TIER</green>"));
             } else {
-                lore.add(Component.empty());
-                lore.add(MiniMessage.miniMessage().deserialize("<dark_gray>No tiers available.</dark_gray>"));
+                lore.add("");
+                lore.add(plugin.getChatRenderer().parse("<dark_gray>No tiers available.</dark_gray>"));
             }
 
-            meta.lore(lore);
+            plugin.getChatRenderer().setLore(meta, lore);
             item.setItemMeta(meta);
         }
 
@@ -124,9 +125,8 @@ public class LoadoutGUI {
         }
 
         for (int i = 0; i < inv.getSize(); i++) {
-            if (inv.getItem(i) == null) {
+            if (inv.getItem(i) == null)
                 inv.setItem(i, glass);
-            }
         }
     }
 

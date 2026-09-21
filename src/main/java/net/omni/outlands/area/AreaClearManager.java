@@ -20,15 +20,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class AreaClearManager {
 
@@ -52,61 +44,6 @@ public class AreaClearManager {
         this.chestSessions = new HashMap<>();
     }
 
-    public boolean startClear(Area area, Player owner) {
-        if (area == null || owner == null) return false;
-
-        String key = area.getName().toLowerCase(Locale.ROOT);
-
-        if (sessions.containsKey(key)) {
-            plugin.sendMessage(owner, Messages.AREA_ALREADY_ACTIVE.toString());
-            return false;
-        }
-
-        if (!area.isReady()) {
-            plugin.sendMessage(owner, Messages.AREA_NOT_READY.replace("time", formatSeconds(area.getRemainingSeconds())));
-            return false;
-        }
-
-        if (area.getSpawns().isEmpty()) {
-            plugin.sendMessage(owner, Messages.AREA_NO_SPAWNS.toString());
-            return false;
-        }
-
-        AreaClearSession session = new AreaClearSession(area, owner.getUniqueId());
-        sessions.put(key, session);
-        area.setState(AreaState.IN_PROGRESS);
-
-        if (area.isBossBarEnabled()) {
-            BossBar bossBar = BossBar.bossBar(
-                    Component.empty(), 1.0f, area.getBossBarColor(), area.getBossBarOverlay());
-            session.setBossBar(bossBar);
-            owner.showBossBar(bossBar);
-        }
-
-        spawnMobs(area, session);
-        session.setTotalMobs(session.getMobs().size());
-        updateBossBar(session);
-        applyGlow(owner, session);
-
-        plugin.sendMessage(owner, Messages.AREA_ENTERED.replace("area", area.getName()));
-        return true;
-    }
-
-    private void spawnMobs(Area area, AreaClearSession session) {
-        for (AreaSpawnDefinition definition : area.getSpawns()) {
-            for (int i = 0; i < definition.getCount(); i++) {
-                Location location = area.getSpawnLocation(definition, random);
-                if (location == null) continue;
-
-                Entity entity = mobFactory.spawn(definition, location);
-                if (entity == null) continue;
-
-                session.getMobs().add(entity.getUniqueId());
-                mobSessions.put(entity.getUniqueId(), session);
-            }
-        }
-    }
-
     public void handleMobDeath(Entity entity, Player killer) {
         if (entity == null) return;
 
@@ -117,6 +54,23 @@ public class AreaClearManager {
         updateBossBar(session);
 
         if (session.getMobs().isEmpty()) completeClear(session, killer);
+    }
+
+    private void updateBossBar(AreaClearSession session) {
+        BossBar bossBar = session.getBossBar();
+        if (bossBar == null) return;
+
+        Area area = session.getArea();
+        int total = session.getTotalMobs();
+        int remaining = session.getMobs().size();
+
+        float progress = total <= 0 ? 0f : (float) remaining / total;
+        bossBar.progress(Math.max(0f, Math.min(1f, progress)));
+        bossBar.name(MiniMessage.miniMessage().deserialize(
+                area.getBossBarTitle()
+                        .replace("%area%", area.getName())
+                        .replace("%remaining%", String.valueOf(remaining))
+                        .replace("%total%", String.valueOf(total))));
     }
 
     private void completeClear(AreaClearSession session, Player killer) {
@@ -201,18 +155,11 @@ public class AreaClearManager {
         return loot;
     }
 
-    private ItemStack resolveEntry(AreaLootEntry entry) {
-        if (entry.getExternal() != null && !entry.getExternal().isBlank()) {
-            ExternalItemProvider provider = plugin.getExternalPluginManager().getItemProvider(entry.getExternal());
-            return provider == null ? null : provider.resolveItem(entry.getExternal());
-        }
-
-        if (entry.getMaterial() != null && !entry.getMaterial().isBlank()) {
-            Material material = Material.matchMaterial(entry.getMaterial());
-            return material == null ? null : new ItemStack(material);
-        }
-
-        return null;
+    private String locationKey(Location location) {
+        return location.getWorld().getName().toLowerCase(Locale.ROOT)
+                + ":" + location.getBlockX()
+                + ":" + location.getBlockY()
+                + ":" + location.getBlockZ();
     }
 
     public void removeChest(AreaClearSession session) {
@@ -247,6 +194,20 @@ public class AreaClearManager {
         }
 
         session.setChestLocation(null);
+    }
+
+    private ItemStack resolveEntry(AreaLootEntry entry) {
+        if (entry.getExternal() != null && !entry.getExternal().isBlank()) {
+            ExternalItemProvider provider = plugin.getExternalPluginManager().getItemProvider(entry.getExternal());
+            return provider == null ? null : provider.resolveItem(entry.getExternal());
+        }
+
+        if (entry.getMaterial() != null && !entry.getMaterial().isBlank()) {
+            Material material = Material.matchMaterial(entry.getMaterial());
+            return material == null ? null : new ItemStack(material);
+        }
+
+        return null;
     }
 
     private void storeLeftover(UUID ownerId, List<ItemStack> leftover) {
@@ -301,13 +262,44 @@ public class AreaClearManager {
         applyGlow(player, session);
     }
 
-    public void onPlayerLeave(Player player, Area area) {
-        AreaClearSession session = sessions.get(area.getName().toLowerCase(Locale.ROOT));
+    public boolean startClear(Area area, Player owner) {
+        if (area == null || owner == null) return false;
 
-        if (session == null) return;
+        String key = area.getName().toLowerCase(Locale.ROOT);
 
-        if (session.getBossBar() != null) player.hideBossBar(session.getBossBar());
-        removeGlow(player, session);
+        if (sessions.containsKey(key)) {
+            plugin.sendMessage(owner, Messages.AREA_ALREADY_ACTIVE.toString());
+            return false;
+        }
+
+        if (!area.isReady()) {
+            plugin.sendMessage(owner, Messages.AREA_NOT_READY.replace("time", formatSeconds(area.getRemainingSeconds())));
+            return false;
+        }
+
+        if (area.getSpawns().isEmpty()) {
+            plugin.sendMessage(owner, Messages.AREA_NO_SPAWNS.toString());
+            return false;
+        }
+
+        AreaClearSession session = new AreaClearSession(area, owner.getUniqueId());
+        sessions.put(key, session);
+        area.setState(AreaState.IN_PROGRESS);
+
+        if (area.isBossBarEnabled()) {
+            BossBar bossBar = BossBar.bossBar(
+                    Component.empty(), 1.0f, area.getBossBarColor(), area.getBossBarOverlay());
+            session.setBossBar(bossBar);
+            owner.showBossBar(bossBar);
+        }
+
+        spawnMobs(area, session);
+        session.setTotalMobs(session.getMobs().size());
+        updateBossBar(session);
+        applyGlow(owner, session);
+
+        plugin.sendMessage(owner, Messages.AREA_ENTERED.replace("area", area.getName()));
+        return true;
     }
 
     private void applyGlow(Player player, AreaClearSession session) {
@@ -317,28 +309,43 @@ public class AreaClearManager {
         }
     }
 
+    private String formatSeconds(long seconds) {
+        long minutes = seconds / 60;
+        long secs = seconds % 60;
+
+        if (minutes > 0) return minutes + "m " + secs + "s";
+        return secs + "s";
+    }
+
+    private void spawnMobs(Area area, AreaClearSession session) {
+        for (AreaSpawnDefinition definition : area.getSpawns()) {
+            for (int i = 0; i < definition.getCount(); i++) {
+                Location location = area.getSpawnLocation(definition, random);
+                if (location == null) continue;
+
+                Entity entity = mobFactory.spawn(definition, location);
+                if (entity == null) continue;
+
+                session.getMobs().add(entity.getUniqueId());
+                mobSessions.put(entity.getUniqueId(), session);
+            }
+        }
+    }
+
+    public void onPlayerLeave(Player player, Area area) {
+        AreaClearSession session = sessions.get(area.getName().toLowerCase(Locale.ROOT));
+
+        if (session == null) return;
+
+        if (session.getBossBar() != null) player.hideBossBar(session.getBossBar());
+        removeGlow(player, session);
+    }
+
     private void removeGlow(Player player, AreaClearSession session) {
         for (UUID mobId : session.getMobs()) {
             Entity entity = Bukkit.getEntity(mobId);
             if (entity != null) glow.setGlowing(player, entity, false);
         }
-    }
-
-    private void updateBossBar(AreaClearSession session) {
-        BossBar bossBar = session.getBossBar();
-        if (bossBar == null) return;
-
-        Area area = session.getArea();
-        int total = session.getTotalMobs();
-        int remaining = session.getMobs().size();
-
-        float progress = total <= 0 ? 0f : (float) remaining / total;
-        bossBar.progress(Math.max(0f, Math.min(1f, progress)));
-        bossBar.name(MiniMessage.miniMessage().deserialize(
-                area.getBossBarTitle()
-                        .replace("%area%", area.getName())
-                        .replace("%remaining%", String.valueOf(remaining))
-                        .replace("%total%", String.valueOf(total))));
     }
 
     public AreaClearSession getSession(Area area) {
@@ -393,20 +400,5 @@ public class AreaClearManager {
         sessions.clear();
         mobSessions.clear();
         chestSessions.clear();
-    }
-
-    private String locationKey(Location location) {
-        return location.getWorld().getName().toLowerCase(Locale.ROOT)
-                + ":" + location.getBlockX()
-                + ":" + location.getBlockY()
-                + ":" + location.getBlockZ();
-    }
-
-    private String formatSeconds(long seconds) {
-        long minutes = seconds / 60;
-        long secs = seconds % 60;
-
-        if (minutes > 0) return minutes + "m " + secs + "s";
-        return secs + "s";
     }
 }

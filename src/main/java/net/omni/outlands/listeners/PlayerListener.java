@@ -105,7 +105,7 @@ public class PlayerListener implements Listener {
     }
 
     private void handleLoadoutClick(Player player, InventoryClickEvent event) {
-        LoadoutGUI gui = new LoadoutGUI(plugin.getUpgradeManager());
+        LoadoutGUI gui = new LoadoutGUI(plugin);
         LoadoutSlot slot = gui.getSlotFromClick(event.getRawSlot());
 
         if (slot == null)

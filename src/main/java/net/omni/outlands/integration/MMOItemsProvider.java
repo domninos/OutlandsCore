@@ -1,6 +1,7 @@
 package net.omni.outlands.integration;
 
 import net.Indyuce.mmoitems.MMOItems;
+import net.Indyuce.mmoitems.api.Type;
 import net.omni.outlands.OutlandsPlugin;
 import org.bukkit.inventory.ItemStack;
 
@@ -20,7 +21,7 @@ public class MMOItemsProvider implements ExternalItemProvider {
         String typeName = parts[1].toUpperCase();
         String itemId = parts[2].toUpperCase();
 
-        var type = MMOItems.plugin.getTypes().get(typeName);
+        Type type = MMOItems.plugin.getTypes().get(typeName);
         if (type == null) {
             plugin.getLogger().warning("Unknown MMOItems type: " + typeName);
             return null;

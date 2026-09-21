@@ -63,6 +63,13 @@ public class AreaWandListener implements Listener {
         }
     }
 
+    private void sendPos(Player player, Messages message, Location location) {
+        plugin.sendMessage(player, message
+                .replace("x", String.valueOf(location.getBlockX()))
+                .replace("y", String.valueOf(location.getBlockY()))
+                .replace("z", String.valueOf(location.getBlockZ())));
+    }
+
     private void handleSpawn(Player player, Action action, Block block, AreaManager areaManager,
                              ItemStack item, boolean sneaking, PlayerInteractEvent event) {
         if (action != Action.LEFT_CLICK_BLOCK && action != Action.RIGHT_CLICK_BLOCK) return;
@@ -149,13 +156,6 @@ public class AreaWandListener implements Listener {
         }
 
         return areaManager.getAreaAt(player.getLocation());
-    }
-
-    private void sendPos(Player player, Messages message, Location location) {
-        plugin.sendMessage(player, message
-                .replace("x", String.valueOf(location.getBlockX()))
-                .replace("y", String.valueOf(location.getBlockY()))
-                .replace("z", String.valueOf(location.getBlockZ())));
     }
 
     public void register() {

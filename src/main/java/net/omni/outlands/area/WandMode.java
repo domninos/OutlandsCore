@@ -12,15 +12,6 @@ public enum WandMode {
         this.display = display;
     }
 
-    public String getDisplay() {
-        return display;
-    }
-
-    public WandMode next() {
-        WandMode[] values = values();
-        return values[(ordinal() + 1) % values.length];
-    }
-
     public static WandMode parse(String name, WandMode fallback) {
         if (name == null) return fallback;
 
@@ -29,5 +20,14 @@ public enum WandMode {
         }
 
         return fallback;
+    }
+
+    public String getDisplay() {
+        return display;
+    }
+
+    public WandMode next() {
+        WandMode[] values = values();
+        return values[(ordinal() + 1) % values.length];
     }
 }

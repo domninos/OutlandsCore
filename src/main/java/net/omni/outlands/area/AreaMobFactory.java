@@ -70,16 +70,6 @@ public class AreaMobFactory {
         }
     }
 
-    private EntityType parseEntityType(String name) {
-        if (name == null || name.isBlank()) return null;
-
-        try {
-            return EntityType.valueOf(name.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     private void applyDisplayName(Entity entity, String displayName) {
         if (displayName == null || displayName.isBlank()) return;
 
@@ -110,6 +100,16 @@ public class AreaMobFactory {
             if (slot == null || material == null) continue;
 
             entityEquipment.setItem(slot, new ItemStack(material));
+        }
+    }
+
+    private EntityType parseEntityType(String name) {
+        if (name == null || name.isBlank()) return null;
+
+        try {
+            return EntityType.valueOf(name.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
         }
     }
 

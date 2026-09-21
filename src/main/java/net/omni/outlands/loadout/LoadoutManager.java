@@ -28,27 +28,30 @@ public class LoadoutManager {
             ItemStack item;
             if (tier.isExternal()) {
                 ExternalItemProvider provider = plugin.getExternalPluginManager().getItemProvider(tier.getExternalId());
-                if (provider != null) {
-                    item = provider.resolveItem(tier.getExternalId());
-                } else {
-                    item = tier.createItem();
-                }
-            } else {
-                item = tier.createItem();
-            }
 
-            if (item == null) continue;
+                if (provider != null)
+                    item = provider.resolveItem(tier.getExternalId());
+                else
+                    item = tier.createItem();
+
+            } else
+                item = tier.createItem();
+
+            if (item == null)
+                continue;
 
             applyEnchantments(item, tier);
 
-            if (slot.isArmor()) {
+            if (slot.isArmor())
                 player.getInventory().setItem(slot.getInventorySlot(), item);
-            } else {
+            else {
                 int emptySlot = player.getInventory().firstEmpty();
+
                 if (emptySlot != -1) {
                     player.getInventory().setItem(emptySlot, item);
                 }
             }
+
         }
     }
 
@@ -56,6 +59,7 @@ public class LoadoutManager {
         for (String enchStr : tier.getEnchantments()) {
             try {
                 Enchantment enchantment = Enchantment.getByName(enchStr);
+
                 if (enchantment != null) {
                     item.addUnsafeEnchantment(enchantment, 1);
                 }

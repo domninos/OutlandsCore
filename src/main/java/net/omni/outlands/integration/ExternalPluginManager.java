@@ -61,13 +61,33 @@ public class ExternalPluginManager {
         return Bukkit.getPluginManager().getPlugin(name) != null;
     }
 
-    public boolean isPlaceholderAPI() { return placeholderAPI; }
-    public boolean isMythicMobs() { return mythicMobs; }
-    public boolean isMMOItems() { return mmoItems; }
-    public boolean isItemEdit() { return itemEdit; }
-    public boolean isNexo() { return nexo; }
-    public boolean isModelEngine() { return modelEngine; }
-    public boolean isProtocolLib() { return protocolLib; }
+    public boolean isPlaceholderAPI() {
+        return placeholderAPI;
+    }
+
+    public boolean isMythicMobs() {
+        return mythicMobs;
+    }
+
+    public boolean isMMOItems() {
+        return mmoItems;
+    }
+
+    public boolean isItemEdit() {
+        return itemEdit;
+    }
+
+    public boolean isNexo() {
+        return nexo;
+    }
+
+    public boolean isModelEngine() {
+        return modelEngine;
+    }
+
+    public boolean isProtocolLib() {
+        return protocolLib;
+    }
 
     public MythicMobsProvider getMythicMobsProvider() {
         return mythicMobsProvider;

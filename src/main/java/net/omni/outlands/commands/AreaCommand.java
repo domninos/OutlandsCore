@@ -8,11 +8,7 @@ import net.omni.outlands.area.WandMode;
 import net.omni.outlands.messages.Messages;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.command.TabCompleter;
+import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.NonNull;
 
@@ -43,7 +39,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 0) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage",
-                    "/areas <wand|create|rename|resize|update|delete|list|info|tp|reset|reload>"));
+                    "/areas {wand|create|rename|resize|update|delete|list|info|tp|reset|reload}"));
             return true;
         }
 
@@ -72,6 +68,11 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args.length > 3) {
+            plugin.sendMessage(player, Messages.USAGE.replace("usage", "/areas wand [name] [mode]"));
+            return true;
+        }
+
         AreaManager areaManager = plugin.getAreaManager();
         String areaName = null;
         WandMode mode = WandMode.CORNER;
@@ -87,7 +88,14 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
             areaName = area.getName();
         }
 
-        if (args.length >= 3) mode = WandMode.parse(args[2], WandMode.CORNER);
+        if (args.length >= 3) {
+            mode = WandMode.parse(args[2], null);
+
+            if (mode == null) {
+                plugin.sendMessage(player, Messages.USAGE.replace("usage", "/areas wand [name] [mode]"));
+                return true;
+            }
+        }
 
         player.getInventory().addItem(areaManager.createWand(areaName, mode));
         plugin.sendMessage(player, Messages.AREA_WAND_GIVEN.replace("mode", mode.getDisplay()));
@@ -101,7 +109,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas create <name>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas create {name}"));
             return true;
         }
 
@@ -133,7 +141,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleRename(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas rename <old> <new>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas rename {old} {new}"));
             return true;
         }
 
@@ -168,7 +176,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas resize <name>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas resize {name}"));
             return true;
         }
 
@@ -202,7 +210,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleUpdate(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas update <name>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas update {name}"));
             return true;
         }
 
@@ -226,7 +234,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleDelete(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas delete <name>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas delete {name}"));
             return true;
         }
 
@@ -262,7 +270,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleInfo(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas info <name>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas info {name}"));
             return true;
         }
 
@@ -292,7 +300,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas tp <name>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas tp {name}"));
             return true;
         }
 
@@ -317,7 +325,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleReset(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas reset <name>"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas reset {name}"));
             return true;
         }
 

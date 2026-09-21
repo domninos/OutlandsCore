@@ -26,11 +26,10 @@ public class UpgradeTier {
         this.externalId = (String) data.getOrDefault("external", null);
 
         Object enchObj = data.get("enchantments");
-        if (enchObj instanceof List<?> enchList) {
+        if (enchObj instanceof List<?> enchList)
             this.enchantments = enchList.stream().map(String::valueOf).toList();
-        } else {
+        else
             this.enchantments = Collections.emptyList();
-        }
 
         Object amountObj = data.get("amount");
         this.amount = amountObj instanceof Number num ? num.intValue() : 1;
@@ -83,6 +82,7 @@ public class UpgradeTier {
             String name = material.name().replace("_", " ");
             String[] words = name.split(" ");
             StringBuilder sb = new StringBuilder();
+
             for (String word : words) {
                 if (!word.isEmpty()) {
                     sb.append(Character.toUpperCase(word.charAt(0)))
@@ -90,9 +90,13 @@ public class UpgradeTier {
                     sb.append(" ");
                 }
             }
+
             return sb.toString().trim();
         }
-        if (externalId != null) return externalId;
+
+        if (externalId != null)
+            return externalId;
+
         return "Unknown";
     }
 }

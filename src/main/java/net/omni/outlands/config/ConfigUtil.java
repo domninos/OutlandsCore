@@ -130,9 +130,9 @@ public class ConfigUtil {
             if (parts.length >= 3) {
                 try {
                     return new int[]{
-                            clamp(Integer.parseInt(parts[0].trim()), 0, 255),
-                            clamp(Integer.parseInt(parts[1].trim()), 0, 255),
-                            clamp(Integer.parseInt(parts[2].trim()), 0, 255)
+                            Math.clamp(Integer.parseInt(parts[0].trim()), 0, 255),
+                            Math.clamp(Integer.parseInt(parts[1].trim()), 0, 255),
+                            Math.clamp(Integer.parseInt(parts[2].trim()), 0, 255)
                     };
                 } catch (NumberFormatException ignored) {
                 }
@@ -140,10 +140,6 @@ public class ConfigUtil {
         }
 
         return new int[]{defaultRed, defaultGreen, defaultBlue};
-    }
-
-    private int clamp(int value, int min, int max) {
-        return Math.max(min, Math.min(max, value));
     }
 
     private void loadLoadoutTiers(AtomicInteger savedDefaults) {

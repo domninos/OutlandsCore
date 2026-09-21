@@ -2,11 +2,7 @@ package net.omni.outlands;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.omni.outlands.area.AreaClearManager;
-import net.omni.outlands.area.AreaListener;
-import net.omni.outlands.area.AreaManager;
-import net.omni.outlands.area.AreaSelectionVisualizer;
-import net.omni.outlands.area.AreaWandListener;
+import net.omni.outlands.area.*;
 import net.omni.outlands.chat.ChatRenderer;
 import net.omni.outlands.chat.PaperChatRenderer;
 import net.omni.outlands.chat.SpigotChatRenderer;
@@ -55,7 +51,11 @@ public final class OutlandsPlugin extends JavaPlugin {
     /*
 
     TODO:
-     - fix loadout layout
+     - fix loadout layout - i can take out glass panes
+     - make onPlayerMove just have a task running per second on each areas -> check if on cooldown
+     -
+     - add a spawn point on the outlands world.
+     - make Messages.VALUE.replace("key1", "value1", "key2", "value2", etc.)
      */
 
     @Override
