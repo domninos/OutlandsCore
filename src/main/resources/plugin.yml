@@ -6,7 +6,7 @@ main: net.omni.outlands.OutlandsPlugin
 api-version: '1.21'
 load: POSTWORLD
 
-softdepend: [ PlaceholderAPI ]
+softdepend: [ PlaceholderAPI, ProtocolLib, MythicMobs, MMOItems, ItemEdit, Nexo ]
 
 authors: [ domninos ]
 
@@ -17,6 +17,10 @@ commands:
   extract:
     description: Extract from the Outlands early
     aliases: [ext]
+  areas:
+    description: Manage Outlands areas
+    aliases: [area]
+    permission: outlands.areas
 
 permissions:
   outlands.*:
@@ -24,9 +28,13 @@ permissions:
     children:
       outlands.admin: true
       outlands.play: true
+      outlands.areas: true
       outlands.bypass.cooldown: true
   outlands.admin:
     description: Allows managing the Outlands plugin
+    default: op
+  outlands.areas:
+    description: Allows managing Outlands areas
     default: op
   outlands.play:
     description: Allows entering the Outlands
