@@ -1,4 +1,4 @@
-package net.omni.outlands.loadout;
+package net.omni.outlands.update;
 
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;

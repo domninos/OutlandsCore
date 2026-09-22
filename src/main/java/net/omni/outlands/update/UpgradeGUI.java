@@ -1,9 +1,10 @@
-package net.omni.outlands.loadout;
+package net.omni.outlands.update;
 
 import net.kyori.adventure.text.Component;
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.config.ConfigUtil;
 import net.omni.outlands.data.PlayerData;
+import net.omni.outlands.loadout.LoadoutSlot;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -12,8 +13,14 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class UpgradeGUI {
+
+    // TODO have this on UpgradeManager
+    private static final Map<UUID, Inventory> CACHE = new ConcurrentHashMap<>();
 
     private static final List<LoadoutSlot> UPGRADEABLE_SLOTS = List.of(
             LoadoutSlot.HELMET, LoadoutSlot.CHESTPLATE, LoadoutSlot.LEGGINGS, LoadoutSlot.BOOTS,
@@ -25,13 +32,33 @@ public class UpgradeGUI {
         this.plugin = plugin;
     }
 
+    public static void clearCache(UUID uuid) {
+        CACHE.remove(uuid);
+    }
+
     public void open(Player player, PlayerData data) {
+        refresh(player, data);
+
+        Inventory inv = CACHE.get(player.getUniqueId());
+        if (inv != null)
+            player.openInventory(inv);
+    }
+
+    public void refresh(Player player, PlayerData data) {
         ConfigUtil config = plugin.getConfigUtil();
-        Inventory inv = plugin.getChatRenderer().createInventory(new UpgradeGuiHolder(),
-                config.getUpgradeGuiSize(), config.getUpgradeGuiTitle());
+
+        Inventory inv = CACHE.computeIfAbsent(player.getUniqueId(), uuid ->
+                plugin.getChatRenderer().createInventory(new UpgradeGuiHolder(),
+                        config.getUpgradeGuiSize(), config.getUpgradeGuiTitle()));
+
+        populate(inv, data);
+    }
+
+    private void populate(Inventory inv, PlayerData data) {
+        inv.clear();
 
         for (LoadoutSlot slot : UPGRADEABLE_SLOTS) {
-            int guiSlot = config.getUpgradeGuiSlot(slot.name().toLowerCase());
+            int guiSlot = plugin.getConfigUtil().getUpgradeGuiSlot(slot.name().toLowerCase());
 
             if (guiSlot < 0 || guiSlot >= inv.getSize()) continue;
 
@@ -39,7 +66,6 @@ public class UpgradeGUI {
         }
 
         fillFiller(inv);
-        player.openInventory(inv);
     }
 
     private ItemStack createSlotItem(LoadoutSlot slot, PlayerData data) {

@@ -1,6 +1,7 @@
-package net.omni.outlands.loadout;
+package net.omni.outlands.update;
 
 import net.omni.outlands.config.ConfigUtil;
+import net.omni.outlands.loadout.LoadoutSlot;
 import net.omni.outlands.upgrade.UpgradeTokenUtil;
 import org.bukkit.inventory.ItemStack;
 
