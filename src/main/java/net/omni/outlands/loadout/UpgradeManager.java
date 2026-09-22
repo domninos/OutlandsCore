@@ -72,6 +72,7 @@ public class UpgradeManager {
             for (Object line : loreList) {
                 if (!loreBuilder.isEmpty())
                     loreBuilder.append("\n");
+
                 loreBuilder.append(line);
             }
         }
