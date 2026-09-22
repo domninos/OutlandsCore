@@ -1,6 +1,5 @@
 package net.omni.outlands.loadout;
 
-import net.kyori.adventure.text.Component;
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.data.PlayerData;
 import org.bukkit.Material;
@@ -33,7 +32,8 @@ public class LoadoutGUI {
     }
 
     public void open(Player player, PlayerData data) {
-        Inventory inv = plugin.getChatRenderer().createInventory(null, 45, plugin.getChatRenderer().parse(INVENTORY_TITLE));
+        Inventory inv = plugin.getChatRenderer().createInventory(new LoadoutGuiHolder(), 45,
+                plugin.getChatRenderer().parse(INVENTORY_TITLE));
 
         LoadoutSlot[] armorSlots = {LoadoutSlot.HELMET, LoadoutSlot.CHESTPLATE, LoadoutSlot.LEGGINGS, LoadoutSlot.BOOTS};
 
@@ -47,8 +47,6 @@ public class LoadoutGUI {
         inv.setItem(CHARM_SLOT, createSlotItem(LoadoutSlot.CHARM, data));
         inv.setItem(ARTIFACT_SLOT, createSlotItem(LoadoutSlot.ARTIFACT, data));
         inv.setItem(PET_SLOT, createSlotItem(LoadoutSlot.PET, data));
-
-        fillGlass(inv);
 
         player.openInventory(inv);
     }
@@ -98,8 +96,8 @@ public class LoadoutGUI {
                     lore.add(plugin.getChatRenderer().parse("<gray>Next: <green>" + nextTier.getTierName() + "</green></gray>"));
 
                 lore.add("");
-                lore.add(plugin.getChatRenderer().parse("<dark_gray>Shift-click with an upgrade token</dark_gray>"));
-                lore.add(plugin.getChatRenderer().parse("<dark_gray>to upgrade this slot.</dark_gray>"));
+                lore.add(plugin.getChatRenderer().parse("<gray>Upgrade <white>" + slot.getDisplayName()
+                        + "</white> via /upgrades</gray>"));
             } else if (maxTier > 0) {
                 lore.add(plugin.getChatRenderer().parse("<gray>Tier: <green>" + currentTier + "/" + maxTier + "</green></gray>"));
                 lore.add("");
@@ -114,20 +112,6 @@ public class LoadoutGUI {
         }
 
         return item;
-    }
-
-    private void fillGlass(Inventory inv) {
-        ItemStack glass = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
-        ItemMeta meta = glass.getItemMeta();
-        if (meta != null) {
-            meta.customName(Component.empty());
-            glass.setItemMeta(meta);
-        }
-
-        for (int i = 0; i < inv.getSize(); i++) {
-            if (inv.getItem(i) == null)
-                inv.setItem(i, glass);
-        }
     }
 
     public LoadoutSlot getSlotFromClick(int slot) {

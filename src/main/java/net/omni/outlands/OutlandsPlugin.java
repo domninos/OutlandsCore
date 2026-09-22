@@ -77,7 +77,6 @@ public final class OutlandsPlugin extends JavaPlugin {
      -
      - fix claiming on /outland storage to say the display name
      - fix /outlands loadout, say "Upgrade armor via /upgrades". disable clicking.
-       - remove the filler stained glasses, keep the stained glass for charm/pet/artifacts
        - make loadoutgui configurable just like upgradegui
        - player-specific loadout should LOAD on JOIN. do not recreate guis upon command,
          update the inventory when closing the gui itself.

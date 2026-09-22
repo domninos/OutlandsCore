@@ -113,9 +113,7 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        String title = event.getView().getTitle();
-
-        if (title.contains("Outlands Loadout")) {
+        if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
             event.setCancelled(true);
             handleLoadoutClick(player, event);
         }
@@ -287,6 +285,13 @@ public class PlayerListener implements Listener {
         boolean success = plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), tokenTier, data);
 
         if (success) {
+            // TODO fix display name being translated first
+            /*
+            error:
+                net.kyori.adventure.text.minimessage.internal.parser.ParsingExceptionImpl: Legacy formatting codes have been detected in a MiniMessage string - this is unsupported behaviour. Please refer to the Adventure documentation (https://docs.papermc.io/adventure/) for more information.
+        <green>Applied §7Iron Helmet Upgrade to your Helmet!</green>
+                       ^^
+             */
             plugin.sendMessage(player, Messages.LOADOUT_TOKEN_APPLIED.replace(
                     "token_name", token.hasItemMeta() && token.getItemMeta().hasDisplayName()
                             ? token.getItemMeta().getDisplayName() : token.getType().name(),
@@ -334,11 +339,6 @@ public class PlayerListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player))
             return;
 
-        plugin.getLogger().info("[drag] topHolder=" + (event.getView().getTopInventory().getHolder() == null
-                ? "null" : event.getView().getTopInventory().getHolder().getClass().getSimpleName())
-                + " title=\"" + event.getView().getTitle() + "\" rawSlots=" + event.getRawSlots()
-                + " newItemsSlots=" + event.getNewItems().keySet());
-
         if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder) {
             event.setCancelled(true);
             handleUpgradeDrag(player, event);
@@ -350,9 +350,7 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        String title = event.getView().getTitle();
-
-        if (title.contains("Outlands Loadout") || title.contains("Extracted Loot"))
+        if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder)
             event.setCancelled(true);
     }
 
@@ -365,24 +363,16 @@ public class PlayerListener implements Listener {
             if (slot == null) continue;
 
             ItemStack token = resolveDragToken(event, rawSlot);
-            if (token == null) {
-                plugin.getLogger().info("[upgrade-drag] target slot " + rawSlot + " (" + slot.name() + ") but no token resolved");
-                return;
-            }
+            if (token == null) return;
 
             String tokenSlot = UpgradeTokenUtil.getUpgradeSlot(token);
             int tokenTier = UpgradeTokenUtil.getUpgradeTier(token);
 
-            if (tokenSlot == null || tokenTier <= 0) {
-                plugin.getLogger().info("[upgrade-drag] token resolved but slot/tier missing: " + token.getType());
-                return;
-            }
+            if (tokenSlot == null || tokenTier <= 0) return;
 
-            applyUpgradeDeferred(player, token, slot, tokenSlot, tokenTier, rawSlot);
+            applyUpgradeDeferred(player, token, slot, tokenSlot, tokenTier);
             return;
         }
-
-        plugin.getLogger().info("[upgrade-drag] no upgrade slot matched in rawSlots=" + event.getRawSlots());
     }
 
     private ItemStack resolveDragToken(InventoryDragEvent event, int rawSlot) {
@@ -404,13 +394,11 @@ public class PlayerListener implements Listener {
                 return item;
         }
 
-        plugin.getLogger().info("[upgrade-drag] no token found (oldCursor=" + event.getOldCursor()
-                + " viewCursor=" + event.getView().getCursor() + " newItems=" + event.getNewItems().size() + ")");
         return null;
     }
 
     private void applyUpgradeDeferred(Player player, ItemStack token, LoadoutSlot slot,
-                                      String tokenSlot, int tokenTier, int rawSlot) {
+                                      String tokenSlot, int tokenTier) {
         if (!tokenMatches(slot, tokenSlot)) {
             plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
             return;
@@ -428,15 +416,11 @@ public class PlayerListener implements Listener {
             }
 
             if (!consumeUpgradeToken(player, token)) {
-                plugin.getLogger().info("[upgrade-drag] deferred consume failed, reverting tier "
-                        + slot.name() + " " + previousTier + "->" + data.getLoadoutTier(slot.getConfigKey()));
                 data.setLoadoutTier(slot.getConfigKey(), previousTier);
                 plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
                 return;
             }
 
-            plugin.getLogger().info("[upgrade-drag] applied token rawSlot=" + rawSlot
-                    + " slot=" + slot.name() + " tier=" + tokenTier);
             plugin.sendMessage(player, Messages.LOADOUT_TOKEN_APPLIED.replace(
                     "token_name", token.hasItemMeta() && token.getItemMeta().hasDisplayName()
                             ? token.getItemMeta().getDisplayName() : token.getType().name(),

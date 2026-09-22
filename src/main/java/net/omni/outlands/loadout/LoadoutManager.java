@@ -80,8 +80,10 @@ public class LoadoutManager {
         int currentTier = data.getLoadoutTier(slot.getConfigKey());
         UpgradeTier nextTier = upgradeManager.getNextTier(slot, currentTier);
 
-        if (nextTier != null)
+        if (nextTier != null) {
             data.setLoadoutTier(slot.getConfigKey(), nextTier.getTierLevel());
+            plugin.getPlayerDataManager().savePlayer(data.getUuid());
+        }
     }
 
     public boolean applyUpgradeToken(String tokenSlot, int tokenTier, PlayerData data) {
@@ -91,6 +93,7 @@ public class LoadoutManager {
 
                 if (tokenTier > currentTier) {
                     data.setLoadoutTier(slot.getConfigKey(), tokenTier);
+                    plugin.getPlayerDataManager().savePlayer(data.getUuid());
                     return true;
                 }
 
