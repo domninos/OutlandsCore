@@ -42,7 +42,7 @@ public class OutlandsCommand implements CommandExecutor {
             case "about" -> handleAbout(sender);
             case "reload" -> handleReload(sender);
             case "loadout" -> handleLoadout(sender);
-            case "withdraw" -> handleWithdraw(sender);
+            case "withdraw", "storage" -> handleWithdraw(sender);
             case "tokens" -> handleTokens(sender);
             case "settokens" -> handleSetTokens(sender, args);
             case "givetokens" -> handleGiveTokens(sender, args);
@@ -80,7 +80,7 @@ public class OutlandsCommand implements CommandExecutor {
             MessageUtil.append("outlands", "Enter the Outlands", help);
             MessageUtil.append("extract", "Extract from the Outlands early", help);
             MessageUtil.append("outlands loadout", "View your loadout", help);
-            MessageUtil.append("outlands withdraw", "Withdraw extracted loot", help);
+            MessageUtil.append("outlands storage", "View your extracted loot storage", help);
             MessageUtil.append("outlands tokens", "Check your token balance", help);
             MessageUtil.append("tokens", "Check your token balance", help);
             MessageUtil.append("upgrade", "Upgrade your armor", help);

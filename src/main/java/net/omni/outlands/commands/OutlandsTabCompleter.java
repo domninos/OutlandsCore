@@ -27,6 +27,7 @@ public class OutlandsTabCompleter implements TabCompleter {
             subcommands.add("about");
             subcommands.add("loadout");
             subcommands.add("withdraw");
+            subcommands.add("storage");
             subcommands.add("tokens");
 
             if (sender.hasPermission("outlands.admin")) {
