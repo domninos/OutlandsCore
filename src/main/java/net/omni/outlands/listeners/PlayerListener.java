@@ -3,10 +3,7 @@ package net.omni.outlands.listeners;
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.data.PlayerData;
 import net.omni.outlands.gameplay.RunManager;
-import net.omni.outlands.loadout.LoadoutGUI;
-import net.omni.outlands.loadout.LoadoutSlot;
-import net.omni.outlands.loadout.UpgradeGUI;
-import net.omni.outlands.loadout.UpgradeGuiHolder;
+import net.omni.outlands.loadout.*;
 import net.omni.outlands.loot.LootItemUtil;
 import net.omni.outlands.loot.LootManager;
 import net.omni.outlands.loot.StorageHolder;
@@ -22,16 +19,14 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class PlayerListener implements Listener {
 
@@ -101,13 +96,18 @@ public class PlayerListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player))
             return;
 
-        if (event.getInventory().getHolder() instanceof UpgradeGuiHolder) {
-            event.setCancelled(true);
+        if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder) {
+            if (event.getClickedInventory() == null)
+                return;
+
+            if (event.getClickedInventory().getType() != InventoryType.PLAYER)
+                event.setCancelled(true);
+
             handleUpgradeClick(player, event);
             return;
         }
 
-        if (event.getInventory().getHolder() instanceof StorageHolder storage) {
+        if (event.getView().getTopInventory().getHolder() instanceof StorageHolder storage) {
             event.setCancelled(true);
             handleStorageClick(player, event, storage);
             return;
@@ -128,49 +128,15 @@ public class PlayerListener implements Listener {
         if (slot == null) return;
 
         ItemStack token = event.getCursor();
-        if (token.getType() == Material.AIR) return;
+
+        if (token.getType() == Material.AIR) {
+            buyUpgradeSlot(player, slot);
+            return;
+        }
+
+        if (!UpgradeTokenUtil.isUpgradeToken(token)) return;
 
         applyUpgrade(player, token, slot, event);
-    }
-
-    private void handleLoadoutClick(Player player, InventoryClickEvent event) {
-        LoadoutGUI gui = new LoadoutGUI(plugin);
-        LoadoutSlot slot = gui.getSlotFromClick(event.getRawSlot());
-
-        if (slot == null)
-            return;
-
-        ItemStack clicked = event.getCurrentItem();
-        if (clicked == null || clicked.getType() == Material.AIR)
-            return;
-
-        ItemStack cursor = event.getCursor();
-        if (cursor.getType() == Material.AIR)
-            return;
-
-        String upgradeSlot = UpgradeTokenUtil.getUpgradeSlot(cursor);
-        int upgradeTier = UpgradeTokenUtil.getUpgradeTier(cursor);
-
-        if (upgradeSlot != null && upgradeTier > 0) {
-            PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
-            boolean success = plugin.getLoadoutManager().applyUpgradeToken(upgradeSlot, upgradeTier, data);
-
-            if (success) {
-                plugin.sendMessage(player, Messages.LOADOUT_TOKEN_APPLIED
-                        .replace(
-                                "token_name", cursor.hasItemMeta() && cursor.getItemMeta().hasDisplayName()
-                                        ? cursor.getItemMeta().getDisplayName() : cursor.getType().name(),
-                                "slot", slot.getDisplayName()
-                        ));
-
-                cursor.setAmount(cursor.getAmount() - 1);
-                event.setCursor(cursor);
-
-                gui.open(player, data);
-            } else {
-                plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
-            }
-        }
     }
 
     private void handleStorageClick(Player player, InventoryClickEvent event, StorageHolder holder) {
@@ -232,28 +198,80 @@ public class PlayerListener implements Listener {
         }
     }
 
-    private void handleClaimAll(Player player) {
+    private void handleLoadoutClick(Player player, InventoryClickEvent event) {
+        LoadoutGUI gui = new LoadoutGUI(plugin);
+        LoadoutSlot slot = gui.getSlotFromClick(event.getRawSlot());
+
+        if (slot == null)
+            return;
+
+        ItemStack clicked = event.getCurrentItem();
+        if (clicked == null || clicked.getType() == Material.AIR)
+            return;
+
+        ItemStack cursor = event.getCursor();
+        if (cursor.getType() == Material.AIR)
+            return;
+
+        String upgradeSlot = UpgradeTokenUtil.getUpgradeSlot(cursor);
+        int upgradeTier = UpgradeTokenUtil.getUpgradeTier(cursor);
+
+        if (upgradeSlot != null && upgradeTier > 0) {
+            PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+            boolean success = plugin.getLoadoutManager().applyUpgradeToken(upgradeSlot, upgradeTier, data);
+
+            if (success) {
+                plugin.sendMessage(player, Messages.LOADOUT_TOKEN_APPLIED
+                        .replace(
+                                "token_name", cursor.hasItemMeta() && cursor.getItemMeta().hasDisplayName()
+                                        ? cursor.getItemMeta().getDisplayName() : cursor.getType().name(),
+                                "slot", slot.getDisplayName()
+                        ));
+
+                cursor.setAmount(cursor.getAmount() - 1);
+                event.setCursor(cursor);
+
+                gui.open(player, data);
+            } else {
+                plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
+            }
+        }
+    }
+
+    private void buyUpgradeSlot(Player player, LoadoutSlot slot) {
         PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
-        List<ItemStack> kept = new ArrayList<>();
+        UpgradeTier nextTier = plugin.getUpgradeManager().getNextTier(slot,
+                plugin.getLoadoutManager().getEffectiveTier(data, slot));
 
-        for (ItemStack item : data.getExtractedLoot()) {
-            if (item == null) continue;
-
-            for (ItemStack leftover : player.getInventory().addItem(item).values())
-                kept.add(leftover);
+        if (nextTier == null) {
+            plugin.sendMessage(player, Messages.LOADOUT_MAX_TIER.replace("slot", slot.getDisplayName()));
+            return;
         }
 
-        data.setExtractedLoot(kept);
-        plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
+        int cost = nextTier.getCost();
 
-        if (kept.isEmpty()) {
-            plugin.getLootManager().clearPage(player.getUniqueId());
-            plugin.sendMessage(player, Messages.WITHDRAW_CLAIMED_ALL.toString());
-            player.closeInventory();
-        } else {
-            plugin.sendMessage(player, Messages.WITHDRAW_INVENTORY_FULL.toString());
-            plugin.getLootManager().openStorageGUI(player);
+        if (cost > 0) {
+            if (!plugin.getTokenManager().hasTokens(player.getUniqueId(), cost)) {
+                plugin.sendMessage(player, Messages.TOKENS_INSUFFICIENT.replace(
+                        "required", String.valueOf(cost),
+                        "available", String.valueOf(plugin.getTokenManager().getTokens(player.getUniqueId()))));
+                return;
+            }
+
+            plugin.getTokenManager().removeTokens(player.getUniqueId(), cost);
+            plugin.sendMessage(player, Messages.TOKENS_SPENT.replace("amount", String.valueOf(cost)));
         }
+
+        if (!plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), nextTier.getTierLevel(), data)) {
+            new UpgradeGUI(plugin).open(player, data);
+            return;
+        }
+
+        plugin.sendMessage(player, Messages.LOADOUT_UPGRADED.replace(
+                "slot", slot.getDisplayName(),
+                "tier", nextTier.getTierName()));
+
+        new UpgradeGUI(plugin).open(player, data);
     }
 
     private void applyUpgrade(Player player, ItemStack token, LoadoutSlot slot, InventoryClickEvent event) {
@@ -283,6 +301,30 @@ public class PlayerListener implements Listener {
         }
     }
 
+    private void handleClaimAll(Player player) {
+        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+        List<ItemStack> kept = new ArrayList<>();
+
+        for (ItemStack item : data.getExtractedLoot()) {
+            if (item == null) continue;
+
+            for (ItemStack leftover : player.getInventory().addItem(item).values())
+                kept.add(leftover);
+        }
+
+        data.setExtractedLoot(kept);
+        plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
+
+        if (kept.isEmpty()) {
+            plugin.getLootManager().clearPage(player.getUniqueId());
+            plugin.sendMessage(player, Messages.WITHDRAW_CLAIMED_ALL.toString());
+            player.closeInventory();
+        } else {
+            plugin.sendMessage(player, Messages.WITHDRAW_INVENTORY_FULL.toString());
+            plugin.getLootManager().openStorageGUI(player);
+        }
+    }
+
     private boolean tokenMatches(LoadoutSlot slot, String tokenSlot) {
         return slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot);
     }
@@ -292,13 +334,18 @@ public class PlayerListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player))
             return;
 
-        if (event.getInventory().getHolder() instanceof UpgradeGuiHolder) {
+        plugin.getLogger().info("[drag] topHolder=" + (event.getView().getTopInventory().getHolder() == null
+                ? "null" : event.getView().getTopInventory().getHolder().getClass().getSimpleName())
+                + " title=\"" + event.getView().getTitle() + "\" rawSlots=" + event.getRawSlots()
+                + " newItemsSlots=" + event.getNewItems().keySet());
+
+        if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder) {
             event.setCancelled(true);
             handleUpgradeDrag(player, event);
             return;
         }
 
-        if (event.getInventory().getHolder() instanceof StorageHolder) {
+        if (event.getView().getTopInventory().getHolder() instanceof StorageHolder) {
             event.setCancelled(true);
             return;
         }
@@ -311,45 +358,66 @@ public class PlayerListener implements Listener {
 
     private void handleUpgradeDrag(Player player, InventoryDragEvent event) {
         UpgradeGUI gui = new UpgradeGUI(plugin);
-        ItemStack token = resolveDragToken(event);
-
-        if (token == null || !UpgradeTokenUtil.isUpgradeToken(token)) return;
-
-        String tokenSlot = UpgradeTokenUtil.getUpgradeSlot(token);
-        int tokenTier = UpgradeTokenUtil.getUpgradeTier(token);
-
-        if (tokenSlot == null || tokenTier <= 0) return;
 
         for (int rawSlot : event.getRawSlots()) {
             LoadoutSlot slot = gui.getSlotFromClick(rawSlot);
 
-            if (slot != null) {
-                applyUpgradeDeferred(player, token, slot, tokenSlot, tokenTier);
+            if (slot == null) continue;
+
+            ItemStack token = resolveDragToken(event, rawSlot);
+            if (token == null) {
+                plugin.getLogger().info("[upgrade-drag] target slot " + rawSlot + " (" + slot.name() + ") but no token resolved");
                 return;
             }
+
+            String tokenSlot = UpgradeTokenUtil.getUpgradeSlot(token);
+            int tokenTier = UpgradeTokenUtil.getUpgradeTier(token);
+
+            if (tokenSlot == null || tokenTier <= 0) {
+                plugin.getLogger().info("[upgrade-drag] token resolved but slot/tier missing: " + token.getType());
+                return;
+            }
+
+            applyUpgradeDeferred(player, token, slot, tokenSlot, tokenTier, rawSlot);
+            return;
         }
+
+        plugin.getLogger().info("[upgrade-drag] no upgrade slot matched in rawSlots=" + event.getRawSlots());
     }
 
-    private ItemStack resolveDragToken(InventoryDragEvent event) {
+    private ItemStack resolveDragToken(InventoryDragEvent event, int rawSlot) {
+        ItemStack newItem = event.getNewItems().get(rawSlot);
+
+        if (UpgradeTokenUtil.isUpgradeToken(newItem))
+            return newItem;
+
         ItemStack oldCursor = event.getOldCursor();
-        if (oldCursor != null && UpgradeTokenUtil.isUpgradeToken(oldCursor)) return oldCursor;
+        if (UpgradeTokenUtil.isUpgradeToken(oldCursor))
+            return oldCursor;
 
         ItemStack cursor = event.getView().getCursor();
-        if (cursor != null && UpgradeTokenUtil.isUpgradeToken(cursor)) return cursor;
+        if (UpgradeTokenUtil.isUpgradeToken(cursor))
+            return cursor;
 
         for (ItemStack item : event.getNewItems().values()) {
-            if (item != null && UpgradeTokenUtil.isUpgradeToken(item)) return item;
+            if (UpgradeTokenUtil.isUpgradeToken(item))
+                return item;
         }
 
+        plugin.getLogger().info("[upgrade-drag] no token found (oldCursor=" + event.getOldCursor()
+                + " viewCursor=" + event.getView().getCursor() + " newItems=" + event.getNewItems().size() + ")");
         return null;
     }
 
     private void applyUpgradeDeferred(Player player, ItemStack token, LoadoutSlot slot,
-                                      String tokenSlot, int tokenTier) {
+                                      String tokenSlot, int tokenTier, int rawSlot) {
         if (!tokenMatches(slot, tokenSlot)) {
             plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
             return;
         }
+
+        final int previousTier = plugin.getLoadoutManager().getEffectiveTier(
+                plugin.getPlayerDataManager().getOrCreate(player.getUniqueId()), slot);
 
         Bukkit.getScheduler().runTask(plugin, () -> {
             PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
@@ -360,10 +428,15 @@ public class PlayerListener implements Listener {
             }
 
             if (!consumeUpgradeToken(player, token)) {
+                plugin.getLogger().info("[upgrade-drag] deferred consume failed, reverting tier "
+                        + slot.name() + " " + previousTier + "->" + data.getLoadoutTier(slot.getConfigKey()));
+                data.setLoadoutTier(slot.getConfigKey(), previousTier);
                 plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
                 return;
             }
 
+            plugin.getLogger().info("[upgrade-drag] applied token rawSlot=" + rawSlot
+                    + " slot=" + slot.name() + " tier=" + tokenTier);
             plugin.sendMessage(player, Messages.LOADOUT_TOKEN_APPLIED.replace(
                     "token_name", token.hasItemMeta() && token.getItemMeta().hasDisplayName()
                             ? token.getItemMeta().getDisplayName() : token.getType().name(),
@@ -399,7 +472,7 @@ public class PlayerListener implements Listener {
     }
 
     private boolean matchesToken(ItemStack item, ItemStack token) {
-        if (item == null || token == null || !UpgradeTokenUtil.isUpgradeToken(item)) return false;
+        if (token == null || !UpgradeTokenUtil.isUpgradeToken(item)) return false;
         if (item.getType() != token.getType()) return false;
 
         String slotA = UpgradeTokenUtil.getUpgradeSlot(item);

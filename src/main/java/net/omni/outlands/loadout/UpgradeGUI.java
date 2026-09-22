@@ -70,11 +70,16 @@ public class UpgradeGUI {
             if (upgradeManager.canUpgrade(slot, currentTier)) {
                 UpgradeTier nextTier = upgradeManager.getNextTier(slot, currentTier);
 
-                if (nextTier != null)
+                if (nextTier != null) {
                     lore.add("<gray>Next: <green>" + nextTier.getTierName() + "</green></gray>");
 
+                    if (nextTier.getCost() > 0)
+                        lore.add("<gold>" + nextTier.getCost() + " tokens</gold>");
+                }
+
                 lore.add("");
-                lore.add("<dark_gray>Drop an upgrade token here</dark_gray>");
+                lore.add("<dark_gray>Drop an upgrade token here,</dark_gray>");
+                lore.add("<dark_gray>or click to buy for tokens</dark_gray>");
             } else if (upgradeManager.getMaxTier(slot) > 0) {
                 lore.add("");
                 lore.add("<green>MAX TIER</green>");

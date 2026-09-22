@@ -16,6 +16,7 @@ public class UpgradeTier {
     private final int amount;
     private final String potionType;
     private final int potionLevel;
+    private final int cost;
 
     public UpgradeTier(int tierLevel, Map<String, Object> data) {
         this.tierLevel = tierLevel;
@@ -37,6 +38,9 @@ public class UpgradeTier {
         this.potionType = (String) data.getOrDefault("potion_type", null);
         Object levelObj = data.get("level");
         this.potionLevel = levelObj instanceof Number num ? num.intValue() : 1;
+
+        Object costObj = data.get("cost");
+        this.cost = costObj instanceof Number num ? num.intValue() : 0;
     }
 
     public int getTierLevel() {
@@ -65,6 +69,10 @@ public class UpgradeTier {
 
     public int getPotionLevel() {
         return potionLevel;
+    }
+
+    public int getCost() {
+        return cost;
     }
 
     public boolean isExternal() {

@@ -40,50 +40,75 @@ extraction:
 #   enchantments: List of enchantments to apply (e.g. [PROTECTION_1])
 #   amount: Stack amount (for consumables like food/potions)
 #   potion_type / level: For potion tiers
+#   cost: Outlands tokens charged to upgrade INTO this tier (0 = free)
 loadout:
   armor:
     helmet:
       tiers:
         - material: LEATHER_HELMET
         - material: CHAINMAIL_HELMET
+          cost: 100
         - material: IRON_HELMET
+          cost: 250
         - material: DIAMOND_HELMET
+          cost: 500
         - material: NETHERITE_HELMET
+          cost: 1000
     chestplate:
       tiers:
         - material: LEATHER_CHESTPLATE
         - material: CHAINMAIL_CHESTPLATE
+          cost: 100
         - material: IRON_CHESTPLATE
+          cost: 250
         - material: DIAMOND_CHESTPLATE
+          cost: 500
         - material: NETHERITE_CHESTPLATE
+          cost: 1000
     leggings:
       tiers:
         - material: LEATHER_LEGGINGS
         - material: CHAINMAIL_LEGGINGS
+          cost: 100
         - material: IRON_LEGGINGS
+          cost: 250
         - material: DIAMOND_LEGGINGS
+          cost: 500
         - material: NETHERITE_LEGGINGS
+          cost: 1000
     boots:
       tiers:
         - material: LEATHER_BOOTS
         - material: CHAINMAIL_BOOTS
+          cost: 100
         - material: IRON_BOOTS
+          cost: 250
         - material: DIAMOND_BOOTS
+          cost: 500
         - material: NETHERITE_BOOTS
+          cost: 1000
   weapon:
     tiers:
       - material: WOODEN_SWORD
       - material: STONE_SWORD
+        cost: 100
       - material: IRON_SWORD
+        cost: 250
       - material: DIAMOND_SWORD
+        cost: 500
       - material: NETHERITE_SWORD
+        cost: 1000
   tool:
     tiers:
       - material: WOODEN_PICKAXE
       - material: STONE_PICKAXE
+        cost: 100
       - material: IRON_PICKAXE
+        cost: 250
       - material: DIAMOND_PICKAXE
+        cost: 500
       - material: NETHERITE_PICKAXE
+        cost: 1000
   food:
     tiers:
       - material: BREAD
@@ -152,7 +177,7 @@ upgrade-tokens:
 # Upgrade GUI (/upgrade)
 # Shows the player's current armor and lets them drop an upgrade token onto a piece.
 upgrade-gui:
-  title: "<gradient:#00AAFF:#55FFFF>Upgrade Armor</gradient>"
+  title: "<gradient:#00AAFF:#55FFFF>Upgrade Loadout</gradient>"
   rows: 3
   slots:
     helmet: 10

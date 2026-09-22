@@ -68,22 +68,36 @@ public final class OutlandsPlugin extends JavaPlugin {
      - add location when someone does /extract, tp to that location.
      - add "Kills:" -> mob kills on scoreboard
      - add "Tokens:" -> tokens on scoreboard
+     - /loadout -> /outlands loadout
      -
      - fix Message parser
      - fix RunManager#restorePlayerInventory, add back the preRunInventory and preRunArmor
-     - remove getting pushed back if area is in cooldown
      - commands / tab completer when doing /outlands addmob <area> <mob> ... should have the autocomplete
        to say what it is
      -
+     - fix claiming on /outland storage to say the display name
+     - fix /outlands loadout, say "Upgrade armor via /upgrades". disable clicking.
+       - remove the filler stained glasses, keep the stained glass for charm/pet/artifacts
+       - make loadoutgui configurable just like upgradegui
+       - player-specific loadout should LOAD on JOIN. do not recreate guis upon command,
+         update the inventory when closing the gui itself.
+         save items (unless no updates found) to database on quit/on shutdown/after X seconds
+     -
+     - add custom events
+     - add API
+     -
+     - make checking inventory use a list of viewers
      -
      - If they die before extracting:
         They immediately leave Outlands.
         All loot collected during that run is lost.
         No extraction rewards are granted.
      -
-     - add a /outlands shop -> for food and potions,
+     - add a /outlands shop (/oshop) -> for food and potions,
        unlocking enchantments, upgrading armor/weapons, purchasing passive upgrades
      -
+     - check for chances of each loot. i get stacks of them.
+     - make the upgrade time loot have specific times. add that on the upgrade-tokens on config.yml
      -
      - charm
      - pets
