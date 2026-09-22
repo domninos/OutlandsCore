@@ -406,6 +406,35 @@ public class AreaClearManager {
         return location != null && chestSessions.containsKey(locationKey(location));
     }
 
+    public int redeemChest(Player player, Location location) {
+        AreaClearSession session = chestSessions.get(locationKey(location));
+        if (session == null) return 0;
+        if (!session.getOwner().equals(player.getUniqueId())) return -1;
+
+        Block block = location.getBlock();
+        if (block.getType() != Material.CHEST) return 0;
+
+        List<ItemStack> loot = new ArrayList<>();
+
+        if (block.getState() instanceof Chest chest) {
+            for (ItemStack item : chest.getBlockInventory().getContents()) {
+                if (item != null) loot.add(item);
+            }
+        }
+
+        if (!loot.isEmpty()) {
+            PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+            List<ItemStack> stored = data.getExtractedLoot();
+
+            stored.addAll(loot);
+            data.setExtractedLoot(stored);
+            plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
+        }
+
+        removeChest(session);
+        return loot.size();
+    }
+
     public boolean canOpenChest(Player player, Location location) {
         AreaClearSession session = chestSessions.get(locationKey(location));
         if (session == null) return true;

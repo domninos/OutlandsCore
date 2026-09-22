@@ -8,6 +8,8 @@ import net.omni.outlands.loadout.LoadoutSlot;
 import net.omni.outlands.loadout.UpgradeGUI;
 import net.omni.outlands.loadout.UpgradeGuiHolder;
 import net.omni.outlands.loot.LootItemUtil;
+import net.omni.outlands.loot.LootManager;
+import net.omni.outlands.loot.StorageHolder;
 import net.omni.outlands.messages.Messages;
 import net.omni.outlands.upgrade.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
@@ -24,10 +26,11 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class PlayerListener implements Listener {
@@ -75,6 +78,8 @@ public class PlayerListener implements Listener {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
 
+        plugin.getLootManager().clearPage(uuid);
+
         if (plugin.getRunManager().isPlayerInRun(uuid)) {
             if (plugin.getConfigUtil().isReturnOnDisconnect())
                 plugin.getRunManager().handleDisconnect(uuid);
@@ -102,11 +107,9 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        Inventory clicked = event.getClickedInventory();
-
-        if (clicked != null && clicked.getLocation() != null
-                && plugin.getAreaClearManager().isLootChest(clicked.getLocation())) {
-            handleLootChestClick(player, event, clicked);
+        if (event.getInventory().getHolder() instanceof StorageHolder storage) {
+            event.setCancelled(true);
+            handleStorageClick(player, event, storage);
             return;
         }
 
@@ -115,27 +118,7 @@ public class PlayerListener implements Listener {
         if (title.contains("Outlands Loadout")) {
             event.setCancelled(true);
             handleLoadoutClick(player, event);
-            return;
         }
-
-        if (title.contains("Extracted Loot")) {
-            event.setCancelled(true);
-            handleWithdrawClick(player, event);
-        }
-    }
-
-    private void handleLootChestClick(Player player, InventoryClickEvent event, Inventory chest) {
-        ItemStack clickedItem = event.getCurrentItem();
-
-        if (!LootItemUtil.isTokenItem(clickedItem)) return;
-
-        int amount = LootItemUtil.getTokenAmount(clickedItem);
-
-        plugin.getTokenManager().addTokens(player.getUniqueId(), amount);
-        plugin.sendMessage(player, Messages.LOOT_TOKENS.replace("amount", String.valueOf(amount)));
-
-        clickedItem.setAmount(0);
-        event.setCancelled(true);
     }
 
     private void handleUpgradeClick(Player player, InventoryClickEvent event) {
@@ -190,49 +173,86 @@ public class PlayerListener implements Listener {
         }
     }
 
-    private void handleWithdrawClick(Player player, InventoryClickEvent event) {
+    private void handleStorageClick(Player player, InventoryClickEvent event, StorageHolder holder) {
         int rawSlot = event.getRawSlot();
 
-        if (rawSlot == 49) {
-            PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+        if (rawSlot == LootManager.SLOT_PREV) {
+            plugin.getLootManager().openStorageGUI(player, holder.page() - 1);
+            return;
+        }
 
-            for (ItemStack item : data.getExtractedLoot()) {
-                if (item != null)
-                    player.getInventory().addItem(item);
-            }
+        if (rawSlot == LootManager.SLOT_NEXT) {
+            plugin.getLootManager().openStorageGUI(player, holder.page() + 1);
+            return;
+        }
 
-            plugin.getLootManager().claimAll(player.getUniqueId());
-            plugin.sendMessage(player, Messages.WITHDRAW_CLAIMED_ALL.toString());
+        if (rawSlot == LootManager.SLOT_CLAIM_ALL) {
+            handleClaimAll(player);
+            return;
+        }
+
+        if (rawSlot == LootManager.SLOT_CLOSE) {
             player.closeInventory();
             return;
         }
 
-        if (rawSlot == 50) {
+        if (rawSlot == LootManager.SLOT_DISCARD_ALL) {
             plugin.getLootManager().claimAll(player.getUniqueId());
+            plugin.getLootManager().clearPage(player.getUniqueId());
             plugin.sendMessage(player, Messages.WITHDRAW_EMPTY.toString());
             player.closeInventory();
             return;
         }
 
-        if (rawSlot >= 0 && rawSlot < 45) {
+        if (rawSlot >= 0 && rawSlot < LootManager.PAGE_SIZE) {
+            int index = holder.page() * LootManager.PAGE_SIZE + rawSlot;
             PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
             List<ItemStack> loot = data.getExtractedLoot();
 
-            if (rawSlot < loot.size()) {
-                ItemStack item = loot.get(rawSlot);
+            if (index >= loot.size()) return;
 
-                if (item != null) {
-                    player.getInventory().addItem(item);
-                    plugin.sendMessage(player, Messages.WITHDRAW_CLAIMED
-                            .replace(
-                                    "item", item.getType().name(),
-                                    "amount", String.valueOf(item.getAmount())
-                            ));
+            ItemStack item = loot.get(index);
+            if (item == null) return;
 
-                    plugin.getLootManager().removeLootItem(player.getUniqueId(), rawSlot);
-                    plugin.getLootManager().openWithdrawGUI(player);
-                }
+            Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
+
+            if (!leftover.isEmpty()) {
+                plugin.sendMessage(player, Messages.WITHDRAW_INVENTORY_FULL.toString());
+                return;
             }
+
+            plugin.sendMessage(player, Messages.WITHDRAW_CLAIMED
+                    .replace(
+                            "item", item.getType().name(),
+                            "amount", String.valueOf(item.getAmount())
+                    ));
+
+            plugin.getLootManager().removeLootItem(player.getUniqueId(), index);
+            plugin.getLootManager().openStorageGUI(player);
+        }
+    }
+
+    private void handleClaimAll(Player player) {
+        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+        List<ItemStack> kept = new ArrayList<>();
+
+        for (ItemStack item : data.getExtractedLoot()) {
+            if (item == null) continue;
+
+            for (ItemStack leftover : player.getInventory().addItem(item).values())
+                kept.add(leftover);
+        }
+
+        data.setExtractedLoot(kept);
+        plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
+
+        if (kept.isEmpty()) {
+            plugin.getLootManager().clearPage(player.getUniqueId());
+            plugin.sendMessage(player, Messages.WITHDRAW_CLAIMED_ALL.toString());
+            player.closeInventory();
+        } else {
+            plugin.sendMessage(player, Messages.WITHDRAW_INVENTORY_FULL.toString());
+            plugin.getLootManager().openStorageGUI(player);
         }
     }
 
@@ -282,6 +302,11 @@ public class PlayerListener implements Listener {
             return;
         }
 
+        if (event.getInventory().getHolder() instanceof StorageHolder) {
+            event.setCancelled(true);
+            return;
+        }
+
         String title = event.getView().getTitle();
 
         if (title.contains("Outlands Loadout") || title.contains("Extracted Loot"))
@@ -326,7 +351,25 @@ public class PlayerListener implements Listener {
 
         if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
 
+        if (action == Action.RIGHT_CLICK_BLOCK
+                && event.getClickedBlock() != null
+                && event.getClickedBlock().getType() == Material.CHEST
+                && plugin.getAreaClearManager().isLootChest(event.getClickedBlock().getLocation()))
+            return;
+
         ItemStack item = player.getInventory().getItemInMainHand();
+
+        if (LootItemUtil.isTokenItem(item)) {
+            int amount = LootItemUtil.getTokenAmount(item);
+
+            event.setCancelled(true);
+            plugin.getTokenManager().addTokens(player.getUniqueId(), amount);
+            item.setAmount(item.getAmount() - 1);
+
+            plugin.sendMessage(player, Messages.LOOT_TOKENS.replace("amount", String.valueOf(amount)));
+            return;
+        }
+
         if (!LootItemUtil.isTimeItem(item)) return;
 
         RunManager.ActiveRun run = plugin.getRunManager().getActiveRun(player.getUniqueId());

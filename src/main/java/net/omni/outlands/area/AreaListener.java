@@ -45,11 +45,17 @@ public class AreaListener implements Listener {
         if (!plugin.getAreaClearManager().isLootChest(block.getLocation())) return;
 
         Player player = event.getPlayer();
+        event.setCancelled(true);
 
         if (!plugin.getAreaClearManager().canOpenChest(player, block.getLocation())) {
-            event.setCancelled(true);
             plugin.sendMessage(player, Messages.AREA_CHEST_LOCKED.toString());
+            return;
         }
+
+        int stored = plugin.getAreaClearManager().redeemChest(player, block.getLocation());
+
+        if (stored > 0)
+            plugin.sendMessage(player, Messages.LOOT_STORED.replace("amount", String.valueOf(stored)));
     }
 
     @EventHandler

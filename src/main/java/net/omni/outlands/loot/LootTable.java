@@ -7,8 +7,8 @@ import java.util.Random;
 public class LootTable {
 
     private final String name;
-    private int itemsPerChest;
     private final List<LootEntry> entries;
+    private int itemsPerChest;
 
     public LootTable(String name) {
         this.name = name;
@@ -47,6 +47,6 @@ public class LootTable {
             if (roll < 0) return entry;
         }
 
-        return entries.get(entries.size() - 1);
+        return entries.getLast();
     }
 }

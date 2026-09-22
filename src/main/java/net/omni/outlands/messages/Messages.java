@@ -44,11 +44,13 @@ public enum Messages {
 
     LOOT_TOKENS("loot.tokens", "<gold>+%amount% Outlands Tokens</gold>"),
     LOOT_TIME_ADDED("loot.time-added", "<yellow>+%time% minutes added to your run!</yellow>"),
+    LOOT_STORED("loot.stored", "<green>Stored %amount% item(s) in <white>/outlands storage</white>.</green>"),
 
     WITHDRAW_OPENED("withdraw.opened", "<gray>Opened your extracted loot.</gray>"),
     WITHDRAW_EMPTY("withdraw.empty", "<gray>You have no extracted loot to withdraw.</gray>"),
     WITHDRAW_CLAIMED("withdraw.claimed", "<green>Claimed %item% x%amount%.</green>"),
     WITHDRAW_CLAIMED_ALL("withdraw.claimed-all", "<green>Claimed all extracted loot.</green>"),
+    WITHDRAW_INVENTORY_FULL("withdraw.inventory-full", "<gold>Your inventory is full — some items were kept in storage.</gold>"),
     WITHDRAW_EXPIRED("withdraw.expired", "<red>Your extracted loot has expired and was lost.</red>"),
 
     AREA_ENTERED("area.entered", "<gray>You entered <white>%area%</white>. Clear the mobs!</gray>"),
