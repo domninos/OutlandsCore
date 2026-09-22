@@ -40,6 +40,7 @@ public class DatabaseManager {
                             uuid TEXT PRIMARY KEY,
                             tokens INTEGER DEFAULT 0,
                             loadout TEXT DEFAULT '{}',
+                            loadout_items TEXT DEFAULT '[]',
                             extracted_loot TEXT DEFAULT '[]',
                             cooldown_until BIGINT DEFAULT 0,
                             last_kill_count INTEGER DEFAULT 0,
@@ -47,6 +48,11 @@ public class DatabaseManager {
                             last_boss_count INTEGER DEFAULT 0
                         )
                     """);
+            try {
+                stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN loadout_items TEXT DEFAULT '[]'");
+            } catch (SQLException ignored) {
+                // Column already exists on databases created before the migration.
+            }
             plugin.sendConsole("<green>Database initialized successfully.</green>");
         } catch (SQLException e) {
             plugin.getLogger().severe("Failed to initialize database: " + e.getMessage());

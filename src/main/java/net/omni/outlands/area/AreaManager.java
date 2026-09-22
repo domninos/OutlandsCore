@@ -3,6 +3,7 @@ package net.omni.outlands.area;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.outlands.OutlandsPlugin;
+import net.omni.outlands.integration.MythicMobsProvider;
 import net.omni.outlands.mobs.MobTemplate;
 import net.omni.outlands.mobs.MobTemplateManager;
 import org.bukkit.*;
@@ -75,19 +76,23 @@ public class AreaManager {
     private void migrateLegacy(Area area, File file) {
         MobTemplateManager mobs = plugin.getMobTemplateManager();
 
-        if (area == null || mobs == null) return;
+        if (area == null || mobs == null)
+            return;
 
         YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
 
-        if (config.contains("mobs") || !config.contains("spawns")) return;
+        if (config.contains("mobs") || !config.contains("spawns"))
+            return;
 
         ConfigurationSection spawns = config.getConfigurationSection("spawns");
 
-        if (spawns == null) return;
+        if (spawns == null)
+            return;
 
         for (String key : spawns.getKeys(false)) {
             ConfigurationSection section = spawns.getConfigurationSection(key);
-            if (section == null) continue;
+            if (section == null)
+                continue;
 
             String templateId = uniqueTemplateId(key);
 
@@ -124,15 +129,27 @@ public class AreaManager {
         String candidate = normalized;
         int index = 1;
 
-        while (mobs.exists(candidate)) candidate = normalized + "_" + (index++);
+        while (mobs.exists(candidate))
+            candidate = normalized + "_" + (index++);
 
         return candidate;
+    }
+
+    public void save(Area area) {
+        if (!areasFolder.exists())
+            areasFolder.mkdirs();
+
+        File file = new File(areasFolder, area.getName().toLowerCase(Locale.ROOT) + ".yml");
+        area.save(file);
+
+        dirty.remove(area.getName().toLowerCase(Locale.ROOT));
     }
 
     public List<AreaSpawnDefinition> resolveSpawns(Area area) {
         List<AreaSpawnDefinition> result = new ArrayList<>();
 
-        if (area == null) return result;
+        if (area == null)
+            return result;
 
         MobTemplateManager mobs = plugin.getMobTemplateManager();
 
@@ -175,29 +192,39 @@ public class AreaManager {
         return result;
     }
 
-    private void applyReferenceOverrides(AreaSpawnDefinition definition, AreaMobReference reference) {
-        if (reference.getCount() != null) definition.setCount(reference.getCount());
-        if (reference.getBoss() != null) definition.setBoss(reference.getBoss());
-        if (reference.getLevel() != null) definition.setLevel(reference.getLevel());
-        if (reference.getRespawnSeconds() != null) definition.setRespawnSeconds(reference.getRespawnSeconds());
-    }
-
     private EntityType parseSpawnType(String name) {
-        if (name == null || name.isBlank()) return null;
+        if (name == null || name.isBlank())
+            return null;
 
         try {
             EntityType type = EntityType.valueOf(name.toUpperCase(Locale.ROOT));
+
             return type.isAlive() && type.isSpawnable() ? type : null;
         } catch (IllegalArgumentException e) {
             return null;
         }
     }
 
+    private void applyReferenceOverrides(AreaSpawnDefinition definition, AreaMobReference reference) {
+        if (reference.getCount() != null)
+            definition.setCount(reference.getCount());
+
+        if (reference.getBoss() != null)
+            definition.setBoss(reference.getBoss());
+
+        if (reference.getLevel() != null)
+            definition.setLevel(reference.getLevel());
+
+        if (reference.getRespawnSeconds() != null)
+            definition.setRespawnSeconds(reference.getRespawnSeconds());
+    }
+
     private boolean isMythicId(String id) {
-        net.omni.outlands.integration.MythicMobsProvider provider =
+        MythicMobsProvider provider =
                 plugin.getExternalPluginManager().getMythicMobsProvider();
 
-        if (provider == null) return false;
+        if (provider == null)
+            return false;
 
         try {
             return provider.exists(id);
@@ -209,36 +236,43 @@ public class AreaManager {
     public boolean hasMobs(Area area) {
         MobTemplateManager mobs = plugin.getMobTemplateManager();
 
-        if (area == null || mobs == null) return false;
+        if (area == null || mobs == null)
+            return false;
 
         for (AreaMobReference reference : area.getMobReferences()) {
             String id = reference.getMobId();
 
-            if (mobs.exists(id) || parseSpawnType(id) != null || isMythicId(id)) {
+            if (mobs.exists(id) || parseSpawnType(id) != null || isMythicId(id))
                 return true;
-            }
         }
 
         return false;
     }
 
     public void saveDirty() {
-        if (dirty.isEmpty()) return;
+        if (dirty.isEmpty())
+            return;
 
         List<String> keys = new ArrayList<>(dirty);
         dirty.clear();
 
         for (String key : keys) {
             Area area = areas.get(key);
-            if (area != null) save(area);
+
+            if (area != null)
+                save(area);
         }
     }
 
     public void startAutoSave() {
         stopAutoSave();
 
-        int seconds = plugin.getConfigUtil() == null ? 0 : plugin.getConfigUtil().getAreaAutoSaveSeconds();
-        if (seconds <= 0) return;
+        int seconds = plugin.getConfigUtil() == null
+                ? 0
+                : plugin.getConfigUtil().getAreaAutoSaveSeconds();
+
+        if (seconds <= 0)
+            return;
 
         autoSaveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::saveDirty, seconds * 20L, seconds * 20L);
     }
@@ -255,8 +289,12 @@ public class AreaManager {
     public void startStateTask() {
         stopStateTask();
 
-        int seconds = plugin.getConfigUtil() == null ? 0 : plugin.getConfigUtil().getAreaStateCheckSeconds();
-        if (seconds <= 0) return;
+        int seconds = plugin.getConfigUtil() == null
+                ? 0
+                : plugin.getConfigUtil().getAreaStateCheckSeconds();
+
+        if (seconds <= 0)
+            return;
 
         stateTask = Bukkit.getScheduler().runTaskTimer(plugin, this::checkAreaStates, seconds * 20L, seconds * 20L);
     }
@@ -287,38 +325,70 @@ public class AreaManager {
         checkPlayerAreas();
     }
 
+    public void markDirty(Area area) {
+        if (area != null)
+            dirty.add(area.getName().toLowerCase(Locale.ROOT));
+    }
+
     private void checkPlayerAreas() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            UUID uuid = player.getUniqueId();
+        for (UUID uuid : plugin.getAreaSelectionVisualizer().getOutlandsPlayers()) {
+            Player player = Bukkit.getPlayer(uuid);
+
+            if (player == null)
+                continue;
+
             Area area = getAreaAt(player.getLocation());
             String current = area == null ? null : area.getName().toLowerCase(Locale.ROOT);
             String previous = playerAreas.get(uuid);
 
-            if (Objects.equals(previous, current)) continue;
+            if (Objects.equals(previous, current))
+                continue;
 
             if (previous != null) {
                 Area oldArea = getArea(previous);
-                if (oldArea != null) plugin.getAreaClearManager().onPlayerLeave(player, oldArea);
+
+                if (oldArea != null)
+                    plugin.getAreaClearManager().onPlayerLeave(player, oldArea);
             }
 
             if (area != null) {
                 playerAreas.put(uuid, current);
                 plugin.getAreaClearManager().onPlayerEnter(player, area);
-            } else {
+            } else
                 playerAreas.remove(uuid);
-            }
         }
     }
 
-    public void handlePlayerQuit(UUID uuid) {
-        String key = playerAreas.remove(uuid);
-        if (key == null) return;
+    public Area getAreaAt(Location location) {
+        for (Area area : areas.values()) {
+            if (area.contains(location))
+                return area;
+        }
+
+        return null;
+    }
+
+    public Area getArea(String name) {
+        if (name == null)
+            return null;
+
+        return areas.get(name.toLowerCase(Locale.ROOT));
+    }
+
+    public void handlePlayerQuit(Player player) {
+        if (player == null)
+            return;
+
+        String key = playerAreas.remove(player.getUniqueId());
+
+        if (key == null)
+            return;
 
         Area area = getArea(key);
-        if (area == null) return;
+        if (area == null)
+            return;
 
-        Player player = Bukkit.getPlayer(uuid);
-        if (player != null) plugin.getAreaClearManager().onPlayerLeave(player, area);
+        plugin.getAreaClearManager().onPlayerLeave(player, area);
     }
 
     public Area create(String name, World world, Location first, Location second) {
@@ -335,22 +405,16 @@ public class AreaManager {
         return area;
     }
 
-    public void save(Area area) {
-        if (!areasFolder.exists()) areasFolder.mkdirs();
-
-        File file = new File(areasFolder, area.getName().toLowerCase(Locale.ROOT) + ".yml");
-        area.save(file);
-        dirty.remove(area.getName().toLowerCase(Locale.ROOT));
-    }
-
     public boolean delete(String name) {
         Area area = areas.remove(name.toLowerCase(Locale.ROOT));
 
-        if (area == null) return false;
+        if (area == null)
+            return false;
 
         dirty.remove(area.getName().toLowerCase(Locale.ROOT));
 
         File file = new File(areasFolder, area.getName().toLowerCase(Locale.ROOT) + ".yml");
+
         if (file.exists() && !file.delete())
             plugin.getLogger().warning("Could not delete area file for '" + area.getName() + "'.");
 
@@ -359,10 +423,12 @@ public class AreaManager {
 
     public boolean rename(String oldName, String newName) {
         Area area = getArea(oldName);
-        if (area == null) return false;
+        if (area == null)
+            return false;
 
         String newKey = newName.toLowerCase(Locale.ROOT);
-        if (areas.containsKey(newKey) && !newKey.equals(area.getName().toLowerCase(Locale.ROOT))) return false;
+        if (areas.containsKey(newKey) && !newKey.equals(area.getName().toLowerCase(Locale.ROOT)))
+            return false;
 
         String oldKey = area.getName().toLowerCase(Locale.ROOT);
         File oldFile = new File(areasFolder, oldKey + ".yml");
@@ -379,16 +445,14 @@ public class AreaManager {
         return true;
     }
 
-    public Area getArea(String name) {
-        if (name == null) return null;
-        return areas.get(name.toLowerCase(Locale.ROOT));
-    }
-
     public boolean resize(String name, Location first, Location second) {
         Area area = getArea(name);
-        if (area == null) return false;
 
-        if (first.getWorld() != null) area.setWorld(first.getWorld().getName());
+        if (area == null)
+            return false;
+
+        if (first.getWorld() != null)
+            area.setWorld(first.getWorld().getName());
 
         area.setMin(first.clone());
         area.setMax(second.clone());
@@ -397,31 +461,22 @@ public class AreaManager {
         return true;
     }
 
-    public void markDirty(Area area) {
-        if (area != null) dirty.add(area.getName().toLowerCase(Locale.ROOT));
-    }
-
     public boolean update(String name) {
         Area area = getArea(name);
-        if (area == null) return false;
+
+        if (area == null)
+            return false;
 
         save(area);
         return true;
     }
 
     public boolean isLocked(Area area) {
-        if (area == null) return false;
+        if (area == null)
+            return false;
 
         AreaClearManager clearManager = plugin.getAreaClearManager();
         return clearManager != null && clearManager.isActive(area);
-    }
-
-    public Area getAreaAt(Location location) {
-        for (Area area : areas.values()) {
-            if (area.contains(location)) return area;
-        }
-
-        return null;
     }
 
     public List<Area> getAreas() {
@@ -508,19 +563,19 @@ public class AreaManager {
     }
 
     public boolean isWand(ItemStack item) {
-        if (item == null || item.getType() == Material.AIR) return false;
+        if (item == null || item.getType() == Material.AIR)
+            return false;
 
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return false;
-
-        return meta.getPersistentDataContainer().has(wandKey, PersistentDataType.BYTE);
+        return item.getPersistentDataContainer().has(wandKey, PersistentDataType.BYTE);
     }
 
     public String getWandArea(ItemStack item) {
-        if (item == null) return null;
+        if (item == null)
+            return null;
 
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) return null;
+        if (meta == null)
+            return null;
 
         return getWandAreaName(meta);
     }
@@ -536,22 +591,24 @@ public class AreaManager {
     }
 
     public WandMode getWandMode(ItemStack item) {
-        if (item == null) return WandMode.CORNER;
+        if (item == null)
+            return WandMode.CORNER;
 
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return WandMode.CORNER;
+        String mode = item.getPersistentDataContainer().get(wandModeKey, PersistentDataType.STRING);
 
-        String mode = meta.getPersistentDataContainer().get(wandModeKey, PersistentDataType.STRING);
         return WandMode.parse(mode, WandMode.CORNER);
     }
 
     public void setWandMode(ItemStack item, WandMode mode) {
-        if (item == null) return;
+        if (item == null)
+            return;
 
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) return;
+        if (meta == null)
+            return;
 
         applyWandDisplay(meta, getWandAreaName(meta), mode);
+
         item.setItemMeta(meta);
     }
 }

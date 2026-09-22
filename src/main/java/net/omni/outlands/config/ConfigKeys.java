@@ -41,6 +41,15 @@ public final class ConfigKeys {
     public static final String UPGRADE_GUI_FILLER_MATERIAL = "upgrade-gui.filler.material";
     public static final String UPGRADE_GUI_FILLER_NAME = "upgrade-gui.filler.name";
 
+    public static final String LOADOUT_GUI = "loadout-gui";
+    public static final String LOADOUT_GUI_TITLE = "loadout-gui.title";
+    public static final String LOADOUT_GUI_ROWS = "loadout-gui.rows";
+    public static final String LOADOUT_GUI_SLOTS = "loadout-gui.slots";
+    public static final String LOADOUT_GUI_FILLER_MATERIAL = "loadout-gui.filler.material";
+    public static final String LOADOUT_GUI_FILLER_NAME = "loadout-gui.filler.name";
+
+    public static final String STORAGE_AUTO_SAVE_SECONDS = "storage.auto-save-seconds";
+
     public static final String AREAS_AUTO_SAVE_SECONDS = "areas.auto-save-seconds";
     public static final String AREAS_STATE_CHECK_SECONDS = "areas.state-check-seconds";
     public static final String AREAS_MOB_CONTAINMENT_ENABLED = "areas.mob-containment.enabled";

@@ -16,8 +16,14 @@ settings:
   #   x: 0.5
   #   y: 64.0
   #   z: 0.5
-  #   yaw: 0.0
-  #   pitch: 0.0
+#   yaw: 0.0
+#   pitch: 0.0
+
+# Player data persistence
+storage:
+  # How often (in seconds) dirty player data is flushed to the database.
+  # Data is also saved on player quit and on shutdown.
+  auto-save-seconds: 30
 
 # Extraction reward settings
 extraction:
@@ -188,6 +194,28 @@ upgrade-gui:
     tool: 13
   filler:
     material: BLACK_STAINED_GLASS_PANE
+    name: ""
+
+# Loadout GUI (/outlands loadout)
+# Shows the player's saved loadout. Empty = no filler (Charm/Pet/Artifact
+# placeholders are always shown).
+loadout-gui:
+  title: "<gradient:#00AAFF:#55FFFF>Outlands Loadout</gradient>"
+  rows: 5
+  slots:
+    helmet: 10
+    chestplate: 19
+    leggings: 28
+    boots: 37
+    weapon: 11
+    tool: 12
+    food: 14
+    potions: 15
+    charm: 20
+    artifact: 22
+    pet: 24
+  filler:
+    material: ""
     name: ""
 
 # Area editing tools (/areas)

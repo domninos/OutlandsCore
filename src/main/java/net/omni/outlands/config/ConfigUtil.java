@@ -62,6 +62,24 @@ public class ConfigUtil {
     private String upgradeGuiFillerMaterial;
     private String upgradeGuiFillerName;
 
+    private String loadoutGuiTitle;
+    private int loadoutGuiRows;
+    private int loadoutGuiHelmetSlot;
+    private int loadoutGuiChestplateSlot;
+    private int loadoutGuiLeggingsSlot;
+    private int loadoutGuiBootsSlot;
+    private int loadoutGuiWeaponSlot;
+    private int loadoutGuiToolSlot;
+    private int loadoutGuiFoodSlot;
+    private int loadoutGuiPotionsSlot;
+    private int loadoutGuiCharmSlot;
+    private int loadoutGuiArtifactSlot;
+    private int loadoutGuiPetSlot;
+    private String loadoutGuiFillerMaterial;
+    private String loadoutGuiFillerName;
+
+    private int autoSaveSeconds;
+
     private boolean scoreboardEnabled;
     private boolean scoreboardOnlyInWorld;
     private int scoreboardUpdateTicks;
@@ -143,9 +161,12 @@ public class ConfigUtil {
         loadLoadoutDefaults(savedDefaults);
         loadUpgradeTokenDefinitions(savedDefaults);
         loadUpgradeGui(savedDefaults);
+        loadLoadoutGui(savedDefaults);
         loadSpawn();
         loadScoreboard(savedDefaults);
         loadLoot(savedDefaults);
+
+        this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
 
         if (savedDefaults.get() > 0) {
             plugin.saveConfig();
@@ -293,6 +314,25 @@ public class ConfigUtil {
         this.upgradeGuiFillerMaterial = getAndDefaultString(ConfigKeys.UPGRADE_GUI_FILLER_MATERIAL,
                 "BLACK_STAINED_GLASS_PANE", savedDefaults);
         this.upgradeGuiFillerName = getAndDefaultString(ConfigKeys.UPGRADE_GUI_FILLER_NAME, "", savedDefaults);
+    }
+
+    private void loadLoadoutGui(AtomicInteger savedDefaults) {
+        this.loadoutGuiTitle = getAndDefaultString(ConfigKeys.LOADOUT_GUI_TITLE,
+                "<gradient:#00AAFF:#55FFFF>Outlands Loadout</gradient>", savedDefaults);
+        this.loadoutGuiRows = Math.clamp(getAndDefaultInt(ConfigKeys.LOADOUT_GUI_ROWS, 5, savedDefaults), 1, 6);
+        this.loadoutGuiHelmetSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".helmet", 10, savedDefaults);
+        this.loadoutGuiChestplateSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".chestplate", 19, savedDefaults);
+        this.loadoutGuiLeggingsSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".leggings", 28, savedDefaults);
+        this.loadoutGuiBootsSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".boots", 37, savedDefaults);
+        this.loadoutGuiWeaponSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".weapon", 11, savedDefaults);
+        this.loadoutGuiToolSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".tool", 12, savedDefaults);
+        this.loadoutGuiFoodSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".food", 14, savedDefaults);
+        this.loadoutGuiPotionsSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".potions", 15, savedDefaults);
+        this.loadoutGuiCharmSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".charm", 20, savedDefaults);
+        this.loadoutGuiArtifactSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".artifact", 22, savedDefaults);
+        this.loadoutGuiPetSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".pet", 24, savedDefaults);
+        this.loadoutGuiFillerMaterial = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_MATERIAL, "", savedDefaults);
+        this.loadoutGuiFillerName = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_NAME, "", savedDefaults);
     }
 
     private void loadSpawn() {
@@ -622,6 +662,43 @@ public class ConfigUtil {
 
     public String getUpgradeGuiFillerName() {
         return upgradeGuiFillerName;
+    }
+
+    public String getLoadoutGuiTitle() {
+        return loadoutGuiTitle;
+    }
+
+    public int getLoadoutGuiSize() {
+        return loadoutGuiRows * 9;
+    }
+
+    public int getLoadoutGuiSlot(String slot) {
+        return switch (slot.toLowerCase()) {
+            case "helmet" -> loadoutGuiHelmetSlot;
+            case "chestplate" -> loadoutGuiChestplateSlot;
+            case "leggings" -> loadoutGuiLeggingsSlot;
+            case "boots" -> loadoutGuiBootsSlot;
+            case "weapon" -> loadoutGuiWeaponSlot;
+            case "tool" -> loadoutGuiToolSlot;
+            case "food" -> loadoutGuiFoodSlot;
+            case "potions" -> loadoutGuiPotionsSlot;
+            case "charm" -> loadoutGuiCharmSlot;
+            case "artifact" -> loadoutGuiArtifactSlot;
+            case "pet" -> loadoutGuiPetSlot;
+            default -> -1;
+        };
+    }
+
+    public String getLoadoutGuiFillerMaterial() {
+        return loadoutGuiFillerMaterial;
+    }
+
+    public String getLoadoutGuiFillerName() {
+        return loadoutGuiFillerName;
+    }
+
+    public int getAutoSaveSeconds() {
+        return autoSaveSeconds;
     }
 
     public boolean isScoreboardEnabled() {
