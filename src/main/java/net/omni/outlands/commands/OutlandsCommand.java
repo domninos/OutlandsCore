@@ -265,7 +265,9 @@ public class OutlandsCommand implements CommandExecutor {
 
         ItemStack tokenItem = plugin.getUpgradeManager().createUpgradeTokenItem(tokenKey);
         if (tokenItem != null) {
-            target.getInventory().addItem(tokenItem);
+            if (!target.getInventory().addItem(tokenItem).isEmpty())
+                target.getWorld().dropItemNaturally(target.getLocation(), tokenItem);
+
             plugin.sendMessage(sender, Messages.ADMIN_GIVE_UPGRADE
                     .replace("player", target.getName())
                     .replace("token", tokenKey));

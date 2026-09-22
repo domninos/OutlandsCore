@@ -59,6 +59,9 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     TODO:
      - migrate to MariaDB/MySQL, use plugin.yml's library loader
+     - loadout should be categorized and checked if they are permanent. food and potions are temporary.
+         this can be purchaseable using outlands tokens
+     - add location when someone does /extract, tp to that location.
      - add loot tables
      - /outlands storage (successful extraction sends all collected items) - paginated, add nav buttons (arrows), close button
      - fix /outlands withdraw gui, can collect Claim All and Discard All
