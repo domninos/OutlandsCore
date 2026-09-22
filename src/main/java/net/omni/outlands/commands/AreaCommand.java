@@ -1,47 +1,26 @@
 package net.omni.outlands.commands;
 
 import net.omni.outlands.OutlandsPlugin;
-import net.omni.outlands.area.Area;
-import net.omni.outlands.area.AreaManager;
-import net.omni.outlands.area.AreaMobReference;
-import net.omni.outlands.area.AreaSpawnDefinition;
-import net.omni.outlands.area.AreaState;
-import net.omni.outlands.area.WandMode;
+import net.omni.outlands.area.*;
 import net.omni.outlands.integration.MythicMobsProvider;
 import net.omni.outlands.messages.Messages;
 import net.omni.outlands.mobs.MobTemplate;
 import net.omni.outlands.mobs.MobTemplateManager;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.command.*;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.NonNull;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
-public class AreaCommand implements CommandExecutor, TabCompleter {
-
-    private static final List<String> SUBCOMMANDS = List.of(
-            "wand", "create", "rename", "resize", "update", "delete", "list", "info", "tp", "reset", "reload",
-            "mob", "addmob", "delmob", "setmob");
-
-    private static final List<String> AREA_SUBCOMMANDS = List.of(
-            "wand", "delete", "info", "tp", "reset", "rename", "resize", "update", "addmob", "delmob", "setmob");
-
-    private static final List<String> MOB_ACTIONS = List.of("create", "set", "remove", "list", "info");
-
-    private static final List<String> MOB_REF_FIELDS = List.of("count", "boss", "level", "respawn", "clear");
-
-    private static final List<String> MODES = List.of("corner", "spawn", "chest");
-
-    private static final List<String> SPAWN_TYPES = buildSpawnTypes();
-
-    private static final List<String> MATERIALS = buildMaterials();
+public class AreaCommand implements CommandExecutor {
 
     private final OutlandsPlugin plugin;
 
@@ -331,9 +310,12 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
             if (spawn.isMythic()) details.append(" <aqua>[mythic]</aqua>");
             if (spawn.isBoss()) details.append(" <red>[BOSS]</red>");
             if (spawn.getLevel() > 1) details.append(" <gray>lvl ").append(spawn.getLevel()).append("</gray>");
-            if (spawn.getHealth() > 0) details.append(" <gray>hp ").append(formatNumber(spawn.getHealth())).append("</gray>");
-            if (spawn.getDamage() > 0) details.append(" <gray>dmg ").append(formatNumber(spawn.getDamage())).append("</gray>");
-            if (spawn.getRespawnSeconds() > 0) details.append(" <gray>respawn ").append(spawn.getRespawnSeconds()).append("s</gray>");
+            if (spawn.getHealth() > 0)
+                details.append(" <gray>hp ").append(formatNumber(spawn.getHealth())).append("</gray>");
+            if (spawn.getDamage() > 0)
+                details.append(" <gray>dmg ").append(formatNumber(spawn.getDamage())).append("</gray>");
+            if (spawn.getRespawnSeconds() > 0)
+                details.append(" <gray>respawn ").append(spawn.getRespawnSeconds()).append("s</gray>");
 
             String type = spawn.getType() == null || spawn.getType().isBlank() ? "<red>unset</red>" : spawn.getType();
 
@@ -424,184 +406,6 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
                 yield true;
             }
         };
-    }
-
-    private boolean handleMobCreate(CommandSender sender, String[] args) {
-        if (args.length < 4) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob create {id} {type} [mythic]"));
-            return true;
-        }
-
-        String id = args[2];
-        String type = args[3];
-
-        Boolean explicitMythic = null;
-
-        if (args.length >= 5) {
-            explicitMythic = MobTemplateManager.parseBoolean(args[4]);
-
-            if (explicitMythic == null) {
-                plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob create {id} {type} [mythic]"));
-                return true;
-            }
-        }
-
-        MobTemplateManager mobs = plugin.getMobTemplateManager();
-
-        if (mobs.exists(id)) {
-            plugin.sendMessage(sender, Messages.AREA_MOB_EXISTS.replace("mob", id));
-            return true;
-        }
-
-        boolean mythic;
-
-        if (explicitMythic != null) {
-            mythic = explicitMythic;
-
-            if (mythic) {
-                if (!isMythicHook()) {
-                    plugin.sendMessage(sender, Messages.AREA_MOB_NEEDS_MYTHIC.toString());
-                    return true;
-                }
-
-                if (!mythicExists(type)) {
-                    plugin.sendMessage(sender, Messages.AREA_MOB_UNKNOWN_TYPE.replace("type", type));
-                    return true;
-                }
-            } else if (parseSpawnType(type) == null) {
-                plugin.sendMessage(sender, Messages.AREA_MOB_UNKNOWN_TYPE.replace("type", type));
-                return true;
-            }
-        } else {
-            mythic = parseSpawnType(type) == null;
-
-            if (mythic && (!isMythicHook() || !mythicExists(type))) {
-                plugin.sendMessage(sender, Messages.AREA_MOB_UNKNOWN_TYPE.replace("type", type));
-                return true;
-            }
-        }
-
-        mobs.create(id, type, mythic);
-
-        if (mythic) applyMythicAttributes(id, type);
-
-        plugin.sendMessage(sender, Messages.AREA_MOB_CREATED.replace("mob", id.toLowerCase(Locale.ROOT), "type", type));
-        return true;
-    }
-
-    private void applyMythicAttributes(String id, String type) {
-        MythicMobsProvider provider = plugin.getExternalPluginManager().getMythicMobsProvider();
-
-        if (provider == null) return;
-
-        try {
-            MythicMobsProvider.MythicAttributes attributes = provider.getAttributes(type);
-            if (attributes == null) return;
-
-            plugin.getMobTemplateManager().applyMythicAttributes(id,
-                    attributes.getHealth(), attributes.getDamage(), attributes.getDisplayName());
-        } catch (Throwable e) {
-            plugin.getLogger().warning("Failed to copy MythicMob attributes for '" + type + "': " + e.getMessage());
-        }
-    }
-
-    private boolean handleMobSet(CommandSender sender, String[] args) {
-        if (args.length < 5) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob set {id} {field} {value}"));
-            return true;
-        }
-
-        MobTemplateManager mobs = plugin.getMobTemplateManager();
-        String id = args[2];
-
-        if (!mobs.exists(id)) {
-            plugin.sendMessage(sender, Messages.AREA_MOB_NOT_FOUND.replace("mob", id));
-            return true;
-        }
-
-        String field = args[3];
-        String value = String.join(" ", Arrays.copyOfRange(args, 4, args.length));
-
-        if (!mobs.setField(id, field, value)) {
-            plugin.sendMessage(sender, Messages.AREA_MOB_INVALID.replace("field", field));
-            return true;
-        }
-
-        if (field.equalsIgnoreCase("type")) {
-            MobTemplate template = mobs.get(id);
-
-            if (template != null && template.isMythic()) applyMythicAttributes(id, value);
-        }
-
-        plugin.sendMessage(sender, Messages.AREA_MOB_SET.replace("mob", id, "field", field));
-        return true;
-    }
-
-    private boolean handleMobRemove(CommandSender sender, String[] args) {
-        if (args.length < 3) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob remove {id}"));
-            return true;
-        }
-
-        if (!plugin.getMobTemplateManager().delete(args[2])) {
-            plugin.sendMessage(sender, Messages.AREA_MOB_NOT_FOUND.replace("mob", args[2]));
-            return true;
-        }
-
-        plugin.sendMessage(sender, Messages.AREA_MOB_REMOVED.replace("mob", args[2]));
-        return true;
-    }
-
-    private boolean handleMobList(CommandSender sender) {
-        MobTemplateManager mobs = plugin.getMobTemplateManager();
-        List<String> ids = mobs.getIds();
-
-        if (ids.isEmpty()) {
-            plugin.sendMessage(sender, Messages.AREA_MOB_LIST_EMPTY.toString());
-            return true;
-        }
-
-        plugin.sendMessage(sender, Messages.AREA_MOB_LIST_HEADER.replace("count", String.valueOf(ids.size())));
-
-        for (String id : ids) {
-            MobTemplate template = mobs.get(id);
-            String type = template == null || template.getType().isBlank() ? "unset" : template.getType();
-            plugin.sendMessage(sender, Messages.AREA_MOB_LIST_ENTRY.replace("mob", id, "type", type));
-        }
-
-        return true;
-    }
-
-    private boolean handleMobInfo(CommandSender sender, String[] args) {
-        if (args.length < 3) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob info {id}"));
-            return true;
-        }
-
-        MobTemplate template = plugin.getMobTemplateManager().get(args[2]);
-
-        if (template == null) {
-            plugin.sendMessage(sender, Messages.AREA_MOB_NOT_FOUND.replace("mob", args[2]));
-            return true;
-        }
-
-        plugin.sendMessage(sender, "<gray>Mob <white>" + template.getId() + "</white>:</gray>");
-        plugin.sendMessage(sender, "<gray>Type: <white>" + (template.getType().isBlank() ? "unset" : template.getType())
-                + "</white>" + (template.isMythic() ? " <aqua>(mythic)</aqua>" : "") + "</gray>");
-        plugin.sendMessage(sender, "<gray>Level: <white>" + template.getLevel() + "</white></gray>");
-        plugin.sendMessage(sender, "<gray>Count: <white>" + template.getCount() + "</white></gray>");
-        plugin.sendMessage(sender, "<gray>Boss: <white>" + template.isBoss() + "</white></gray>");
-        plugin.sendMessage(sender, "<gray>Health: <white>" + formatNumber(template.getHealth()) + "</white></gray>");
-        plugin.sendMessage(sender, "<gray>Damage: <white>" + formatNumber(template.getDamage()) + "</white></gray>");
-        plugin.sendMessage(sender, "<gray>Respawn: <white>" + template.getRespawnSeconds() + "s</white></gray>");
-
-        if (template.getDisplayName() != null)
-            plugin.sendMessage(sender, "<gray>Display name: <white>" + template.getDisplayName() + "</white></gray>");
-
-        if (!template.getEquipment().isEmpty())
-            plugin.sendMessage(sender, "<gray>Equipment: <white>" + template.getEquipment() + "</white></gray>");
-
-        return true;
     }
 
     private boolean handleAddMob(CommandSender sender, String[] args) {
@@ -776,161 +580,184 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    @Override
-    public List<String> onTabComplete(@NonNull CommandSender sender, @NonNull Command command,
-                                      @NonNull String label, @NonNull String[] args) {
-        if (!sender.hasPermission("outlands.areas")) return List.of();
+    private String formatNumber(double value) {
+        if (value == Math.floor(value) && !Double.isInfinite(value))
+            return String.valueOf((long) value);
 
-        if (args.length == 1) return filter(SUBCOMMANDS, args[0]);
-
-        String sub = args[0].toLowerCase(Locale.ROOT);
-
-        if (sub.equals("mob")) return tabMob(args);
-
-        if (args.length == 2) {
-            if (AREA_SUBCOMMANDS.contains(sub)) return filter(plugin.getAreaManager().getNames(), args[1]);
-            return List.of();
-        }
-
-        if (sub.equals("addmob")) {
-            return switch (args.length) {
-                case 3 -> filter(addmobSuggestions(), args[2]);
-                case 4 -> filter(List.of("1", "5", "10"), args[3]);
-                case 5 -> filter(List.of("true", "false"), args[4]);
-                case 6 -> filter(List.of("1", "5", "10", "20"), args[5]);
-                case 7 -> filter(List.of("0", "30", "60"), args[6]);
-                default -> List.of();
-            };
-        }
-
-        if (sub.equals("delmob")) {
-            if (args.length == 3) return filter(areaMobIds(args[1]), args[2]);
-            return List.of();
-        }
-
-        if (sub.equals("setmob")) {
-            return switch (args.length) {
-                case 3 -> filter(areaMobIds(args[1]), args[2]);
-                case 4 -> filter(MOB_REF_FIELDS, args[3]);
-                case 5 -> filter(referenceValues(args[3]), args[4]);
-                default -> List.of();
-            };
-        }
-
-        if (args.length == 3 && sub.equals("wand"))
-            return filter(MODES, args[2]);
-
-        return List.of();
+        return String.valueOf(value);
     }
 
-    private List<String> tabMob(String[] args) {
-        if (args.length == 2) return filter(MOB_ACTIONS, args[1]);
-
-        String action = args[1].toLowerCase(Locale.ROOT);
-
-        if (args.length == 3) {
-            return switch (action) {
-                case "set", "remove", "info" -> filter(mobIds(), args[2]);
-                default -> List.of();
-            };
+    private boolean handleMobCreate(CommandSender sender, String[] args) {
+        if (args.length < 4) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob create {id} {type} [mythic]"));
+            return true;
         }
 
-        if (args.length == 4) {
-            return switch (action) {
-                case "create" -> filter(typeSuggestions(), args[3]);
-                case "set" -> filter(MobTemplateManager.FIELDS, args[3]);
-                default -> List.of();
-            };
+        String id = args[2];
+        String type = args[3];
+
+        Boolean explicitMythic = null;
+
+        if (args.length >= 5) {
+            explicitMythic = MobTemplateManager.parseBoolean(args[4]);
+
+            if (explicitMythic == null) {
+                plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob create {id} {type} [mythic]"));
+                return true;
+            }
         }
 
-        if (args.length == 5) {
-            return switch (action) {
-                case "create" -> filter(List.of("true", "false"), args[4]);
-                case "set" -> filter(fieldValues(args[3]), args[4]);
-                default -> List.of();
-            };
+        MobTemplateManager mobs = plugin.getMobTemplateManager();
+
+        if (mobs.exists(id)) {
+            plugin.sendMessage(sender, Messages.AREA_MOB_EXISTS.replace("mob", id));
+            return true;
         }
 
-        return List.of();
-    }
+        boolean mythic;
 
-    private List<String> fieldValues(String field) {
-        field = field.toLowerCase(Locale.ROOT);
+        if (explicitMythic != null) {
+            mythic = explicitMythic;
 
-        if (field.startsWith("equipment.")) return materialNames();
+            if (mythic) {
+                if (!isMythicHook()) {
+                    plugin.sendMessage(sender, Messages.AREA_MOB_NEEDS_MYTHIC.toString());
+                    return true;
+                }
 
-        return switch (field) {
-            case "type" -> typeSuggestions();
-            case "mythic", "boss" -> List.of("true", "false");
-            case "health" -> List.of("20");
-            case "damage" -> List.of("5");
-            case "count", "level" -> List.of("1");
-            case "respawn", "respawn-seconds" -> List.of("0", "60");
-            default -> List.of();
-        };
-    }
+                if (!mythicExists(type)) {
+                    plugin.sendMessage(sender, Messages.AREA_MOB_UNKNOWN_TYPE.replace("type", type));
+                    return true;
+                }
+            } else if (parseSpawnType(type) == null) {
+                plugin.sendMessage(sender, Messages.AREA_MOB_UNKNOWN_TYPE.replace("type", type));
+                return true;
+            }
+        } else {
+            mythic = parseSpawnType(type) == null;
 
-    private List<String> referenceValues(String field) {
-        field = field.toLowerCase(Locale.ROOT);
-
-        return switch (field) {
-            case "boss" -> List.of("true", "false");
-            case "count", "level" -> List.of("1");
-            case "respawn", "respawn-seconds" -> List.of("0", "60");
-            default -> List.of();
-        };
-    }
-
-    private List<String> areaMobIds(String areaName) {
-        Area area = plugin.getAreaManager().getArea(areaName);
-
-        if (area == null) return List.of();
-
-        List<String> ids = new ArrayList<>();
-
-        for (AreaMobReference reference : area.getMobReferences()) ids.add(reference.getMobId());
-
-        return ids;
-    }
-
-    private List<String> mobIds() {
-        return new ArrayList<>(plugin.getMobTemplateManager().getIds());
-    }
-
-    private List<String> addmobSuggestions() {
-        List<String> suggestions = new ArrayList<>(plugin.getMobTemplateManager().getIds());
-
-        for (String type : typeSuggestions()) {
-            if (!suggestions.contains(type)) suggestions.add(type);
+            if (mythic && (!isMythicHook() || !mythicExists(type))) {
+                plugin.sendMessage(sender, Messages.AREA_MOB_UNKNOWN_TYPE.replace("type", type));
+                return true;
+            }
         }
 
-        return suggestions;
+        mobs.create(id, type, mythic);
+
+        if (mythic) applyMythicAttributes(id, type);
+
+        plugin.sendMessage(sender, Messages.AREA_MOB_CREATED.replace("mob", id.toLowerCase(Locale.ROOT), "type", type));
+        return true;
     }
 
-    private List<String> typeSuggestions() {
-        List<String> types = new ArrayList<>(SPAWN_TYPES);
-        types.addAll(mythicIds());
-        return types;
+    private boolean handleMobSet(CommandSender sender, String[] args) {
+        if (args.length < 5) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob set {id} {field} {value}"));
+            return true;
+        }
+
+        MobTemplateManager mobs = plugin.getMobTemplateManager();
+        String id = args[2];
+
+        if (!mobs.exists(id)) {
+            plugin.sendMessage(sender, Messages.AREA_MOB_NOT_FOUND.replace("mob", id));
+            return true;
+        }
+
+        String field = args[3];
+        String value = String.join(" ", Arrays.copyOfRange(args, 4, args.length));
+
+        if (!mobs.setField(id, field, value)) {
+            plugin.sendMessage(sender, Messages.AREA_MOB_INVALID.replace("field", field));
+            return true;
+        }
+
+        if (field.equalsIgnoreCase("type")) {
+            MobTemplate template = mobs.get(id);
+
+            if (template != null && template.isMythic()) applyMythicAttributes(id, value);
+        }
+
+        plugin.sendMessage(sender, Messages.AREA_MOB_SET.replace("mob", id, "field", field));
+        return true;
     }
 
-    private List<String> mythicIds() {
-        MythicMobsProvider provider = plugin.getExternalPluginManager().getMythicMobsProvider();
+    private boolean handleMobRemove(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob remove {id}"));
+            return true;
+        }
 
-        if (provider == null) return List.of();
+        if (!plugin.getMobTemplateManager().delete(args[2])) {
+            plugin.sendMessage(sender, Messages.AREA_MOB_NOT_FOUND.replace("mob", args[2]));
+            return true;
+        }
+
+        plugin.sendMessage(sender, Messages.AREA_MOB_REMOVED.replace("mob", args[2]));
+        return true;
+    }
+
+    private boolean handleMobList(CommandSender sender) {
+        MobTemplateManager mobs = plugin.getMobTemplateManager();
+        List<String> ids = mobs.getIds();
+
+        if (ids.isEmpty()) {
+            plugin.sendMessage(sender, Messages.AREA_MOB_LIST_EMPTY.toString());
+            return true;
+        }
+
+        plugin.sendMessage(sender, Messages.AREA_MOB_LIST_HEADER.replace("count", String.valueOf(ids.size())));
+
+        for (String id : ids) {
+            MobTemplate template = mobs.get(id);
+            String type = template == null || template.getType().isBlank() ? "unset" : template.getType();
+            plugin.sendMessage(sender, Messages.AREA_MOB_LIST_ENTRY.replace("mob", id, "type", type));
+        }
+
+        return true;
+    }
+
+    private boolean handleMobInfo(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob info {id}"));
+            return true;
+        }
+
+        MobTemplate template = plugin.getMobTemplateManager().get(args[2]);
+
+        if (template == null) {
+            plugin.sendMessage(sender, Messages.AREA_MOB_NOT_FOUND.replace("mob", args[2]));
+            return true;
+        }
+
+        plugin.sendMessage(sender, "<gray>Mob <white>" + template.getId() + "</white>:</gray>");
+        plugin.sendMessage(sender, "<gray>Type: <white>" + (template.getType().isBlank() ? "unset" : template.getType())
+                + "</white>" + (template.isMythic() ? " <aqua>(mythic)</aqua>" : "") + "</gray>");
+        plugin.sendMessage(sender, "<gray>Level: <white>" + template.getLevel() + "</white></gray>");
+        plugin.sendMessage(sender, "<gray>Count: <white>" + template.getCount() + "</white></gray>");
+        plugin.sendMessage(sender, "<gray>Boss: <white>" + template.isBoss() + "</white></gray>");
+        plugin.sendMessage(sender, "<gray>Health: <white>" + formatNumber(template.getHealth()) + "</white></gray>");
+        plugin.sendMessage(sender, "<gray>Damage: <white>" + formatNumber(template.getDamage()) + "</white></gray>");
+        plugin.sendMessage(sender, "<gray>Respawn: <white>" + template.getRespawnSeconds() + "s</white></gray>");
+
+        if (template.getDisplayName() != null)
+            plugin.sendMessage(sender, "<gray>Display name: <white>" + template.getDisplayName() + "</white></gray>");
+
+        if (!template.getEquipment().isEmpty())
+            plugin.sendMessage(sender, "<gray>Equipment: <white>" + template.getEquipment() + "</white></gray>");
+
+        return true;
+    }
+
+    private EntityType parseSpawnType(String name) {
+        if (name == null || name.isBlank()) return null;
 
         try {
-            return new ArrayList<>(provider.getMobNames());
-        } catch (Throwable e) {
-            return List.of();
+            EntityType type = EntityType.valueOf(name.toUpperCase(Locale.ROOT));
+            return type.isAlive() && type.isSpawnable() ? type : null;
+        } catch (IllegalArgumentException e) {
+            return null;
         }
-    }
-
-    private List<String> materialNames() {
-        return MATERIALS;
-    }
-
-    private boolean isMythicHook() {
-        return plugin.getExternalPluginManager().getMythicMobsProvider() != null;
     }
 
     private boolean mythicExists(String id) {
@@ -945,55 +772,24 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private EntityType parseSpawnType(String name) {
-        if (name == null || name.isBlank()) return null;
+    private boolean isMythicHook() {
+        return plugin.getExternalPluginManager().getMythicMobsProvider() != null;
+    }
+
+    private void applyMythicAttributes(String id, String type) {
+        MythicMobsProvider provider = plugin.getExternalPluginManager().getMythicMobsProvider();
+
+        if (provider == null) return;
 
         try {
-            EntityType type = EntityType.valueOf(name.toUpperCase(Locale.ROOT));
-            return type.isAlive() && type.isSpawnable() ? type : null;
-        } catch (IllegalArgumentException e) {
-            return null;
+            MythicMobsProvider.MythicAttributes attributes = provider.getAttributes(type);
+            if (attributes == null) return;
+
+            plugin.getMobTemplateManager().applyMythicAttributes(id,
+                    attributes.getHealth(), attributes.getDamage(), attributes.getDisplayName());
+        } catch (Throwable e) {
+            plugin.getLogger().warning("Failed to copy MythicMob attributes for '" + type + "': " + e.getMessage());
         }
-    }
-
-    private String formatNumber(double value) {
-        if (value == Math.floor(value) && !Double.isInfinite(value))
-            return String.valueOf((long) value);
-
-        return String.valueOf(value);
-    }
-
-    private List<String> filter(List<String> options, String input) {
-        List<String> result = new ArrayList<>();
-        String lower = input.toLowerCase(Locale.ROOT);
-
-        for (String option : options) {
-            if (option.toLowerCase(Locale.ROOT).startsWith(lower)) result.add(option);
-        }
-
-        return result;
-    }
-
-    private static List<String> buildSpawnTypes() {
-        List<String> types = new ArrayList<>();
-
-        for (EntityType type : EntityType.values()) {
-            if (type.getName() == null || !type.isAlive() || !type.isSpawnable()) continue;
-            types.add(type.getName().toLowerCase(Locale.ROOT));
-        }
-
-        return types;
-    }
-
-    private static List<String> buildMaterials() {
-        List<String> materials = new ArrayList<>();
-
-        for (Material material : Material.values()) {
-            if (material.isLegacy() || !material.isItem()) continue;
-            materials.add(material.name().toLowerCase(Locale.ROOT));
-        }
-
-        return materials;
     }
 
     public void register() {
@@ -1005,6 +801,6 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         }
 
         cmd.setExecutor(this);
-        cmd.setTabCompleter(this);
+        cmd.setTabCompleter(new AreaTabCompleter(plugin));
     }
 }
