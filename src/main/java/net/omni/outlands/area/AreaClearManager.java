@@ -246,10 +246,12 @@ public class AreaClearManager {
         List<ItemStack> loot = new ArrayList<>();
 
         for (AreaLootEntry entry : area.getLootEntries()) {
-            if (random.nextDouble() > entry.getChance()) continue;
+            if (random.nextDouble() > entry.getChance())
+                continue;
 
             ItemStack item = resolveEntry(entry);
-            if (item == null) continue;
+            if (item == null)
+                continue;
 
             item.setAmount(Math.max(1, entry.getAmount()));
             loot.add(item);
@@ -262,7 +264,8 @@ public class AreaClearManager {
         String type = entry.getType();
         List<ItemStack> result = new ArrayList<>();
 
-        if (type == null || type.isBlank()) return result;
+        if (type == null || type.isBlank())
+            return result;
 
         if (type.contains(":")) {
             ExternalItemProvider provider = plugin.getExternalPluginManager().getItemProvider(type);
@@ -319,11 +322,15 @@ public class AreaClearManager {
         List<ItemStack> merged = new ArrayList<>();
 
         for (ItemStack item : loot) {
-            if (item == null) continue;
+            if (item == null)
+                continue;
 
             for (ItemStack existing : merged) {
-                if (existing.getAmount() >= existing.getMaxStackSize()) continue;
-                if (!existing.isSimilar(item)) continue;
+                if (existing.getAmount() >= existing.getMaxStackSize())
+                    continue;
+
+                if (!existing.isSimilar(item))
+                    continue;
 
                 int room = existing.getMaxStackSize() - existing.getAmount();
                 int transfer = Math.min(room, item.getAmount());
@@ -332,7 +339,8 @@ public class AreaClearManager {
                 item.setAmount(item.getAmount() - transfer);
             }
 
-            if (item.getAmount() > 0) merged.add(item);
+            if (item.getAmount() > 0)
+                merged.add(item);
         }
 
         return merged;
@@ -348,7 +356,8 @@ public class AreaClearManager {
     public void removeChest(AreaClearSession session) {
         Location location = session.getChestLocation();
 
-        if (location == null) return;
+        if (location == null)
+            return;
 
         Block block = location.getBlock();
 
@@ -358,9 +367,9 @@ public class AreaClearManager {
             if (state instanceof Chest chest) {
                 List<ItemStack> leftover = new ArrayList<>();
 
-                for (ItemStack item : chest.getBlockInventory().getContents()) {
-                    if (item != null) leftover.add(item);
-                }
+                for (ItemStack item : chest.getBlockInventory().getContents())
+                    if (item != null)
+                        leftover.add(item);
 
                 if (session.getArea().isLeftoverToWithdraw() && !leftover.isEmpty())
                     storeLeftover(session.getOwner(), leftover);
@@ -408,17 +417,22 @@ public class AreaClearManager {
 
     public int redeemChest(Player player, Location location) {
         AreaClearSession session = chestSessions.get(locationKey(location));
-        if (session == null) return 0;
-        if (!session.getOwner().equals(player.getUniqueId())) return -1;
+        if (session == null)
+            return 0;
+
+        if (!session.getOwner().equals(player.getUniqueId()))
+            return -1;
 
         Block block = location.getBlock();
-        if (block.getType() != Material.CHEST) return 0;
+        if (block.getType() != Material.CHEST)
+            return 0;
 
         List<ItemStack> loot = new ArrayList<>();
 
         if (block.getState() instanceof Chest chest) {
             for (ItemStack item : chest.getBlockInventory().getContents()) {
-                if (item != null) loot.add(item);
+                if (item != null)
+                    loot.add(item);
             }
         }
 
@@ -437,18 +451,21 @@ public class AreaClearManager {
 
     public boolean canOpenChest(Player player, Location location) {
         AreaClearSession session = chestSessions.get(locationKey(location));
-        if (session == null) return true;
+        if (session == null)
+            return true;
 
         return session.getOwner().equals(player.getUniqueId());
     }
 
     public void handleChestClose(Inventory inventory) {
-        if (!(inventory.getHolder() instanceof Chest chest)) return;
+        if (!(inventory.getHolder() instanceof Chest chest))
+            return;
 
         Location location = chest.getLocation();
         AreaClearSession session = chestSessions.get(locationKey(location));
 
-        if (session == null) return;
+        if (session == null)
+            return;
 
         boolean empty = true;
 
@@ -459,19 +476,31 @@ public class AreaClearManager {
             }
         }
 
-        if (empty) removeChest(session);
+        if (empty)
+            removeChest(session);
     }
 
     public void onPlayerEnter(Player player, Area area) {
         AreaClearSession session = sessions.get(area.getName().toLowerCase(Locale.ROOT));
 
         if (session == null) {
-            if (area.isReady()) startClear(area, player);
+            if (area.isReady())
+                startClear(area, player);
+            else if (plugin.getConfigUtil().isCooldownBlockEnabled())
+                notifyNotReady(player, area);
+
             return;
         }
 
-        if (session.getBossBar() != null) player.showBossBar(session.getBossBar());
+        if (session.getBossBar() != null)
+            player.showBossBar(session.getBossBar());
         applyGlow(player, session);
+    }
+
+    private void notifyNotReady(Player player, Area area) {
+        plugin.sendMessage(player, Messages.AREA_COOLDOWN_BLOCK
+                .replace("area", area.getName())
+                .replace("time", formatSeconds(area.getRemainingSeconds())));
     }
 
     public boolean startClear(Area area, Player owner) {

@@ -3,18 +3,13 @@ package net.omni.outlands.area;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.block.Block;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.jspecify.annotations.NonNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 public class Area {
 
@@ -52,7 +47,7 @@ public class Area {
         this.respawnSeconds = DEFAULT_RESPAWN_SECONDS;
 
         this.bossBarEnabled = true;
-        this.bossBarTitle = "<red>%area%</red>";
+        this.bossBarTitle = "<red>%area%</red> <dark_gray>»</dark_gray> <white>%remaining%/%total% mobs</white>";
         this.bossBarColor = BossBar.Color.RED;
         this.bossBarOverlay = BossBar.Overlay.PROGRESS;
 
@@ -84,7 +79,7 @@ public class Area {
         area.setRespawnSeconds(config.getInt("respawn-seconds", DEFAULT_RESPAWN_SECONDS));
 
         area.setBossBarEnabled(config.getBoolean("boss-bar.enabled", true));
-        area.setBossBarTitle(config.getString("boss-bar.title", "<red>%area%</red>"));
+        area.setBossBarTitle(config.getString("boss-bar.title", "<red>%area%</red> <dark_gray>»</dark_gray> <white>%remaining%/%total% mobs</white>"));
         area.setBossBarColor(parseColor(config.getString("boss-bar.color"), BossBar.Color.RED));
         area.setBossBarOverlay(parseOverlay(config.getString("boss-bar.style"), BossBar.Overlay.PROGRESS));
 
@@ -192,21 +187,6 @@ public class Area {
         return mobReferences;
     }
 
-    public AreaMobReference getMobReference(String mobId) {
-        if (mobId == null) return null;
-
-        for (AreaMobReference reference : mobReferences) {
-            if (reference.getMobId().equalsIgnoreCase(mobId)) return reference;
-        }
-
-        return null;
-    }
-
-    public boolean removeMobReference(String mobId) {
-        AreaMobReference reference = getMobReference(mobId);
-        return reference != null && mobReferences.remove(reference);
-    }
-
     public List<Location> getMobSpawnLocations() {
         return mobSpawnLocations;
     }
@@ -234,6 +214,21 @@ public class Area {
 
     public List<AreaLootEntry> getLootEntries() {
         return lootEntries;
+    }
+
+    public boolean removeMobReference(String mobId) {
+        AreaMobReference reference = getMobReference(mobId);
+        return reference != null && mobReferences.remove(reference);
+    }
+
+    public AreaMobReference getMobReference(String mobId) {
+        if (mobId == null) return null;
+
+        for (AreaMobReference reference : mobReferences) {
+            if (reference.getMobId().equalsIgnoreCase(mobId)) return reference;
+        }
+
+        return null;
     }
 
     public String getName() {
@@ -337,16 +332,18 @@ public class Area {
         Location nearestBoss = nearest(bossSpawnLocations, location, radius);
 
         if (nearestMob == null) {
-            if (nearestBoss == null) return false;
+            if (nearestBoss == null)
+                return false;
+
             bossSpawnLocations.remove(nearestBoss);
             return true;
         }
 
-        if (nearestBoss == null || distanceSq(nearestMob, location) <= distanceSq(nearestBoss, location)) {
+        if (nearestBoss == null ||
+                distanceSq(nearestMob, location) <= distanceSq(nearestBoss, location))
             mobSpawnLocations.remove(nearestMob);
-        } else {
+        else
             bossSpawnLocations.remove(nearestBoss);
-        }
 
         return true;
     }
@@ -370,7 +367,9 @@ public class Area {
     private static double distanceSq(Location first, Location second) {
         if (first == null || second == null || first.getWorld() == null || second.getWorld() == null)
             return Double.MAX_VALUE;
-        if (!first.getWorld().equals(second.getWorld())) return Double.MAX_VALUE;
+
+        if (!first.getWorld().equals(second.getWorld()))
+            return Double.MAX_VALUE;
 
         double dx = first.getX() - second.getX();
         double dy = first.getY() - second.getY();
@@ -387,50 +386,7 @@ public class Area {
             return mobSpawnLocations.get(random.nextInt(mobSpawnLocations.size()));
         }
 
-        return getRandomSpawnLocation(random);
-    }
-
-    public Location getRandomSpawnLocation(Random random) {
-        World bukkitWorld = Bukkit.getWorld(world);
-        if (bukkitWorld == null || min == null || max == null) return null;
-
-        int minX = Math.min(min.getBlockX(), max.getBlockX());
-        int minY = Math.min(min.getBlockY(), max.getBlockY());
-        int minZ = Math.min(min.getBlockZ(), max.getBlockZ());
-        int maxX = Math.max(min.getBlockX(), max.getBlockX());
-        int maxY = Math.max(min.getBlockY(), max.getBlockY());
-        int maxZ = Math.max(min.getBlockZ(), max.getBlockZ());
-
-        for (int attempt = 0; attempt < 10; attempt++) {
-            int x = minX + random.nextInt(maxX - minX + 1);
-            int z = minZ + random.nextInt(maxZ - minZ + 1);
-            int y = Math.min(bukkitWorld.getHighestBlockYAt(x, z), maxY);
-
-            if (y < minY) y = minY;
-
-            Block ground = bukkitWorld.getBlockAt(x, y - 1, z);
-            Material groundType = ground.getType();
-
-            if (groundType == Material.LAVA || groundType == Material.WATER
-                    || groundType == Material.FIRE || groundType == Material.CACTUS) {
-                continue;
-            }
-
-            return new Location(bukkitWorld, x + 0.5, y, z + 0.5);
-        }
-
-        return getCenter();
-    }
-
-    public Location getCenter() {
-        World bukkitWorld = Bukkit.getWorld(world);
-        if (bukkitWorld == null || min == null || max == null) return null;
-
-        double x = (min.getX() + max.getX()) / 2.0;
-        double y = Math.max(min.getY(), max.getY());
-        double z = (min.getZ() + max.getZ()) / 2.0;
-
-        return new Location(bukkitWorld, x, y, z);
+        return mobSpawnLocations.get(random.nextInt(mobSpawnLocations.size()));
     }
 
     public Location getChestLocation() {
@@ -498,8 +454,11 @@ public class Area {
     }
 
     public boolean isReady() {
-        if (!isDefined()) return false;
-        if (state == AreaState.READY) return true;
+        if (!isDefined())
+            return false;
+
+        if (state == AreaState.READY)
+            return true;
 
         if ((state == AreaState.COOLDOWN || state == AreaState.RESPAWNING)
                 && System.currentTimeMillis() >= unavailableUntil) {
@@ -515,13 +474,18 @@ public class Area {
     }
 
     public long getRemainingSeconds() {
-        if (state == AreaState.READY) return 0;
+        if (state == AreaState.READY)
+            return 0;
+
         return Math.max(0, (unavailableUntil - System.currentTimeMillis()) / 1000);
     }
 
     public boolean contains(Location location) {
-        if (!isDefined() || location == null || location.getWorld() == null) return false;
-        if (!location.getWorld().getName().equalsIgnoreCase(world)) return false;
+        if (!isDefined() || location == null || location.getWorld() == null)
+            return false;
+
+        if (!location.getWorld().getName().equalsIgnoreCase(world))
+            return false;
 
         int minX = Math.min(min.getBlockX(), max.getBlockX());
         int minY = Math.min(min.getBlockY(), max.getBlockY());
@@ -547,6 +511,17 @@ public class Area {
         int x = center.getBlockX();
         int z = center.getBlockZ();
         int y = bukkitWorld.getHighestBlockYAt(x, z);
+
+        return new Location(bukkitWorld, x, y, z);
+    }
+
+    public Location getCenter() {
+        World bukkitWorld = Bukkit.getWorld(world);
+        if (bukkitWorld == null || min == null || max == null) return null;
+
+        double x = (min.getX() + max.getX()) / 2.0;
+        double y = Math.max(min.getY(), max.getY());
+        double z = (min.getZ() + max.getZ()) / 2.0;
 
         return new Location(bukkitWorld, x, y, z);
     }
@@ -585,13 +560,7 @@ public class Area {
                 continue;
             }
 
-            Map<String, Object> map = new java.util.HashMap<>();
-            map.put("id", reference.getMobId());
-
-            if (reference.getCount() != null) map.put("count", reference.getCount());
-            if (reference.getBoss() != null) map.put("boss", reference.getBoss());
-            if (reference.getLevel() != null) map.put("level", reference.getLevel());
-            if (reference.getRespawnSeconds() != null) map.put("respawn-seconds", reference.getRespawnSeconds());
+            Map<String, Object> map = getMobMap(reference);
 
             mobList.add(map);
         }
@@ -611,19 +580,13 @@ public class Area {
         config.set("loot.leftover-to-withdraw", leftoverToWithdraw);
         config.set("loot.tokens", tokens);
 
-        if (lootTable != null && !lootTable.isBlank()) config.set("loot.type", lootTable);
-        if (itemsPerChest > 0) config.set("loot.items-per-chest", itemsPerChest);
+        if (lootTable != null && !lootTable.isBlank())
+            config.set("loot.type", lootTable);
 
-        List<Map<String, Object>> lootList = new ArrayList<>();
+        if (itemsPerChest > 0)
+            config.set("loot.items-per-chest", itemsPerChest);
 
-        for (AreaLootEntry entry : lootEntries) {
-            Map<String, Object> map = new java.util.HashMap<>();
-            if (entry.getMaterial() != null) map.put("material", entry.getMaterial());
-            if (entry.getExternal() != null) map.put("external", entry.getExternal());
-            map.put("amount", entry.getAmount());
-            map.put("chance", entry.getChance());
-            lootList.add(map);
-        }
+        List<Map<String, Object>> lootList = getLootList();
 
         config.set("loot.items", lootList);
 
@@ -636,13 +599,32 @@ public class Area {
         }
     }
 
+    private @NonNull Map<String, Object> getMobMap(AreaMobReference reference) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", reference.getMobId());
+
+        if (reference.getCount() != null)
+            map.put("count", reference.getCount());
+
+        if (reference.getBoss() != null)
+            map.put("boss", reference.getBoss());
+
+        if (reference.getLevel() != null)
+            map.put("level", reference.getLevel());
+
+        if (reference.getRespawnSeconds() != null)
+            map.put("respawn-seconds", reference.getRespawnSeconds());
+        return map;
+    }
+
     private static List<Map<String, Object>> serializeLocations(List<Location> locations) {
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (Location location : locations) {
-            if (location == null) continue;
+            if (location == null)
+                continue;
 
-            Map<String, Object> map = new java.util.HashMap<>();
+            Map<String, Object> map = new HashMap<>();
             map.put("x", location.getX());
             map.put("y", location.getY());
             map.put("z", location.getZ());
@@ -650,5 +632,25 @@ public class Area {
         }
 
         return result;
+    }
+
+    private @NonNull List<Map<String, Object>> getLootList() {
+        List<Map<String, Object>> lootList = new ArrayList<>();
+
+        for (AreaLootEntry entry : lootEntries) {
+            Map<String, Object> map = new HashMap<>();
+
+            if (entry.getMaterial() != null)
+                map.put("material", entry.getMaterial());
+
+            if (entry.getExternal() != null)
+                map.put("external", entry.getExternal());
+
+            map.put("amount", entry.getAmount());
+            map.put("chance", entry.getChance());
+            lootList.add(map);
+        }
+
+        return lootList;
     }
 }

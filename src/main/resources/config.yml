@@ -178,6 +178,10 @@ areas:
     check-ticks: 20
     # Extra blocks outside the area bounds mobs may wander before being returned.
     margin: 0
+  # When a player enters an area that's not READY (cooldown/respawning),
+  # tell them how long until it's available.
+  cooldown-block:
+    enabled: true
   outline:
     # How often (in ticks) the selection outline and point markers refresh
     refresh-ticks: 10
@@ -231,7 +235,7 @@ scoreboard:
   # Value of %outlands_ip%
   server-ip: "𝘱𝘭𝘢𝘺.𝘺𝘢𝘮𝘤𝘴.𝘯𝘦𝘵"
   # Timezone used by %outlands_clock% (e.g. UTC, Europe/London, America/New_York)
-  time-zone: "UTC"
+  time-zone: "GMT-6" # GMT-6 - Montana
   # Clock format used by %outlands_clock%
   time-format: "HH:mm:ss"
 

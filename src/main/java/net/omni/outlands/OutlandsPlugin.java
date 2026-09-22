@@ -66,11 +66,24 @@ public final class OutlandsPlugin extends JavaPlugin {
          this can be purchaseable using outlands tokens
      -
      - add location when someone does /extract, tp to that location.
+     - add "Kills:" -> mob kills on scoreboard
+     - add "Tokens:" -> tokens on scoreboard
      -
-     - fix protocollib saying glow per player not supported
-     - when someone enters an area on cooldown, say so including the time left/cooldown time, block them
+     - fix Message parser
+     - fix RunManager#restorePlayerInventory, add back the preRunInventory and preRunArmor
+     - remove getting pushed back if area is in cooldown
+     - commands / tab completer when doing /outlands addmob <area> <mob> ... should have the autocomplete
+       to say what it is
      -
-     - remaining mob count on boss bar
+     - If they die before extracting:
+        They immediately leave Outlands.
+        All loot collected during that run is lost.
+        No extraction rewards are granted.
+     -
+     - add a /outlands shop -> for food and potions,
+       unlocking enchantments, upgrading armor/weapons, purchasing passive upgrades
+     -
+     -
      -
      - party system (new database), update outlands.db (if SQLITE, but prefer MariaDB/MYSQL)
      - support party for loot (all party members must be able to loot it.
@@ -80,9 +93,12 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (scoreboardManager != null) scoreboardManager.stop();
+        if (scoreboardManager != null)
+            scoreboardManager.stop();
 
-        if (areaSelectionVisualizer != null) areaSelectionVisualizer.stop();
+        if (areaSelectionVisualizer != null)
+            areaSelectionVisualizer.stop();
+
         if (areaManager != null) {
             areaManager.stopAutoSave();
             areaManager.stopStateTask();
@@ -122,8 +138,9 @@ public final class OutlandsPlugin extends JavaPlugin {
         this.upgradeManager = new UpgradeManager(configUtil);
         this.loadoutManager = new LoadoutManager(this, upgradeManager);
         this.lootManager = new LootManager(this, playerDataManager, configUtil);
-        this.runManager = new RunManager(this, playerDataManager, cooldownManager, tokenManager);
+        this.runManager = new RunManager(this);
         this.externalPluginManager = new ExternalPluginManager(this);
+        externalPluginManager.detect();
 
         this.mobTemplateManager = new MobTemplateManager(this);
         this.mobTemplateManager.load();
@@ -137,7 +154,6 @@ public final class OutlandsPlugin extends JavaPlugin {
         this.lootTableManager = new LootTableManager(this);
         this.lootTableManager.load();
 
-        registerHooks();
         registerCommands();
         registerListeners();
 
@@ -160,10 +176,6 @@ public final class OutlandsPlugin extends JavaPlugin {
             sendConsole("<gray>Spigot detected. Using SpigotChatRenderer.</gray>");
         }
         MessageUtil.init(chatRenderer);
-    }
-
-    private void registerHooks() {
-        externalPluginManager.detect();
     }
 
     private void registerCommands() {

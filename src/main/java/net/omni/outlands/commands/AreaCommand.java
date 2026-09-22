@@ -623,7 +623,9 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (!plugin.getMobTemplateManager().exists(args[2])) {
+        if (!plugin.getMobTemplateManager().exists(args[2])
+                && parseSpawnType(args[2]) == null
+                && !mythicExists(args[2])) {
             plugin.sendMessage(sender, Messages.AREA_MOB_NOT_FOUND.replace("mob", args[2]));
             return true;
         }
@@ -792,11 +794,11 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
 
         if (sub.equals("addmob")) {
             return switch (args.length) {
-                case 3 -> filter(mobIds(), args[2]);
-                case 4 -> filter(List.of("1"), args[3]);
+                case 3 -> filter(addmobSuggestions(), args[2]);
+                case 4 -> filter(List.of("1", "5", "10"), args[3]);
                 case 5 -> filter(List.of("true", "false"), args[4]);
-                case 6 -> filter(List.of("1"), args[5]);
-                case 7 -> filter(List.of("0", "60"), args[6]);
+                case 6 -> filter(List.of("1", "5", "10", "20"), args[5]);
+                case 7 -> filter(List.of("0", "30", "60"), args[6]);
                 default -> List.of();
             };
         }
@@ -893,6 +895,16 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
 
     private List<String> mobIds() {
         return new ArrayList<>(plugin.getMobTemplateManager().getIds());
+    }
+
+    private List<String> addmobSuggestions() {
+        List<String> suggestions = new ArrayList<>(plugin.getMobTemplateManager().getIds());
+
+        for (String type : typeSuggestions()) {
+            if (!suggestions.contains(type)) suggestions.add(type);
+        }
+
+        return suggestions;
     }
 
     private List<String> typeSuggestions() {

@@ -24,12 +24,11 @@ public class RunManager {
 
     private final Map<UUID, ActiveRun> activeRuns;
 
-    public RunManager(OutlandsPlugin plugin, PlayerDataManager playerDataManager,
-                      CooldownManager cooldownManager, TokenManager tokenManager) {
+    public RunManager(OutlandsPlugin plugin) {
         this.plugin = plugin;
-        this.playerDataManager = playerDataManager;
-        this.cooldownManager = cooldownManager;
-        this.tokenManager = tokenManager;
+        this.playerDataManager = plugin.getPlayerDataManager();
+        this.cooldownManager = plugin.getCooldownManager();
+        this.tokenManager = plugin.getTokenManager();
         this.activeRuns = new HashMap<>();
     }
 
@@ -160,6 +159,7 @@ public class RunManager {
         return true;
     }
 
+    // TODO continue with this, give back the preRunInventory/Armor
     private void restorePlayerInventory(Player player, ActiveRun run) {
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
@@ -167,12 +167,14 @@ public class RunManager {
 
     public void handleDeath(UUID uuid) {
         ActiveRun run = activeRuns.remove(uuid);
-        if (run == null) return;
+        if (run == null)
+            return;
 
         run.cancelTimer();
 
         Player player = Bukkit.getPlayer(uuid);
-        if (player == null) return;
+        if (player == null)
+            return;
 
         PlayerData data = playerDataManager.getOrCreate(uuid);
         data.setExtractedLoot(new ArrayList<>());
@@ -187,7 +189,9 @@ public class RunManager {
 
     public void handleDisconnect(UUID uuid) {
         ActiveRun run = activeRuns.remove(uuid);
-        if (run == null) return;
+
+        if (run == null)
+            return;
 
         run.cancelTimer();
 
@@ -225,22 +229,28 @@ public class RunManager {
             long cooldownUntil = System.currentTimeMillis() + (plugin.getConfigUtil().getCooldownHours() * 3600000L);
             data.setCooldownUntil(cooldownUntil);
         }
+
         activeRuns.clear();
     }
 
     public void addKill(UUID uuid) {
         ActiveRun run = activeRuns.get(uuid);
-        if (run != null) run.incrementKills();
+
+        if (run != null)
+            run.incrementKills();
     }
 
     public void addEvent(UUID uuid) {
         ActiveRun run = activeRuns.get(uuid);
-        if (run != null) run.incrementEvents();
+
+        if (run != null)
+            run.incrementEvents();
     }
 
     public void addBoss(UUID uuid) {
         ActiveRun run = activeRuns.get(uuid);
-        if (run != null) run.incrementBosses();
+        if (run != null)
+            run.incrementBosses();
     }
 
     public static class ActiveRun {

@@ -8,6 +8,7 @@ import net.omni.outlands.mobs.MobTemplateManager;
 import org.bukkit.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -138,29 +139,71 @@ public class AreaManager {
         for (AreaMobReference reference : area.getMobReferences()) {
             MobTemplate template = mobs == null ? null : mobs.get(reference.getMobId());
 
-            if (template == null) {
+            AreaSpawnDefinition definition;
+
+            if (template != null) {
+                definition = new AreaSpawnDefinition(reference.getMobId());
+                definition.setType(template.getType());
+                definition.setMythic(template.isMythic());
+                definition.setDisplayName(template.getDisplayName());
+                definition.setHealth(template.getHealth());
+                definition.setDamage(template.getDamage());
+                definition.setEquipment(new HashMap<>(template.getEquipment()));
+                definition.setCount(reference.getCount() != null ? reference.getCount() : template.getCount());
+                definition.setBoss(reference.getBoss() != null ? reference.getBoss() : template.isBoss());
+                definition.setLevel(reference.getLevel() != null ? reference.getLevel() : template.getLevel());
+                definition.setRespawnSeconds(reference.getRespawnSeconds() != null
+                        ? reference.getRespawnSeconds() : template.getRespawnSeconds());
+            } else if (parseSpawnType(reference.getMobId()) != null) {
+                definition = new AreaSpawnDefinition(reference.getMobId());
+                definition.setType(reference.getMobId().toLowerCase(Locale.ROOT));
+                applyReferenceOverrides(definition, reference);
+            } else if (isMythicId(reference.getMobId())) {
+                definition = new AreaSpawnDefinition(reference.getMobId());
+                definition.setMythic(true);
+                definition.setType(reference.getMobId());
+                applyReferenceOverrides(definition, reference);
+            } else {
                 plugin.getLogger().warning("Area '" + area.getName() + "' references unknown mob '"
                         + reference.getMobId() + "'.");
                 continue;
             }
 
-            AreaSpawnDefinition definition = new AreaSpawnDefinition(reference.getMobId());
-            definition.setType(template.getType());
-            definition.setMythic(template.isMythic());
-            definition.setDisplayName(template.getDisplayName());
-            definition.setHealth(template.getHealth());
-            definition.setDamage(template.getDamage());
-            definition.setEquipment(new HashMap<>(template.getEquipment()));
-            definition.setCount(reference.getCount() != null ? reference.getCount() : template.getCount());
-            definition.setBoss(reference.getBoss() != null ? reference.getBoss() : template.isBoss());
-            definition.setLevel(reference.getLevel() != null ? reference.getLevel() : template.getLevel());
-            definition.setRespawnSeconds(reference.getRespawnSeconds() != null
-                    ? reference.getRespawnSeconds() : template.getRespawnSeconds());
-
             result.add(definition);
         }
 
         return result;
+    }
+
+    private void applyReferenceOverrides(AreaSpawnDefinition definition, AreaMobReference reference) {
+        if (reference.getCount() != null) definition.setCount(reference.getCount());
+        if (reference.getBoss() != null) definition.setBoss(reference.getBoss());
+        if (reference.getLevel() != null) definition.setLevel(reference.getLevel());
+        if (reference.getRespawnSeconds() != null) definition.setRespawnSeconds(reference.getRespawnSeconds());
+    }
+
+    private EntityType parseSpawnType(String name) {
+        if (name == null || name.isBlank()) return null;
+
+        try {
+            EntityType type = EntityType.valueOf(name.toUpperCase(Locale.ROOT));
+            return type.isAlive() && type.isSpawnable() ? type : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private boolean isMythicId(String id) {
+        net.omni.outlands.integration.MythicMobsProvider provider =
+                plugin.getExternalPluginManager().getMythicMobsProvider();
+
+        if (provider == null) return false;
+
+        try {
+            return provider.exists(id);
+        } catch (Throwable e) {
+            return false;
+        }
     }
 
     public boolean hasMobs(Area area) {
@@ -169,7 +212,11 @@ public class AreaManager {
         if (area == null || mobs == null) return false;
 
         for (AreaMobReference reference : area.getMobReferences()) {
-            if (mobs.exists(reference.getMobId())) return true;
+            String id = reference.getMobId();
+
+            if (mobs.exists(id) || parseSpawnType(id) != null || isMythicId(id)) {
+                return true;
+            }
         }
 
         return false;

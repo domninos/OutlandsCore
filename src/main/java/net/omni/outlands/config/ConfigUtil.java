@@ -41,6 +41,7 @@ public class ConfigUtil {
     private boolean mobContainmentEnabled;
     private int mobContainmentCheckTicks;
     private double mobContainmentMargin;
+    private boolean cooldownBlockEnabled;
     private int areaOutlineRefreshTicks;
     private int areaOutlineMaxPoints;
     private String areaOutlineParticle;
@@ -121,6 +122,7 @@ public class ConfigUtil {
         this.mobContainmentEnabled = getAndDefaultBoolean(ConfigKeys.AREAS_MOB_CONTAINMENT_ENABLED, true, savedDefaults);
         this.mobContainmentCheckTicks = getAndDefaultInt(ConfigKeys.AREAS_MOB_CONTAINMENT_CHECK_TICKS, 20, savedDefaults);
         this.mobContainmentMargin = getAndDefaultDouble(ConfigKeys.AREAS_MOB_CONTAINMENT_MARGIN, 0.0, savedDefaults);
+        this.cooldownBlockEnabled = getAndDefaultBoolean(ConfigKeys.AREAS_COOLDOWN_BLOCK_ENABLED, true, savedDefaults);
         this.areaOutlineRefreshTicks = getAndDefaultInt(ConfigKeys.AREAS_OUTLINE_REFRESH_TICKS, 10, savedDefaults);
         this.areaOutlineMaxPoints = getAndDefaultInt(ConfigKeys.AREAS_OUTLINE_MAX_POINTS, 256, savedDefaults);
         this.areaOutlineParticle = getAndDefaultString(ConfigKeys.AREAS_OUTLINE_PARTICLE, "DUST", savedDefaults);
@@ -581,6 +583,10 @@ public class ConfigUtil {
 
     public double getMobContainmentMargin() {
         return mobContainmentMargin;
+    }
+
+    public boolean isCooldownBlockEnabled() {
+        return cooldownBlockEnabled;
     }
 
     public int getDefaultLoadoutTier(String key) {

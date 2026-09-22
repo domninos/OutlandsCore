@@ -57,6 +57,7 @@ public enum Messages {
     AREA_CLEARED("area.cleared", "<green>Area <white>%area%</white> cleared! Loot is waiting in the chest.</green>"),
     AREA_ALREADY_ACTIVE("area.already-active", "<red>An area clear is already in progress.</red>"),
     AREA_NOT_READY("area.not-ready", "<red>This area is unavailable for another %time%.</red>"),
+    AREA_COOLDOWN_BLOCK("area.cooldown-block", "<red><white>%area%</white> is not ready. Try again in <white>%time%</white>. You were pushed back.</red>"),
     AREA_NO_SPAWNS("area.no-spawns", "<red>This area has no configured spawns.</red>"),
     AREA_CHEST_LOCKED("area.chest-locked", "<red>This loot chest belongs to another player.</red>"),
     AREA_WAND_GIVEN("area.wand-given", "<green>You received the area wand (<white>%mode%</white>).</green>"),

@@ -37,12 +37,15 @@ public class AreaListener implements Listener {
 
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK)
+            return;
 
         Block block = event.getClickedBlock();
-        if (block == null || block.getType() != Material.CHEST) return;
+        if (block == null || block.getType() != Material.CHEST)
+            return;
 
-        if (!plugin.getAreaClearManager().isLootChest(block.getLocation())) return;
+        if (!plugin.getAreaClearManager().isLootChest(block.getLocation()))
+            return;
 
         Player player = event.getPlayer();
         event.setCancelled(true);

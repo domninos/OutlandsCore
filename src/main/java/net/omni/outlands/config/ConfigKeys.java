@@ -46,6 +46,7 @@ public final class ConfigKeys {
     public static final String AREAS_MOB_CONTAINMENT_ENABLED = "areas.mob-containment.enabled";
     public static final String AREAS_MOB_CONTAINMENT_CHECK_TICKS = "areas.mob-containment.check-ticks";
     public static final String AREAS_MOB_CONTAINMENT_MARGIN = "areas.mob-containment.margin";
+    public static final String AREAS_COOLDOWN_BLOCK_ENABLED = "areas.cooldown-block.enabled";
     public static final String AREAS_OUTLINE_REFRESH_TICKS = "areas.outline.refresh-ticks";
     public static final String AREAS_OUTLINE_MAX_POINTS = "areas.outline.max-points";
     public static final String AREAS_OUTLINE_PARTICLE = "areas.outline.particle";

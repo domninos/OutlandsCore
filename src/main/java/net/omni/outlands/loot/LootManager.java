@@ -13,10 +13,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class LootManager {
 
@@ -49,7 +46,7 @@ public class LootManager {
     public List<ItemStack> getLoot(UUID uuid) {
         PlayerData data = playerDataManager.getOrCreate(uuid);
 
-        return new java.util.ArrayList<>(data.getExtractedLoot());
+        return new ArrayList<>(data.getExtractedLoot());
     }
 
     public void removeLootItem(UUID uuid, int index) {
@@ -67,7 +64,7 @@ public class LootManager {
     public void claimAll(UUID uuid) {
         PlayerData data = playerDataManager.getOrCreate(uuid);
 
-        data.setExtractedLoot(new java.util.ArrayList<>());
+        data.setExtractedLoot(new ArrayList<>());
 
         playerDataManager.savePlayer(uuid);
     }
