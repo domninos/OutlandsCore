@@ -64,12 +64,17 @@ public final class OutlandsPlugin extends JavaPlugin {
      - migrate to MariaDB/MySQL, use plugin.yml's library loader
      - loadout should be categorized and checked if they are permanent. food and potions are temporary.
          this can be purchaseable using outlands tokens
-     - add location when someone does /extract, tp to that location.
-     - /outlands storage (successful extraction sends all collected items) - paginated, add nav buttons (arrows), close button
      -
-     - fix /outlands withdraw gui, can collect Claim All and Discard All
+     - add location when someone does /extract, tp to that location.
+     -
+     - fix protocollib saying glow per player not supported
+     - when someone enters an area on cooldown, say so including the time left/cooldown time, block them
      -
      - remaining mob count on boss bar
+     -
+     - party system (new database), update outlands.db (if SQLITE, but prefer MariaDB/MYSQL)
+     - support party for loot (all party members must be able to loot it.
+     - add "Time remaining" for all party
 
      */
 

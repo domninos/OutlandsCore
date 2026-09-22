@@ -213,9 +213,14 @@ scoreboard:
   # Maximum of 15 lines (client limit)
   lines:
     - "<gray>𝑨𝒓𝒆𝒂 <dark_gray>» <white>%outlands_area%"
+    - ""
     - "<gray>𝑻𝒊𝒎𝒆 <dark_gray>» <white>%outlands_timer%"
+    - ""
     - "<gray>𝑷𝒂𝒓𝒕𝒚 <dark_gray>» <white>%outlands_party%"
+    - ""
     - "<gray>𝑪𝒍𝒐𝒄𝒌 <dark_gray>» <white>%outlands_clock%"
+    - ""
+    - ""
     - "<gray>𝑰𝑷 <dark_gray>» <white>%outlands_ip%"
   # Value of %outlands_area% when the player is not inside an area
   no-area-text: "𝘞𝘪𝘭𝘥𝘦𝘳𝘯𝘦𝘴𝘴"

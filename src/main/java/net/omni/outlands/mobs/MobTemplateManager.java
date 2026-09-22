@@ -8,11 +8,7 @@ import org.bukkit.inventory.EquipmentSlot;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 public class MobTemplateManager {
 
@@ -69,6 +65,39 @@ public class MobTemplateManager {
         plugin.sendConsole("<green>Loaded " + templates.size() + " mob template(s).</green>");
     }
 
+    public List<String> getIds() {
+        List<String> ids = new ArrayList<>();
+
+        for (MobTemplate template : templates.values()) ids.add(template.getId());
+
+        return ids;
+    }
+
+    public int size() {
+        return templates.size();
+    }
+
+    public void put(MobTemplate template) {
+        if (template != null) templates.put(template.getId().toLowerCase(Locale.ROOT), template);
+    }
+
+    public boolean create(String id, String type, boolean mythic) {
+        if (id == null || id.isBlank() || exists(id)) return false;
+
+        MobTemplate template = new MobTemplate(id.toLowerCase(Locale.ROOT));
+        template.setType(type);
+        template.setMythic(mythic);
+
+        templates.put(template.getId().toLowerCase(Locale.ROOT), template);
+        save();
+
+        return true;
+    }
+
+    public boolean exists(String id) {
+        return get(id) != null;
+    }
+
     public void save() {
         if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) return;
 
@@ -102,39 +131,6 @@ public class MobTemplateManager {
     public MobTemplate get(String id) {
         if (id == null) return null;
         return templates.get(id.toLowerCase(Locale.ROOT));
-    }
-
-    public boolean exists(String id) {
-        return get(id) != null;
-    }
-
-    public List<String> getIds() {
-        List<String> ids = new ArrayList<>();
-
-        for (MobTemplate template : templates.values()) ids.add(template.getId());
-
-        return ids;
-    }
-
-    public int size() {
-        return templates.size();
-    }
-
-    public void put(MobTemplate template) {
-        if (template != null) templates.put(template.getId().toLowerCase(Locale.ROOT), template);
-    }
-
-    public boolean create(String id, String type, boolean mythic) {
-        if (id == null || id.isBlank() || exists(id)) return false;
-
-        MobTemplate template = new MobTemplate(id.toLowerCase(Locale.ROOT));
-        template.setType(type);
-        template.setMythic(mythic);
-
-        templates.put(template.getId().toLowerCase(Locale.ROOT), template);
-        save();
-
-        return true;
     }
 
     public boolean applyMythicAttributes(String id, double health, double damage, String displayName) {
