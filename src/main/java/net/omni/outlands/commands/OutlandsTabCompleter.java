@@ -46,12 +46,7 @@ public class OutlandsTabCompleter implements TabCompleter {
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "settokens", "givetokens", "giveupgrade", "forceextract" -> {
-                    List<String> names = Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
-                    List<String> completions = new ArrayList<>();
-                    StringUtil.copyPartialMatches(args[1], names, completions);
-                    yield completions;
-                }
+                case "settokens", "givetokens", "giveupgrade", "forceextract" -> null;
                 default -> Collections.emptyList();
             };
         }

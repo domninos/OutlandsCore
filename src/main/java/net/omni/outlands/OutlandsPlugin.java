@@ -75,6 +75,7 @@ public final class OutlandsPlugin extends JavaPlugin {
      - commands / tab completer when doing /outlands addmob <area> <mob> ... should have the autocomplete
        to say what it is
      -
+     -
      - If they die before extracting:
         They immediately leave Outlands.
         All loot collected during that run is lost.

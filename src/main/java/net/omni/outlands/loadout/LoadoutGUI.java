@@ -70,8 +70,8 @@ public class LoadoutGUI {
                 case CHESTPLATE -> "<yellow>Chestplate</yellow>";
                 case LEGGINGS -> "<yellow>Leggings</yellow>";
                 case BOOTS -> "<yellow>Boots</yellow>";
-                case WEAPON -> "<red>Weapon</red>";
-                case TOOL -> "<aqua>Tool</aqua>";
+                case WEAPON -> "<red>Sword</red>";
+                case TOOL -> "<aqua>Pickaxe</aqua>";
                 case FOOD -> "<gold>Food</gold>";
                 case POTION -> "<light_purple>Potions</light_purple>";
                 case CHARM -> "<dark_purple>Charm</dark_purple>";

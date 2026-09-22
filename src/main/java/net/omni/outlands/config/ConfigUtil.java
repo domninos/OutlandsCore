@@ -57,6 +57,8 @@ public class ConfigUtil {
     private int upgradeGuiChestplateSlot;
     private int upgradeGuiLeggingsSlot;
     private int upgradeGuiBootsSlot;
+    private int upgradeGuiWeaponSlot;
+    private int upgradeGuiToolSlot;
     private String upgradeGuiFillerMaterial;
     private String upgradeGuiFillerName;
 
@@ -190,98 +192,6 @@ public class ConfigUtil {
         return plugin.getConfig().getDouble(path);
     }
 
-    private List<String> getAndDefaultStringList(String path, List<String> defaultVal, AtomicInteger counter) {
-        if (!plugin.getConfig().contains(path)) {
-            plugin.getConfig().set(path, defaultVal);
-            counter.incrementAndGet();
-            return new ArrayList<>(defaultVal);
-        }
-        return new ArrayList<>(plugin.getConfig().getStringList(path));
-    }
-
-    private void loadScoreboard(AtomicInteger savedDefaults) {
-        this.scoreboardEnabled = getAndDefaultBoolean(ConfigKeys.SCOREBOARD_ENABLED, true, savedDefaults);
-        this.scoreboardOnlyInWorld = getAndDefaultBoolean(ConfigKeys.SCOREBOARD_ONLY_IN_WORLD, true, savedDefaults);
-        this.scoreboardUpdateTicks = Math.max(1, getAndDefaultInt(ConfigKeys.SCOREBOARD_UPDATE_TICKS, 20, savedDefaults));
-        this.scoreboardTitle = getAndDefaultString(ConfigKeys.SCOREBOARD_TITLE, "Outlands", savedDefaults);
-        this.scoreboardNoAreaText = getAndDefaultString(ConfigKeys.SCOREBOARD_NO_AREA_TEXT, "Wilderness", savedDefaults);
-        this.scoreboardPartyPlaceholder = getAndDefaultString(ConfigKeys.SCOREBOARD_PARTY_PLACEHOLDER, "None", savedDefaults);
-        this.scoreboardIdleText = getAndDefaultString(ConfigKeys.SCOREBOARD_IDLE_TEXT, "Idle", savedDefaults);
-        this.scoreboardServerIp = getAndDefaultString(ConfigKeys.SCOREBOARD_SERVER_IP, "play.example.com", savedDefaults);
-        this.scoreboardTimeZone = getAndDefaultString(ConfigKeys.SCOREBOARD_TIME_ZONE, "UTC", savedDefaults);
-        this.scoreboardTimeFormat = getAndDefaultString(ConfigKeys.SCOREBOARD_TIME_FORMAT, "HH:mm:ss", savedDefaults);
-        this.scoreboardLines = getAndDefaultStringList(ConfigKeys.SCOREBOARD_LINES, List.of(
-                "<gray>Area <dark_gray>» <white>%outlands_area%",
-                "<gray>Time <dark_gray>» <white>%outlands_timer%",
-                "<gray>Party <dark_gray>» <white>%outlands_party%",
-                "<gray>Clock <dark_gray>» <white>%outlands_clock%",
-                "<gray>IP <dark_gray>» <white>%outlands_ip%"
-        ), savedDefaults);
-    }
-
-    private void loadLoot(AtomicInteger savedDefaults) {
-        this.lootDefaultItemsPerChest = Math.max(1, getAndDefaultInt(ConfigKeys.LOOT_DEFAULT_ITEMS_PER_CHEST, 3, savedDefaults));
-        this.lootTokenItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_MATERIAL, "GOLD_INGOT", savedDefaults);
-        this.lootTokenItemName = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_NAME, "<gold>Outland Token</gold>", savedDefaults);
-        this.lootTimeItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_MATERIAL, "CLOCK", savedDefaults);
-        this.lootTimeItemName = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_NAME, "<yellow>Extra Time</yellow>", savedDefaults);
-    }
-
-    private void loadLoadoutDefaults(AtomicInteger savedDefaults) {
-        defaultLoadoutTiers.clear();
-
-        for (String key : DEFAULT_LOADOUT_KEYS) {
-            int defaultTier = key.equals("armor_chestplate") ? 1 : 0;
-            int tier = getAndDefaultInt(ConfigKeys.LOADOUT_DEFAULTS + "." + key, defaultTier, savedDefaults);
-            defaultLoadoutTiers.put(key, Math.max(0, tier));
-        }
-    }
-
-    private void loadUpgradeGui(AtomicInteger savedDefaults) {
-        this.upgradeGuiTitle = getAndDefaultString(ConfigKeys.UPGRADE_GUI_TITLE,
-                "<gradient:#00AAFF:#55FFFF>Upgrade Armor</gradient>", savedDefaults);
-        this.upgradeGuiRows = Math.clamp(getAndDefaultInt(ConfigKeys.UPGRADE_GUI_ROWS, 3, savedDefaults), 1, 6);
-        this.upgradeGuiHelmetSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".helmet", 10, savedDefaults);
-        this.upgradeGuiChestplateSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".chestplate", 12, savedDefaults);
-        this.upgradeGuiLeggingsSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".leggings", 14, savedDefaults);
-        this.upgradeGuiBootsSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".boots", 16, savedDefaults);
-        this.upgradeGuiFillerMaterial = getAndDefaultString(ConfigKeys.UPGRADE_GUI_FILLER_MATERIAL,
-                "BLACK_STAINED_GLASS_PANE", savedDefaults);
-        this.upgradeGuiFillerName = getAndDefaultString(ConfigKeys.UPGRADE_GUI_FILLER_NAME, "", savedDefaults);
-    }
-
-    private void loadSpawn() {
-        this.spawnLocation = null;
-
-        String worldName = plugin.getConfig().getString(ConfigKeys.SPAWN + ".world");
-        if (worldName == null) return;
-
-        World world = Bukkit.getWorld(worldName);
-        if (world == null) return;
-
-        this.spawnLocation = new Location(world,
-                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".x"),
-                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".y"),
-                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".z"),
-                (float) plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".yaw"),
-                (float) plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".pitch"));
-    }
-
-    public void setSpawnLocation(Location location) {
-        if (location == null || location.getWorld() == null) return;
-
-        this.spawnLocation = location.clone();
-
-        FileConfiguration config = plugin.getConfig();
-        config.set(ConfigKeys.SPAWN + ".world", location.getWorld().getName());
-        config.set(ConfigKeys.SPAWN + ".x", location.getX());
-        config.set(ConfigKeys.SPAWN + ".y", location.getY());
-        config.set(ConfigKeys.SPAWN + ".z", location.getZ());
-        config.set(ConfigKeys.SPAWN + ".yaw", location.getYaw());
-        config.set(ConfigKeys.SPAWN + ".pitch", location.getPitch());
-        plugin.saveConfig();
-    }
-
     private int[] parseColor(String value, int defaultRed, int defaultGreen, int defaultBlue) {
         if (value != null) {
             String[] parts = value.split(",");
@@ -333,6 +243,16 @@ public class ConfigUtil {
         }
     }
 
+    private void loadLoadoutDefaults(AtomicInteger savedDefaults) {
+        defaultLoadoutTiers.clear();
+
+        for (String key : DEFAULT_LOADOUT_KEYS) {
+            int defaultTier = key.equals("armor_chestplate") ? 1 : 0;
+            int tier = getAndDefaultInt(ConfigKeys.LOADOUT_DEFAULTS + "." + key, defaultTier, savedDefaults);
+            defaultLoadoutTiers.put(key, Math.max(0, tier));
+        }
+    }
+
     private void loadUpgradeTokenDefinitions(AtomicInteger savedDefaults) {
         upgradeTokenDefinitions.clear();
 
@@ -351,14 +271,73 @@ public class ConfigUtil {
                 if (tokenSection != null) {
                     Map<String, Object> values = new HashMap<>();
 
-                    for (String valueKey : tokenSection.getKeys(false)) {
+                    for (String valueKey : tokenSection.getKeys(false))
                         values.put(valueKey, tokenSection.get(valueKey));
-                    }
 
                     upgradeTokenDefinitions.put(key, values);
                 }
             }
         }
+    }
+
+    private void loadUpgradeGui(AtomicInteger savedDefaults) {
+        this.upgradeGuiTitle = getAndDefaultString(ConfigKeys.UPGRADE_GUI_TITLE,
+                "<gradient:#00AAFF:#55FFFF>Upgrade Armor</gradient>", savedDefaults);
+        this.upgradeGuiRows = Math.clamp(getAndDefaultInt(ConfigKeys.UPGRADE_GUI_ROWS, 3, savedDefaults), 1, 6);
+        this.upgradeGuiHelmetSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".helmet", 10, savedDefaults);
+        this.upgradeGuiChestplateSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".chestplate", 12, savedDefaults);
+        this.upgradeGuiLeggingsSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".leggings", 14, savedDefaults);
+        this.upgradeGuiBootsSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".boots", 16, savedDefaults);
+        this.upgradeGuiWeaponSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".weapon", 11, savedDefaults);
+        this.upgradeGuiToolSlot = getAndDefaultInt(ConfigKeys.UPGRADE_GUI_SLOTS + ".tool", 13, savedDefaults);
+        this.upgradeGuiFillerMaterial = getAndDefaultString(ConfigKeys.UPGRADE_GUI_FILLER_MATERIAL,
+                "BLACK_STAINED_GLASS_PANE", savedDefaults);
+        this.upgradeGuiFillerName = getAndDefaultString(ConfigKeys.UPGRADE_GUI_FILLER_NAME, "", savedDefaults);
+    }
+
+    private void loadSpawn() {
+        this.spawnLocation = null;
+
+        String worldName = plugin.getConfig().getString(ConfigKeys.SPAWN + ".world");
+        if (worldName == null) return;
+
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) return;
+
+        this.spawnLocation = new Location(world,
+                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".x"),
+                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".y"),
+                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".z"),
+                (float) plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".yaw"),
+                (float) plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".pitch"));
+    }
+
+    private void loadScoreboard(AtomicInteger savedDefaults) {
+        this.scoreboardEnabled = getAndDefaultBoolean(ConfigKeys.SCOREBOARD_ENABLED, true, savedDefaults);
+        this.scoreboardOnlyInWorld = getAndDefaultBoolean(ConfigKeys.SCOREBOARD_ONLY_IN_WORLD, true, savedDefaults);
+        this.scoreboardUpdateTicks = Math.max(1, getAndDefaultInt(ConfigKeys.SCOREBOARD_UPDATE_TICKS, 20, savedDefaults));
+        this.scoreboardTitle = getAndDefaultString(ConfigKeys.SCOREBOARD_TITLE, "Outlands", savedDefaults);
+        this.scoreboardNoAreaText = getAndDefaultString(ConfigKeys.SCOREBOARD_NO_AREA_TEXT, "Wilderness", savedDefaults);
+        this.scoreboardPartyPlaceholder = getAndDefaultString(ConfigKeys.SCOREBOARD_PARTY_PLACEHOLDER, "None", savedDefaults);
+        this.scoreboardIdleText = getAndDefaultString(ConfigKeys.SCOREBOARD_IDLE_TEXT, "Idle", savedDefaults);
+        this.scoreboardServerIp = getAndDefaultString(ConfigKeys.SCOREBOARD_SERVER_IP, "play.example.com", savedDefaults);
+        this.scoreboardTimeZone = getAndDefaultString(ConfigKeys.SCOREBOARD_TIME_ZONE, "UTC", savedDefaults);
+        this.scoreboardTimeFormat = getAndDefaultString(ConfigKeys.SCOREBOARD_TIME_FORMAT, "HH:mm:ss", savedDefaults);
+        this.scoreboardLines = getAndDefaultStringList(ConfigKeys.SCOREBOARD_LINES, List.of(
+                "<gray>Area <dark_gray>» <white>%outlands_area%",
+                "<gray>Time <dark_gray>» <white>%outlands_timer%",
+                "<gray>Party <dark_gray>» <white>%outlands_party%",
+                "<gray>Clock <dark_gray>» <white>%outlands_clock%",
+                "<gray>IP <dark_gray>» <white>%outlands_ip%"
+        ), savedDefaults);
+    }
+
+    private void loadLoot(AtomicInteger savedDefaults) {
+        this.lootDefaultItemsPerChest = Math.max(1, getAndDefaultInt(ConfigKeys.LOOT_DEFAULT_ITEMS_PER_CHEST, 3, savedDefaults));
+        this.lootTokenItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_MATERIAL, "GOLD_INGOT", savedDefaults);
+        this.lootTokenItemName = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_NAME, "<gold>Outland Token</gold>", savedDefaults);
+        this.lootTimeItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_MATERIAL, "CLOCK", savedDefaults);
+        this.lootTimeItemName = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_NAME, "<yellow>Extra Time</yellow>", savedDefaults);
     }
 
     @SuppressWarnings("unchecked")
@@ -481,6 +460,15 @@ public class ConfigUtil {
         return tokens;
     }
 
+    private List<String> getAndDefaultStringList(String path, List<String> defaultVal, AtomicInteger counter) {
+        if (!plugin.getConfig().contains(path)) {
+            plugin.getConfig().set(path, defaultVal);
+            counter.incrementAndGet();
+            return new ArrayList<>(defaultVal);
+        }
+        return new ArrayList<>(plugin.getConfig().getStringList(path));
+    }
+
     public String getWorldName() {
         return worldName;
     }
@@ -569,6 +557,21 @@ public class ConfigUtil {
         return spawnLocation;
     }
 
+    public void setSpawnLocation(Location location) {
+        if (location == null || location.getWorld() == null) return;
+
+        this.spawnLocation = location.clone();
+
+        FileConfiguration config = plugin.getConfig();
+        config.set(ConfigKeys.SPAWN + ".world", location.getWorld().getName());
+        config.set(ConfigKeys.SPAWN + ".x", location.getX());
+        config.set(ConfigKeys.SPAWN + ".y", location.getY());
+        config.set(ConfigKeys.SPAWN + ".z", location.getZ());
+        config.set(ConfigKeys.SPAWN + ".yaw", location.getYaw());
+        config.set(ConfigKeys.SPAWN + ".pitch", location.getPitch());
+        plugin.saveConfig();
+    }
+
     public int getAreaStateCheckSeconds() {
         return areaStateCheckSeconds;
     }
@@ -607,6 +610,8 @@ public class ConfigUtil {
             case "chestplate" -> upgradeGuiChestplateSlot;
             case "leggings" -> upgradeGuiLeggingsSlot;
             case "boots" -> upgradeGuiBootsSlot;
+            case "weapon" -> upgradeGuiWeaponSlot;
+            case "tool" -> upgradeGuiToolSlot;
             default -> -1;
         };
     }

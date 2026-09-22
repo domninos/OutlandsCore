@@ -275,11 +275,7 @@ public class PlayerListener implements Listener {
                     "slot", slot.getDisplayName()));
 
             token.setAmount(token.getAmount() - 1);
-
-            if (event != null)
-                event.setCursor(token);
-            else
-                player.setItemOnCursor(token);
+            event.setCursor(token);
 
             new UpgradeGUI(plugin).open(player, data);
         } else {
@@ -315,18 +311,103 @@ public class PlayerListener implements Listener {
 
     private void handleUpgradeDrag(Player player, InventoryDragEvent event) {
         UpgradeGUI gui = new UpgradeGUI(plugin);
-        ItemStack token = event.getOldCursor();
+        ItemStack token = resolveDragToken(event);
 
-        if (token.getType() == Material.AIR) return;
+        if (token == null || !UpgradeTokenUtil.isUpgradeToken(token)) return;
+
+        String tokenSlot = UpgradeTokenUtil.getUpgradeSlot(token);
+        int tokenTier = UpgradeTokenUtil.getUpgradeTier(token);
+
+        if (tokenSlot == null || tokenTier <= 0) return;
 
         for (int rawSlot : event.getRawSlots()) {
             LoadoutSlot slot = gui.getSlotFromClick(rawSlot);
 
             if (slot != null) {
-                applyUpgrade(player, token, slot, null);
+                applyUpgradeDeferred(player, token, slot, tokenSlot, tokenTier);
                 return;
             }
         }
+    }
+
+    private ItemStack resolveDragToken(InventoryDragEvent event) {
+        ItemStack oldCursor = event.getOldCursor();
+        if (oldCursor != null && UpgradeTokenUtil.isUpgradeToken(oldCursor)) return oldCursor;
+
+        ItemStack cursor = event.getView().getCursor();
+        if (cursor != null && UpgradeTokenUtil.isUpgradeToken(cursor)) return cursor;
+
+        for (ItemStack item : event.getNewItems().values()) {
+            if (item != null && UpgradeTokenUtil.isUpgradeToken(item)) return item;
+        }
+
+        return null;
+    }
+
+    private void applyUpgradeDeferred(Player player, ItemStack token, LoadoutSlot slot,
+                                      String tokenSlot, int tokenTier) {
+        if (!tokenMatches(slot, tokenSlot)) {
+            plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
+            return;
+        }
+
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+
+            if (!plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), tokenTier, data)) {
+                plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
+                return;
+            }
+
+            if (!consumeUpgradeToken(player, token)) {
+                plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
+                return;
+            }
+
+            plugin.sendMessage(player, Messages.LOADOUT_TOKEN_APPLIED.replace(
+                    "token_name", token.hasItemMeta() && token.getItemMeta().hasDisplayName()
+                            ? token.getItemMeta().getDisplayName() : token.getType().name(),
+                    "slot", slot.getDisplayName()));
+
+            new UpgradeGUI(plugin).open(player, data);
+        });
+    }
+
+    private boolean consumeUpgradeToken(Player player, ItemStack token) {
+        ItemStack cursor = player.getItemOnCursor();
+
+        if (matchesToken(cursor, token)) {
+            cursor.setAmount(cursor.getAmount() - 1);
+            player.setItemOnCursor(cursor);
+            return true;
+        }
+
+        for (int i = 0; i < player.getInventory().getSize(); i++) {
+            ItemStack item = player.getInventory().getItem(i);
+
+            if (matchesToken(item, token)) {
+                item.setAmount(item.getAmount() - 1);
+
+                if (item.getAmount() <= 0)
+                    player.getInventory().setItem(i, null);
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean matchesToken(ItemStack item, ItemStack token) {
+        if (item == null || token == null || !UpgradeTokenUtil.isUpgradeToken(item)) return false;
+        if (item.getType() != token.getType()) return false;
+
+        String slotA = UpgradeTokenUtil.getUpgradeSlot(item);
+        String slotB = UpgradeTokenUtil.getUpgradeSlot(token);
+
+        if (slotA == null || !slotA.equalsIgnoreCase(slotB)) return false;
+
+        return UpgradeTokenUtil.getUpgradeTier(item) == UpgradeTokenUtil.getUpgradeTier(token);
     }
 
     @EventHandler

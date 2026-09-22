@@ -15,8 +15,9 @@ import java.util.List;
 
 public class UpgradeGUI {
 
-    private static final List<LoadoutSlot> ARMOR_SLOTS = List.of(
-            LoadoutSlot.HELMET, LoadoutSlot.CHESTPLATE, LoadoutSlot.LEGGINGS, LoadoutSlot.BOOTS);
+    private static final List<LoadoutSlot> UPGRADEABLE_SLOTS = List.of(
+            LoadoutSlot.HELMET, LoadoutSlot.CHESTPLATE, LoadoutSlot.LEGGINGS, LoadoutSlot.BOOTS,
+            LoadoutSlot.WEAPON, LoadoutSlot.TOOL);
 
     private final OutlandsPlugin plugin;
 
@@ -29,7 +30,7 @@ public class UpgradeGUI {
         Inventory inv = plugin.getChatRenderer().createInventory(new UpgradeGuiHolder(),
                 config.getUpgradeGuiSize(), config.getUpgradeGuiTitle());
 
-        for (LoadoutSlot slot : ARMOR_SLOTS) {
+        for (LoadoutSlot slot : UPGRADEABLE_SLOTS) {
             int guiSlot = config.getUpgradeGuiSlot(slot.name().toLowerCase());
 
             if (guiSlot < 0 || guiSlot >= inv.getSize()) continue;
@@ -116,7 +117,7 @@ public class UpgradeGUI {
     public LoadoutSlot getSlotFromClick(int guiSlot) {
         ConfigUtil config = plugin.getConfigUtil();
 
-        for (LoadoutSlot slot : ARMOR_SLOTS) {
+        for (LoadoutSlot slot : UPGRADEABLE_SLOTS) {
             if (config.getUpgradeGuiSlot(slot.name().toLowerCase()) == guiSlot) return slot;
         }
 
