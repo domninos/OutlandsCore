@@ -42,6 +42,9 @@ public enum Messages {
     TOKENS_INSUFFICIENT("tokens.insufficient", "<red>You need %required% tokens but only have %available%.</red>"),
     TOKENS_SPENT("tokens.spent", "<gray>Spent %amount% Outlands Tokens.</gray>"),
 
+    LOOT_TOKENS("loot.tokens", "<gold>+%amount% Outlands Tokens</gold>"),
+    LOOT_TIME_ADDED("loot.time-added", "<yellow>+%time% minutes added to your run!</yellow>"),
+
     WITHDRAW_OPENED("withdraw.opened", "<gray>Opened your extracted loot.</gray>"),
     WITHDRAW_EMPTY("withdraw.empty", "<gray>You have no extracted loot to withdraw.</gray>"),
     WITHDRAW_CLAIMED("withdraw.claimed", "<green>Claimed %item% x%amount%.</green>"),

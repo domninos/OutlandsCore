@@ -54,11 +54,7 @@ public final class PlaceholderValues {
             case "in_run" -> String.valueOf(rm.isPlayerInRun(player.getUniqueId()));
             case "run_time" -> {
                 RunManager.ActiveRun run = rm.getActiveRun(player.getUniqueId());
-                if (run != null) {
-                    long elapsed = (System.currentTimeMillis() - run.getStartTime()) / 1000;
-                    long remaining = run.getTimeLimitSeconds() - elapsed;
-                    yield String.valueOf(Math.max(0, remaining));
-                }
+                if (run != null) yield String.valueOf(run.getRemainingSeconds());
                 yield "0";
             }
             case "timer" -> timerValue(plugin, rm, data, player.getUniqueId());
@@ -86,11 +82,7 @@ public final class PlaceholderValues {
     private static String timerValue(OutlandsPlugin plugin, RunManager rm, PlayerData data, java.util.UUID uuid) {
         RunManager.ActiveRun run = rm.getActiveRun(uuid);
 
-        if (run != null) {
-            long elapsed = (System.currentTimeMillis() - run.getStartTime()) / 1000;
-            long remaining = Math.max(0, run.getTimeLimitSeconds() - elapsed);
-            return formatSeconds(remaining);
-        }
+        if (run != null) return formatSeconds(run.getRemainingSeconds());
 
         if (data.isOnCooldown()) return data.getCooldownFormatted();
 

@@ -7,6 +7,7 @@ import net.omni.outlands.loadout.LoadoutGUI;
 import net.omni.outlands.loadout.LoadoutSlot;
 import net.omni.outlands.loadout.UpgradeGUI;
 import net.omni.outlands.loadout.UpgradeGuiHolder;
+import net.omni.outlands.loot.LootItemUtil;
 import net.omni.outlands.messages.Messages;
 import net.omni.outlands.upgrade.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
@@ -14,13 +15,16 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.List;
@@ -98,6 +102,14 @@ public class PlayerListener implements Listener {
             return;
         }
 
+        Inventory clicked = event.getClickedInventory();
+
+        if (clicked != null && clicked.getLocation() != null
+                && plugin.getAreaClearManager().isLootChest(clicked.getLocation())) {
+            handleLootChestClick(player, event, clicked);
+            return;
+        }
+
         String title = event.getView().getTitle();
 
         if (title.contains("Outlands Loadout")) {
@@ -110,6 +122,20 @@ public class PlayerListener implements Listener {
             event.setCancelled(true);
             handleWithdrawClick(player, event);
         }
+    }
+
+    private void handleLootChestClick(Player player, InventoryClickEvent event, Inventory chest) {
+        ItemStack clickedItem = event.getCurrentItem();
+
+        if (!LootItemUtil.isTokenItem(clickedItem)) return;
+
+        int amount = LootItemUtil.getTokenAmount(clickedItem);
+
+        plugin.getTokenManager().addTokens(player.getUniqueId(), amount);
+        plugin.sendMessage(player, Messages.LOOT_TOKENS.replace("amount", String.valueOf(amount)));
+
+        clickedItem.setAmount(0);
+        event.setCancelled(true);
     }
 
     private void handleUpgradeClick(Player player, InventoryClickEvent event) {
@@ -291,6 +317,29 @@ public class PlayerListener implements Listener {
                 plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", "your loadout"));
             }
         }
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        Action action = event.getAction();
+
+        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
+
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (!LootItemUtil.isTimeItem(item)) return;
+
+        RunManager.ActiveRun run = plugin.getRunManager().getActiveRun(player.getUniqueId());
+        if (run == null) return;
+
+        int minutes = LootItemUtil.getTimeMinutes(item);
+        if (minutes <= 0) return;
+
+        event.setCancelled(true);
+        run.addTime(minutes * 60);
+        item.setAmount(item.getAmount() - 1);
+
+        plugin.sendMessage(player, Messages.LOOT_TIME_ADDED.replace("time", String.valueOf(minutes)));
     }
 
     public void register() {

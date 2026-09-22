@@ -229,3 +229,15 @@ scoreboard:
   time-zone: "UTC"
   # Clock format used by %outlands_clock%
   time-format: "HH:mm:ss"
+
+# Loot chest defaults (used by loot_tables.yml)
+loot:
+  # Rolls per chest when neither the area file (loot.items-per-chest) nor the
+  # loot table (items-per-chest) specifies a value
+  default-items-per-chest: 3
+  # Material/display name of the physical TOKENS loot item (credits balance on pickup)
+  token-item-material: GOLD_INGOT
+  token-item-name: "<gold>Outland Token</gold>"
+  # Material/display name of the TIME loot item (right-click while in a run adds time)
+  time-item-material: CLOCK
+  time-item-name: "<yellow>Extra Time</yellow>"

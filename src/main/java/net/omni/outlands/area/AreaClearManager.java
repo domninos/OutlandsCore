@@ -6,6 +6,9 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.data.PlayerData;
 import net.omni.outlands.integration.ExternalItemProvider;
+import net.omni.outlands.loot.LootEntry;
+import net.omni.outlands.loot.LootItemUtil;
+import net.omni.outlands.loot.LootTable;
 import net.omni.outlands.messages.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -185,7 +188,9 @@ public class AreaClearManager {
             int slot = 0;
 
             for (ItemStack item : buildLoot(area)) {
-                if (slot >= inventory.getSize()) break;
+                if (slot >= inventory.getSize())
+                    break;
+
                 inventory.setItem(slot++, item);
             }
         }
@@ -208,6 +213,36 @@ public class AreaClearManager {
     }
 
     private List<ItemStack> buildLoot(Area area) {
+        if (area.getLootTable() == null || area.getLootTable().isBlank())
+            return buildLegacyLoot(area);
+
+        LootTable table = plugin.getLootTableManager().get(area.getLootTable());
+
+        if (table == null) {
+            plugin.getLogger().warning("Unknown loot table '" + area.getLootTable() + "' for area '" + area.getName() + "'.");
+            return buildLegacyLoot(area);
+        }
+
+        int rolls = area.getItemsPerChest() > 0 ? area.getItemsPerChest()
+                : table.getItemsPerChest() > 0 ? table.getItemsPerChest()
+                : plugin.getConfigUtil().getLootDefaultItemsPerChest();
+
+        List<ItemStack> loot = new ArrayList<>();
+
+        for (int i = 0; i < rolls; i++) {
+            LootEntry entry = table.roll(random);
+            if (entry == null)
+                continue;
+
+            for (ItemStack item : resolveTableEntry(entry))
+                if (item != null) loot.add(item);
+
+        }
+
+        return mergeStacks(loot);
+    }
+
+    private List<ItemStack> buildLegacyLoot(Area area) {
         List<ItemStack> loot = new ArrayList<>();
 
         for (AreaLootEntry entry : area.getLootEntries()) {
@@ -221,6 +256,86 @@ public class AreaClearManager {
         }
 
         return loot;
+    }
+
+    private List<ItemStack> resolveTableEntry(LootEntry entry) {
+        String type = entry.getType();
+        List<ItemStack> result = new ArrayList<>();
+
+        if (type == null || type.isBlank()) return result;
+
+        if (type.contains(":")) {
+            ExternalItemProvider provider = plugin.getExternalPluginManager().getItemProvider(type);
+            ItemStack item = provider == null ? null : provider.resolveItem(type);
+
+            if (item == null) {
+                plugin.getLogger().warning("Failed to resolve external loot item '" + type + "'.");
+                return result;
+            }
+
+            item.setAmount(Math.max(1, entry.getAmount()));
+            result.add(item);
+            return result;
+        }
+
+        Material material = Material.matchMaterial(type);
+
+        if (material != null) {
+            ItemStack item = new ItemStack(material);
+            item.setAmount(Math.max(1, entry.getAmount()));
+            result.add(item);
+            return result;
+        }
+
+        switch (type.toUpperCase(Locale.ROOT)) {
+            case "TOKENS" -> {
+                String mat = plugin.getConfigUtil().getLootTokenItemMaterial();
+                String name = plugin.getConfigUtil().getLootTokenItemName();
+                result.add(LootItemUtil.createTokenItem(mat, name, entry.getAmount()));
+            }
+            case "UPGRADE" -> {
+                int count = Math.max(1, entry.getAmount());
+
+                for (int i = 0; i < count; i++) {
+                    String key = plugin.getLootTableManager().randomUpgradeKey(random);
+                    if (key == null) break;
+
+                    ItemStack token = plugin.getUpgradeManager().createUpgradeTokenItem(key);
+                    if (token != null) result.add(token);
+                }
+            }
+            case "TIME" -> {
+                String mat = plugin.getConfigUtil().getLootTimeItemMaterial();
+                String name = plugin.getConfigUtil().getLootTimeItemName();
+                result.add(LootItemUtil.createTimeItem(mat, name, entry.getAmount()));
+            }
+            default -> plugin.getLogger().warning("Unknown loot entry type '" + type + "'.");
+        }
+
+        return result;
+    }
+
+    private List<ItemStack> mergeStacks(List<ItemStack> loot) {
+        List<ItemStack> merged = new ArrayList<>();
+
+        for (ItemStack item : loot) {
+            if (item == null) continue;
+
+            for (ItemStack existing : merged) {
+                if (existing.getAmount() >= existing.getMaxStackSize()) continue;
+                if (!existing.isSimilar(item)) continue;
+
+                int room = existing.getMaxStackSize() - existing.getAmount();
+                int transfer = Math.min(room, item.getAmount());
+
+                existing.setAmount(existing.getAmount() + transfer);
+                item.setAmount(item.getAmount() - transfer);
+            }
+
+            if (item.getAmount() > 0) merged.add(item);
+        }
+
+        return merged;
     }
 
     private String locationKey(Location location) {

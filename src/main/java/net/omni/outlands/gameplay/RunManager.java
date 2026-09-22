@@ -250,6 +250,7 @@ public class RunManager {
         private final int timeLimitSeconds;
         private final Map<String, Integer> preRunInventory;
         private final Map<String, Integer> preRunArmor;
+        private int remainingSeconds;
         private int killCount;
         private int eventCount;
         private int bossCount;
@@ -263,6 +264,7 @@ public class RunManager {
             this.timeLimitSeconds = timeLimitSeconds;
             this.preRunInventory = preRunInventory;
             this.preRunArmor = preRunArmor;
+            this.remainingSeconds = timeLimitSeconds;
             this.killCount = 0;
             this.eventCount = 0;
             this.bossCount = 0;
@@ -270,25 +272,31 @@ public class RunManager {
 
         public void startTimer(OutlandsPlugin plugin, RunManager runManager, Player player) {
             timerTask = new BukkitRunnable() {
-                int remaining = timeLimitSeconds;
-
                 @Override
                 public void run() {
-                    if (remaining <= 0) {
+                    if (remainingSeconds <= 0) {
                         cancel();
                         plugin.sendMessage(player, Messages.RUN_AUTO_EXTRACT.toString());
                         runManager.extractPlayer(uuid);
                         return;
                     }
 
-                    if (remaining == 60)
+                    if (remainingSeconds == 60)
                         plugin.sendMessage(player, Messages.RUN_TIMER_ONE_MINUTE.toString());
-                    else if (remaining <= 10)
-                        plugin.sendMessage(player, Messages.RUN_TIMER_SECONDS.replace("time", String.valueOf(remaining)));
+                    else if (remainingSeconds <= 10)
+                        plugin.sendMessage(player, Messages.RUN_TIMER_SECONDS.replace("time", String.valueOf(remainingSeconds)));
 
-                    remaining--;
+                    remainingSeconds--;
                 }
             }.runTaskTimer(plugin, 0L, 20L);
+        }
+
+        public void addTime(int seconds) {
+            if (seconds > 0) remainingSeconds += seconds;
+        }
+
+        public int getRemainingSeconds() {
+            return Math.max(0, remainingSeconds);
         }
 
         public void cancelTimer() {

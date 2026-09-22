@@ -35,6 +35,9 @@ tokens:
   balance: "<gold>You have %tokens% Outlands Tokens.</gold>"
   insufficient: "<red>You need %required% tokens but only have %available%.</red>"
   spent: "<gray>Spent %amount% Outlands Tokens.</gray>"
+loot:
+  tokens: "<gold>+%amount% Outlands Tokens</gold>"
+  time-added: "<yellow>+%time% minutes added to your run!</yellow>"
 withdraw:
   opened: "<gray>Opened your extracted loot.</gray>"
   empty: "<gray>You have no extracted loot to withdraw.</gray>"

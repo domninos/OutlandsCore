@@ -21,7 +21,9 @@ import net.omni.outlands.integration.ExternalPluginManager;
 import net.omni.outlands.listeners.PlayerListener;
 import net.omni.outlands.loadout.LoadoutManager;
 import net.omni.outlands.loadout.UpgradeManager;
+import net.omni.outlands.loot.LootItemUtil;
 import net.omni.outlands.loot.LootManager;
+import net.omni.outlands.loot.LootTableManager;
 import net.omni.outlands.managers.MessagesManager;
 import net.omni.outlands.managers.TokenManager;
 import net.omni.outlands.messages.MessageUtil;
@@ -54,6 +56,7 @@ public final class OutlandsPlugin extends JavaPlugin {
     private AreaClearManager areaClearManager;
     private AreaSelectionVisualizer areaSelectionVisualizer;
     private ScoreboardManager scoreboardManager;
+    private LootTableManager lootTableManager;
 
     /*
 
@@ -62,9 +65,12 @@ public final class OutlandsPlugin extends JavaPlugin {
      - loadout should be categorized and checked if they are permanent. food and potions are temporary.
          this can be purchaseable using outlands tokens
      - add location when someone does /extract, tp to that location.
-     - add loot tables
      - /outlands storage (successful extraction sends all collected items) - paginated, add nav buttons (arrows), close button
+     -
      - fix /outlands withdraw gui, can collect Claim All and Discard All
+     -
+     - remaining mob count on boss bar
+
      */
 
     @Override
@@ -101,6 +107,7 @@ public final class OutlandsPlugin extends JavaPlugin {
         configUtil.load();
 
         UpgradeTokenUtil.init(this);
+        LootItemUtil.init(this);
 
         this.databaseManager = new DatabaseManager(this);
         this.playerDataManager = new PlayerDataManager(this);
@@ -121,6 +128,9 @@ public final class OutlandsPlugin extends JavaPlugin {
         this.areaClearManager = new AreaClearManager(this, areaManager);
         this.areaSelectionVisualizer = new AreaSelectionVisualizer(this);
         this.scoreboardManager = new ScoreboardManager(this);
+
+        this.lootTableManager = new LootTableManager(this);
+        this.lootTableManager.load();
 
         registerHooks();
         registerCommands();
@@ -244,6 +254,10 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     public ScoreboardManager getScoreboardManager() {
         return scoreboardManager;
+    }
+
+    public LootTableManager getLootTableManager() {
+        return lootTableManager;
     }
 
     public Gson getGson() {

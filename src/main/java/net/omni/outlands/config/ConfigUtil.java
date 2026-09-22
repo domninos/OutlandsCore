@@ -71,6 +71,12 @@ public class ConfigUtil {
     private String scoreboardTimeZone;
     private String scoreboardTimeFormat;
 
+    private int lootDefaultItemsPerChest;
+    private String lootTokenItemMaterial;
+    private String lootTokenItemName;
+    private String lootTimeItemMaterial;
+    private String lootTimeItemName;
+
     public ConfigUtil(OutlandsPlugin plugin) {
         this.plugin = plugin;
         this.loadoutTiers = new HashMap<>();
@@ -135,6 +141,7 @@ public class ConfigUtil {
         loadUpgradeGui(savedDefaults);
         loadSpawn();
         loadScoreboard(savedDefaults);
+        loadLoot(savedDefaults);
 
         if (savedDefaults.get() > 0) {
             plugin.saveConfig();
@@ -208,6 +215,14 @@ public class ConfigUtil {
                 "<gray>Clock <dark_gray>» <white>%outlands_clock%",
                 "<gray>IP <dark_gray>» <white>%outlands_ip%"
         ), savedDefaults);
+    }
+
+    private void loadLoot(AtomicInteger savedDefaults) {
+        this.lootDefaultItemsPerChest = Math.max(1, getAndDefaultInt(ConfigKeys.LOOT_DEFAULT_ITEMS_PER_CHEST, 3, savedDefaults));
+        this.lootTokenItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_MATERIAL, "GOLD_INGOT", savedDefaults);
+        this.lootTokenItemName = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_NAME, "<gold>Outland Token</gold>", savedDefaults);
+        this.lootTimeItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_MATERIAL, "CLOCK", savedDefaults);
+        this.lootTimeItemName = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_NAME, "<yellow>Extra Time</yellow>", savedDefaults);
     }
 
     private void loadLoadoutDefaults(AtomicInteger savedDefaults) {
@@ -640,5 +655,25 @@ public class ConfigUtil {
 
     public String getScoreboardTimeFormat() {
         return scoreboardTimeFormat;
+    }
+
+    public int getLootDefaultItemsPerChest() {
+        return lootDefaultItemsPerChest;
+    }
+
+    public String getLootTokenItemMaterial() {
+        return lootTokenItemMaterial;
+    }
+
+    public String getLootTokenItemName() {
+        return lootTokenItemName;
+    }
+
+    public String getLootTimeItemMaterial() {
+        return lootTimeItemMaterial;
+    }
+
+    public String getLootTimeItemName() {
+        return lootTimeItemName;
     }
 }

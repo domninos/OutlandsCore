@@ -312,6 +312,8 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
         plugin.sendMessage(sender, "<gray>Mob spawn points: <white>" + area.getMobSpawnLocations().size() + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Boss spawn points: <white>" + area.getBossSpawnLocations().size() + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Loot chest: <white>" + (area.getChestLocation() == null ? "auto (center)" : "set") + "</white></gray>");
+        plugin.sendMessage(sender, "<gray>Loot table: <white>" + (area.getLootTable() == null || area.getLootTable().isBlank() ? "custom (loot.items)" : area.getLootTable()) + "</white></gray>");
+        plugin.sendMessage(sender, "<gray>Items per chest: <white>" + (area.getItemsPerChest() > 0 ? area.getItemsPerChest() : "table / default") + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Cooldown: <white>" + area.getCooldownSeconds() + "s</white></gray>");
 
         List<AreaSpawnDefinition> spawns = plugin.getAreaManager().resolveSpawns(area);
@@ -400,6 +402,7 @@ public class AreaCommand implements CommandExecutor, TabCompleter {
     private boolean handleReload(CommandSender sender) {
         plugin.getMobTemplateManager().load();
         plugin.getAreaManager().load();
+        plugin.getLootTableManager().reload();
         plugin.sendMessage(sender, Messages.AREA_RELOADED.toString());
         return true;
     }

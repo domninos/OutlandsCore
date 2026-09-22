@@ -39,6 +39,8 @@ public class Area {
     private int lootDespawnSeconds;
     private boolean leftoverToWithdraw;
     private int tokens;
+    private String lootTable;
+    private int itemsPerChest;
     private AreaState state;
     private long unavailableUntil;
 
@@ -63,6 +65,8 @@ public class Area {
         this.lootDespawnSeconds = 300;
         this.leftoverToWithdraw = true;
         this.tokens = 0;
+        this.lootTable = null;
+        this.itemsPerChest = -1;
 
         this.state = AreaState.READY;
         this.unavailableUntil = 0;
@@ -138,6 +142,8 @@ public class Area {
         area.setLootDespawnSeconds(config.getInt("loot.despawn-seconds", 300));
         area.setLeftoverToWithdraw(config.getBoolean("loot.leftover-to-withdraw", true));
         area.setTokens(config.getInt("loot.tokens", 0));
+        area.setLootTable(config.getString("loot.type"));
+        area.setItemsPerChest(config.getInt("loot.items-per-chest", -1));
 
         for (Map<?, ?> map : config.getMapList("loot.items")) {
             AreaLootEntry entry = new AreaLootEntry();
@@ -459,6 +465,22 @@ public class Area {
         this.tokens = tokens;
     }
 
+    public String getLootTable() {
+        return lootTable;
+    }
+
+    public void setLootTable(String lootTable) {
+        this.lootTable = lootTable;
+    }
+
+    public int getItemsPerChest() {
+        return itemsPerChest;
+    }
+
+    public void setItemsPerChest(int itemsPerChest) {
+        this.itemsPerChest = itemsPerChest;
+    }
+
     public AreaState getState() {
         return state;
     }
@@ -588,6 +610,9 @@ public class Area {
         config.set("loot.despawn-seconds", lootDespawnSeconds);
         config.set("loot.leftover-to-withdraw", leftoverToWithdraw);
         config.set("loot.tokens", tokens);
+
+        if (lootTable != null && !lootTable.isBlank()) config.set("loot.type", lootTable);
+        if (itemsPerChest > 0) config.set("loot.items-per-chest", itemsPerChest);
 
         List<Map<String, Object>> lootList = new ArrayList<>();
 

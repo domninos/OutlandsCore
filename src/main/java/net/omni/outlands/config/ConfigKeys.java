@@ -68,5 +68,11 @@ public final class ConfigKeys {
     public static final String SCOREBOARD_TIME_ZONE = "scoreboard.time-zone";
     public static final String SCOREBOARD_TIME_FORMAT = "scoreboard.time-format";
 
+    public static final String LOOT_DEFAULT_ITEMS_PER_CHEST = "loot.default-items-per-chest";
+    public static final String LOOT_TOKEN_ITEM_MATERIAL = "loot.token-item-material";
+    public static final String LOOT_TOKEN_ITEM_NAME = "loot.token-item-name";
+    public static final String LOOT_TIME_ITEM_MATERIAL = "loot.time-item-material";
+    public static final String LOOT_TIME_ITEM_NAME = "loot.time-item-name";
+
     public static final String MESSAGES_PREFIX = "messages.prefix";
 }
