@@ -213,31 +213,32 @@ scoreboard:
   only-in-world: true
   # How often (in ticks) the scoreboard refreshes (20 ticks = 1 second)
   update-ticks: 20
-  title: "𝐎𝐔𝐓𝐋𝐀𝐍𝐃𝐒"
+  title: 𝐎𝐔𝐓𝐋𝐀𝐍𝐃𝐒
   # Maximum of 15 lines (client limit)
   lines:
-    - "<gray>𝑨𝒓𝒆𝒂 <dark_gray>» <white>%outlands_area%"
-    - ""
-    - "<gray>𝑻𝒊𝒎𝒆 <dark_gray>» <white>%outlands_timer%"
-    - ""
-    - "<gray>𝑷𝒂𝒓𝒕𝒚 <dark_gray>» <white>%outlands_party%"
-    - ""
-    - "<gray>𝑪𝒍𝒐𝒄𝒌 <dark_gray>» <white>%outlands_clock%"
-    - ""
-    - ""
-    - "<gray>𝑰𝑷 <dark_gray>» <white>%outlands_ip%"
+    - ''
+    - <gray>ᴀʀᴇᴀ <dark_gray>» <white>%outlands_area%
+    - ''
+    - <gray>ᴛɪᴍᴇ <dark_gray>» <white>%outlands_timer%
+    - ''
+    - <gray>ᴘᴀʀᴛʏ <dark_gray>» <white>%outlands_party%
+    - ''
+    - <gray>ᴄʟᴏᴄᴋ <dark_gray>» <white>%outlands_clock%
+    - ''
+    - ''
+    - <white>  %outlands_ip%
   # Value of %outlands_area% when the player is not inside an area
-  no-area-text: "𝘞𝘪𝘭𝘥𝘦𝘳𝘯𝘦𝘴𝘴"
+  no-area-text: ᴡɪʟᴅᴇʀɴᴇꜱꜱ
   # Value of %outlands_party% (party system is not implemented yet)
-  party-placeholder: "𝘕𝘰𝘯𝘦"
+  party-placeholder: ɴᴏɴᴇ
   # Value of %outlands_timer% when the player has no run and no cooldown
-  idle-text: "𝘐𝘥𝘭𝘦"
+  idle-text: ɪᴅʟᴇ
   # Value of %outlands_ip%
-  server-ip: "𝘱𝘭𝘢𝘺.𝘺𝘢𝘮𝘤𝘴.𝘯𝘦𝘵"
+  server-ip: ᴘʟᴀʏ.ʏᴀᴍᴄꜱ.ɴᴇᴛ
   # Timezone used by %outlands_clock% (e.g. UTC, Europe/London, America/New_York)
-  time-zone: "GMT-6" # GMT-6 - Montana
+  time-zone: GMT-6
   # Clock format used by %outlands_clock%
-  time-format: "HH:mm:ss"
+  time-format: HH:mm:ss
 
 # Loot chest defaults (used by loot_tables.yml)
 loot:

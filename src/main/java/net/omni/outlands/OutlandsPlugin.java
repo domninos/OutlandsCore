@@ -84,6 +84,9 @@ public final class OutlandsPlugin extends JavaPlugin {
        unlocking enchantments, upgrading armor/weapons, purchasing passive upgrades
      -
      -
+     - charm
+     - pets
+     - passive
      -
      - party system (new database), update outlands.db (if SQLITE, but prefer MariaDB/MYSQL)
      - support party for loot (all party members must be able to loot it.
