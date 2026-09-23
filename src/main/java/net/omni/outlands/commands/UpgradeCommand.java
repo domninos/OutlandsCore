@@ -2,7 +2,6 @@ package net.omni.outlands.commands;
 
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.data.PlayerData;
-import net.omni.outlands.update.UpgradeGUI;
 import net.omni.outlands.messages.Messages;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -32,7 +31,7 @@ public class UpgradeCommand implements CommandExecutor {
         }
 
         PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
-        new UpgradeGUI(plugin).open(player, data);
+        plugin.getGuiManager().openUpgrade(player, data);
         plugin.sendMessage(player, Messages.UPGRADE_OPENED.toString());
         return true;
     }

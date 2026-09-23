@@ -87,8 +87,7 @@ public class PlayerListener implements Listener {
         }
 
         plugin.getPlayerDataManager().unloadPlayer(uuid);
-        UpgradeGUI.clearCache(uuid);
-        LoadoutGUI.clearCache(uuid);
+        plugin.getGuiManager().removePlayer(uuid);
     }
 
     @EventHandler
@@ -99,9 +98,9 @@ public class PlayerListener implements Listener {
         PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
 
         if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder)
-            new UpgradeGUI(plugin).refresh(player, data);
+            plugin.getGuiManager().refreshUpgrade(player, data);
         else if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder)
-            new LoadoutGUI(plugin).refresh(player, data);
+            plugin.getGuiManager().refreshLoadout(player, data);
     }
 
     @EventHandler
@@ -141,8 +140,7 @@ public class PlayerListener implements Listener {
     }
 
     private void handleUpgradeClick(Player player, InventoryClickEvent event) {
-        UpgradeGUI gui = new UpgradeGUI(plugin);
-        LoadoutSlot slot = gui.getSlotFromClick(event.getRawSlot());
+        LoadoutSlot slot = UpgradeGUI.getSlotFromClick(plugin, event.getRawSlot());
 
         if (slot == null) return;
 
@@ -218,8 +216,7 @@ public class PlayerListener implements Listener {
     }
 
     private void handleLoadoutClick(Player player, InventoryClickEvent event) {
-        LoadoutGUI gui = new LoadoutGUI(plugin);
-        LoadoutSlot slot = gui.getSlotFromClick(event.getRawSlot());
+        LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, event.getRawSlot());
 
         if (slot == null)
             return;
@@ -250,7 +247,7 @@ public class PlayerListener implements Listener {
                 cursor.setAmount(cursor.getAmount() - 1);
                 event.setCursor(cursor);
 
-                gui.refresh(player, data);
+                plugin.getGuiManager().refreshLoadout(player, data);
             } else {
                 plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
             }
@@ -282,7 +279,7 @@ public class PlayerListener implements Listener {
         }
 
         if (!plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), nextTier.getTierLevel(), data)) {
-            new UpgradeGUI(plugin).refresh(player, data);
+            plugin.getGuiManager().refreshUpgrade(player, data);
             return;
         }
 
@@ -290,7 +287,7 @@ public class PlayerListener implements Listener {
                 "slot", slot.getDisplayName(),
                 "tier", nextTier.getTierName()));
 
-        new UpgradeGUI(plugin).refresh(player, data);
+        plugin.getGuiManager().refreshUpgrade(player, data);
     }
 
     private void applyUpgrade(Player player, ItemStack token, LoadoutSlot slot, InventoryClickEvent event) {
@@ -321,7 +318,7 @@ public class PlayerListener implements Listener {
             token.setAmount(token.getAmount() - 1);
             event.setCursor(token);
 
-            new UpgradeGUI(plugin).refresh(player, data);
+            plugin.getGuiManager().refreshUpgrade(player, data);
         } else {
             plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
         }
@@ -376,10 +373,8 @@ public class PlayerListener implements Listener {
     }
 
     private void handleUpgradeDrag(Player player, InventoryDragEvent event) {
-        UpgradeGUI gui = new UpgradeGUI(plugin);
-
         for (int rawSlot : event.getRawSlots()) {
-            LoadoutSlot slot = gui.getSlotFromClick(rawSlot);
+            LoadoutSlot slot = UpgradeGUI.getSlotFromClick(plugin, rawSlot);
 
             if (slot == null) continue;
 
@@ -447,7 +442,7 @@ public class PlayerListener implements Listener {
                             ? token.getItemMeta().getDisplayName() : token.getType().name(),
                     "slot", slot.getDisplayName()));
 
-            new UpgradeGUI(plugin).refresh(player, data);
+            plugin.getGuiManager().refreshUpgrade(player, data);
         });
     }
 

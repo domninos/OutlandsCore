@@ -14,42 +14,42 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class LoadoutGUI {
 
-    private static final Map<UUID, Inventory> CACHE = new ConcurrentHashMap<>();
-
     private final UpgradeManager upgradeManager;
     private final OutlandsPlugin plugin;
+    private final UUID owner;
+    private Inventory inventory;
 
-    public LoadoutGUI(OutlandsPlugin plugin) {
+    public LoadoutGUI(OutlandsPlugin plugin, Player player) {
         this.plugin = plugin;
+        this.owner = player.getUniqueId();
         this.upgradeManager = plugin.getUpgradeManager();
     }
 
-    public static void clearCache(UUID uuid) {
-        CACHE.remove(uuid);
+    public UUID getOwner() {
+        return owner;
     }
 
     public void open(Player player, PlayerData data) {
-        refresh(player, data);
-
-        Inventory inv = CACHE.get(player.getUniqueId());
-        if (inv != null)
-            player.openInventory(inv);
+        ensureInventory();
+        populate(inventory, data);
+        player.openInventory(inventory);
     }
 
-    public void refresh(Player player, PlayerData data) {
-        ConfigUtil config = plugin.getConfigUtil();
+    public void refresh(PlayerData data) {
+        ensureInventory();
+        populate(inventory, data);
+    }
 
-        Inventory inv = CACHE.computeIfAbsent(player.getUniqueId(), uuid ->
-                plugin.getChatRenderer().createInventory(new LoadoutGuiHolder(),
-                        config.getLoadoutGuiSize(), config.getLoadoutGuiTitle()));
-
-        populate(inv, data);
+    private void ensureInventory() {
+        if (inventory == null) {
+            ConfigUtil config = plugin.getConfigUtil();
+            inventory = plugin.getChatRenderer().createInventory(new LoadoutGuiHolder(),
+                    config.getLoadoutGuiSize(), config.getLoadoutGuiTitle());
+        }
     }
 
     private void populate(Inventory inv, PlayerData data) {
@@ -157,7 +157,7 @@ public class LoadoutGUI {
         return item;
     }
 
-    public LoadoutSlot getSlotFromClick(int guiSlot) {
+    public static LoadoutSlot getSlotFromClick(OutlandsPlugin plugin, int guiSlot) {
         ConfigUtil config = plugin.getConfigUtil();
 
         for (LoadoutSlot slot : LoadoutSlot.values()) {

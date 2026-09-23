@@ -18,6 +18,7 @@ import net.omni.outlands.data.DatabaseManager;
 import net.omni.outlands.data.PlayerDataManager;
 import net.omni.outlands.gameplay.CooldownManager;
 import net.omni.outlands.gameplay.RunManager;
+import net.omni.outlands.gui.GUIManager;
 import net.omni.outlands.integration.ExternalPluginManager;
 import net.omni.outlands.listeners.PlayerListener;
 import net.omni.outlands.loadout.LoadoutManager;
@@ -58,6 +59,7 @@ public final class OutlandsPlugin extends JavaPlugin {
     private AreaClearManager areaClearManager;
     private AreaSelectionVisualizer areaSelectionVisualizer;
     private ScoreboardManager scoreboardManager;
+    private GUIManager guiManager;
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
 
@@ -125,6 +127,9 @@ public final class OutlandsPlugin extends JavaPlugin {
         runManager.shutdown();
         playerDataManager.flush();
 
+        if (guiManager != null)
+            guiManager.clearAll();
+
         configUtil.flush();
         messagesManager.flush();
 
@@ -167,6 +172,7 @@ public final class OutlandsPlugin extends JavaPlugin {
         this.areaClearManager = new AreaClearManager(this, areaManager);
         this.areaSelectionVisualizer = new AreaSelectionVisualizer(this);
         this.scoreboardManager = new ScoreboardManager(this);
+        this.guiManager = new GUIManager(this);
 
         this.lootTableManager = new LootTableManager(this);
         this.lootTableManager.load();
@@ -307,6 +313,10 @@ public final class OutlandsPlugin extends JavaPlugin {
 
     public ScoreboardManager getScoreboardManager() {
         return scoreboardManager;
+    }
+
+    public GUIManager getGuiManager() {
+        return guiManager;
     }
 
     public LootTableManager getLootTableManager() {

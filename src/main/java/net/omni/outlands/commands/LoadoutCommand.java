@@ -2,7 +2,6 @@ package net.omni.outlands.commands;
 
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.data.PlayerData;
-import net.omni.outlands.loadout.LoadoutGUI;
 import net.omni.outlands.messages.Messages;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -36,7 +35,7 @@ public class LoadoutCommand implements CommandExecutor {
         }
 
         PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
-        new LoadoutGUI(plugin).open(player, data);
+        plugin.getGuiManager().openLoadout(player, data);
         plugin.sendMessage(player, Messages.LOADOUT_OPENED.toString());
         return true;
     }
