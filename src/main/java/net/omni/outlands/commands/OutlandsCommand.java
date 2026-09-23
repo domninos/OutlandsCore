@@ -2,8 +2,6 @@ package net.omni.outlands.commands;
 
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.outlands.OutlandsPlugin;
-import net.omni.outlands.data.PlayerData;
-import net.omni.outlands.loadout.LoadoutGUI;
 import net.omni.outlands.messages.MessageUtil;
 import net.omni.outlands.messages.Messages;
 import org.bukkit.Bukkit;
@@ -138,21 +136,7 @@ public class OutlandsCommand implements CommandExecutor {
     }
 
     private boolean handleLoadout(CommandSender sender) {
-        if (!(sender instanceof Player player)) {
-            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
-            return true;
-        }
-
-        if (!player.hasPermission("outlands.play")) {
-            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
-            return true;
-        }
-
-        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
-        LoadoutGUI gui = new LoadoutGUI(plugin);
-        gui.open(player, data);
-        plugin.sendMessage(player, Messages.LOADOUT_OPENED.toString());
-        return true;
+        return new LoadoutCommand(plugin).execute(sender);
     }
 
     private boolean handleWithdraw(CommandSender sender) {

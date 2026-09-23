@@ -8,6 +8,7 @@ import net.omni.outlands.chat.PaperChatRenderer;
 import net.omni.outlands.chat.SpigotChatRenderer;
 import net.omni.outlands.commands.AreaCommand;
 import net.omni.outlands.commands.ExtractCommand;
+import net.omni.outlands.commands.LoadoutCommand;
 import net.omni.outlands.commands.OutlandsCommand;
 import net.omni.outlands.commands.TokensCommand;
 import net.omni.outlands.commands.UpgradeCommand;
@@ -217,6 +218,7 @@ public final class OutlandsPlugin extends JavaPlugin {
         new AreaCommand(this).register();
         new TokensCommand(this).register();
         new UpgradeCommand(this).register();
+        new LoadoutCommand(this).register();
     }
 
     private void registerListeners() {

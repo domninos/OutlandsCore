@@ -23,6 +23,8 @@ commands:
     permission: outlands.areas
   tokens:
     description: Check your extraction token balance
+  loadout:
+    description: Open your character loadout
   upgrade:
     description: Open the armor upgrade menu
     aliases: [upgrades]
