@@ -276,6 +276,10 @@ scoreboard:
     - ''
     - <gray>ᴛɪᴍᴇ <dark_gray>» <white>%outlands_timer%
     - ''
+    - <gray>ᴋɪʟʟꜱ <dark_gray>» <white>%outlands_kills%
+    - ''
+    - <gray>ᴛᴏᴋᴇɴꜱ <dark_gray>» <white>%outlands_tokens%
+    - ''
     - <gray>ᴘᴀʀᴛʏ <dark_gray>» <white>%outlands_party%
     - ''
     - <gray>ᴄʟᴏᴄᴋ <dark_gray>» <white>%outlands_clock%

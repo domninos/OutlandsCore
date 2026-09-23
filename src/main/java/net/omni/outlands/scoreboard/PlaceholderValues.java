@@ -49,6 +49,10 @@ public final class PlaceholderValues {
 
         return switch (params.toLowerCase(Locale.ROOT)) {
             case "tokens" -> String.valueOf(tm.getTokens(player.getUniqueId()));
+            case "kills" -> {
+                RunManager.ActiveRun run = rm.getActiveRun(player.getUniqueId());
+                yield String.valueOf(run != null ? run.getKillCount() : data.getLastKillCount());
+            }
             case "cooldown" -> data.getCooldownFormatted();
             case "cooldown_active" -> String.valueOf(data.isOnCooldown());
             case "in_run" -> String.valueOf(rm.isPlayerInRun(player.getUniqueId()));

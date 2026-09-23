@@ -366,6 +366,8 @@ public class ConfigUtil {
         this.scoreboardLines = getAndDefaultStringList(ConfigKeys.SCOREBOARD_LINES, List.of(
                 "<gray>Area <dark_gray>» <white>%outlands_area%",
                 "<gray>Time <dark_gray>» <white>%outlands_timer%",
+                "<gray>Kills <dark_gray>» <white>%outlands_kills%",
+                "<gray>Tokens <dark_gray>» <white>%outlands_tokens%",
                 "<gray>Party <dark_gray>» <white>%outlands_party%",
                 "<gray>Clock <dark_gray>» <white>%outlands_clock%",
                 "<gray>IP <dark_gray>» <white>%outlands_ip%"

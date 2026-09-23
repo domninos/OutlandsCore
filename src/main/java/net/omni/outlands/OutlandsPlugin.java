@@ -68,9 +68,6 @@ public final class OutlandsPlugin extends JavaPlugin {
          this can be purchaseable using outlands tokens
      -
      - add location when someone does /extract, tp to that location.
-     - add "Kills:" -> mob kills on scoreboard
-     - add "Tokens:" -> tokens on scoreboard
-     - /loadout -> /outlands loadout
      -
      - fix Message parser
      - fix RunManager#restorePlayerInventory, add back the preRunInventory and preRunArmor
