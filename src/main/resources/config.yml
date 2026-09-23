@@ -219,7 +219,7 @@ loadout-gui:
   # Filler for the first (armor) row cells that are not armor slots
   filler:
     material: GRAY_STAINED_GLASS_PANE
-    name: ""
+    name: " "
 
 # Area editing tools (/areas)
 areas:

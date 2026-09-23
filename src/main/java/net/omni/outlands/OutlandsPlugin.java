@@ -6,12 +6,7 @@ import net.omni.outlands.area.*;
 import net.omni.outlands.chat.ChatRenderer;
 import net.omni.outlands.chat.PaperChatRenderer;
 import net.omni.outlands.chat.SpigotChatRenderer;
-import net.omni.outlands.commands.AreaCommand;
-import net.omni.outlands.commands.ExtractCommand;
-import net.omni.outlands.commands.LoadoutCommand;
-import net.omni.outlands.commands.OutlandsCommand;
-import net.omni.outlands.commands.TokensCommand;
-import net.omni.outlands.commands.UpgradeCommand;
+import net.omni.outlands.commands.*;
 import net.omni.outlands.config.ConfigUtil;
 import net.omni.outlands.config.OutlandsConfig;
 import net.omni.outlands.data.DatabaseManager;
@@ -21,8 +16,8 @@ import net.omni.outlands.gameplay.RunManager;
 import net.omni.outlands.gui.GUIManager;
 import net.omni.outlands.integration.ExternalPluginManager;
 import net.omni.outlands.listeners.PlayerListener;
+import net.omni.outlands.loadout.LoadoutGUI;
 import net.omni.outlands.loadout.LoadoutManager;
-import net.omni.outlands.update.UpgradeManager;
 import net.omni.outlands.loot.LootItemUtil;
 import net.omni.outlands.loot.LootManager;
 import net.omni.outlands.loot.LootTableManager;
@@ -32,7 +27,9 @@ import net.omni.outlands.messages.MessageUtil;
 import net.omni.outlands.mobs.MobTemplateManager;
 import net.omni.outlands.scoreboard.ScoreboardListener;
 import net.omni.outlands.scoreboard.ScoreboardManager;
+import net.omni.outlands.update.UpgradeManager;
 import net.omni.outlands.upgrade.UpgradeTokenUtil;
+import net.omni.outlands.util.PacketGlow;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -66,24 +63,45 @@ public final class OutlandsPlugin extends JavaPlugin {
     /*
 
     TODO:
+     - have Outlands -> Extraction
+      - have /extraction -> replace /outlands and other subcommands. keep /extract
+      - player runs /extraction -> go into extraction, if player already in extraction -> go back
+     -
      - migrate to MariaDB/MySQL, use plugin.yml's library loader
      - loadout should be categorized and checked if they are permanent. food and potions are temporary.
          this can be purchaseable using outlands tokens
+         - use Vault to expose currency
      -
-     - add location when someone does /extract, tp to that location.
+     - make the upgrade token max item stack size = 1
+     -
+     - add a hologram when entering an area (should show the mob/boss count + level)
+      - hologram position can be set via /extraction admin hologram <area>
+      - the hologram info should be configurable.
+      - use DecentHolograms API
+     -
+     - remove scoreboard
+       - just have an actionbar for timer, whenever killing a mob/boss, add +{kill token amount} tokens
+     -
+     - whenever someone does /extract, get the return location of the user on db/cache and teleport
+     -
      -
      - fix Message parser
+      - when upgrading armor
+       - <green>Applied §7Iron Helmet Upgrade to your Helmet!</green>
+                       ^^
      - fix RunManager#restorePlayerInventory, add back the preRunInventory and preRunArmor
-     - commands / tab completer when doing /outlands addmob <area> <mob> ... should have the autocomplete
-       to say what it is
+     -
+     - have all the cooldown/any timer configurable so it can be disabled
      -
      - fix claiming on /outland storage to say the display name
+      - fix dupe bug when clicking a loot in /outland storage. don't cancel the click, just eableeee
+     -
      - fix /outlands loadout, say "Upgrade armor via /upgrades". disable clicking.
-       - make loadoutgui configurable just like upgradegui
-       - player-specific loadout should LOAD on JOIN. do not recreate guis upon command,
      - fix loadout not saving/getting fetched automatically in /loadout
      -
-     - add custom events
+     - fix time resetting to 24h ??
+     -
+     - add custom events (PlayerEnterArea)
      - add API
      -
      -
@@ -105,6 +123,9 @@ public final class OutlandsPlugin extends JavaPlugin {
      - party system (new database), update outlands.db (if SQLITE, but prefer MariaDB/MYSQL)
      - support party for loot (all party members must be able to loot it.
      - add "Time remaining" for all party
+     -
+     -
+     - events
 
      */
 
@@ -151,6 +172,8 @@ public final class OutlandsPlugin extends JavaPlugin {
 
         UpgradeTokenUtil.init(this);
         LootItemUtil.init(this);
+        LoadoutGUI.init(this);
+        PacketGlow.init(this);
 
         this.databaseManager = new DatabaseManager(this);
         this.playerDataManager = new PlayerDataManager(this);
@@ -190,22 +213,6 @@ public final class OutlandsPlugin extends JavaPlugin {
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
     }
 
-    private void startSaveTask() {
-        int seconds = configUtil.getAutoSaveSeconds();
-        if (seconds <= 0)
-            return;
-
-        playerSaveTask = Bukkit.getScheduler().runTaskTimer(this,
-                () -> playerDataManager.saveAllDirty(), 20L * seconds, 20L * seconds);
-    }
-
-    private void stopSaveTask() {
-        if (playerSaveTask != null) {
-            playerSaveTask.cancel();
-            playerSaveTask = null;
-        }
-    }
-
     private void initChatRenderer() {
         try {
             Class.forName("net.kyori.adventure.text.Component");
@@ -233,6 +240,22 @@ public final class OutlandsPlugin extends JavaPlugin {
         new AreaListener(this).register();
         areaSelectionVisualizer.register();
         new ScoreboardListener(this).register();
+    }
+
+    private void startSaveTask() {
+        int seconds = configUtil.getAutoSaveSeconds();
+        if (seconds <= 0)
+            return;
+
+        playerSaveTask = Bukkit.getScheduler().runTaskTimer(this,
+                () -> playerDataManager.saveAllDirty(), 20L * seconds, 20L * seconds);
+    }
+
+    private void stopSaveTask() {
+        if (playerSaveTask != null) {
+            playerSaveTask.cancel();
+            playerSaveTask = null;
+        }
     }
 
     public void sendConsole(String message) {

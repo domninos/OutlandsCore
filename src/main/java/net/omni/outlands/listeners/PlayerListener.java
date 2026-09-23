@@ -3,7 +3,9 @@ package net.omni.outlands.listeners;
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.data.PlayerData;
 import net.omni.outlands.gameplay.RunManager;
-import net.omni.outlands.loadout.*;
+import net.omni.outlands.loadout.LoadoutGUI;
+import net.omni.outlands.loadout.LoadoutGuiHolder;
+import net.omni.outlands.loadout.LoadoutSlot;
 import net.omni.outlands.loot.LootItemUtil;
 import net.omni.outlands.loot.LootManager;
 import net.omni.outlands.loot.StorageHolder;
@@ -20,7 +22,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -30,7 +31,10 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class PlayerListener implements Listener {
 
@@ -140,80 +144,15 @@ public class PlayerListener implements Listener {
 
         if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
             handleLoadoutClick(player, event);
+            plugin.getGuiManager().notifyLoadoutInteraction(player);
         }
-    }
-
-    private void handleLoadoutClick(Player player, InventoryClickEvent event) {
-        if (event.getClickedInventory() == null) {
-            event.setCancelled(true);
-            return;
-        }
-
-        switch (event.getAction()) {
-            case DROP_ALL_SLOT, DROP_ONE_SLOT, DROP_ALL_CURSOR, DROP_ONE_CURSOR -> {
-                event.setCancelled(true);
-                return;
-            }
-            default -> {
-            }
-        }
-
-        if (event.isShiftClick()) {
-            event.setCancelled(true);
-            return;
-        }
-
-        if (event.getClickedInventory().getType() == InventoryType.PLAYER) {
-            event.setCancelled(true);
-            return;
-        }
-
-        LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, event.getRawSlot());
-
-        if (slot != null && slot.isArmor()) {
-            if (isClickOnArmorSlot(player, slot, event))
-                return;
-            event.setCancelled(true);
-            return;
-        }
-
-        if (LoadoutGUI.isFirstRowFillerCell(plugin, event.getRawSlot()))
-            event.setCancelled(true);
-    }
-
-    private boolean isClickOnArmorSlot(Player player, LoadoutSlot slot, InventoryClickEvent event) {
-        ItemStack cursor = event.getCursor();
-
-        if (cursor == null || cursor.getType() == Material.AIR)
-            return false;
-
-        return isMatchingArmor(cursor, slot);
-    }
-
-    private boolean isMatchingArmor(ItemStack item, LoadoutSlot slot) {
-        EquipmentSlot equipmentSlot = slot.getEquipmentSlot();
-        if (equipmentSlot == null)
-            return false;
-
-        String name = item.getType().name();
-        return switch (equipmentSlot) {
-            case HEAD -> name.endsWith("_HELMET")
-                    || name.equals("CARVED_PUMPKIN") || name.equals("JACK_O_LANTERN")
-                    || name.equals("SKELETON_SKULL") || name.equals("WITHER_SKELETON_SKULL")
-                    || name.equals("ZOMBIE_HEAD") || name.equals("CREEPER_HEAD")
-                    || name.equals("PLAYER_HEAD") || name.equals("DRAGON_HEAD")
-                    || name.equals("PIGLIN_HEAD");
-            case CHEST -> name.endsWith("_CHESTPLATE") || name.equals("ELYTRA");
-            case LEGS -> name.endsWith("_LEGGINGS");
-            case FEET -> name.endsWith("_BOOTS");
-            default -> false;
-        };
     }
 
     private void handleUpgradeClick(Player player, InventoryClickEvent event) {
         LoadoutSlot slot = UpgradeGUI.getSlotFromClick(plugin, event.getRawSlot());
 
-        if (slot == null) return;
+        if (slot == null)
+            return;
 
         ItemStack token = event.getCursor();
 
@@ -222,7 +161,8 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        if (!UpgradeTokenUtil.isUpgradeToken(token)) return;
+        if (!UpgradeTokenUtil.isUpgradeToken(token))
+            return;
 
         applyUpgrade(player, token, slot, event);
     }
@@ -263,10 +203,12 @@ public class PlayerListener implements Listener {
             PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
             List<ItemStack> loot = data.getExtractedLoot();
 
-            if (index >= loot.size()) return;
+            if (index >= loot.size())
+                return;
 
             ItemStack item = loot.get(index);
-            if (item == null) return;
+            if (item == null)
+                return;
 
             Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
 
@@ -284,6 +226,67 @@ public class PlayerListener implements Listener {
             plugin.getLootManager().removeLootItem(player.getUniqueId(), index);
             plugin.getLootManager().openStorageGUI(player);
         }
+    }
+
+    private void handleLoadoutClick(Player player, InventoryClickEvent event) {
+        if (event.getClickedInventory() == null) {
+            event.setCancelled(true);
+            return;
+        }
+
+        switch (event.getAction()) {
+            case DROP_ALL_SLOT, DROP_ONE_SLOT, DROP_ALL_CURSOR, DROP_ONE_CURSOR -> {
+                event.setCancelled(true);
+                return;
+            }
+            default -> {
+            }
+        }
+
+        if (event.isShiftClick()) {
+            event.setCancelled(true);
+            return;
+        }
+
+        if (event.getClickedInventory().getType() == InventoryType.PLAYER) {
+            event.setCancelled(true);
+            return;
+        }
+
+        LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, event.getRawSlot());
+
+        if (slot != null && (slot.isArmor() || slot == LoadoutSlot.OFFHAND)) {
+            ItemStack cursor = event.getCursor();
+
+            if (cursor == null || cursor.getType() == Material.AIR) {
+                event.setCancelled(true);
+                return;
+            }
+
+            if (slot.isArmor() && !isMatchingArmor(cursor, slot)) {
+                event.setCancelled(true);
+                return;
+            }
+
+            ItemStack current = event.getClickedInventory().getItem(event.getRawSlot());
+
+            if (LoadoutGUI.isPlaceholder(current)) {
+                event.setCancelled(true);
+                event.getClickedInventory().setItem(event.getRawSlot(), cursor.clone());
+                event.setCursor(null);
+                player.updateInventory();
+            }
+            return;
+        }
+
+        if (LoadoutGUI.isFirstRowFillerCell(plugin, event.getRawSlot())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        if (slot != null && slot.isCustomizableCell())
+            plugin.getPlayerDataManager().getOrCreate(player.getUniqueId())
+                    .setCellCustomized(event.getRawSlot(), true);
     }
 
     private void buyUpgradeSlot(Player player, LoadoutSlot slot) {
@@ -361,10 +364,10 @@ public class PlayerListener implements Listener {
         List<ItemStack> kept = new ArrayList<>();
 
         for (ItemStack item : data.getExtractedLoot()) {
-            if (item == null) continue;
+            if (item == null)
+                continue;
 
-            for (ItemStack leftover : player.getInventory().addItem(item).values())
-                kept.add(leftover);
+            kept.addAll(player.getInventory().addItem(item).values());
         }
 
         data.setExtractedLoot(kept);
@@ -382,6 +385,26 @@ public class PlayerListener implements Listener {
 
     private boolean tokenMatches(LoadoutSlot slot, String tokenSlot) {
         return slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot);
+    }
+
+    private boolean isMatchingArmor(ItemStack item, LoadoutSlot slot) {
+        EquipmentSlot equipmentSlot = slot.getEquipmentSlot();
+        if (equipmentSlot == null)
+            return false;
+
+        String name = item.getType().name();
+        return switch (equipmentSlot) {
+            case HEAD -> name.endsWith("_HELMET")
+                    || name.equals("CARVED_PUMPKIN") || name.equals("JACK_O_LANTERN")
+                    || name.equals("SKELETON_SKULL") || name.equals("WITHER_SKELETON_SKULL")
+                    || name.equals("ZOMBIE_HEAD") || name.equals("CREEPER_HEAD")
+                    || name.equals("PLAYER_HEAD") || name.equals("DRAGON_HEAD")
+                    || name.equals("PIGLIN_HEAD");
+            case CHEST -> name.endsWith("_CHESTPLATE") || name.equals("ELYTRA");
+            case LEGS -> name.endsWith("_LEGGINGS");
+            case FEET -> name.endsWith("_BOOTS");
+            default -> false;
+        };
     }
 
     @EventHandler
@@ -402,22 +425,7 @@ public class PlayerListener implements Listener {
 
         if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
             handleLoadoutDrag(player, event);
-        }
-    }
-
-    private void handleLoadoutDrag(Player player, InventoryDragEvent event) {
-        Inventory top = event.getView().getTopInventory();
-
-        for (int rawSlot : event.getRawSlots()) {
-            if (rawSlot < 0 || rawSlot >= top.getSize()) {
-                event.setCancelled(true);
-                return;
-            }
-
-            if (rawSlot < 9) {
-                event.setCancelled(true);
-                return;
-            }
+            plugin.getGuiManager().notifyLoadoutInteraction(player);
         }
     }
 
@@ -438,6 +446,34 @@ public class PlayerListener implements Listener {
             applyUpgradeDeferred(player, token, slot, tokenSlot, tokenTier);
             return;
         }
+    }
+
+    private void handleLoadoutDrag(Player player, InventoryDragEvent event) {
+        Inventory top = event.getView().getTopInventory();
+
+        for (int rawSlot : event.getRawSlots()) {
+            if (rawSlot >= top.getSize()) {
+                event.setCancelled(true);
+                return;
+            }
+
+            LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, rawSlot);
+
+            if (slot != null && slot.isArmor()) {
+                event.setCancelled(true);
+                return;
+            }
+
+            if (LoadoutGUI.isFirstRowFillerCell(plugin, rawSlot)) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+
+        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+
+        for (int rawSlot : event.getRawSlots())
+            data.setCellCustomized(rawSlot, true);
     }
 
     private ItemStack resolveDragToken(InventoryDragEvent event, int rawSlot) {

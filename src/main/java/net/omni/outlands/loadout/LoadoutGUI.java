@@ -1,15 +1,18 @@
 package net.omni.outlands.loadout;
 
+import net.kyori.adventure.text.Component;
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.config.ConfigUtil;
 import net.omni.outlands.data.PlayerData;
 import net.omni.outlands.update.UpgradeManager;
 import net.omni.outlands.update.UpgradeTier;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,10 +20,19 @@ import java.util.UUID;
 
 public class LoadoutGUI {
 
+    private static NamespacedKey placeholderKey;
+    private static NamespacedKey placeholderSlotKey;
+
+    public static void init(OutlandsPlugin plugin) {
+        placeholderKey = new NamespacedKey(plugin, "is_loadout_placeholder");
+        placeholderSlotKey = new NamespacedKey(plugin, "loadout_placeholder_slot");
+    }
+
     private final OutlandsPlugin plugin;
     private final UUID owner;
     private Inventory inventory;
     private ItemStack filler;
+    private boolean updated;
 
     public LoadoutGUI(OutlandsPlugin plugin, Player player) {
         this.plugin = plugin;
@@ -29,6 +41,16 @@ public class LoadoutGUI {
 
     public UUID getOwner() {
         return owner;
+    }
+
+    public void markUpdated() {
+        updated = true;
+    }
+
+    public boolean consumeUpdated() {
+        boolean wasUpdated = updated;
+        updated = false;
+        return wasUpdated;
     }
 
     public void open(Player player, PlayerData data) {
@@ -61,59 +83,53 @@ public class LoadoutGUI {
             }
 
             LoadoutSlot slot = getSlotFromClick(plugin, i);
-            if (slot != null)
-                inv.setItem(i, createPlaceholder(plugin, slot, data));
-            else if (isFirstRowFillerCell(plugin, i))
+            if (slot != null) {
+                if (slot == LoadoutSlot.OFFHAND || !data.isCellCustomized(i))
+                    inv.setItem(i, createPlaceholder(plugin, slot, data));
+                else
+                    inv.setItem(i, createEmptyCellPlaceholder(plugin, slot));
+                continue;
+            }
+
+            if (isFirstRowFillerCell(plugin, i))
                 inv.setItem(i, firstRowFiller(plugin));
         }
     }
 
-    public boolean syncToData(PlayerData data) {
+    public void syncToData(PlayerData data) {
         if (inventory == null)
-            return false;
-
-        List<ItemStack> placeholders = new ArrayList<>();
-        for (LoadoutSlot slot : LoadoutSlot.values())
-            placeholders.add(createPlaceholder(plugin, slot, data));
-
-        boolean changed = false;
+            return;
 
         for (int i = 0; i < inventory.getSize(); i++) {
             ItemStack current = inventory.getItem(i);
 
             if (current == null || isFirstRowFillerCell(plugin, i)) {
-                if (data.getItemAt(i) != null) {
+                if (data.getItemAt(i) != null)
                     data.setItemAt(i, null);
-                    changed = true;
-                }
                 continue;
             }
 
-            boolean matchesPlaceholder = false;
-            for (ItemStack placeholder : placeholders) {
-                if (current.equals(placeholder)) {
-                    matchesPlaceholder = true;
-                    break;
-                }
-            }
+            LoadoutSlot slot = getSlotFromClick(plugin, i);
 
-            if (matchesPlaceholder) {
-                if (data.getItemAt(i) != null) {
+            if (slot != null && isPlaceholder(current)
+                    && slot.getConfigKey().equals(getPlaceholderSlot(current))) {
+                if (data.getItemAt(i) != null)
                     data.setItemAt(i, null);
-                    changed = true;
-                }
+                data.setCellCustomized(i, false);
                 continue;
             }
+
+            if (isPlaceholder(current))
+                current = untagPlaceholder(current);
+
+            data.setCellCustomized(i, true);
 
             ItemStack stored = data.getItemAt(i);
             if (current.equals(stored))
                 continue;
 
             data.setItemAt(i, current);
-            changed = true;
         }
-
-        return changed;
     }
 
     public static ItemStack createPlaceholder(OutlandsPlugin plugin, LoadoutSlot slot, PlayerData data) {
@@ -124,7 +140,7 @@ public class LoadoutGUI {
             ItemStack tierItem = plugin.getLoadoutManager().buildTierItem(tier);
 
             if (tierItem != null)
-                return tierItem;
+                return tagAsPlaceholder(tierItem, slot);
         }
 
         ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
@@ -179,7 +195,73 @@ public class LoadoutGUI {
 
         plugin.getChatRenderer().setLore(meta, lore);
         item.setItemMeta(meta);
+        return tagAsPlaceholder(item, slot);
+    }
+
+    private static ItemStack createEmptyCellPlaceholder(OutlandsPlugin plugin, LoadoutSlot slot) {
+        ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta == null)
+            return tagAsPlaceholder(item, slot);
+
+        plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
+
+        List<String> lore = new ArrayList<>();
+        lore.add("");
+        lore.add(plugin.getChatRenderer().parse("<dark_gray>Empty - place an item</dark_gray>"));
+        plugin.getChatRenderer().setLore(meta, lore);
+
+        item.setItemMeta(meta);
+        return tagAsPlaceholder(item, slot);
+    }
+
+    private static ItemStack tagAsPlaceholder(ItemStack item, LoadoutSlot slot) {
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null && placeholderKey != null) {
+            meta.getPersistentDataContainer().set(placeholderKey, PersistentDataType.BYTE, (byte) 1);
+
+            if (placeholderSlotKey != null)
+                meta.getPersistentDataContainer().set(placeholderSlotKey, PersistentDataType.STRING, slot.getConfigKey());
+
+            ItemStack tagged = item.clone();
+            tagged.setItemMeta(meta);
+            return tagged;
+        }
+
         return item;
+    }
+
+    public static boolean isPlaceholder(ItemStack item) {
+        return item != null && placeholderKey != null && item.getItemMeta() != null
+                && item.getItemMeta().getPersistentDataContainer().has(placeholderKey, PersistentDataType.BYTE);
+    }
+
+    public static String getPlaceholderSlot(ItemStack item) {
+        if (item == null || placeholderSlotKey == null || item.getItemMeta() == null)
+            return null;
+
+        return item.getItemMeta().getPersistentDataContainer().get(placeholderSlotKey, PersistentDataType.STRING);
+    }
+
+    public static ItemStack untagPlaceholder(ItemStack item) {
+        if (!isPlaceholder(item))
+            return item;
+
+        ItemStack copy = item.clone();
+        ItemMeta meta = copy.getItemMeta();
+
+        if (meta != null) {
+            meta.getPersistentDataContainer().remove(placeholderKey);
+
+            if (placeholderSlotKey != null)
+                meta.getPersistentDataContainer().remove(placeholderSlotKey);
+
+            copy.setItemMeta(meta);
+        }
+
+        return copy;
     }
 
     private ItemStack firstRowFiller(OutlandsPlugin plugin) {
@@ -193,12 +275,15 @@ public class LoadoutGUI {
 
         ItemStack item = new ItemStack(material);
         String name = plugin.getConfigUtil().getLoadoutGuiFillerName();
-        if (name != null && !name.isEmpty()) {
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            if (name != null && !name.isEmpty())
                 plugin.getChatRenderer().setDisplayName(meta, name);
-                item.setItemMeta(meta);
-            }
+            else
+                meta.customName(Component.empty());
+
+            item.setItemMeta(meta);
         }
 
         filler = item;

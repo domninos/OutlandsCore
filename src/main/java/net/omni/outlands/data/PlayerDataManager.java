@@ -62,6 +62,15 @@ public class PlayerDataManager {
                         data.setLoadoutItems(migrateLoadoutItems(deserializeItems(itemJson)));
                     }
 
+                    String customizedJson = rs.getString("customized_cells");
+                    if (customizedJson != null && !customizedJson.isEmpty() && !customizedJson.equals("[]")) {
+                        List<Integer> cells = plugin.getGson().fromJson(customizedJson, new TypeToken<List<Integer>>() {
+                        }.getType());
+
+                        if (cells != null)
+                            data.setCustomizedCells(cells);
+                    }
+
                     String lootJson = rs.getString("extracted_loot");
                     if (lootJson != null && !lootJson.isEmpty() && !lootJson.equals("[]")) {
                         List<ItemStack> items = deserializeItems(lootJson);
@@ -156,8 +165,8 @@ public class PlayerDataManager {
 
     private void writePlayerToDb(UUID uuid, PlayerData data) {
         String insert = """
-                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_contents, extracted_loot, cooldown_until, last_kill_count, last_event_count, last_boss_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_contents, customized_cells, extracted_loot, cooldown_until, last_kill_count, last_event_count, last_boss_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection conn = plugin.getDatabaseManager().getConnection();
@@ -167,11 +176,12 @@ public class PlayerDataManager {
             ps.setInt(2, data.getTokens());
             ps.setString(3, plugin.getGson().toJson(data.getLoadoutTiers()));
             ps.setString(4, serializeItems(data.getLoadoutItems()));
-            ps.setString(5, serializeItems(data.getExtractedLoot()));
-            ps.setLong(6, data.getCooldownUntil());
-            ps.setInt(7, data.getLastKillCount());
-            ps.setInt(8, data.getLastEventCount());
-            ps.setInt(9, data.getLastBossCount());
+            ps.setString(5, plugin.getGson().toJson(data.getCustomizedCells()));
+            ps.setString(6, serializeItems(data.getExtractedLoot()));
+            ps.setLong(7, data.getCooldownUntil());
+            ps.setInt(8, data.getLastKillCount());
+            ps.setInt(9, data.getLastEventCount());
+            ps.setInt(10, data.getLastBossCount());
 
             ps.executeUpdate();
         } catch (SQLException e) {

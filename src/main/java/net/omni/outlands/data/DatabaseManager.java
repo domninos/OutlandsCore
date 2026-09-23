@@ -41,6 +41,7 @@ public class DatabaseManager {
                             tokens INTEGER DEFAULT 0,
                             loadout TEXT DEFAULT '{}',
                             loadout_contents TEXT DEFAULT '',
+                            customized_cells TEXT DEFAULT '[]',
                             extracted_loot TEXT DEFAULT '[]',
                             cooldown_until BIGINT DEFAULT 0,
                             last_kill_count INTEGER DEFAULT 0,
@@ -55,6 +56,11 @@ public class DatabaseManager {
             }
             try {
                 stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN loadout_contents TEXT DEFAULT ''");
+            } catch (SQLException ignored) {
+                // Column already exists.
+            }
+            try {
+                stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN customized_cells TEXT DEFAULT '[]'");
             } catch (SQLException ignored) {
                 // Column already exists.
             }

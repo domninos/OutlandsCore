@@ -14,20 +14,15 @@ import java.util.List;
 
 public class LoadoutManager {
 
+    private final List<LoadoutSlot> tieredCells =
+            List.of(LoadoutSlot.WEAPON, LoadoutSlot.TOOL, LoadoutSlot.FOOD, LoadoutSlot.POTION);
+
     private final OutlandsPlugin plugin;
     private final UpgradeManager upgradeManager;
 
     public LoadoutManager(OutlandsPlugin plugin, UpgradeManager upgradeManager) {
         this.plugin = plugin;
         this.upgradeManager = upgradeManager;
-    }
-
-    public int getEffectiveTier(PlayerData data, LoadoutSlot slot) {
-        int stored = data.getLoadoutTier(slot.getConfigKey());
-        int defaultTier = plugin.getConfigUtil() == null
-                ? 0 : plugin.getConfigUtil().getDefaultLoadoutTier(slot.getConfigKey());
-
-        return Math.max(stored, defaultTier);
     }
 
     public void applyLoadout(Player player, PlayerData data) {
@@ -43,7 +38,7 @@ public class LoadoutManager {
             ItemStack item = data.getItemAt(cell);
             int tierLevel = getEffectiveTier(data, slot);
 
-            if (item == null || item.equals(LoadoutGUI.createPlaceholder(plugin, slot, data)))
+            if (item == null || LoadoutGUI.isPlaceholder(item))
                 item = tierLevel > 0 ? buildTierItem(upgradeManager.getTier(slot, tierLevel)) : null;
 
             player.getInventory().setItem(slot.getInventorySlot(), item);
@@ -58,7 +53,7 @@ public class LoadoutManager {
             ItemStack item = data.getItemAt(cell);
             if (item == null) continue;
 
-            if (slot != null && item.equals(LoadoutGUI.createPlaceholder(plugin, slot, data)))
+            if (slot != null && LoadoutGUI.isPlaceholder(item))
                 continue;
 
             if (freeIndex >= 36) break;
@@ -72,13 +67,20 @@ public class LoadoutManager {
         if (offhandCell >= 0 && offhandCell < guiSize) {
             offhandItem = data.getItemAt(offhandCell);
 
-            if (offhandItem != null && offhandItem.equals(LoadoutGUI.createPlaceholder(plugin, LoadoutSlot.OFFHAND, data)))
+            if (LoadoutGUI.isPlaceholder(offhandItem))
                 offhandItem = null;
         }
 
         player.getInventory().setItemInOffHand(offhandItem);
 
-        for (LoadoutSlot slot : List.of(LoadoutSlot.WEAPON, LoadoutSlot.TOOL)) {
+
+        for (LoadoutSlot slot : tieredCells) {
+            int cell = config.getLoadoutGuiSlot(slot.name().toLowerCase());
+            if (cell < 0 || cell >= guiSize) continue;
+
+            if (data.getItemAt(cell) != null || data.isCellCustomized(cell))
+                continue;
+
             int tierLevel = getEffectiveTier(data, slot);
             if (tierLevel <= 0) continue;
 
@@ -90,6 +92,14 @@ public class LoadoutManager {
 
             player.getInventory().setItem(empty, item);
         }
+    }
+
+    public int getEffectiveTier(PlayerData data, LoadoutSlot slot) {
+        int stored = data.getLoadoutTier(slot.getConfigKey());
+        int defaultTier = plugin.getConfigUtil() == null
+                ? 0 : plugin.getConfigUtil().getDefaultLoadoutTier(slot.getConfigKey());
+
+        return Math.max(stored, defaultTier);
     }
 
     public ItemStack buildTierItem(UpgradeTier tier) {
@@ -136,6 +146,21 @@ public class LoadoutManager {
         }
     }
 
+    private void materializeTierItem(LoadoutSlot slot, UpgradeTier tier, PlayerData data) {
+        if (tier == null || !slot.isArmor())
+            return;
+
+        ItemStack item = buildTierItem(tier);
+        if (item == null)
+            return;
+
+        int cell = plugin.getConfigUtil().getLoadoutGuiSlot(slot.name().toLowerCase());
+        if (cell < 0)
+            return;
+
+        data.setItemAt(cell, item);
+    }
+
     public boolean applyUpgradeToken(String tokenSlot, int tokenTier, PlayerData data) {
         for (LoadoutSlot slot : LoadoutSlot.values()) {
             if (slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot)) {
@@ -154,20 +179,5 @@ public class LoadoutManager {
         }
 
         return false;
-    }
-
-    private void materializeTierItem(LoadoutSlot slot, UpgradeTier tier, PlayerData data) {
-        if (tier == null || !slot.isArmor())
-            return;
-
-        ItemStack item = buildTierItem(tier);
-        if (item == null)
-            return;
-
-        int cell = plugin.getConfigUtil().getLoadoutGuiSlot(slot.name().toLowerCase());
-        if (cell < 0)
-            return;
-
-        data.setItemAt(cell, item);
     }
 }

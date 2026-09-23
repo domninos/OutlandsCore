@@ -10,6 +10,7 @@ public class PlayerData {
     private int tokens;
     private Map<String, Integer> loadoutTiers;
     private List<ItemStack> loadoutItems;
+    private Set<Integer> customizedCells;
     private List<ItemStack> extractedLoot;
     private long cooldownUntil;
     private int lastKillCount;
@@ -22,6 +23,7 @@ public class PlayerData {
         this.tokens = 0;
         this.loadoutTiers = new HashMap<>();
         this.loadoutItems = new ArrayList<>();
+        this.customizedCells = new HashSet<>();
         this.extractedLoot = new ArrayList<>();
         this.cooldownUntil = 0;
         this.lastKillCount = 0;
@@ -109,6 +111,28 @@ public class PlayerData {
         return loadoutItems.size();
     }
 
+    public Set<Integer> getCustomizedCells() {
+        return customizedCells;
+    }
+
+    public void setCustomizedCells(Collection<Integer> cells) {
+        this.customizedCells = cells == null ? new HashSet<>() : new HashSet<>(cells);
+        markDirty();
+    }
+
+    public boolean isCellCustomized(int index) {
+        return customizedCells.contains(index);
+    }
+
+    public void setCellCustomized(int index, boolean customized) {
+        if (customized) {
+            if (customizedCells.add(index))
+                markDirty();
+        } else if (customizedCells.remove(index)) {
+            markDirty();
+        }
+    }
+
     public List<ItemStack> getExtractedLoot() {
         return extractedLoot;
     }
@@ -184,6 +208,7 @@ public class PlayerData {
     public void flush() {
         loadoutTiers.clear();
         loadoutItems = new ArrayList<>();
+        customizedCells = new HashSet<>();
         extractedLoot.clear();
     }
 }

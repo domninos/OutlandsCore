@@ -32,13 +32,31 @@ public class GUIManager {
     }
 
     public void syncLoadout(Player player, PlayerData data) {
+        LoadoutGUI gui = findLoadout(player);
+
+        if (gui == null)
+            return;
+
+        gui.syncToData(data);
+
+        if (gui.consumeUpdated())
+            plugin.getPlayerDataManager().savePlayer(data.getUuid());
+    }
+
+    public void notifyLoadoutInteraction(Player player) {
+        LoadoutGUI gui = findLoadout(player);
+
+        if (gui != null)
+            gui.markUpdated();
+    }
+
+    private LoadoutGUI findLoadout(Player player) {
         for (LoadoutGUI gui : loadoutGuis) {
-            if (gui.getOwner().equals(player.getUniqueId())) {
-                if (gui.syncToData(data))
-                    plugin.getPlayerDataManager().savePlayer(data.getUuid());
-                return;
-            }
+            if (gui.getOwner().equals(player.getUniqueId()))
+                return gui;
         }
+
+        return null;
     }
 
     public void openUpgrade(Player player, PlayerData data) {

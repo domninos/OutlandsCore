@@ -37,6 +37,14 @@ public enum LoadoutSlot {
         return this == HELMET || this == CHESTPLATE || this == LEGGINGS || this == BOOTS;
     }
 
+    public boolean isTemporary() {
+        return this == FOOD || this == POTION;
+    }
+
+    public boolean isCustomizableCell() {
+        return !isArmor() && this != OFFHAND;
+    }
+
     public int getInventorySlot() {
         return switch (this) {
             case HELMET -> 39;

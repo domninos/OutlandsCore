@@ -335,7 +335,7 @@ public class ConfigUtil {
         this.loadoutGuiOffhandSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".offhand", 8, savedDefaults);
         this.loadoutGuiFillerMaterial = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_MATERIAL,
                 "GRAY_STAINED_GLASS_PANE", savedDefaults);
-        this.loadoutGuiFillerName = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_NAME, "", savedDefaults);
+        this.loadoutGuiFillerName = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_NAME, " ", savedDefaults);
     }
 
     private void loadSpawn() {
