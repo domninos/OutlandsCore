@@ -53,7 +53,8 @@ public class GUIManager {
 
     private LoadoutGUI getOrCreateLoadout(Player player) {
         for (LoadoutGUI gui : loadoutGuis) {
-            if (gui.getOwner().equals(player.getUniqueId())) return gui;
+            if (gui.getOwner().equals(player.getUniqueId()))
+                return gui;
         }
 
         LoadoutGUI gui = new LoadoutGUI(plugin, player);
@@ -63,7 +64,8 @@ public class GUIManager {
 
     private UpgradeGUI getOrCreateUpgrade(Player player) {
         for (UpgradeGUI gui : upgradeGuis) {
-            if (gui.getOwner().equals(player.getUniqueId())) return gui;
+            if (gui.getOwner().equals(player.getUniqueId()))
+                return gui;
         }
 
         UpgradeGUI gui = new UpgradeGUI(plugin, player);
