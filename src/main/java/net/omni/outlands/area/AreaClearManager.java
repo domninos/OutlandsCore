@@ -10,6 +10,7 @@ import net.omni.outlands.loot.LootEntry;
 import net.omni.outlands.loot.LootItemUtil;
 import net.omni.outlands.loot.LootTable;
 import net.omni.outlands.messages.Messages;
+import net.omni.outlands.util.PacketGlow;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -30,7 +31,6 @@ public class AreaClearManager {
     private final OutlandsPlugin plugin;
     private final AreaManager areaManager;
     private final AreaMobFactory mobFactory;
-    private final AreaGlowProvider glow;
     private final Random random;
     private final Map<String, AreaClearSession> sessions;
     private final Map<UUID, AreaClearSession> mobSessions;
@@ -41,7 +41,6 @@ public class AreaClearManager {
         this.plugin = plugin;
         this.areaManager = areaManager;
         this.mobFactory = new AreaMobFactory(plugin);
-        this.glow = AreaGlowProvider.create(plugin);
         this.random = new Random();
         this.sessions = new HashMap<>();
         this.mobSessions = new HashMap<>();
@@ -552,7 +551,7 @@ public class AreaClearManager {
             Entity entity = Bukkit.getEntity(mobId);
 
             if (entity != null)
-                glow.setGlowing(player, entity, true);
+                PacketGlow.setGlow(player, entity, true);
         }
     }
 
@@ -592,7 +591,9 @@ public class AreaClearManager {
     private void removeGlow(Player player, AreaClearSession session) {
         for (UUID mobId : session.getMobs()) {
             Entity entity = Bukkit.getEntity(mobId);
-            if (entity != null) glow.setGlowing(player, entity, false);
+
+            if (entity != null)
+                PacketGlow.setGlow(player, entity, false);
         }
     }
 

@@ -2,6 +2,7 @@ package net.omni.outlands.area;
 
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.messages.Messages;
+import net.omni.outlands.util.PacketGlow;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -69,6 +70,7 @@ public class AreaListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         plugin.getAreaManager().handlePlayerQuit(event.getPlayer());
+        PacketGlow.handleQuit(event.getPlayer());
     }
 
     public void register() {
