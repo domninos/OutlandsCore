@@ -92,7 +92,7 @@ public class LoadoutManager {
         }
     }
 
-    private ItemStack buildTierItem(UpgradeTier tier) {
+    public ItemStack buildTierItem(UpgradeTier tier) {
         ItemStack item;
         if (tier.isExternal()) {
             ExternalItemProvider provider = plugin.getExternalPluginManager().getItemProvider(tier.getExternalId());

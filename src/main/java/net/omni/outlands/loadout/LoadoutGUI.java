@@ -72,24 +72,41 @@ public class LoadoutGUI {
         if (inventory == null)
             return false;
 
+        List<ItemStack> placeholders = new ArrayList<>();
+        for (LoadoutSlot slot : LoadoutSlot.values())
+            placeholders.add(createPlaceholder(plugin, slot, data));
+
         boolean changed = false;
 
         for (int i = 0; i < inventory.getSize(); i++) {
             ItemStack current = inventory.getItem(i);
-            LoadoutSlot slot = getSlotFromClick(plugin, i);
 
-            if (current != null && slot != null && current.equals(createPlaceholder(plugin, slot, data)))
-                current = null;
+            if (current == null || isFirstRowFillerCell(plugin, i)) {
+                if (data.getItemAt(i) != null) {
+                    data.setItemAt(i, null);
+                    changed = true;
+                }
+                continue;
+            }
 
-            if (current != null && isFirstRowFillerCell(plugin, i))
-                current = null;
+            boolean matchesPlaceholder = false;
+            for (ItemStack placeholder : placeholders) {
+                if (current.equals(placeholder)) {
+                    matchesPlaceholder = true;
+                    break;
+                }
+            }
+
+            if (matchesPlaceholder) {
+                if (data.getItemAt(i) != null) {
+                    data.setItemAt(i, null);
+                    changed = true;
+                }
+                continue;
+            }
 
             ItemStack stored = data.getItemAt(i);
-
-            if (current == null && stored == null)
-                continue;
-
-            if (current != null && current.equals(stored))
+            if (current.equals(stored))
                 continue;
 
             data.setItemAt(i, current);
@@ -100,6 +117,16 @@ public class LoadoutGUI {
     }
 
     public static ItemStack createPlaceholder(OutlandsPlugin plugin, LoadoutSlot slot, PlayerData data) {
+        int currentTier = plugin.getLoadoutManager().getEffectiveTier(data, slot);
+        UpgradeTier tier = currentTier > 0 ? plugin.getUpgradeManager().getTier(slot, currentTier) : null;
+
+        if (tier != null) {
+            ItemStack tierItem = plugin.getLoadoutManager().buildTierItem(tier);
+
+            if (tierItem != null)
+                return tierItem;
+        }
+
         ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta meta = item.getItemMeta();
 
@@ -125,8 +152,6 @@ public class LoadoutGUI {
         lore.add("");
 
         UpgradeManager upgradeManager = plugin.getUpgradeManager();
-        int currentTier = plugin.getLoadoutManager().getEffectiveTier(data, slot);
-        UpgradeTier tier = currentTier > 0 ? upgradeManager.getTier(slot, currentTier) : null;
 
         if (tier != null)
             lore.add(plugin.getChatRenderer().parse("<gray>Current: <white>" + tier.getTierName() + "</white></gray>"));
