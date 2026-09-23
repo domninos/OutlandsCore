@@ -1,7 +1,11 @@
 package net.omni.outlands.loadout;
 
+import net.kyori.adventure.text.Component;
 import net.omni.outlands.OutlandsPlugin;
+import net.omni.outlands.config.ConfigUtil;
 import net.omni.outlands.data.PlayerData;
+import net.omni.outlands.update.UpgradeManager;
+import net.omni.outlands.update.UpgradeTier;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -10,18 +14,13 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LoadoutGUI {
 
-    public static final String INVENTORY_TITLE = "<gradient:#00AAFF:#55FFFF>Outlands Loadout</gradient>";
-    private static final int[] ARMOR_SLOTS = {10, 19, 28, 37};
-    private static final int WEAPON_SLOT = 11;
-    private static final int TOOL_SLOT = 12;
-    private static final int FOOD_SLOT = 14;
-    private static final int POTION_SLOT = 15;
-    private static final int CHARM_SLOT = 20;
-    private static final int ARTIFACT_SLOT = 22;
-    private static final int PET_SLOT = 24;
+    private static final Map<UUID, Inventory> CACHE = new ConcurrentHashMap<>();
 
     private final UpgradeManager upgradeManager;
     private final OutlandsPlugin plugin;
@@ -31,32 +30,76 @@ public class LoadoutGUI {
         this.upgradeManager = plugin.getUpgradeManager();
     }
 
+    public static void clearCache(UUID uuid) {
+        CACHE.remove(uuid);
+    }
+
     public void open(Player player, PlayerData data) {
-        Inventory inv = plugin.getChatRenderer().createInventory(new LoadoutGuiHolder(), 45,
-                plugin.getChatRenderer().parse(INVENTORY_TITLE));
+        refresh(player, data);
 
-        LoadoutSlot[] armorSlots = {LoadoutSlot.HELMET, LoadoutSlot.CHESTPLATE, LoadoutSlot.LEGGINGS, LoadoutSlot.BOOTS};
+        Inventory inv = CACHE.get(player.getUniqueId());
+        if (inv != null)
+            player.openInventory(inv);
+    }
 
-        for (int i = 0; i < armorSlots.length; i++)
-            inv.setItem(ARMOR_SLOTS[i], createSlotItem(armorSlots[i], data));
+    public void refresh(Player player, PlayerData data) {
+        ConfigUtil config = plugin.getConfigUtil();
 
-        inv.setItem(WEAPON_SLOT, createSlotItem(LoadoutSlot.WEAPON, data));
-        inv.setItem(TOOL_SLOT, createSlotItem(LoadoutSlot.TOOL, data));
-        inv.setItem(FOOD_SLOT, createSlotItem(LoadoutSlot.FOOD, data));
-        inv.setItem(POTION_SLOT, createSlotItem(LoadoutSlot.POTION, data));
-        inv.setItem(CHARM_SLOT, createSlotItem(LoadoutSlot.CHARM, data));
-        inv.setItem(ARTIFACT_SLOT, createSlotItem(LoadoutSlot.ARTIFACT, data));
-        inv.setItem(PET_SLOT, createSlotItem(LoadoutSlot.PET, data));
+        Inventory inv = CACHE.computeIfAbsent(player.getUniqueId(), uuid ->
+                plugin.getChatRenderer().createInventory(new LoadoutGuiHolder(),
+                        config.getLoadoutGuiSize(), config.getLoadoutGuiTitle()));
 
-        player.openInventory(inv);
+        populate(inv, data);
+    }
+
+    private void populate(Inventory inv, PlayerData data) {
+        inv.clear();
+
+        for (LoadoutSlot slot : LoadoutSlot.values()) {
+            int guiSlot = plugin.getConfigUtil().getLoadoutGuiSlot(slot.name().toLowerCase());
+
+            if (guiSlot < 0 || guiSlot >= inv.getSize()) continue;
+
+            inv.setItem(guiSlot, createSlotItem(slot, data));
+        }
+
+        fillFiller(inv);
+    }
+
+    private void fillFiller(Inventory inv) {
+        Material material = Material.matchMaterial(plugin.getConfigUtil().getLoadoutGuiFillerMaterial());
+
+        if (material == null || material.isAir()) return;
+
+        ItemStack filler = new ItemStack(material);
+        ItemMeta meta = filler.getItemMeta();
+
+        if (meta != null) {
+            String name = plugin.getConfigUtil().getLoadoutGuiFillerName();
+
+            if (name != null && !name.isEmpty())
+                plugin.getChatRenderer().setDisplayName(meta, name);
+            else
+                meta.customName(Component.empty());
+
+            filler.setItemMeta(meta);
+        }
+
+        for (int i = 0; i < inv.getSize(); i++) {
+            if (inv.getItem(i) == null) inv.setItem(i, filler);
+        }
     }
 
     private ItemStack createSlotItem(LoadoutSlot slot, PlayerData data) {
         int currentTier = plugin.getLoadoutManager().getEffectiveTier(data, slot);
         UpgradeTier tier = currentTier > 0 ? upgradeManager.getTier(slot, currentTier) : null;
 
+        ItemStack stored = data.getLoadoutItem(slot);
+
         ItemStack item;
-        if (tier != null && tier.getMaterial() != null)
+        if (stored != null && stored.getType().isItem())
+            item = new ItemStack(stored.getType());
+        else if (tier != null && tier.getMaterial() != null)
             item = new ItemStack(tier.getMaterial());
         else
             item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
@@ -114,20 +157,13 @@ public class LoadoutGUI {
         return item;
     }
 
-    public LoadoutSlot getSlotFromClick(int slot) {
-        return switch (slot) {
-            case 10 -> LoadoutSlot.HELMET;
-            case 19 -> LoadoutSlot.CHESTPLATE;
-            case 28 -> LoadoutSlot.LEGGINGS;
-            case 37 -> LoadoutSlot.BOOTS;
-            case 11 -> LoadoutSlot.WEAPON;
-            case 12 -> LoadoutSlot.TOOL;
-            case 14 -> LoadoutSlot.FOOD;
-            case 15 -> LoadoutSlot.POTION;
-            case 20 -> LoadoutSlot.CHARM;
-            case 22 -> LoadoutSlot.ARTIFACT;
-            case 24 -> LoadoutSlot.PET;
-            default -> null;
-        };
+    public LoadoutSlot getSlotFromClick(int guiSlot) {
+        ConfigUtil config = plugin.getConfigUtil();
+
+        for (LoadoutSlot slot : LoadoutSlot.values()) {
+            if (config.getLoadoutGuiSlot(slot.name().toLowerCase()) == guiSlot) return slot;
+        }
+
+        return null;
     }
 }

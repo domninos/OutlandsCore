@@ -68,7 +68,7 @@ public class AreaListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        plugin.getAreaManager().handlePlayerQuit(event.getPlayer().getUniqueId());
+        plugin.getAreaManager().handlePlayerQuit(event.getPlayer());
     }
 
     public void register() {

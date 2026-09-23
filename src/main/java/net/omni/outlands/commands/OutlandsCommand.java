@@ -27,9 +27,8 @@ public class OutlandsCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NonNull CommandSender sender, @NonNull Command command, @NonNull String label, @NonNull String[] args) {
-        if (args.length == 0) {
+        if (args.length == 0)
             return handleEnter(sender);
-        }
 
         if (args[0].equalsIgnoreCase("help")) {
             sendHelp(sender);
@@ -68,6 +67,8 @@ public class OutlandsCommand implements CommandExecutor {
         }
 
         plugin.getRunManager().enterRun(player);
+
+        plugin.getAreaSelectionVisualizer().addOutlandsPlayer(player);
         return true;
     }
 

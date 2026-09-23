@@ -8,6 +8,9 @@ import net.omni.outlands.loot.LootItemUtil;
 import net.omni.outlands.loot.LootManager;
 import net.omni.outlands.loot.StorageHolder;
 import net.omni.outlands.messages.Messages;
+import net.omni.outlands.update.UpgradeGUI;
+import net.omni.outlands.update.UpgradeGuiHolder;
+import net.omni.outlands.update.UpgradeTier;
 import net.omni.outlands.upgrade.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -18,12 +21,10 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryType;
-import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
@@ -69,6 +70,11 @@ public class PlayerListener implements Listener {
     }
 
     @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        plugin.getPlayerDataManager().loadPlayer(event.getPlayer().getUniqueId(), null);
+    }
+
+    @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
@@ -78,9 +84,24 @@ public class PlayerListener implements Listener {
         if (plugin.getRunManager().isPlayerInRun(uuid)) {
             if (plugin.getConfigUtil().isReturnOnDisconnect())
                 plugin.getRunManager().handleDisconnect(uuid);
-
-            plugin.getPlayerDataManager().unloadPlayer(uuid);
         }
+
+        plugin.getPlayerDataManager().unloadPlayer(uuid);
+        UpgradeGUI.clearCache(uuid);
+        LoadoutGUI.clearCache(uuid);
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player))
+            return;
+
+        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+
+        if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder)
+            new UpgradeGUI(plugin).refresh(player, data);
+        else if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder)
+            new LoadoutGUI(plugin).refresh(player, data);
     }
 
     @EventHandler
@@ -229,7 +250,7 @@ public class PlayerListener implements Listener {
                 cursor.setAmount(cursor.getAmount() - 1);
                 event.setCursor(cursor);
 
-                gui.open(player, data);
+                gui.refresh(player, data);
             } else {
                 plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
             }
@@ -261,7 +282,7 @@ public class PlayerListener implements Listener {
         }
 
         if (!plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), nextTier.getTierLevel(), data)) {
-            new UpgradeGUI(plugin).open(player, data);
+            new UpgradeGUI(plugin).refresh(player, data);
             return;
         }
 
@@ -269,7 +290,7 @@ public class PlayerListener implements Listener {
                 "slot", slot.getDisplayName(),
                 "tier", nextTier.getTierName()));
 
-        new UpgradeGUI(plugin).open(player, data);
+        new UpgradeGUI(plugin).refresh(player, data);
     }
 
     private void applyUpgrade(Player player, ItemStack token, LoadoutSlot slot, InventoryClickEvent event) {
@@ -300,7 +321,7 @@ public class PlayerListener implements Listener {
             token.setAmount(token.getAmount() - 1);
             event.setCursor(token);
 
-            new UpgradeGUI(plugin).open(player, data);
+            new UpgradeGUI(plugin).refresh(player, data);
         } else {
             plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
         }
@@ -426,7 +447,7 @@ public class PlayerListener implements Listener {
                             ? token.getItemMeta().getDisplayName() : token.getType().name(),
                     "slot", slot.getDisplayName()));
 
-            new UpgradeGUI(plugin).open(player, data);
+            new UpgradeGUI(plugin).refresh(player, data);
         });
     }
 

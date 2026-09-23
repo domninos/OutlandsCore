@@ -64,16 +64,20 @@ public class AreaWandListener implements Listener {
     }
 
     private void sendPos(Player player, Messages message, Location location) {
-        plugin.sendMessage(player, message
-                .replace("x", String.valueOf(location.getBlockX()))
-                .replace("y", String.valueOf(location.getBlockY()))
-                .replace("z", String.valueOf(location.getBlockZ())));
+        plugin.sendMessage(player, message.replace(
+                "x", String.valueOf(location.getBlockX()),
+                "y", String.valueOf(location.getBlockY()),
+                "z", String.valueOf(location.getBlockZ()))
+        );
     }
 
     private void handleSpawn(Player player, Action action, Block block, AreaManager areaManager,
                              ItemStack item, boolean sneaking, PlayerInteractEvent event) {
-        if (action != Action.LEFT_CLICK_BLOCK && action != Action.RIGHT_CLICK_BLOCK) return;
-        if (block == null) return;
+        if (action != Action.LEFT_CLICK_BLOCK && action != Action.RIGHT_CLICK_BLOCK)
+            return;
+
+        if (block == null)
+            return;
 
         event.setCancelled(true);
 
@@ -152,7 +156,9 @@ public class AreaWandListener implements Listener {
 
         if (name != null) {
             Area area = areaManager.getArea(name);
-            if (area != null) return area;
+
+            if (area != null)
+                return area;
         }
 
         return areaManager.getAreaAt(player.getLocation());

@@ -2,7 +2,7 @@ package net.omni.outlands.commands;
 
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.data.PlayerData;
-import net.omni.outlands.loadout.UpgradeGUI;
+import net.omni.outlands.update.UpgradeGUI;
 import net.omni.outlands.messages.Messages;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

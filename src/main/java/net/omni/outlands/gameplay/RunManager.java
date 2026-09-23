@@ -120,7 +120,6 @@ public class RunManager {
             return false;
 
         List<ItemStack> loot = Arrays.asList(player.getInventory().getContents());
-        loot.removeAll(Collections.singleton(null));
 
         PlayerData data = playerDataManager.getOrCreate(uuid);
 
@@ -151,9 +150,8 @@ public class RunManager {
         plugin.sendMessage(player, Messages.EXTRACT_SUCCESS.toString());
         plugin.sendMessage(player, Messages.EXTRACT_TOKENS.replace("tokens", String.valueOf(tokens)));
 
-        if (!loot.isEmpty()) {
+        if (!loot.isEmpty())
             plugin.sendMessage(player, Messages.EXTRACT_LOOT_STORED.toString());
-        }
 
         playerDataManager.savePlayer(uuid);
         return true;

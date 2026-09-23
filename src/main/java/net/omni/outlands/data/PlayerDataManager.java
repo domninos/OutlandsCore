@@ -54,6 +54,11 @@ public class PlayerDataManager {
                             data.setLoadoutTiers(tiers);
                     }
 
+                    String itemJson = rs.getString("loadout_items");
+                    if (itemJson != null && !itemJson.isEmpty() && !itemJson.equals("[]")) {
+                        data.setLoadoutItems(deserializeItems(itemJson));
+                    }
+
                     String lootJson = rs.getString("extracted_loot");
                     if (lootJson != null && !lootJson.isEmpty() && !lootJson.equals("[]")) {
                         List<ItemStack> items = deserializeItems(lootJson);
@@ -66,6 +71,7 @@ public class PlayerDataManager {
                     data.setLastBossCount(rs.getInt("last_boss_count"));
                 }
 
+                data.clearDirty();
                 cache.put(uuid, data);
 
                 if (onComplete != null)
@@ -91,8 +97,8 @@ public class PlayerDataManager {
 
     private void writePlayerToDb(UUID uuid, PlayerData data) {
         String insert = """
-                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, extracted_loot, cooldown_until, last_kill_count, last_event_count, last_boss_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_items, extracted_loot, cooldown_until, last_kill_count, last_event_count, last_boss_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection conn = plugin.getDatabaseManager().getConnection();
@@ -101,11 +107,12 @@ public class PlayerDataManager {
             ps.setString(1, uuid.toString());
             ps.setInt(2, data.getTokens());
             ps.setString(3, plugin.getGson().toJson(data.getLoadoutTiers()));
-            ps.setString(4, serializeItems(data.getExtractedLoot()));
-            ps.setLong(5, data.getCooldownUntil());
-            ps.setInt(6, data.getLastKillCount());
-            ps.setInt(7, data.getLastEventCount());
-            ps.setInt(8, data.getLastBossCount());
+            ps.setString(4, serializeItems(data.getLoadoutItems()));
+            ps.setString(5, serializeItems(data.getExtractedLoot()));
+            ps.setLong(6, data.getCooldownUntil());
+            ps.setInt(7, data.getLastKillCount());
+            ps.setInt(8, data.getLastEventCount());
+            ps.setInt(9, data.getLastBossCount());
 
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -125,10 +132,18 @@ public class PlayerDataManager {
     public void savePlayer(UUID uuid) {
         PlayerData data = cache.get(uuid);
 
-        if (data == null)
+        if (data == null || !data.isDirty())
             return;
 
+        data.clearDirty();
         plugin.getDatabaseManager().executeAsync(() -> writePlayerToDb(uuid, data));
+    }
+
+    public void saveAllDirty() {
+        for (Map.Entry<UUID, PlayerData> entry : cache.entrySet()) {
+            if (entry.getValue().isDirty())
+                savePlayer(entry.getKey());
+        }
     }
 
     public PlayerData getOrCreate(UUID uuid) {

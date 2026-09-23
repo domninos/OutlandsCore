@@ -20,7 +20,7 @@ import net.omni.outlands.gameplay.RunManager;
 import net.omni.outlands.integration.ExternalPluginManager;
 import net.omni.outlands.listeners.PlayerListener;
 import net.omni.outlands.loadout.LoadoutManager;
-import net.omni.outlands.loadout.UpgradeManager;
+import net.omni.outlands.update.UpgradeManager;
 import net.omni.outlands.loot.LootItemUtil;
 import net.omni.outlands.loot.LootManager;
 import net.omni.outlands.loot.LootTableManager;
@@ -34,6 +34,7 @@ import net.omni.outlands.upgrade.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 public final class OutlandsPlugin extends JavaPlugin {
 
@@ -56,6 +57,7 @@ public final class OutlandsPlugin extends JavaPlugin {
     private AreaClearManager areaClearManager;
     private AreaSelectionVisualizer areaSelectionVisualizer;
     private ScoreboardManager scoreboardManager;
+    private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
 
     /*
@@ -79,13 +81,11 @@ public final class OutlandsPlugin extends JavaPlugin {
      - fix /outlands loadout, say "Upgrade armor via /upgrades". disable clicking.
        - make loadoutgui configurable just like upgradegui
        - player-specific loadout should LOAD on JOIN. do not recreate guis upon command,
-         update the inventory when closing the gui itself.
-         save items (unless no updates found) to database on quit/on shutdown/after X seconds
+     - fix loadout not saving/getting fetched automatically in /loadout
      -
      - add custom events
      - add API
      -
-     - make checking inventory use a list of viewers
      -
      - If they die before extracting:
         They immediately leave Outlands.
@@ -112,6 +112,8 @@ public final class OutlandsPlugin extends JavaPlugin {
     public void onDisable() {
         if (scoreboardManager != null)
             scoreboardManager.stop();
+
+        stopSaveTask();
 
         if (areaSelectionVisualizer != null)
             areaSelectionVisualizer.stop();
@@ -179,8 +181,25 @@ public final class OutlandsPlugin extends JavaPlugin {
         areaSelectionVisualizer.start();
         areaClearManager.start();
         scoreboardManager.start();
+        startSaveTask();
 
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
+    }
+
+    private void startSaveTask() {
+        int seconds = configUtil.getAutoSaveSeconds();
+        if (seconds <= 0)
+            return;
+
+        playerSaveTask = Bukkit.getScheduler().runTaskTimer(this,
+                () -> playerDataManager.saveAllDirty(), 20L * seconds, 20L * seconds);
+    }
+
+    private void stopSaveTask() {
+        if (playerSaveTask != null) {
+            playerSaveTask.cancel();
+            playerSaveTask = null;
+        }
     }
 
     private void initChatRenderer() {
@@ -207,6 +226,7 @@ public final class OutlandsPlugin extends JavaPlugin {
         new PlayerListener(this).register();
         new AreaWandListener(this).register();
         new AreaListener(this).register();
+        areaSelectionVisualizer.register();
         new ScoreboardListener(this).register();
     }
 
