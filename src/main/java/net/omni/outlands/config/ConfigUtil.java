@@ -75,6 +75,7 @@ public class ConfigUtil {
     private int loadoutGuiCharmSlot;
     private int loadoutGuiArtifactSlot;
     private int loadoutGuiPetSlot;
+    private int loadoutGuiOffhandSlot;
     private String loadoutGuiFillerMaterial;
     private String loadoutGuiFillerName;
 
@@ -331,6 +332,7 @@ public class ConfigUtil {
         this.loadoutGuiCharmSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".charm", 20, savedDefaults);
         this.loadoutGuiArtifactSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".artifact", 22, savedDefaults);
         this.loadoutGuiPetSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".pet", 24, savedDefaults);
+        this.loadoutGuiOffhandSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".offhand", 8, savedDefaults);
         this.loadoutGuiFillerMaterial = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_MATERIAL,
                 "GRAY_STAINED_GLASS_PANE", savedDefaults);
         this.loadoutGuiFillerName = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_NAME, "", savedDefaults);
@@ -688,6 +690,7 @@ public class ConfigUtil {
             case "charm" -> loadoutGuiCharmSlot;
             case "artifact" -> loadoutGuiArtifactSlot;
             case "pet" -> loadoutGuiPetSlot;
+            case "offhand" -> loadoutGuiOffhandSlot;
             default -> -1;
         };
 

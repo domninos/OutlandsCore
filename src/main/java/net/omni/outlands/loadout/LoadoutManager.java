@@ -53,7 +53,7 @@ public class LoadoutManager {
 
         for (int cell = 0; cell < guiSize; cell++) {
             LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, cell);
-            if (slot != null && slot.isArmor()) continue;
+            if (slot != null && (slot.isArmor() || slot == LoadoutSlot.OFFHAND)) continue;
 
             ItemStack item = data.getItemAt(cell);
             if (item == null) continue;
@@ -66,6 +66,17 @@ public class LoadoutManager {
             player.getInventory().setItem(freeIndex, item);
             freeIndex++;
         }
+
+        ItemStack offhandItem = null;
+        int offhandCell = config.getLoadoutGuiSlot("offhand");
+        if (offhandCell >= 0 && offhandCell < guiSize) {
+            offhandItem = data.getItemAt(offhandCell);
+
+            if (offhandItem != null && offhandItem.equals(LoadoutGUI.createPlaceholder(plugin, LoadoutSlot.OFFHAND, data)))
+                offhandItem = null;
+        }
+
+        player.getInventory().setItemInOffHand(offhandItem);
 
         for (LoadoutSlot slot : List.of(LoadoutSlot.WEAPON, LoadoutSlot.TOOL)) {
             int tierLevel = getEffectiveTier(data, slot);

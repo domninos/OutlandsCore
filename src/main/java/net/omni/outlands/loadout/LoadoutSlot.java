@@ -14,7 +14,8 @@ public enum LoadoutSlot {
     POTION("potions", "Potions"),
     CHARM("charm", "Charm"),
     ARTIFACT("artifact", "Artifact"),
-    PET("pet", "Pet");
+    PET("pet", "Pet"),
+    OFFHAND("offhand", "Off-hand");
 
     private final String configKey;
     private final String displayName;

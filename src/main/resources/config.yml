@@ -215,6 +215,7 @@ loadout-gui:
     charm: 20
     artifact: 22
     pet: 24
+    offhand: 8
   # Filler for the first (armor) row cells that are not armor slots
   filler:
     material: GRAY_STAINED_GLASS_PANE

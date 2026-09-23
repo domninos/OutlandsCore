@@ -118,6 +118,7 @@ public class LoadoutGUI {
             case CHARM -> "<dark_purple>Charm</dark_purple>";
             case ARTIFACT -> "<dark_aqua>Artifact</dark_aqua>";
             case PET -> "<green>Pet</green>";
+            case OFFHAND -> "<yellow>Off-hand</yellow>";
         });
 
         List<String> lore = new ArrayList<>();
@@ -186,7 +187,8 @@ public class LoadoutGUI {
         ConfigUtil config = plugin.getConfigUtil();
 
         for (LoadoutSlot slot : LoadoutSlot.values()) {
-            if (slot.isArmor() && config.getLoadoutGuiSlot(slot.name().toLowerCase()) == guiSlot)
+            if ((slot.isArmor() || slot == LoadoutSlot.OFFHAND)
+                    && config.getLoadoutGuiSlot(slot.name().toLowerCase()) == guiSlot)
                 return false;
         }
 

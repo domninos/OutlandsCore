@@ -89,6 +89,8 @@ public class PlayerDataManager {
         return ItemSerializationUtil.fromBase64(base64);
     }
 
+    private static final int LEGACY_SLOT_COUNT = 11;
+
     /** Legacy format (11 entries, LoadoutSlot ordinal-indexed) + array-shape migrations. */
     private List<ItemStack> migrateLoadoutItems(List<ItemStack> items) {
         int guiSize = plugin.getConfigUtil().getLoadoutGuiSize();
@@ -97,7 +99,7 @@ public class PlayerDataManager {
         if (items == null || items.isEmpty())
             return out;
 
-        if (items.size() == LoadoutSlot.values().length) {
+        if (items.size() == LEGACY_SLOT_COUNT) {
             LoadoutSlot[] slots = LoadoutSlot.values();
 
             for (int i = 0; i < items.size(); i++) {
