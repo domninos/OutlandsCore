@@ -40,7 +40,7 @@ public class DatabaseManager {
                             uuid TEXT PRIMARY KEY,
                             tokens INTEGER DEFAULT 0,
                             loadout TEXT DEFAULT '{}',
-                            loadout_items TEXT DEFAULT '[]',
+                            loadout_contents TEXT DEFAULT '',
                             extracted_loot TEXT DEFAULT '[]',
                             cooldown_until BIGINT DEFAULT 0,
                             last_kill_count INTEGER DEFAULT 0,
@@ -49,9 +49,14 @@ public class DatabaseManager {
                         )
                     """);
             try {
-                stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN loadout_items TEXT DEFAULT '[]'");
+                stmt.executeUpdate("ALTER TABLE player_data RENAME COLUMN loadout_items TO loadout_contents");
             } catch (SQLException ignored) {
-                // Column already exists on databases created before the migration.
+                // Old column absent (fresh database) or already renamed.
+            }
+            try {
+                stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN loadout_contents TEXT DEFAULT ''");
+            } catch (SQLException ignored) {
+                // Column already exists.
             }
             plugin.sendConsole("<green>Database initialized successfully.</green>");
         } catch (SQLException e) {

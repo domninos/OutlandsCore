@@ -197,16 +197,17 @@ upgrade-gui:
     name: ""
 
 # Loadout GUI (/outlands loadout)
-# Shows the player's saved loadout. Empty = no filler (Charm/Pet/Artifact
-# placeholders are always shown).
+# Loadout editor. The armor slots sit on the first row (only matching armor
+# can be placed there); every other cell is free placement — whatever is in
+# this inventory is what you get on /outlands.
 loadout-gui:
   title: "<gradient:#00AAFF:#55FFFF>Outlands Loadout</gradient>"
   rows: 5
   slots:
-    helmet: 10
-    chestplate: 19
-    leggings: 28
-    boots: 37
+    helmet: 0
+    chestplate: 1
+    leggings: 2
+    boots: 3
     weapon: 11
     tool: 12
     food: 14
@@ -214,8 +215,9 @@ loadout-gui:
     charm: 20
     artifact: 22
     pet: 24
+  # Filler for the first (armor) row cells that are not armor slots
   filler:
-    material: ""
+    material: GRAY_STAINED_GLASS_PANE
     name: ""
 
 # Area editing tools (/areas)

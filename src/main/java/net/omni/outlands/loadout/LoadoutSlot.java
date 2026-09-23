@@ -1,5 +1,7 @@
 package net.omni.outlands.loadout;
 
+import org.bukkit.inventory.EquipmentSlot;
+
 public enum LoadoutSlot {
 
     HELMET("armor_helmet", "Helmet"),
@@ -41,6 +43,16 @@ public enum LoadoutSlot {
             case LEGGINGS -> 37;
             case BOOTS -> 36;
             default -> -1;
+        };
+    }
+
+    public EquipmentSlot getEquipmentSlot() {
+        return switch (this) {
+            case HELMET -> EquipmentSlot.HEAD;
+            case CHESTPLATE -> EquipmentSlot.CHEST;
+            case LEGGINGS -> EquipmentSlot.LEGS;
+            case BOOTS -> EquipmentSlot.FEET;
+            default -> null;
         };
     }
 }

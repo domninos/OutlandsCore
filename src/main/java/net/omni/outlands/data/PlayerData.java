@@ -1,6 +1,5 @@
 package net.omni.outlands.data;
 
-import net.omni.outlands.loadout.LoadoutSlot;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
@@ -22,7 +21,7 @@ public class PlayerData {
         this.uuid = uuid;
         this.tokens = 0;
         this.loadoutTiers = new HashMap<>();
-        this.loadoutItems = new ArrayList<>(Collections.nCopies(LoadoutSlot.values().length, null));
+        this.loadoutItems = new ArrayList<>();
         this.extractedLoot = new ArrayList<>();
         this.cooldownUntil = 0;
         this.lastKillCount = 0;
@@ -89,28 +88,25 @@ public class PlayerData {
     }
 
     public void setLoadoutItems(List<ItemStack> items) {
-        if (items == null) {
-            this.loadoutItems = new ArrayList<>(Collections.nCopies(LoadoutSlot.values().length, null));
-        } else {
-            this.loadoutItems = items;
-        }
+        this.loadoutItems = items == null ? new ArrayList<>() : new ArrayList<>(items);
         markDirty();
     }
 
-    public ItemStack getLoadoutItem(LoadoutSlot slot) {
-        int index = slot.ordinal();
+    public ItemStack getItemAt(int index) {
         if (index < 0 || index >= loadoutItems.size()) return null;
         return loadoutItems.get(index);
     }
 
-    public void setLoadoutItem(LoadoutSlot slot, ItemStack item) {
-        int index = slot.ordinal();
-
+    public void setItemAt(int index, ItemStack item) {
         while (loadoutItems.size() <= index)
             loadoutItems.add(null);
 
         loadoutItems.set(index, item);
         markDirty();
+    }
+
+    public int getLoadoutSize() {
+        return loadoutItems.size();
     }
 
     public List<ItemStack> getExtractedLoot() {
@@ -187,7 +183,7 @@ public class PlayerData {
 
     public void flush() {
         loadoutTiers.clear();
-        loadoutItems = new ArrayList<>(Collections.nCopies(LoadoutSlot.values().length, null));
+        loadoutItems = new ArrayList<>();
         extractedLoot.clear();
     }
 }

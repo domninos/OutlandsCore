@@ -320,10 +320,10 @@ public class ConfigUtil {
         this.loadoutGuiTitle = getAndDefaultString(ConfigKeys.LOADOUT_GUI_TITLE,
                 "<gradient:#00AAFF:#55FFFF>Outlands Loadout</gradient>", savedDefaults);
         this.loadoutGuiRows = Math.clamp(getAndDefaultInt(ConfigKeys.LOADOUT_GUI_ROWS, 5, savedDefaults), 1, 6);
-        this.loadoutGuiHelmetSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".helmet", 10, savedDefaults);
-        this.loadoutGuiChestplateSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".chestplate", 19, savedDefaults);
-        this.loadoutGuiLeggingsSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".leggings", 28, savedDefaults);
-        this.loadoutGuiBootsSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".boots", 37, savedDefaults);
+        this.loadoutGuiHelmetSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".helmet", 0, savedDefaults);
+        this.loadoutGuiChestplateSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".chestplate", 1, savedDefaults);
+        this.loadoutGuiLeggingsSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".leggings", 2, savedDefaults);
+        this.loadoutGuiBootsSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".boots", 3, savedDefaults);
         this.loadoutGuiWeaponSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".weapon", 11, savedDefaults);
         this.loadoutGuiToolSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".tool", 12, savedDefaults);
         this.loadoutGuiFoodSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".food", 14, savedDefaults);
@@ -331,7 +331,8 @@ public class ConfigUtil {
         this.loadoutGuiCharmSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".charm", 20, savedDefaults);
         this.loadoutGuiArtifactSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".artifact", 22, savedDefaults);
         this.loadoutGuiPetSlot = getAndDefaultInt(ConfigKeys.LOADOUT_GUI_SLOTS + ".pet", 24, savedDefaults);
-        this.loadoutGuiFillerMaterial = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_MATERIAL, "", savedDefaults);
+        this.loadoutGuiFillerMaterial = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_MATERIAL,
+                "GRAY_STAINED_GLASS_PANE", savedDefaults);
         this.loadoutGuiFillerName = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_NAME, "", savedDefaults);
     }
 
@@ -675,7 +676,7 @@ public class ConfigUtil {
     }
 
     public int getLoadoutGuiSlot(String slot) {
-        return switch (slot.toLowerCase()) {
+        int index = switch (slot.toLowerCase()) {
             case "helmet" -> loadoutGuiHelmetSlot;
             case "chestplate" -> loadoutGuiChestplateSlot;
             case "leggings" -> loadoutGuiLeggingsSlot;
@@ -689,6 +690,11 @@ public class ConfigUtil {
             case "pet" -> loadoutGuiPetSlot;
             default -> -1;
         };
+
+        if (index < 0 || index >= getLoadoutGuiSize())
+            return -1;
+
+        return index;
     }
 
     public String getLoadoutGuiFillerMaterial() {

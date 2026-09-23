@@ -2,6 +2,7 @@ package net.omni.outlands.data;
 
 import com.google.gson.reflect.TypeToken;
 import net.omni.outlands.OutlandsPlugin;
+import net.omni.outlands.loadout.LoadoutSlot;
 import net.omni.outlands.util.ItemSerializationUtil;
 import org.bukkit.inventory.ItemStack;
 
@@ -10,6 +11,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -54,9 +57,9 @@ public class PlayerDataManager {
                             data.setLoadoutTiers(tiers);
                     }
 
-                    String itemJson = rs.getString("loadout_items");
+                    String itemJson = rs.getString("loadout_contents");
                     if (itemJson != null && !itemJson.isEmpty() && !itemJson.equals("[]")) {
-                        data.setLoadoutItems(deserializeItems(itemJson));
+                        data.setLoadoutItems(migrateLoadoutItems(deserializeItems(itemJson)));
                     }
 
                     String lootJson = rs.getString("extracted_loot");
@@ -86,6 +89,60 @@ public class PlayerDataManager {
         return ItemSerializationUtil.fromBase64(base64);
     }
 
+    /** Legacy format (11 entries, LoadoutSlot ordinal-indexed) + array-shape migrations. */
+    private List<ItemStack> migrateLoadoutItems(List<ItemStack> items) {
+        int guiSize = plugin.getConfigUtil().getLoadoutGuiSize();
+        List<ItemStack> out = new ArrayList<>(Collections.nCopies(guiSize, null));
+
+        if (items == null || items.isEmpty())
+            return out;
+
+        if (items.size() == LoadoutSlot.values().length) {
+            LoadoutSlot[] slots = LoadoutSlot.values();
+
+            for (int i = 0; i < items.size(); i++) {
+                ItemStack item = items.get(i);
+                if (item == null) continue;
+
+                int target = plugin.getConfigUtil().getLoadoutGuiSlot(slots[i].name().toLowerCase());
+                if (target >= 0 && target < guiSize)
+                    out.set(target, item);
+            }
+
+            return out;
+        }
+
+        for (int i = 0; i < items.size() && i < out.size(); i++)
+            out.set(i, items.get(i));
+
+        relocateLegacyArmorPositions(out);
+        return out;
+    }
+
+    private static final int[] LEGACY_ARMOR_SLOTS = {10, 19, 28, 37};
+
+    private void relocateLegacyArmorPositions(List<ItemStack> out) {
+        String[] names = {"helmet", "chestplate", "leggings", "boots"};
+
+        for (String name : names) {
+            int current = plugin.getConfigUtil().getLoadoutGuiSlot(name);
+            if (current >= 0 && current < out.size() && out.get(current) != null)
+                return;
+        }
+
+        for (int i = 0; i < names.length; i++) {
+            int current = plugin.getConfigUtil().getLoadoutGuiSlot(names[i]);
+            int legacy = LEGACY_ARMOR_SLOTS[i];
+
+            if (current < 0 || current >= out.size()) continue;
+            if (legacy == current || legacy < 0 || legacy >= out.size()) continue;
+            if (out.get(current) == null && out.get(legacy) != null) {
+                out.set(current, out.get(legacy));
+                out.set(legacy, null);
+            }
+        }
+    }
+
     public void savePlayerSync(UUID uuid) {
         PlayerData data = cache.get(uuid);
 
@@ -97,7 +154,7 @@ public class PlayerDataManager {
 
     private void writePlayerToDb(UUID uuid, PlayerData data) {
         String insert = """
-                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_items, extracted_loot, cooldown_until, last_kill_count, last_event_count, last_boss_count)
+                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_contents, extracted_loot, cooldown_until, last_kill_count, last_event_count, last_boss_count)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 

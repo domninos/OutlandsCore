@@ -31,6 +31,16 @@ public class GUIManager {
         gui.refresh(data);
     }
 
+    public void syncLoadout(Player player, PlayerData data) {
+        for (LoadoutGUI gui : loadoutGuis) {
+            if (gui.getOwner().equals(player.getUniqueId())) {
+                if (gui.syncToData(data))
+                    plugin.getPlayerDataManager().savePlayer(data.getUuid());
+                return;
+            }
+        }
+    }
+
     public void openUpgrade(Player player, PlayerData data) {
         UpgradeGUI gui = getOrCreateUpgrade(player);
         gui.open(player, data);
