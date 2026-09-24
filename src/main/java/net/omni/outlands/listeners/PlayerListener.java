@@ -15,6 +15,7 @@ import net.omni.outlands.update.UpgradeGuiHolder;
 import net.omni.outlands.update.UpgradeTier;
 import net.omni.outlands.upgrade.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -72,13 +73,27 @@ public class PlayerListener implements Listener {
         RunManager runManager = plugin.getRunManager();
         RunManager.ActiveRun run = runManager.getActiveRun(uuid);
 
-        if (run != null)
-            event.setRespawnLocation(run.getReturnLocation());
+        PlayerData data = plugin.getPlayerDataManager().getOrCreate(uuid);
+
+        Location respawnLocation = run != null
+                ? run.getReturnLocation()
+                : data.getReturnLocation();
+
+        if (respawnLocation != null)
+            event.setRespawnLocation(respawnLocation);
+
+        // Consume the persisted return location once it has been used so a
+        // later normal death does not respawn the player at the old spot.
+        if (run == null && data.getReturnLocation() != null)
+            data.setReturnLocation(null);
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        plugin.getPlayerDataManager().loadPlayer(event.getPlayer().getUniqueId(), null);
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+
+        plugin.getPlayerDataManager().loadPlayer(uuid, () -> plugin.getRunManager().restorePendingReturn(player));
     }
 
     @EventHandler

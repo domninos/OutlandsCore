@@ -59,32 +59,27 @@ public class RunManager {
 
         PlayerData data = playerDataManager.getOrCreate(uuid);
 
-        Location returnLocation = player.getLocation().clone();
-        Map<String, Integer> preRunInventory = serializeInventory(player.getInventory().getContents());
-        Map<String, Integer> preRunArmor = serializeInventory(player.getInventory().getArmorContents());
+        data.setReturnLocation(player.getLocation().clone());
+        data.setPreRunInventory(Arrays.asList(player.getInventory().getContents()));
+        data.setPreRunArmor(Arrays.asList(player.getInventory().getArmorContents()));
+        data.setPendingReturn(true);
+        playerDataManager.savePlayer(uuid);
 
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
 
         plugin.getLoadoutManager().applyLoadout(player, data);
 
-        World outlandsWorld = Bukkit.getWorld(worldName);
-
-        if (outlandsWorld == null) {
-            plugin.sendConsole("<red>Could not find '" + worldName + "'. Please check config.yml");
-            return false;
-        }
-
         Location spawn = plugin.getConfigUtil().getSpawnLocation();
 
-        if (spawn == null || spawn.getWorld() == null || !spawn.getWorld().equals(outlandsWorld))
-            spawn = outlandsWorld.getSpawnLocation();
+        if (spawn == null || spawn.getWorld() == null || !spawn.getWorld().equals(world))
+            spawn = world.getSpawnLocation();
 
         player.teleport(spawn);
 
         int timeLimit = plugin.getConfigUtil().getTimeLimitSeconds();
 
-        ActiveRun run = new ActiveRun(uuid, returnLocation, System.currentTimeMillis(), timeLimit, preRunInventory, preRunArmor);
+        ActiveRun run = new ActiveRun(uuid, data.getReturnLocation(), System.currentTimeMillis(), timeLimit);
         activeRuns.put(uuid, run);
 
         run.startTimer(plugin, this, player);
@@ -97,15 +92,16 @@ public class RunManager {
         return activeRuns.containsKey(uuid);
     }
 
-    private Map<String, Integer> serializeInventory(ItemStack[] items) {
-        Map<String, Integer> serialized = new HashMap<>();
-
-        for (int i = 0; i < items.length; i++) {
-            if (items[i] != null)
-                serialized.put(i + ":" + items[i].getType().name(), items[i].getAmount());
-        }
-
-        return serialized;
+    private int calculateTokens(ActiveRun run) {
+        return tokenManager.calculateExtractionTokens(
+                run.getKillCount(),
+                run.getEventCount(),
+                run.getBossCount(),
+                plugin.getConfigUtil().getBaseTokens(),
+                plugin.getConfigUtil().getPerKillTokens(),
+                plugin.getConfigUtil().getPerEventTokens(),
+                plugin.getConfigUtil().getPerBossTokens()
+        );
     }
 
     public boolean extractPlayer(UUID uuid) {
@@ -116,51 +112,70 @@ public class RunManager {
         run.cancelTimer();
 
         Player player = Bukkit.getPlayer(uuid);
-        if (player == null)
-            return false;
-
-        List<ItemStack> loot = Arrays.asList(player.getInventory().getContents());
-
         PlayerData data = playerDataManager.getOrCreate(uuid);
 
-        if (!loot.isEmpty())
-            data.setExtractedLoot(loot);
+        List<ItemStack> loot = new ArrayList<>();
+        if (player != null)
+            loot = Arrays.asList(player.getInventory().getContents());
 
-        int killCount = run.getKillCount();
-        int eventCount = run.getEventCount();
-        int bossCount = run.getBossCount();
+        data.setExtractedLoot(loot);
 
-        int tokens = tokenManager.calculateExtractionTokens(
-                killCount, eventCount, bossCount,
-                plugin.getConfigUtil().getBaseTokens(),
-                plugin.getConfigUtil().getPerKillTokens(),
-                plugin.getConfigUtil().getPerEventTokens(),
-                plugin.getConfigUtil().getPerBossTokens()
-        );
-
+        int tokens = calculateTokens(run);
         tokenManager.addTokens(uuid, tokens);
         cooldownManager.setCooldown(uuid);
 
-        player.getInventory().clear();
-        player.getInventory().setArmorContents(null);
+        Location returnLocation = run.getReturnLocation();
 
-        restorePlayerInventory(player, run);
-        player.teleport(run.getReturnLocation());
+        if (player != null) {
+            player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
+            restorePlayerInventory(player, data);
 
-        plugin.sendMessage(player, Messages.EXTRACT_SUCCESS.toString());
-        plugin.sendMessage(player, Messages.EXTRACT_TOKENS.replace("tokens", String.valueOf(tokens)));
+            if (returnLocation != null)
+                player.teleport(returnLocation);
 
-        if (!loot.isEmpty())
-            plugin.sendMessage(player, Messages.EXTRACT_LOOT_STORED.toString());
+            plugin.sendMessage(player, Messages.EXTRACT_SUCCESS.toString());
+            plugin.sendMessage(player, Messages.EXTRACT_TOKENS.replace("tokens", String.valueOf(tokens)));
+
+            if (!loot.isEmpty())
+                plugin.sendMessage(player, Messages.EXTRACT_LOOT_STORED.toString());
+        }
+
+        data.clearRunSnapshot();
 
         playerDataManager.savePlayer(uuid);
         return true;
     }
 
-    // TODO continue with this, give back the preRunInventory/Armor
-    private void restorePlayerInventory(Player player, ActiveRun run) {
+    private void restorePlayerInventory(Player player, PlayerData data) {
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
+
+        List<ItemStack> inventory = data.getPreRunInventory();
+        ItemStack[] contents = player.getInventory().getContents();
+
+        if (inventory != null) {
+            for (int i = 0; i < contents.length && i < inventory.size(); i++) {
+                ItemStack item = inventory.get(i);
+                if (item != null)
+                    contents[i] = item;
+            }
+        }
+
+        player.getInventory().setContents(contents);
+
+        List<ItemStack> armor = data.getPreRunArmor();
+        ItemStack[] armorContents = new ItemStack[4];
+
+        if (armor != null) {
+            for (int i = 0; i < armorContents.length && i < armor.size(); i++) {
+                ItemStack item = armor.get(i);
+                if (item != null)
+                    armorContents[i] = item;
+            }
+        }
+
+        player.getInventory().setArmorContents(armorContents);
     }
 
     public void handleDeath(UUID uuid) {
@@ -170,19 +185,23 @@ public class RunManager {
 
         run.cancelTimer();
 
-        Player player = Bukkit.getPlayer(uuid);
-        if (player == null)
-            return;
-
         PlayerData data = playerDataManager.getOrCreate(uuid);
         data.setExtractedLoot(new ArrayList<>());
         data.setLastKillCount(run.getKillCount());
         data.setLastEventCount(run.getEventCount());
         data.setLastBossCount(run.getBossCount());
 
+        // Gear and loot are lost on death, but the player respawns where they
+        // entered from. No pending-return restore will trigger on next login.
+        data.setPreRunInventory(new ArrayList<>());
+        data.setPreRunArmor(new ArrayList<>());
+        data.setPendingReturn(false);
+
         cooldownManager.setCooldown(uuid);
 
-        plugin.sendMessage(player, Messages.RUN_DEATH.toString());
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null)
+            plugin.sendMessage(player, Messages.RUN_DEATH.toString());
     }
 
     public void handleDisconnect(UUID uuid) {
@@ -194,13 +213,55 @@ public class RunManager {
         run.cancelTimer();
 
         PlayerData data = playerDataManager.getOrCreate(uuid);
-        data.setExtractedLoot(new ArrayList<>());
-        data.setLastKillCount(run.getKillCount());
-        data.setLastEventCount(run.getEventCount());
-        data.setLastBossCount(run.getBossCount());
 
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null)
+            data.setExtractedLoot(Arrays.asList(player.getInventory().getContents()));
+
+        int tokens = calculateTokens(run);
+        tokenManager.addTokens(uuid, tokens);
         cooldownManager.setCooldown(uuid);
+
+        // Keep the persisted snapshot (return location + pre-run gear +
+        // pendingReturn) so the next login teleports the player back home
+        // with their saved gear restored.
+        data.setPendingReturn(true);
         playerDataManager.savePlayer(uuid);
+    }
+
+    /**
+     * Restores a player who disconnected mid-run on their next login: clears
+     * their carried gear, puts back the pre-run inventory/armor and teleports
+     * them to the location they entered Extraction from.
+     */
+    public void restorePendingReturn(Player player) {
+        UUID uuid = player.getUniqueId();
+        PlayerData data = playerDataManager.getOrCreate(uuid);
+
+        if (!data.isPendingReturn())
+            return;
+
+        Location returnLocation = data.getReturnLocation();
+
+        player.getInventory().clear();
+        player.getInventory().setArmorContents(null);
+        restorePlayerInventory(player, data);
+
+        boolean lootStored = !data.getExtractedLoot().isEmpty();
+        data.clearRunSnapshot();
+        playerDataManager.savePlayer(uuid);
+
+        if (returnLocation != null && returnLocation.getWorld() != null) {
+            player.teleport(returnLocation);
+            plugin.sendMessage(player, Messages.EXTRACT_SUCCESS.toString());
+        } else {
+            String worldName = returnLocation != null && returnLocation.getWorld() != null
+                    ? returnLocation.getWorld().getName() : "?";
+            plugin.sendMessage(player, Messages.RUN_WORLD_NOT_FOUND.replace("world", worldName));
+        }
+
+        if (lootStored)
+            plugin.sendMessage(player, Messages.EXTRACT_LOOT_STORED.toString());
     }
 
     public void shutdown() {
@@ -209,23 +270,32 @@ public class RunManager {
             ActiveRun run = entry.getValue();
             run.cancelTimer();
 
+            PlayerData data = playerDataManager.getOrCreate(uuid);
             Player player = Bukkit.getPlayer(uuid);
+
             if (player != null) {
-                plugin.sendMessage(player, Messages.RUN_DISCONNECT.toString());
+                List<ItemStack> loot = Arrays.asList(player.getInventory().getContents());
+                data.setExtractedLoot(loot);
+
+                int tokens = calculateTokens(run);
+                tokenManager.addTokens(uuid, tokens);
+                cooldownManager.setCooldown(uuid);
+
                 player.getInventory().clear();
                 player.getInventory().setArmorContents(null);
-                restorePlayerInventory(player, run);
-                player.teleport(run.getReturnLocation());
+                restorePlayerInventory(player, data);
+
+                if (run.getReturnLocation() != null)
+                    player.teleport(run.getReturnLocation());
+
+                plugin.sendMessage(player, Messages.EXTRACT_SUCCESS.toString());
+                plugin.sendMessage(player, Messages.EXTRACT_TOKENS.replace("tokens", String.valueOf(tokens)));
+            } else {
+                data.setExtractedLoot(new ArrayList<>());
+                cooldownManager.setCooldown(uuid);
             }
 
-            PlayerData data = playerDataManager.getOrCreate(uuid);
-            data.setExtractedLoot(new ArrayList<>());
-            data.setLastKillCount(run.getKillCount());
-            data.setLastEventCount(run.getEventCount());
-            data.setLastBossCount(run.getBossCount());
-
-            long cooldownUntil = System.currentTimeMillis() + (plugin.getConfigUtil().getCooldownHours() * 3600000L);
-            data.setCooldownUntil(cooldownUntil);
+            data.clearRunSnapshot();
         }
 
         activeRuns.clear();
@@ -256,22 +326,17 @@ public class RunManager {
         private final Location returnLocation;
         private final long startTime;
         private final int timeLimitSeconds;
-        private final Map<String, Integer> preRunInventory;
-        private final Map<String, Integer> preRunArmor;
         private int remainingSeconds;
         private int killCount;
         private int eventCount;
         private int bossCount;
         private BukkitTask timerTask;
 
-        public ActiveRun(UUID uuid, Location returnLocation, long startTime, int timeLimitSeconds,
-                         Map<String, Integer> preRunInventory, Map<String, Integer> preRunArmor) {
+        public ActiveRun(UUID uuid, Location returnLocation, long startTime, int timeLimitSeconds) {
             this.uuid = uuid;
             this.returnLocation = returnLocation;
             this.startTime = startTime;
             this.timeLimitSeconds = timeLimitSeconds;
-            this.preRunInventory = preRunInventory;
-            this.preRunArmor = preRunArmor;
             this.remainingSeconds = timeLimitSeconds;
             this.killCount = 0;
             this.eventCount = 0;

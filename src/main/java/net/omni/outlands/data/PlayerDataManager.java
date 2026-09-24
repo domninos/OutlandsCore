@@ -4,6 +4,8 @@ import com.google.gson.reflect.TypeToken;
 import net.omni.outlands.OutlandsPlugin;
 import net.omni.outlands.loadout.LoadoutSlot;
 import net.omni.outlands.util.ItemSerializationUtil;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.inventory.ItemStack;
 
 import javax.annotation.Nullable;
@@ -81,6 +83,18 @@ public class PlayerDataManager {
                     data.setLastKillCount(rs.getInt("last_kill_count"));
                     data.setLastEventCount(rs.getInt("last_event_count"));
                     data.setLastBossCount(rs.getInt("last_boss_count"));
+
+                    data.setReturnLocation(deserializeLocation(rs.getString("return_location")));
+
+                    String preRunInventoryJson = rs.getString("pre_run_inventory");
+                    if (preRunInventoryJson != null && !preRunInventoryJson.isEmpty() && !preRunInventoryJson.equals("[]"))
+                        data.setPreRunInventory(deserializeItems(preRunInventoryJson));
+
+                    String preRunArmorJson = rs.getString("pre_run_armor");
+                    if (preRunArmorJson != null && !preRunArmorJson.isEmpty() && !preRunArmorJson.equals("[]"))
+                        data.setPreRunArmor(deserializeItems(preRunArmorJson));
+
+                    data.setPendingReturn(rs.getInt("pending_return") == 1);
                 }
 
                 data.clearDirty();
@@ -165,8 +179,8 @@ public class PlayerDataManager {
 
     private void writePlayerToDb(UUID uuid, PlayerData data) {
         String insert = """
-                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_contents, customized_cells, extracted_loot, cooldown_until, last_kill_count, last_event_count, last_boss_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_contents, customized_cells, extracted_loot, cooldown_until, last_kill_count, last_event_count, last_boss_count, return_location, pre_run_inventory, pre_run_armor, pending_return)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection conn = plugin.getDatabaseManager().getConnection();
@@ -182,6 +196,10 @@ public class PlayerDataManager {
             ps.setInt(8, data.getLastKillCount());
             ps.setInt(9, data.getLastEventCount());
             ps.setInt(10, data.getLastBossCount());
+            ps.setString(11, serializeLocation(data.getReturnLocation()));
+            ps.setString(12, serializeItems(data.getPreRunInventory()));
+            ps.setString(13, serializeItems(data.getPreRunArmor()));
+            ps.setInt(14, data.isPendingReturn() ? 1 : 0);
 
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -191,6 +209,42 @@ public class PlayerDataManager {
 
     private String serializeItems(List<ItemStack> items) {
         return ItemSerializationUtil.toBase64(items);
+    }
+
+    private String serializeLocation(@Nullable Location location) {
+        if (location == null || location.getWorld() == null)
+            return "";
+
+        return location.getWorld().getName() + "|"
+                + location.getX() + "|"
+                + location.getY() + "|"
+                + location.getZ() + "|"
+                + location.getYaw() + "|"
+                + location.getPitch();
+    }
+
+    private @Nullable Location deserializeLocation(String value) {
+        if (value == null || value.isBlank())
+            return null;
+
+        String[] parts = value.split("\\|");
+        if (parts.length < 6)
+            return null;
+
+        World world = plugin.getServer().getWorld(parts[0]);
+        if (world == null)
+            return null;
+
+        try {
+            return new Location(world,
+                    Double.parseDouble(parts[1]),
+                    Double.parseDouble(parts[2]),
+                    Double.parseDouble(parts[3]),
+                    Float.parseFloat(parts[4]),
+                    Float.parseFloat(parts[5]));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     public void unloadPlayer(UUID uuid) {

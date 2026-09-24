@@ -1,5 +1,6 @@
 package net.omni.outlands.data;
 
+import org.bukkit.Location;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
@@ -16,6 +17,10 @@ public class PlayerData {
     private int lastKillCount;
     private int lastEventCount;
     private int lastBossCount;
+    private Location returnLocation;
+    private List<ItemStack> preRunInventory;
+    private List<ItemStack> preRunArmor;
+    private boolean pendingReturn;
     private boolean dirty;
 
     public PlayerData(UUID uuid) {
@@ -29,6 +34,10 @@ public class PlayerData {
         this.lastKillCount = 0;
         this.lastEventCount = 0;
         this.lastBossCount = 0;
+        this.returnLocation = null;
+        this.preRunInventory = new ArrayList<>();
+        this.preRunArmor = new ArrayList<>();
+        this.pendingReturn = false;
         this.dirty = false;
     }
 
@@ -205,10 +214,55 @@ public class PlayerData {
         markDirty();
     }
 
+    public Location getReturnLocation() {
+        return returnLocation;
+    }
+
+    public void setReturnLocation(Location returnLocation) {
+        this.returnLocation = returnLocation;
+        markDirty();
+    }
+
+    public List<ItemStack> getPreRunInventory() {
+        return preRunInventory;
+    }
+
+    public void setPreRunInventory(List<ItemStack> items) {
+        this.preRunInventory = items == null ? new ArrayList<>() : new ArrayList<>(items);
+        markDirty();
+    }
+
+    public List<ItemStack> getPreRunArmor() {
+        return preRunArmor;
+    }
+
+    public void setPreRunArmor(List<ItemStack> items) {
+        this.preRunArmor = items == null ? new ArrayList<>() : new ArrayList<>(items);
+        markDirty();
+    }
+
+    public boolean isPendingReturn() {
+        return pendingReturn;
+    }
+
+    public void setPendingReturn(boolean pendingReturn) {
+        this.pendingReturn = pendingReturn;
+        markDirty();
+    }
+
+    public void clearRunSnapshot() {
+        this.returnLocation = null;
+        this.preRunInventory = new ArrayList<>();
+        this.preRunArmor = new ArrayList<>();
+        this.pendingReturn = false;
+        markDirty();
+    }
+
     public void flush() {
         loadoutTiers.clear();
         loadoutItems = new ArrayList<>();
         customizedCells = new HashSet<>();
         extractedLoot.clear();
+        clearRunSnapshot();
     }
 }
