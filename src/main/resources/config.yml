@@ -1,16 +1,18 @@
 settings:
-  # Name of the Outlands world (must exist, e.g. via Multiverse)
+  # Name of the Extraction world (must exist, e.g. via Multiverse)
   world-name: outlands
   # Time limit in seconds per run (default 5 minutes = 300 seconds)
   time-limit-seconds: 300
   # Hours between runs (cooldown)
   cooldown-hours: 24
-  # Whether PvP is enabled in the Outlands
+  # Whether PvP is enabled in Extraction
   pvp-enabled: false
-  # Whether players return to their last location on disconnect
+  # Whether players automatically extract when they disconnect mid-run.
+  # On their next login they are returned to the location they entered from,
+  # their saved pre-run gear is restored, and loot/tokens are banked.
   return-on-disconnect: true
-  # Optional spawn location used when entering the Outlands via /outlands.
-  # Set in-game with /outlands setspawn. Falls back to the world spawn if unset.
+  # Optional spawn location used when entering Extraction via /extraction.
+  # Set in-game with /extraction setspawn. Falls back to the world spawn if unset.
   # spawn:
   #   world: outlands
   #   x: 0.5
@@ -18,6 +20,13 @@ settings:
   #   z: 0.5
 #   yaw: 0.0
 #   pitch: 0.0
+
+# Chat prefix shown before plugin messages (configurable)
+messages:
+  # Shown before every plugin message in chat and in the console after startup.
+  # Supports MiniMessage tags on Paper; falls back to legacy color codes on Spigot.
+  # Set to "" (empty) to show messages without a prefix.
+  prefix: "<gray>[</gray><gradient:#00AAFF:#55FFFF>Extraction</gradient><gray>]</gray> "
 
 # Player data persistence
 storage:
@@ -46,7 +55,7 @@ extraction:
 #   enchantments: List of enchantments to apply (e.g. [PROTECTION_1])
 #   amount: Stack amount (for consumables like food/potions)
 #   potion_type / level: For potion tiers
-#   cost: Outlands tokens charged to upgrade INTO this tier (0 = free)
+#   cost: Extraction tokens charged to upgrade INTO this tier (0 = free)
 loadout:
   armor:
     helmet:
@@ -196,12 +205,12 @@ upgrade-gui:
     material: BLACK_STAINED_GLASS_PANE
     name: ""
 
-# Loadout GUI (/outlands loadout)
+# Loadout GUI (/extraction loadout)
 # Loadout editor. The armor slots sit on the first row (only matching armor
 # can be placed there); every other cell is free placement — whatever is in
-# this inventory is what you get on /outlands.
+# this inventory is what you get on /extraction.
 loadout-gui:
-  title: "<gradient:#00AAFF:#55FFFF>Outlands Loadout</gradient>"
+  title: "<gradient:#00AAFF:#55FFFF>Extraction Loadout</gradient>"
   rows: 5
   slots:
     helmet: 0
@@ -261,45 +270,45 @@ areas:
 # Sidebar scoreboard
 # Set enabled: false to let another plugin handle the sidebar.
 # Lines support MiniMessage and PlaceholderAPI placeholders. When PlaceholderAPI is
-# installed, any of its placeholders work; otherwise the built-in %outlands_*%
+# installed, any of its placeholders work; otherwise the built-in %extraction_*%
 # placeholders below are used.
 #
 # I used https://smallcaps.app for the font :D
 scoreboard:
   enabled: true
-  # Only show the scoreboard while the player is in the Outlands world
+  # Only show the scoreboard while the player is in the Extraction world
   only-in-world: true
   # How often (in ticks) the scoreboard refreshes (20 ticks = 1 second)
   update-ticks: 20
-  title: 𝐎𝐔𝐓𝐋𝐀𝐍𝐃𝐒
+  title: 𝐄𝐗𝐓𝐑𝐀𝐂𝐓𝐈𝐎𝐍
   # Maximum of 15 lines (client limit)
   lines:
     - ''
-    - <gray>ᴀʀᴇᴀ <dark_gray>» <white>%outlands_area%
+    - <gray>ᴀʀᴇᴀ <dark_gray>» <white>%extraction_area%
     - ''
-    - <gray>ᴛɪᴍᴇ <dark_gray>» <white>%outlands_timer%
+    - <gray>ᴛɪᴍᴇ <dark_gray>» <white>%extraction_timer%
     - ''
-    - <gray>ᴋɪʟʟꜱ <dark_gray>» <white>%outlands_kills%
+    - <gray>ᴋɪʟʟꜱ <dark_gray>» <white>%extraction_kills%
     - ''
-    - <gray>ᴛᴏᴋᴇɴꜱ <dark_gray>» <white>%outlands_tokens%
+    - <gray>ᴛᴏᴋᴇɴꜱ <dark_gray>» <white>%extraction_tokens%
     - ''
-    - <gray>ᴘᴀʀᴛʏ <dark_gray>» <white>%outlands_party%
+    - <gray>ᴘᴀʀᴛʏ <dark_gray>» <white>%extraction_party%
     - ''
-    - <gray>ᴄʟᴏᴄᴋ <dark_gray>» <white>%outlands_clock%
+    - <gray>ᴄʟᴏᴄᴋ <dark_gray>» <white>%extraction_clock%
     - ''
     - ''
-    - <white>  %outlands_ip%
-  # Value of %outlands_area% when the player is not inside an area
+    - <white>  %extraction_ip%
+  # Value of %extraction_area% when the player is not inside an area
   no-area-text: ᴡɪʟᴅᴇʀɴᴇꜱꜱ
-  # Value of %outlands_party% (party system is not implemented yet)
+  # Value of %extraction_party% (party system is not implemented yet)
   party-placeholder: ɴᴏɴᴇ
-  # Value of %outlands_timer% when the player has no run and no cooldown
+  # Value of %extraction_timer% when the player has no run and no cooldown
   idle-text: ɪᴅʟᴇ
-  # Value of %outlands_ip%
+  # Value of %extraction_ip%
   server-ip: ᴘʟᴀʏ.ʏᴀᴍᴄꜱ.ɴᴇᴛ
-  # Timezone used by %outlands_clock% (e.g. UTC, Europe/London, America/New_York)
+  # Timezone used by %extraction_clock% (e.g. UTC, Europe/London, America/New_York)
   time-zone: GMT-6
-  # Clock format used by %outlands_clock%
+  # Clock format used by %extraction_clock%
   time-format: HH:mm:ss
 
 # Loot chest defaults (used by loot_tables.yml)
@@ -309,7 +318,7 @@ loot:
   default-items-per-chest: 3
   # Material/display name of the physical TOKENS loot item (credits balance on pickup)
   token-item-material: GOLD_INGOT
-  token-item-name: "<gold>Outland Token</gold>"
+  token-item-name: "<gold>Extraction Token</gold>"
   # Material/display name of the TIME loot item (right-click while in a run adds time)
   time-item-material: CLOCK
   time-item-name: "<yellow>Extra Time</yellow>"

@@ -1,8 +1,8 @@
-name: Outlands
+name: Extraction
 description: $description
 version: '${version}'
 
-main: net.omni.outlands.OutlandsPlugin
+main: net.omni.extraction.ExtractionPlugin
 api-version: '1.21'
 load: POSTWORLD
 
@@ -11,16 +11,15 @@ softdepend: [ PlaceholderAPI, ProtocolLib, MythicMobs, MMOItems, ItemEdit, Nexo 
 authors: [ domninos ]
 
 commands:
-  outlands:
-    description: Enter the Outlands or manage the plugin
-    aliases: [ol]
+  extraction:
+    description: Enter Extraction or manage the plugin
   extract:
-    description: Extract from the Outlands early
+    description: Extract from Extraction early
     aliases: [ext]
   areas:
-    description: Manage Outlands areas
+    description: Manage Extraction areas
     aliases: [area]
-    permission: outlands.areas
+    permission: extraction.areas
   tokens:
     description: Check your extraction token balance
   loadout:
@@ -30,22 +29,22 @@ commands:
     aliases: [upgrades]
 
 permissions:
-  outlands.*:
-    description: Grants all Outlands permissions
+  extraction.*:
+    description: Grants all Extraction permissions
     children:
-      outlands.admin: true
-      outlands.play: true
-      outlands.areas: true
-      outlands.bypass.cooldown: true
-  outlands.admin:
-    description: Allows managing the Outlands plugin
+      extraction.admin: true
+      extraction.play: true
+      extraction.areas: true
+      extraction.bypass.cooldown: true
+  extraction.admin:
+    description: Allows managing the Extraction plugin
     default: op
-  outlands.areas:
-    description: Allows managing Outlands areas
+  extraction.areas:
+    description: Allows managing Extraction areas
     default: op
-  outlands.play:
-    description: Allows entering the Outlands
+  extraction.play:
+    description: Allows entering Extraction
     default: true
-  outlands.bypass.cooldown:
+  extraction.bypass.cooldown:
     description: Bypass the run cooldown
     default: false

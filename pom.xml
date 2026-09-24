@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.omni</groupId>
-    <artifactId>OutlandsCore</artifactId>
+    <artifactId>Extraction</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>OutlandsCore</name>
+    <name>Extraction</name>
 
     <properties>
         <java.version>21</java.version>
@@ -43,7 +43,7 @@
                             <relocations>
                                 <relocation>
                                     <pattern>com.zaxxer.hikari</pattern>
-                                    <shadedPattern>outlands.libs.hikari</shadedPattern>
+                                    <shadedPattern>net.omni.extraction.libs.hikari</shadedPattern>
                                 </relocation>
                             </relocations>
                             <filters>
