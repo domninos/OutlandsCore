@@ -52,7 +52,7 @@ public class LootManager {
     public void removeLootItem(UUID uuid, int index) {
         PlayerData data = playerDataManager.getOrCreate(uuid);
 
-        List<ItemStack> loot = data.getExtractedLoot();
+        List<ItemStack> loot = new ArrayList<>(data.getExtractedLoot());
 
         if (index >= 0 && index < loot.size()) {
             loot.remove(index);

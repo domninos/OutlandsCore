@@ -19,6 +19,7 @@ public class Area {
     private final List<Location> mobSpawnLocations;
     private final List<Location> bossSpawnLocations;
     private final List<AreaLootEntry> lootEntries;
+    private final List<AreaChestLocation> chestLocations;
     private String name;
     private String world;
     private String difficulty;
@@ -30,7 +31,6 @@ public class Area {
     private BossBar.Overlay bossBarOverlay;
     private Location min;
     private Location max;
-    private Location chestLocation;
     private int lootDespawnSeconds;
     private boolean leftoverToWithdraw;
     private int tokens;
@@ -55,8 +55,8 @@ public class Area {
         this.mobSpawnLocations = new ArrayList<>();
         this.bossSpawnLocations = new ArrayList<>();
         this.lootEntries = new ArrayList<>();
+        this.chestLocations = new ArrayList<>();
 
-        this.chestLocation = null;
         this.lootDespawnSeconds = 300;
         this.leftoverToWithdraw = true;
         this.tokens = 0;
@@ -125,13 +125,26 @@ public class Area {
         if (bukkitWorld != null) {
             area.getMobSpawnLocations().addAll(deserializeLocations(config.getMapList("spawn-locations"), bukkitWorld));
             area.getBossSpawnLocations().addAll(deserializeLocations(config.getMapList("boss-locations"), bukkitWorld));
-        }
 
-        if (config.contains("loot.chest-location.x") && bukkitWorld != null) {
-            area.setChestLocation(new Location(bukkitWorld,
-                    config.getDouble("loot.chest-location.x"),
-                    config.getDouble("loot.chest-location.y"),
-                    config.getDouble("loot.chest-location.z")));
+            for (Map<?, ?> map : config.getMapList("loot.chest-locations")) {
+                Object x = map.get("x");
+                Object y = map.get("y");
+                Object z = map.get("z");
+
+                if (x instanceof Number nx && y instanceof Number ny && z instanceof Number nz) {
+                    Object type = map.get("type");
+                    area.addChestLocation(new AreaChestLocation(
+                            new Location(bukkitWorld, nx.doubleValue(), ny.doubleValue(), nz.doubleValue()),
+                            type == null ? null : String.valueOf(type)));
+                }
+            }
+
+            if (area.getChestLocations().isEmpty() && config.contains("loot.chest-location.x")) {
+                area.addChestLocation(new AreaChestLocation(new Location(bukkitWorld,
+                        config.getDouble("loot.chest-location.x"),
+                        config.getDouble("loot.chest-location.y"),
+                        config.getDouble("loot.chest-location.z")), null));
+            }
         }
 
         area.setLootDespawnSeconds(config.getInt("loot.despawn-seconds", 300));
@@ -389,12 +402,41 @@ public class Area {
         return mobSpawnLocations.get(random.nextInt(mobSpawnLocations.size()));
     }
 
-    public Location getChestLocation() {
-        return chestLocation;
+    public List<AreaChestLocation> getChestLocations() {
+        return chestLocations;
     }
 
-    public void setChestLocation(Location chestLocation) {
-        this.chestLocation = chestLocation;
+    public void addChestLocation(AreaChestLocation chest) {
+        if (chest != null && chest.getLocation() != null)
+            chestLocations.add(chest);
+    }
+
+    public void addChestLocation(Location location, String lootType) {
+        addChestLocation(new AreaChestLocation(location, lootType));
+    }
+
+    public boolean removeNearestChestLocation(Location location, double radius) {
+        AreaChestLocation nearest = null;
+        double nearestDistance = radius * radius;
+
+        for (AreaChestLocation chest : chestLocations) {
+            double distance = distanceSq(chest.getLocation(), location);
+
+            if (distance <= nearestDistance) {
+                nearestDistance = distance;
+                nearest = chest;
+            }
+        }
+
+        if (nearest == null)
+            return false;
+
+        chestLocations.remove(nearest);
+        return true;
+    }
+
+    public void clearChestLocations() {
+        chestLocations.clear();
     }
 
     public int getLootDespawnSeconds() {
@@ -501,18 +543,25 @@ public class Area {
         return x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ;
     }
 
-    public Location getResolvedChestLocation() {
-        if (chestLocation != null) return chestLocation;
+    public List<AreaChestLocation> resolveChestLocations() {
+        if (!chestLocations.isEmpty())
+            return new ArrayList<>(chestLocations);
+
+        Location center = getCenter();
+        if (center == null)
+            return new ArrayList<>();
 
         World bukkitWorld = Bukkit.getWorld(world);
-        Location center = getCenter();
-        if (bukkitWorld == null || center == null) return null;
+        if (bukkitWorld == null)
+            return new ArrayList<>();
 
         int x = center.getBlockX();
         int z = center.getBlockZ();
         int y = bukkitWorld.getHighestBlockYAt(x, z);
 
-        return new Location(bukkitWorld, x, y, z);
+        List<AreaChestLocation> fallback = new ArrayList<>();
+        fallback.add(new AreaChestLocation(new Location(bukkitWorld, x, y, z), null));
+        return fallback;
     }
 
     public Location getCenter() {
@@ -570,11 +619,21 @@ public class Area {
         config.set("spawn-locations", serializeLocations(mobSpawnLocations));
         config.set("boss-locations", serializeLocations(bossSpawnLocations));
 
-        if (chestLocation != null) {
-            config.set("loot.chest-location.x", chestLocation.getX());
-            config.set("loot.chest-location.y", chestLocation.getY());
-            config.set("loot.chest-location.z", chestLocation.getZ());
+        List<Map<String, Object>> chestList = new ArrayList<>();
+
+        for (AreaChestLocation chest : chestLocations) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("x", chest.getLocation().getX());
+            map.put("y", chest.getLocation().getY());
+            map.put("z", chest.getLocation().getZ());
+
+            if (chest.getLootType() != null)
+                map.put("type", chest.getLootType());
+
+            chestList.add(map);
         }
+
+        config.set("loot.chest-locations", chestList);
 
         config.set("loot.despawn-seconds", lootDespawnSeconds);
         config.set("loot.leftover-to-withdraw", leftoverToWithdraw);

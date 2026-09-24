@@ -153,7 +153,7 @@ public class AreaClearManager {
 
         if (area.getTokens() > 0) plugin.getTokenManager().addTokens(ownerId, area.getTokens());
 
-        createLootChest(area, session);
+        createLootChests(area, session);
 
         if (session.getBossBar() != null) {
             for (Player player : Bukkit.getOnlinePlayers())
@@ -172,53 +172,58 @@ public class AreaClearManager {
             plugin.sendMessage(killer, Messages.AREA_CLEARED.replace("area", area.getName()));
     }
 
-    private void createLootChest(Area area, AreaClearSession session) {
-        Location location = area.getResolvedChestLocation();
+    private void createLootChests(Area area, AreaClearSession session) {
+        for (AreaChestLocation chestLocation : area.resolveChestLocations()) {
+            Location location = chestLocation.getLocation();
 
-        if (location == null || location.getWorld() == null) return;
+            if (location == null || location.getWorld() == null) continue;
 
-        Block block = location.getBlock();
-        block.setType(Material.CHEST);
+            Block block = location.getBlock();
+            block.setType(Material.CHEST);
 
-        BlockState state = block.getState();
+            BlockState state = block.getState();
 
-        if (state instanceof Chest chest) {
-            Inventory inventory = chest.getBlockInventory();
-            int slot = 0;
+            if (state instanceof Chest chest) {
+                Inventory inventory = chest.getBlockInventory();
+                int slot = 0;
 
-            for (ItemStack item : buildLoot(area)) {
-                if (slot >= inventory.getSize())
-                    break;
+                for (ItemStack item : buildLoot(area, chestLocation.getLootType())) {
+                    if (slot >= inventory.getSize())
+                        break;
 
-                inventory.setItem(slot++, item);
-            }
-        }
-
-        session.setChestLocation(block.getLocation());
-        chestSessions.put(locationKey(block.getLocation()), session);
-
-        int despawnSeconds = area.getLootDespawnSeconds();
-
-        if (despawnSeconds > 0) {
-            BukkitTask task = new BukkitRunnable() {
-                @Override
-                public void run() {
-                    removeChest(session);
+                    inventory.setItem(slot++, item);
                 }
-            }.runTaskLater(plugin, despawnSeconds * 20L);
+            }
 
-            session.setChestTask(task);
+            Location chestLoc = block.getLocation();
+            session.addChestLocation(chestLoc);
+            chestSessions.put(locationKey(chestLoc), session);
+
+            int despawnSeconds = area.getLootDespawnSeconds();
+
+            if (despawnSeconds > 0) {
+                BukkitTask task = new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        removeChest(session, chestLoc);
+                    }
+                }.runTaskLater(plugin, despawnSeconds * 20L);
+
+                session.setChestTask(chestLoc, task);
+            }
         }
     }
 
-    private List<ItemStack> buildLoot(Area area) {
-        if (area.getLootTable() == null || area.getLootTable().isBlank())
+    private List<ItemStack> buildLoot(Area area, String lootType) {
+        String tableId = lootType != null && !lootType.isBlank() ? lootType : area.getLootTable();
+
+        if (tableId == null || tableId.isBlank())
             return buildLegacyLoot(area);
 
-        LootTable table = plugin.getLootTableManager().get(area.getLootTable());
+        LootTable table = plugin.getLootTableManager().get(tableId);
 
         if (table == null) {
-            plugin.getLogger().warning("Unknown loot table '" + area.getLootTable() + "' for area '" + area.getName() + "'.");
+            plugin.getLogger().warning("Unknown loot table '" + tableId + "' for area '" + area.getName() + "'.");
             return buildLegacyLoot(area);
         }
 
@@ -248,13 +253,12 @@ public class AreaClearManager {
                 + ":" + location.getBlockZ();
     }
 
-    public void removeChest(AreaClearSession session) {
-        Location location = session.getChestLocation();
-
-        if (location == null)
+    public void removeChest(AreaClearSession session, Location location) {
+        if (location == null || location.getWorld() == null)
             return;
 
-        Block block = location.getBlock();
+        Location blockLoc = location.getBlock().getLocation();
+        Block block = blockLoc.getBlock();
 
         if (block.getType() == Material.CHEST) {
             BlockState state = block.getState();
@@ -273,14 +277,13 @@ public class AreaClearManager {
             block.setType(Material.AIR);
         }
 
-        chestSessions.remove(locationKey(location));
+        chestSessions.remove(locationKey(blockLoc));
+        session.removeChestLocation(blockLoc);
+    }
 
-        if (session.getChestTask() != null) {
-            session.getChestTask().cancel();
-            session.setChestTask(null);
-        }
-
-        session.setChestLocation(null);
+    private void removeSessionChests(AreaClearSession session) {
+        for (Location location : new HashSet<>(session.getChestLocations()))
+            removeChest(session, location);
     }
 
     private List<ItemStack> buildLegacyLoot(Area area) {
@@ -389,7 +392,7 @@ public class AreaClearManager {
 
     private void storeLeftover(UUID ownerId, List<ItemStack> leftover) {
         PlayerData data = plugin.getPlayerDataManager().getOrCreate(ownerId);
-        List<ItemStack> stored = data.getExtractedLoot();
+        List<ItemStack> stored = new ArrayList<>(data.getExtractedLoot());
 
         stored.addAll(leftover);
         data.setExtractedLoot(stored);
@@ -437,14 +440,14 @@ public class AreaClearManager {
 
         if (!loot.isEmpty()) {
             PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
-            List<ItemStack> stored = data.getExtractedLoot();
+            List<ItemStack> stored = new ArrayList<>(data.getExtractedLoot());
 
             stored.addAll(loot);
             data.setExtractedLoot(stored);
             plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
         }
 
-        removeChest(session);
+        removeChest(session, location);
         return loot.size();
     }
 
@@ -476,7 +479,7 @@ public class AreaClearManager {
         }
 
         if (empty)
-            removeChest(session);
+            removeChest(session, location);
     }
 
     public void onPlayerEnter(Player player, Area area) {
@@ -636,7 +639,7 @@ public class AreaClearManager {
                 player.hideBossBar(session.getBossBar());
         }
 
-        removeChest(session);
+        removeSessionChests(session);
         return true;
     }
 
@@ -658,7 +661,7 @@ public class AreaClearManager {
                     player.hideBossBar(session.getBossBar());
             }
 
-            removeChest(session);
+            removeSessionChests(session);
         }
 
         sessions.clear();

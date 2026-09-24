@@ -1,9 +1,10 @@
 settings:
   # Name of the Extraction world (must exist, e.g. via Multiverse)
   world-name: outlands
-  # Time limit in seconds per run (default 5 minutes = 300 seconds)
+  # Time limit in seconds per run (default 5 minutes = 300 seconds).
+  # Set to 0 to disable the countdown entirely — runs never auto-extract.
   time-limit-seconds: 300
-  # Hours between runs (cooldown)
+  # Hours between runs (cooldown). Set to 0 to disable the cooldown.
   cooldown-hours: 24
   # Whether PvP is enabled in Extraction
   pvp-enabled: false

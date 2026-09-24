@@ -38,7 +38,7 @@ public class AreaCommand implements CommandExecutor {
 
         if (args.length == 0) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage",
-                    "/areas {wand|create|rename|resize|update|delete|list|info|tp|reset|reload|mob|addmob|delmob|setmob}"));
+                    "/areas {wand|create|rename|resize|update|delete|list|info|tp|reset|reload|mob|addmob|delmob|setmob|setchest}"));
             return true;
         }
 
@@ -58,6 +58,7 @@ public class AreaCommand implements CommandExecutor {
             case "addmob" -> handleAddMob(sender, args);
             case "delmob" -> handleDelMob(sender, args);
             case "setmob" -> handleSetMob(sender, args);
+            case "setchest" -> handleSetChest(sender, args);
             default -> {
                 plugin.sendMessage(sender, Messages.UNKNOWN_COMMAND.toString());
                 yield true;
@@ -290,7 +291,7 @@ public class AreaCommand implements CommandExecutor {
         plugin.sendMessage(sender, "<gray>State: <white>" + (area.isReady() ? AreaState.READY.name() : area.getState().name()) + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Mob spawn points: <white>" + area.getMobSpawnLocations().size() + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Boss spawn points: <white>" + area.getBossSpawnLocations().size() + "</white></gray>");
-        plugin.sendMessage(sender, "<gray>Loot chest: <white>" + (area.getChestLocation() == null ? "auto (center)" : "set") + "</white></gray>");
+        plugin.sendMessage(sender, "<gray>Loot chests: <white>" + (area.getChestLocations().isEmpty() ? "auto (center)" : area.getChestLocations().size()) + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Loot table: <white>" + (area.getLootTable() == null || area.getLootTable().isBlank() ? "custom (loot.items)" : area.getLootTable()) + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Items per chest: <white>" + (area.getItemsPerChest() > 0 ? area.getItemsPerChest() : "table / default") + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Cooldown: <white>" + area.getCooldownSeconds() + "s</white></gray>");
@@ -577,6 +578,58 @@ public class AreaCommand implements CommandExecutor {
 
         areaManager.save(area);
         plugin.sendMessage(sender, Messages.AREA_MOB_OVERRIDE_SET.replace("mob", args[2], "area", area.getName()));
+        return true;
+    }
+
+    private boolean handleSetChest(CommandSender sender, String[] args) {
+        if (args.length < 4) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas setchest {area} {index} {type|remove}"));
+            return true;
+        }
+
+        AreaManager areaManager = plugin.getAreaManager();
+        Area area = areaManager.getArea(args[1]);
+
+        if (area == null) {
+            plugin.sendMessage(sender, Messages.AREA_NOT_FOUND.replace("area", args[1]));
+            return true;
+        }
+
+        if (areaManager.isLocked(area)) {
+            plugin.sendMessage(sender, Messages.AREA_EDIT_LOCKED.replace("area", area.getName()));
+            return true;
+        }
+
+        int index;
+
+        try {
+            index = Integer.parseInt(args[2]);
+        } catch (NumberFormatException e) {
+            plugin.sendMessage(sender, Messages.AREA_CHEST_INVALID.replace("count", String.valueOf(area.getChestLocations().size())));
+            return true;
+        }
+
+        List<AreaChestLocation> chestLocations = area.getChestLocations();
+
+        if (index < 0 || index >= chestLocations.size()) {
+            plugin.sendMessage(sender, Messages.AREA_CHEST_INVALID.replace("count", String.valueOf(chestLocations.size())));
+            return true;
+        }
+
+        AreaChestLocation chest = chestLocations.get(index);
+
+        if (args[3].equalsIgnoreCase("remove")) {
+            chestLocations.remove(index);
+            areaManager.markDirty(area);
+            areaManager.save(area);
+            plugin.sendMessage(sender, Messages.AREA_CHEST_REMOVED.replace("index", args[2], "area", area.getName()));
+            return true;
+        }
+
+        chest.setLootType(args[3]);
+        areaManager.markDirty(area);
+        areaManager.save(area);
+        plugin.sendMessage(sender, Messages.AREA_CHEST_TYPE_SET.replace("type", args[3], "index", args[2], "area", area.getName()));
         return true;
     }
 

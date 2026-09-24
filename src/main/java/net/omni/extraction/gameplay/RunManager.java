@@ -82,7 +82,8 @@ public class RunManager {
         ActiveRun run = new ActiveRun(uuid, data.getReturnLocation(), System.currentTimeMillis(), timeLimit);
         activeRuns.put(uuid, run);
 
-        run.startTimer(plugin, this, player);
+        if (timeLimit > 0)
+            run.startTimer(plugin, this, player);
 
         plugin.sendMessage(player, Messages.RUN_ENTERED.toString());
         return true;
@@ -109,7 +110,7 @@ public class RunManager {
 
         List<ItemStack> loot = new ArrayList<>();
         if (player != null)
-            loot = Arrays.asList(player.getInventory().getContents());
+            loot = new ArrayList<>(Arrays.asList(player.getInventory().getContents()));
 
         data.setExtractedLoot(loot);
 
@@ -267,7 +268,7 @@ public class RunManager {
             Player player = Bukkit.getPlayer(uuid);
 
             if (player != null) {
-                List<ItemStack> loot = Arrays.asList(player.getInventory().getContents());
+                List<ItemStack> loot = new ArrayList<>(Arrays.asList(player.getInventory().getContents()));
                 data.setExtractedLoot(loot);
 
                 int tokens = calculateTokens(run);

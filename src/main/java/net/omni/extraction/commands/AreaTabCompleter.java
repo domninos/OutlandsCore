@@ -21,10 +21,11 @@ public class AreaTabCompleter implements TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
             "wand", "create", "rename", "resize", "update", "delete", "list", "info", "tp", "reset", "reload",
-            "mob", "addmob", "delmob", "setmob");
+            "mob", "addmob", "delmob", "setmob", "setchest");
 
     private static final List<String> AREA_SUBCOMMANDS = List.of(
-            "wand", "delete", "info", "tp", "reset", "rename", "resize", "update", "addmob", "delmob", "setmob");
+            "wand", "delete", "info", "tp", "reset", "rename", "resize", "update", "addmob", "delmob", "setmob",
+            "setchest");
 
     private static final List<String> MOB_ACTIONS = List.of("create", "set", "remove", "list", "info");
 
@@ -101,6 +102,13 @@ public class AreaTabCompleter implements TabCompleter {
                     case 3 -> filter(areaMobIds(args[1]), args[2]);
                     case 4 -> filter(MOB_REF_FIELDS, args[3]);
                     case 5 -> filter(referenceValues(args[3]), args[4]);
+                    default -> List.of();
+                };
+            }
+        case "setchest" -> {
+                return switch (args.length) {
+                    case 3 -> filter(List.of("0", "1", "2"), args[2]);
+                    case 4 -> filter(chestTypeSuggestions(), args[3]);
                     default -> List.of();
                 };
             }
@@ -187,6 +195,12 @@ public class AreaTabCompleter implements TabCompleter {
         } catch (Throwable e) {
             return List.of();
         }
+    }
+
+    private List<String> chestTypeSuggestions() {
+        List<String> suggestions = new ArrayList<>(plugin.getLootTableManager().getIds());
+        suggestions.add(0, "remove");
+        return suggestions;
     }
 
     private List<String> areaMobIds(String areaName) {

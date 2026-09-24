@@ -139,14 +139,20 @@ public class AreaWandListener implements Listener {
         }
 
         if (sneaking) {
-            area.setChestLocation(null);
-            areaManager.markDirty(area);
-            plugin.sendMessage(player, Messages.AREA_CHEST_CLEARED.toString());
+            double radius = plugin.getConfigUtil().getAreaOutlinePointRemoveRadius();
+
+            if (area.removeNearestChestLocation(block.getLocation(), radius)) {
+                areaManager.markDirty(area);
+                plugin.sendMessage(player, Messages.AREA_POINT_REMOVED.toString());
+            } else {
+                plugin.sendMessage(player, Messages.AREA_POINT_NONE.toString());
+            }
+
             return;
         }
 
         Location location = block.getLocation();
-        area.setChestLocation(location);
+        area.addChestLocation(location, null);
         areaManager.markDirty(area);
         sendPos(player, Messages.AREA_CHEST_SET, location);
     }

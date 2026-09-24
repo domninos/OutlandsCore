@@ -225,12 +225,10 @@ public class AreaSelectionVisualizer implements Listener {
     }
 
     private void drawChestMarker(Player player, Area area) {
-        Location location = area.getChestLocation();
+        Particle.DustOptions chestDust = dust(plugin.getConfigUtil().getAreaOutlineColorChest());
 
-        if (location == null)
-            return;
-
-        marker(player, location, dust(plugin.getConfigUtil().getAreaOutlineColorChest()));
+        for (AreaChestLocation chest : area.resolveChestLocations())
+            marker(player, chest.getLocation(), chestDust);
     }
 
     private void marker(Player player, Location location, Particle.DustOptions dust) {

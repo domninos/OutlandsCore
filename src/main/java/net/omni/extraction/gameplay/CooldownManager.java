@@ -32,8 +32,10 @@ public class CooldownManager {
     }
 
     public void setCooldown(UUID uuid) {
-        PlayerData data = playerDataManager.getOrCreate(uuid);
         int hours = plugin.getConfigUtil().getCooldownHours();
+        if (hours <= 0) return;
+
+        PlayerData data = playerDataManager.getOrCreate(uuid);
         long cooldownUntil = System.currentTimeMillis() + (hours * 3600000L);
         data.setCooldownUntil(cooldownUntil);
         playerDataManager.savePlayer(uuid);

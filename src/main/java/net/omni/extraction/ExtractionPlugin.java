@@ -73,30 +73,30 @@ public final class ExtractionPlugin extends JavaPlugin {
          this can be purchaseable using outlands tokens
          - use Vault to expose currency
      -
-     - make the upgrade token max item stack size = 1
+     - make it so that upon adding a chest, open gui (picking between loot tables set on config. add icon, lore)
+       - the picked one will be set to be the type of the loot chest (e.g. Easy)
+     - do this for adding spawn location as well. remove right click = boss spawn point. left click means open
+       - mob editor gui, select mob based on mythicmobs/other mobs provider/vanilla,
+       - select count (add increment +1, +5, +10, decrement -1, -5, -10) each click should count to the counter in the middle
+         - the icon for this is configurable, add the values being added configurable as well.
+      - and then have the ability to use a back and next page, when the back button is clicked, open the previous gui, same for next
+       - this nav buttons are universal on the mob editor/loot chest editor.
      -
-     - add multiple chest locations
+     -
      -
      - add a hologram when entering an area (should show the mob/boss count + level)
       - hologram position can be set via /extraction admin hologram <area>
       - the hologram info should be configurable.
       - use DecentHolograms API
      -
-     - fix Message parser
-      - when upgrading armor
-       - <green>Applied §7Iron Helmet Upgrade to your Helmet!</green>
-                       ^^
      -
-     -
-     - have all the cooldown/any timer configurable so it can be disabled
      -
      - fix claiming on /outland storage to say the display name
-      - fix dupe bug when clicking a loot in /outland storage. don't cancel the click, just eableeee
+      - fix dupe bug when clicking a loot in /outland storage. don't cancel the click, just have free select
      -
      - fix /extraction loadout, say "Upgrade armor via /upgrades". disable clicking.
      - fix loadout not saving/getting fetched automatically in /loadout
      -
-     - fix time resetting to 24h after /extract
      -
      - add custom events (PlayerEnterArea)
      - add API

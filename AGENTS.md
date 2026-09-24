@@ -65,6 +65,10 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   `AreaClearManager`, `AreaSelectionVisualizer` (`getExtractionPlayers()`), wand listeners.
   `AreaClearSession` tracks `bossMobs` (from `AreaSpawnDefinition.isBoss()` at spawn) so `AreaClearManager.isBossMob(UUID)`
   lets `AreaListener.onEntityDeath` credit boss vs normal kills to the killer's run.
+  Loot chests are **per-area lists** (`Area.chestLocations`, `loot.chest-locations` in the area file; legacy single
+  `loot.chest-location` migrates on load). Each chest has an optional `type` = a loot table id (`AreaChestLocation.lootType`);
+  `buildLoot(area, chestType)` falls back to the area's loot table then legacy entries, rolling a fresh full batch per chest.
+  Wand CHEST mode left-clicks to add a chest, sneaks to remove the nearest; `/areas setchest {area} {index} {type|remove}`.
 - `chat/ActionBarManager.java`: the default HUD (replaces the scoreboard). Repeating task (`actionbar.update-ticks`)
   sends the run/cooldown timer (`%extraction_timer%`) while a player is in a run or on cooldown; `showTokens(UUID,int)`
   overlays `+{n} tokens` for `actionbar.kill-feedback-ticks`. Reads `actionbar.enabled`.
@@ -94,6 +98,13 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   `false`). Shows the run/cooldown timer during a run or cooldown, overlays `+{n} tokens` on mob/boss kills.
 - Per-kill/per-boss tokens now payout live on death (`RunManager.awardKillTokens`) instead of at extract;
   extract pays base + per-event only. Wired through `AreaListener.onEntityDeath` + `AreaClearSession.bossMobs`.
+- Multiple loot chest locations per area with optional per-chest loot table type (`AreaChestLocation`); wand
+  CHEST add/remove-nearest; `/areas setchest`; legacy `loot.chest-location` migrates on load.
+- `PaperChatRenderer.toComponent` converts legacy `§` codes to MiniMessage tags so mixed placeholder/message
+  strings (e.g. upgrade-token names) render correctly on Paper.
+- Timers now disableable via 0: `settings.time-limit-seconds: 0` skips the run countdown (`RunManager.enterRun`),
+  `settings.cooldown-hours: 0` disables the extract cooldown (`CooldownManager.setCooldown`).
+- Upgrade tokens are max stack size 1 (`UpgradeTokenUtil.createTokenItem`).
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

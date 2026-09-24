@@ -17,10 +17,10 @@ public class AreaClearSession {
     private final Set<UUID> mobs;
     private final Set<UUID> bossMobs;
     private final Map<UUID, Location> mobOrigins;
+    private final Set<Location> chestLocations;
+    private final Map<Location, BukkitTask> chestTasks;
     private int totalMobs;
     private BossBar bossBar;
-    private Location chestLocation;
-    private BukkitTask chestTask;
 
     public AreaClearSession(Area area, UUID owner) {
         this.area = area;
@@ -28,10 +28,10 @@ public class AreaClearSession {
         this.mobs = new HashSet<>();
         this.bossMobs = new HashSet<>();
         this.mobOrigins = new HashMap<>();
+        this.chestLocations = new HashSet<>();
+        this.chestTasks = new HashMap<>();
         this.totalMobs = 0;
         this.bossBar = null;
-        this.chestLocation = null;
-        this.chestTask = null;
     }
 
     public Area getArea() {
@@ -74,19 +74,28 @@ public class AreaClearSession {
         this.bossBar = bossBar;
     }
 
-    public Location getChestLocation() {
-        return chestLocation;
+    public Set<Location> getChestLocations() {
+        return chestLocations;
     }
 
-    public void setChestLocation(Location chestLocation) {
-        this.chestLocation = chestLocation;
+    public void addChestLocation(Location location) {
+        if (location != null)
+            chestLocations.add(location);
     }
 
-    public BukkitTask getChestTask() {
-        return chestTask;
+    public void removeChestLocation(Location location) {
+        if (location == null)
+            return;
+
+        chestLocations.remove(location);
+
+        BukkitTask task = chestTasks.remove(location);
+        if (task != null)
+            task.cancel();
     }
 
-    public void setChestTask(BukkitTask chestTask) {
-        this.chestTask = chestTask;
+    public void setChestTask(Location location, BukkitTask task) {
+        if (location != null)
+            chestTasks.put(location, task);
     }
 }
