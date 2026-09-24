@@ -75,6 +75,8 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      - make the upgrade token max item stack size = 1
      -
+     - add multiple chest locations
+     -
      - add a hologram when entering an area (should show the mob/boss count + level)
       - hologram position can be set via /extraction admin hologram <area>
       - the hologram info should be configurable.
@@ -94,7 +96,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      - fix /extraction loadout, say "Upgrade armor via /upgrades". disable clicking.
      - fix loadout not saving/getting fetched automatically in /loadout
      -
-     - fix time resetting to 24h ??
+     - fix time resetting to 24h after /extract
      -
      - add custom events (PlayerEnterArea)
      - add API
@@ -210,7 +212,11 @@ public final class ExtractionPlugin extends JavaPlugin {
         areaManager.startStateTask();
         areaSelectionVisualizer.start();
         areaClearManager.start();
-        scoreboardManager.start();
+
+        if (configUtil.isScoreboardEnabled())
+            scoreboardManager.start();
+
+
         actionBarManager.start();
         startSaveTask();
 

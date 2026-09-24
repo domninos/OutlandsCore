@@ -10,20 +10,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.scoreboard.Criteria;
-import org.bukkit.scoreboard.DisplaySlot;
-import org.bukkit.scoreboard.Objective;
-import org.bukkit.scoreboard.Score;
-import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scoreboard.Team;
+import org.bukkit.scoreboard.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class ScoreboardManager {
 
@@ -46,7 +35,8 @@ public class ScoreboardManager {
     }
 
     public void start() {
-        if (task != null && !task.isCancelled()) return;
+        if (task != null && !task.isCancelled())
+            return;
 
         int updateTicks = Math.max(1, plugin.getConfigUtil().getScoreboardUpdateTicks());
 
@@ -64,8 +54,9 @@ public class ScoreboardManager {
             task = null;
         }
 
-        for (Player player : new ArrayList<>(Bukkit.getOnlinePlayers()))
-            remove(player);
+        for (Player player : plugin.getExtractionManager().getExtractionPlayers())
+            if (player != null)
+                remove(player);
     }
 
     public void reload() {
@@ -75,19 +66,22 @@ public class ScoreboardManager {
     }
 
     public void refreshAll() {
-        for (Player player : new ArrayList<>(Bukkit.getOnlinePlayers()))
-            show(player);
+        for (Player player : plugin.getExtractionManager().getExtractionPlayers())
+            if (player != null)
+                show(player);
     }
 
     public void show(Player player) {
-        if (player == null) return;
+        if (player == null)
+            return;
 
         if (!shouldShow(player)) {
             hide(player);
             return;
         }
 
-        Scoreboard board = boards.computeIfAbsent(player.getUniqueId(), uuid -> Bukkit.getScoreboardManager().getNewScoreboard());
+        Scoreboard board = boards.computeIfAbsent(player.getUniqueId(),
+                uuid -> Bukkit.getScoreboardManager().getNewScoreboard());
 
         Objective objective = board.getObjective(OBJECTIVE_NAME);
 

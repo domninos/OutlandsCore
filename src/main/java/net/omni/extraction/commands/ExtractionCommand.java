@@ -139,6 +139,10 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getScoreboardManager().reload();
         plugin.getActionBarManager().reload();
         plugin.getLootTableManager().reload();
+
+        if (plugin.getConfigUtil().isScoreboardEnabled())
+            plugin.getScoreboardManager().start();
+
         plugin.getGuiManager().clearAll();
         plugin.sendMessage(sender, Messages.RELOADED.toString());
         return true;
