@@ -331,7 +331,7 @@ public class AreaManager {
     }
 
     private void checkPlayerAreas() {
-        for (UUID uuid : plugin.getAreaSelectionVisualizer().getExtractionPlayers()) {
+        for (UUID uuid : plugin.getExtractionManager().getExtractionPlayersUUID()) {
             Player player = Bukkit.getPlayer(uuid);
 
             if (player == null)

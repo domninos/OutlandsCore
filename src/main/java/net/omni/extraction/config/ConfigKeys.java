@@ -65,6 +65,11 @@ public final class ConfigKeys {
     public static final String AREAS_OUTLINE_COLOR_CHEST = "areas.outline.color-chest";
     public static final String AREAS_OUTLINE_POINT_REMOVE_RADIUS = "areas.outline.point-remove-radius";
 
+    public static final String ACTIONBAR = "actionbar";
+    public static final String ACTIONBAR_ENABLED = "actionbar.enabled";
+    public static final String ACTIONBAR_UPDATE_TICKS = "actionbar.update-ticks";
+    public static final String ACTIONBAR_KILL_FEEDBACK_TICKS = "actionbar.kill-feedback-ticks";
+
     public static final String SCOREBOARD = "scoreboard";
     public static final String SCOREBOARD_ENABLED = "scoreboard.enabled";
     public static final String SCOREBOARD_ONLY_IN_WORLD = "scoreboard.only-in-world";

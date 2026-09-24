@@ -31,9 +31,19 @@ public class AreaListener implements Listener {
 
         if (!plugin.getAreaClearManager().isSessionMob(uuid)) return;
 
+        boolean boss = plugin.getAreaClearManager().isBossMob(uuid);
+        Player killer = event.getEntity().getKiller();
+
         event.getDrops().clear();
         event.setDroppedExp(0);
-        plugin.getAreaClearManager().handleMobDeath(event.getEntity(), event.getEntity().getKiller());
+        plugin.getAreaClearManager().handleMobDeath(event.getEntity(), killer);
+
+        if (killer != null && plugin.getRunManager().isPlayerInRun(killer.getUniqueId())) {
+            if (boss)
+                plugin.getRunManager().addBoss(killer.getUniqueId());
+            else
+                plugin.getRunManager().addKill(killer.getUniqueId());
+        }
     }
 
     @EventHandler

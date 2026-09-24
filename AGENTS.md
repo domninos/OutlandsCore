@@ -59,12 +59,19 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
 - `data/DatabaseManager.java` (SQLite `extraction.db`), `data/PlayerData.java`,
   `data/PlayerDataManager.java` (return location + pre-run inventory snapshot persistence).
 - `gameplay/RunManager.java`: enterRun / extractPlayer / handleDeath / handleDisconnect / shutdown /
-  restorePendingReturn.
+  restorePendingReturn. `addKill`/`addBoss` now award their tokens immediately (`awardKillTokens` → live
+  payout + actionbar `+{n} tokens`); `calculateTokens` pays base + per-event only (kills/bosses paid live).
 - `area/*`: `AreaManager` (auto-save + state task `checkAreaStates`, `getAreaAt` for `%extraction_area%`),
   `AreaClearManager`, `AreaSelectionVisualizer` (`getExtractionPlayers()`), wand listeners.
+  `AreaClearSession` tracks `bossMobs` (from `AreaSpawnDefinition.isBoss()` at spawn) so `AreaClearManager.isBossMob(UUID)`
+  lets `AreaListener.onEntityDeath` credit boss vs normal kills to the killer's run.
+- `chat/ActionBarManager.java`: the default HUD (replaces the scoreboard). Repeating task (`actionbar.update-ticks`)
+  sends the run/cooldown timer (`%extraction_timer%`) while a player is in a run or on cooldown; `showTokens(UUID,int)`
+  overlays `+{n} tokens` for `actionbar.kill-feedback-ticks`. Reads `actionbar.enabled`.
 - `scoreboard/ScoreboardManager.java`, `ScoreboardListener.java`, `PlaceholderValues.java`: internal-only
   Paper-backed scoreboard (Team prefix/suffix Components, `NumberFormat.blank()`), objective key
-  `extraction_side`, team prefix `extraction_line_`.
+  `extraction_side`, team prefix `extraction_line_`. **Disabled by default** (`scoreboard.enabled: false`);
+  kept so users can re-enable. `PlaceholderValues` resolve `%extraction_*%` for the actionbar + PAPI.
 - `messages/Messages.java` + `src/main/resources/messages.yml`, `managers/MessagesManager.java`,
   `managers/TokenManager.java`.
 - `integration/PlaceholderAPIHook.java`: identifier `extraction` — keep the param list in sync with
@@ -83,6 +90,10 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
 - Configurable per-player scoreboard implemented with the internal backend only (FastBoard / ViaVersion
   options were researched and rejected). Features: area line, run/cooldown timer, party stub, server clock,
   IP line, `scoreboard.enabled` toggle, only-in-world, auto-refresh.
+- Actionbar HUD replaces the scoreboard as the default (`actionbar.*` config; scoreboard kept but default
+  `false`). Shows the run/cooldown timer during a run or cooldown, overlays `+{n} tokens` on mob/boss kills.
+- Per-kill/per-boss tokens now payout live on death (`RunManager.awardKillTokens`) instead of at extract;
+  extract pays base + per-event only. Wired through `AreaListener.onEntityDeath` + `AreaClearSession.bossMobs`.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

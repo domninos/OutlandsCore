@@ -15,7 +15,6 @@ import java.util.*;
 public class AreaSelectionVisualizer implements Listener {
 
     private final ExtractionPlugin plugin;
-    private final Set<UUID> extractionPlayers = new HashSet<>();
     private final Set<UUID> wandHolders = new HashSet<>();
     private BukkitTask task;
     private Particle particle = Particle.DUST;
@@ -38,7 +37,7 @@ public class AreaSelectionVisualizer implements Listener {
             task = null;
         }
 
-        extractionPlayers.clear();
+        plugin.getExtractionManager().flush();
         wandHolders.clear();
     }
 
@@ -52,18 +51,6 @@ public class AreaSelectionVisualizer implements Listener {
         } catch (IllegalArgumentException e) {
             return Particle.DUST;
         }
-    }
-
-    public void addExtractionPlayer(Player player) {
-        extractionPlayers.add(player.getUniqueId());
-    }
-
-    public boolean isExtractionPlayer(UUID uuid) {
-        return extractionPlayers.contains(uuid);
-    }
-
-    public Set<UUID> getExtractionPlayers() {
-        return extractionPlayers;
     }
 
     private void addWandHolder(UUID uuid) {
@@ -135,7 +122,8 @@ public class AreaSelectionVisualizer implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        extractionPlayers.remove(uuid);
+
+        plugin.getExtractionManager().removeExtraction(uuid);
         removeWandHolder(uuid);
     }
 

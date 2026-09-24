@@ -15,6 +15,7 @@ public class AreaClearSession {
     private final Area area;
     private final UUID owner;
     private final Set<UUID> mobs;
+    private final Set<UUID> bossMobs;
     private final Map<UUID, Location> mobOrigins;
     private int totalMobs;
     private BossBar bossBar;
@@ -25,6 +26,7 @@ public class AreaClearSession {
         this.area = area;
         this.owner = owner;
         this.mobs = new HashSet<>();
+        this.bossMobs = new HashSet<>();
         this.mobOrigins = new HashMap<>();
         this.totalMobs = 0;
         this.bossBar = null;
@@ -42,6 +44,14 @@ public class AreaClearSession {
 
     public Set<UUID> getMobs() {
         return mobs;
+    }
+
+    public void addBossMob(UUID uuid) {
+        bossMobs.add(uuid);
+    }
+
+    public boolean isBossMob(UUID uuid) {
+        return bossMobs.contains(uuid);
     }
 
     public Map<UUID, Location> getMobOrigins() {

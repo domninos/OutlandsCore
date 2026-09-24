@@ -43,7 +43,7 @@
                             <relocations>
                                 <relocation>
                                     <pattern>com.zaxxer.hikari</pattern>
-                                    <shadedPattern>net.omni.extraction.libs.hikari</shadedPattern>
+                                    <shadedPattern>extraction.libs.hikari</shadedPattern>
                                 </relocation>
                             </relocations>
                             <filters>

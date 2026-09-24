@@ -575,6 +575,9 @@ public class AreaClearManager {
                 session.getMobs().add(entity.getUniqueId());
                 session.getMobOrigins().put(entity.getUniqueId(), location.clone());
                 mobSessions.put(entity.getUniqueId(), session);
+
+                if (definition.isBoss())
+                    session.addBossMob(entity.getUniqueId());
             }
         }
     }
@@ -607,6 +610,11 @@ public class AreaClearManager {
 
     public boolean isSessionMob(UUID uuid) {
         return mobSessions.containsKey(uuid);
+    }
+
+    public boolean isBossMob(UUID uuid) {
+        AreaClearSession session = mobSessions.get(uuid);
+        return session != null && session.isBossMob(uuid);
     }
 
     public boolean cancelClear(Area area) {

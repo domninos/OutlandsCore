@@ -93,15 +93,8 @@ public class RunManager {
     }
 
     private int calculateTokens(ActiveRun run) {
-        return tokenManager.calculateExtractionTokens(
-                run.getKillCount(),
-                run.getEventCount(),
-                run.getBossCount(),
-                plugin.getConfigUtil().getBaseTokens(),
-                plugin.getConfigUtil().getPerKillTokens(),
-                plugin.getConfigUtil().getPerEventTokens(),
-                plugin.getConfigUtil().getPerBossTokens()
-        );
+        return plugin.getConfigUtil().getBaseTokens()
+                + (run.getEventCount() * plugin.getConfigUtil().getPerEventTokens());
     }
 
     public boolean extractPlayer(UUID uuid) {
@@ -304,8 +297,10 @@ public class RunManager {
     public void addKill(UUID uuid) {
         ActiveRun run = activeRuns.get(uuid);
 
-        if (run != null)
-            run.incrementKills();
+        if (run == null) return;
+
+        run.incrementKills();
+        awardKillTokens(uuid, plugin.getConfigUtil().getPerKillTokens());
     }
 
     public void addEvent(UUID uuid) {
@@ -317,8 +312,17 @@ public class RunManager {
 
     public void addBoss(UUID uuid) {
         ActiveRun run = activeRuns.get(uuid);
-        if (run != null)
-            run.incrementBosses();
+        if (run == null) return;
+
+        run.incrementBosses();
+        awardKillTokens(uuid, plugin.getConfigUtil().getPerBossTokens());
+    }
+
+    private void awardKillTokens(UUID uuid, int amount) {
+        if (amount <= 0) return;
+
+        tokenManager.addTokens(uuid, amount);
+        plugin.getActionBarManager().showTokens(uuid, amount);
     }
 
     public static class ActiveRun {

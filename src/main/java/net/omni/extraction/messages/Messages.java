@@ -46,6 +46,8 @@ public enum Messages {
     LOOT_TIME_ADDED("loot.time-added", "<yellow>+%time% minutes added to your run!</yellow>"),
     LOOT_STORED("loot.stored", "<green>Stored %amount% item(s) in <white>/extraction storage</white>.</green>"),
 
+    ACTIONBAR_KILL_TOKENS("actionbar.kill-tokens", "<green>+%amount% tokens</green>"),
+
     WITHDRAW_OPENED("withdraw.opened", "<gray>Opened your extracted loot.</gray>"),
     WITHDRAW_EMPTY("withdraw.empty", "<gray>You have no extracted loot to withdraw.</gray>"),
     WITHDRAW_CLAIMED("withdraw.claimed", "<green>Claimed %item% x%amount%.</green>"),

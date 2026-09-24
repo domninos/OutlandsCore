@@ -93,6 +93,10 @@ public class ConfigUtil {
     private String scoreboardTimeZone;
     private String scoreboardTimeFormat;
 
+    private boolean actionbarEnabled;
+    private int actionbarUpdateTicks;
+    private int actionbarKillFeedbackTicks;
+
     private int lootDefaultItemsPerChest;
     private String lootTokenItemMaterial;
     private String lootTokenItemName;
@@ -168,6 +172,7 @@ public class ConfigUtil {
         loadLoadoutGui(savedDefaults);
         loadSpawn();
         loadScoreboard(savedDefaults);
+        loadActionbar(savedDefaults);
         loadLoot(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
@@ -359,7 +364,7 @@ public class ConfigUtil {
     }
 
     private void loadScoreboard(AtomicInteger savedDefaults) {
-        this.scoreboardEnabled = getAndDefaultBoolean(ConfigKeys.SCOREBOARD_ENABLED, true, savedDefaults);
+        this.scoreboardEnabled = getAndDefaultBoolean(ConfigKeys.SCOREBOARD_ENABLED, false, savedDefaults);
         this.scoreboardOnlyInWorld = getAndDefaultBoolean(ConfigKeys.SCOREBOARD_ONLY_IN_WORLD, true, savedDefaults);
         this.scoreboardUpdateTicks = Math.max(1, getAndDefaultInt(ConfigKeys.SCOREBOARD_UPDATE_TICKS, 20, savedDefaults));
         this.scoreboardTitle = getAndDefaultString(ConfigKeys.SCOREBOARD_TITLE, "Extraction", savedDefaults);
@@ -378,6 +383,13 @@ public class ConfigUtil {
                 "<gray>Clock <dark_gray>» <white>%extraction_clock%",
                 "<gray>IP <dark_gray>» <white>%extraction_ip%"
         ), savedDefaults);
+    }
+
+    private void loadActionbar(AtomicInteger savedDefaults) {
+        this.actionbarEnabled = getAndDefaultBoolean(ConfigKeys.ACTIONBAR_ENABLED, true, savedDefaults);
+        this.actionbarUpdateTicks = Math.max(1, getAndDefaultInt(ConfigKeys.ACTIONBAR_UPDATE_TICKS, 20, savedDefaults));
+        this.actionbarKillFeedbackTicks = Math.max(1,
+                getAndDefaultInt(ConfigKeys.ACTIONBAR_KILL_FEEDBACK_TICKS, 40, savedDefaults));
     }
 
     private void loadLoot(AtomicInteger savedDefaults) {
@@ -721,6 +733,18 @@ public class ConfigUtil {
 
     public boolean isScoreboardEnabled() {
         return scoreboardEnabled;
+    }
+
+    public boolean isActionbarEnabled() {
+        return actionbarEnabled;
+    }
+
+    public int getActionbarUpdateTicks() {
+        return actionbarUpdateTicks;
+    }
+
+    public int getActionbarKillFeedbackTicks() {
+        return actionbarKillFeedbackTicks;
     }
 
     public boolean isScoreboardOnlyInWorld() {

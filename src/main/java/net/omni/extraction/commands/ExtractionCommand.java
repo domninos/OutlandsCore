@@ -72,7 +72,7 @@ public class ExtractionCommand implements CommandExecutor {
         boolean entered = plugin.getRunManager().enterRun(player);
 
         if (entered)
-            plugin.getAreaSelectionVisualizer().addExtractionPlayer(player);
+            plugin.getExtractionManager().addExtractionPlayer(player);
         return true;
     }
 
@@ -137,6 +137,7 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getMessagesManager().loadMessages();
         plugin.getUpgradeManager().reload();
         plugin.getScoreboardManager().reload();
+        plugin.getActionBarManager().reload();
         plugin.getLootTableManager().reload();
         plugin.getGuiManager().clearAll();
         plugin.sendMessage(sender, Messages.RELOADED.toString());

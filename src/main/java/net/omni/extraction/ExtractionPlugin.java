@@ -3,6 +3,7 @@ package net.omni.extraction;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.omni.extraction.area.*;
+import net.omni.extraction.chat.ActionBarManager;
 import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.chat.PaperChatRenderer;
 import net.omni.extraction.chat.SpigotChatRenderer;
@@ -21,6 +22,7 @@ import net.omni.extraction.loadout.LoadoutManager;
 import net.omni.extraction.loot.LootItemUtil;
 import net.omni.extraction.loot.LootManager;
 import net.omni.extraction.loot.LootTableManager;
+import net.omni.extraction.managers.ExtractionManager;
 import net.omni.extraction.managers.MessagesManager;
 import net.omni.extraction.managers.TokenManager;
 import net.omni.extraction.messages.MessageUtil;
@@ -56,16 +58,15 @@ public final class ExtractionPlugin extends JavaPlugin {
     private AreaClearManager areaClearManager;
     private AreaSelectionVisualizer areaSelectionVisualizer;
     private ScoreboardManager scoreboardManager;
+    private ActionBarManager actionBarManager;
     private GUIManager guiManager;
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
+    private ExtractionManager extractionManager;
 
     /*
 
     TODO:
-     - have Outlands -> Extraction
-      - have /extraction -> replace /outlands and other subcommands. keep /extract
-      - player runs /extraction -> go into extraction, if player already in extraction -> go back
      -
      - migrate to MariaDB/MySQL, use plugin.yml's library loader
      - loadout should be categorized and checked if they are permanent. food and potions are temporary.
@@ -79,11 +80,6 @@ public final class ExtractionPlugin extends JavaPlugin {
       - the hologram info should be configurable.
       - use DecentHolograms API
      -
-     - remove scoreboard
-       - just have an actionbar for timer, whenever killing a mob/boss, add +{kill token amount} tokens
-     -
-     -
-     -
      - fix Message parser
       - when upgrading armor
        - <green>Applied §7Iron Helmet Upgrade to your Helmet!</green>
@@ -95,7 +91,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      - fix claiming on /outland storage to say the display name
       - fix dupe bug when clicking a loot in /outland storage. don't cancel the click, just eableeee
      -
-     - fix /outlands loadout, say "Upgrade armor via /upgrades". disable clicking.
+     - fix /extraction loadout, say "Upgrade armor via /upgrades". disable clicking.
      - fix loadout not saving/getting fetched automatically in /loadout
      -
      - fix time resetting to 24h ??
@@ -109,7 +105,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         All loot collected during that run is lost.
         No extraction rewards are granted.
      -
-     - add a /outlands shop (/oshop) -> for food and potions,
+     - add a /extraction shop (/oshop) -> for food and potions,
        unlocking enchantments, upgrading armor/weapons, purchasing passive upgrades
      -
      - check for chances of each loot. i get stacks of them.
@@ -119,7 +115,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      - pets
      - passive
      -
-     - party system (new database), update outlands.db (if SQLITE, but prefer MariaDB/MYSQL)
+     - party system (new database), update extraction.db (if SQLITE, but prefer MariaDB/MYSQL)
      - support party for loot (all party members must be able to loot it.
      - add "Time remaining" for all party
      -
@@ -132,6 +128,9 @@ public final class ExtractionPlugin extends JavaPlugin {
     public void onDisable() {
         if (scoreboardManager != null)
             scoreboardManager.stop();
+
+        if (actionBarManager != null)
+            actionBarManager.stop();
 
         stopSaveTask();
 
@@ -149,6 +148,8 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         if (guiManager != null)
             guiManager.clearAll();
+
+        extractionManager.flush();
 
         configUtil.flush();
         messagesManager.flush();
@@ -177,6 +178,7 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         this.databaseManager = new DatabaseManager(this);
         this.playerDataManager = new PlayerDataManager(this);
+        this.extractionManager = new ExtractionManager(this);
 
         this.cooldownManager = new CooldownManager(this, playerDataManager);
         this.tokenManager = new TokenManager(playerDataManager);
@@ -195,6 +197,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.areaClearManager = new AreaClearManager(this, areaManager);
         this.areaSelectionVisualizer = new AreaSelectionVisualizer(this);
         this.scoreboardManager = new ScoreboardManager(this);
+        this.actionBarManager = new ActionBarManager(this);
         this.guiManager = new GUIManager(this);
 
         this.lootTableManager = new LootTableManager(this);
@@ -208,6 +211,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         areaSelectionVisualizer.start();
         areaClearManager.start();
         scoreboardManager.start();
+        actionBarManager.start();
         startSaveTask();
 
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
@@ -338,6 +342,10 @@ public final class ExtractionPlugin extends JavaPlugin {
         return scoreboardManager;
     }
 
+    public ActionBarManager getActionBarManager() {
+        return actionBarManager;
+    }
+
     public GUIManager getGuiManager() {
         return guiManager;
     }
@@ -348,5 +356,9 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public Gson getGson() {
         return gson;
+    }
+
+    public ExtractionManager getExtractionManager() {
+        return extractionManager;
     }
 }
