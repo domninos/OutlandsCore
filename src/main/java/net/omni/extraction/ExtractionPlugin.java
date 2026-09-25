@@ -75,7 +75,18 @@ public final class ExtractionPlugin extends JavaPlugin {
      - loadout should be categorized and checked if they are permanent. food and potions are temporary.
      -
      -
-     - fix
+     - fix loadout, the default slots / pickaxe, charm, pet, etc. are reset (but the moved slots/items aren't. so the default item slots come back but persists the updated slots that the player moved themselves.
+     - fix upgrading armor (current tier should persist)
+     - fix /extraction withdraw/storage when clicked = shouldn't do anything. move the items freely.
+     - once a run is finished, make /extraction withdraw/storage the same. all collected loot must be inside it.
+     -
+     - Boss Creator
+        Create bosses with:
+        Health
+        Damage
+        Abilities
+        Loot
+     -
      -
      -
      - add a hologram when entering an area (should show the mob/boss count + level)

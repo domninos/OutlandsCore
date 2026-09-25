@@ -185,17 +185,45 @@ public class RunManager {
         data.setLastEventCount(run.getEventCount());
         data.setLastBossCount(run.getBossCount());
 
-        // Gear and loot are lost on death, but the player respawns where they
-        // entered from. No pending-return restore will trigger on next login.
-        data.setPreRunInventory(new ArrayList<>());
-        data.setPreRunArmor(new ArrayList<>());
+        // Dying before extracting: the run loot is lost, no extraction
+        // rewards are granted, and the player respawns at their entry point
+        // with the gear they came in with. Keep the pre-run snapshot so
+        // restoreDeathGear can hand it back on respawn; pendingReturn stays
+        // off so no join-time restore triggers on their next login.
         data.setPendingReturn(false);
+        data.setPendingDeathRestore(true);
 
         cooldownManager.setCooldown(uuid);
 
         Player player = Bukkit.getPlayer(uuid);
-        if (player != null)
+        if (player != null) {
+            player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
             plugin.sendMessage(player, Messages.RUN_DEATH.toString());
+        }
+    }
+
+    /**
+     * Restores the pre-run inventory/armor on the death respawn and clears the
+     * pending-death flag. Only applies to players who actually died mid-run.
+     */
+    public void restoreDeathGear(Player player) {
+        if (player == null)
+            return;
+
+        PlayerData data = playerDataManager.getOrCreate(player.getUniqueId());
+
+        if (!data.isPendingDeathRestore())
+            return;
+
+        player.getInventory().clear();
+        player.getInventory().setArmorContents(null);
+        restorePlayerInventory(player, data);
+
+        data.setPreRunInventory(new ArrayList<>());
+        data.setPreRunArmor(new ArrayList<>());
+        data.setPendingDeathRestore(false);
+        playerDataManager.savePlayer(player.getUniqueId());
     }
 
     public void handleDisconnect(UUID uuid) {

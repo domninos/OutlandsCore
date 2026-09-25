@@ -82,6 +82,9 @@ public class PlayerListener implements Listener {
         if (respawnLocation != null)
             event.setRespawnLocation(respawnLocation);
 
+        // Restore the gear a player died with (if this respawn follows a run death).
+        runManager.restoreDeathGear(player);
+
         // Consume the persisted return location once it has been used so a
         // later normal death does not respawn the player at the old spot.
         if (run == null && data.getReturnLocation() != null)

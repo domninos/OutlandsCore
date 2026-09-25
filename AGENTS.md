@@ -58,6 +58,8 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   config.yml and messages.yml).
 - `data/DatabaseManager.java` (SQLite `extraction.db`), `data/PlayerData.java`,
   `data/PlayerDataManager.java` (return location + pre-run inventory snapshot persistence).
+- `event/PlayerEnterAreaEvent.java`, `event/PlayerLeaveAreaEvent.java`: non-cancellable custom Bukkit events
+  (`org.bukkit.event.Event`) fired by `AreaManager` on area enter/leave transitions (incl. on quit).
 - `gameplay/RunManager.java`: enterRun / extractPlayer / handleDeath / handleDisconnect / shutdown /
   restorePendingReturn. `addKill`/`addBoss` now award their tokens immediately (`awardKillTokens` → live
   payout + actionbar `+{n} tokens`); `calculateTokens` pays base + per-event only (kills/bosses paid live).
@@ -142,6 +144,13 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   Vault `Economy` ("token"/"tokens", integer amounts, no bank support). Registered via `ServicesManager` with
   priority `Highest` from `ExternalPluginManager.detect()` when Vault is loaded; pom adds JitPack
   `com.github.MilkBowl:VaultAPI:1.7.1` (provided) and `plugin.yml` softdepends `Vault`.
+- Run-death behavior: dying mid-run makes you leave immediately — `RunManager.handleDeath` clears the carried run
+  loot/loadout (`event.getDrops().clear()` alone kept items in the inventory), sets `PlayerData.pendingDeathRestore`
+  and keeps the pre-run snapshot; `PlayerListener.onPlayerRespawn` + `RunManager.restoreDeathGear` respawn you at the
+  entry location with the gear you came in with. No extraction rewards on death (live kill/boss payouts stay); the
+  cooldown still applies.
+- Custom events: `event/PlayerEnterAreaEvent` + `event/PlayerLeaveAreaEvent` (non-cancellable, expose `getPlayer()`/
+  `getArea()`) fired by `AreaManager` on area transitions (`checkPlayerAreas`) and on quit (`handlePlayerQuit`).
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

@@ -21,6 +21,7 @@ public class PlayerData {
     private List<ItemStack> preRunInventory;
     private List<ItemStack> preRunArmor;
     private boolean pendingReturn;
+    private boolean pendingDeathRestore;
     private boolean dirty;
 
     public PlayerData(UUID uuid) {
@@ -38,6 +39,7 @@ public class PlayerData {
         this.preRunInventory = new ArrayList<>();
         this.preRunArmor = new ArrayList<>();
         this.pendingReturn = false;
+        this.pendingDeathRestore = false;
         this.dirty = false;
     }
 
@@ -250,11 +252,21 @@ public class PlayerData {
         markDirty();
     }
 
+    public boolean isPendingDeathRestore() {
+        return pendingDeathRestore;
+    }
+
+    public void setPendingDeathRestore(boolean pendingDeathRestore) {
+        this.pendingDeathRestore = pendingDeathRestore;
+        markDirty();
+    }
+
     public void clearRunSnapshot() {
         this.returnLocation = null;
         this.preRunInventory = new ArrayList<>();
         this.preRunArmor = new ArrayList<>();
         this.pendingReturn = false;
+        this.pendingDeathRestore = false;
         markDirty();
     }
 
@@ -263,6 +275,7 @@ public class PlayerData {
         loadoutItems = new ArrayList<>();
         customizedCells = new HashSet<>();
         extractedLoot.clear();
+        pendingDeathRestore = false;
         clearRunSnapshot();
     }
 }

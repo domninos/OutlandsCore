@@ -53,7 +53,7 @@ area:
   cleared: "<green>Area <white>%area%</white> cleared! Loot is waiting in the chest.</green>"
   already-active: "<red>An area clear is already in progress.</red>"
   not-ready: "<red>This area is unavailable for another %time%.</red>"
-  cooldown-block: "<red><white>%area%</white> is not ready. Try again in <white>%time%</white>. You were pushed back.</red>"
+  cooldown-block: "<red><white>%area%</white> is not ready. Try again in <white>%time%</white>.</red>"
   no-spawns: "<red>This area has no configured spawns.</red>"
   chest-locked: "<red>This loot chest belongs to another player.</red>"
   wand-given: "<green>You received the area wand (<white>%mode%</white>).</green>"
