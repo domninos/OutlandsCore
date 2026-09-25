@@ -16,19 +16,48 @@ public class CooldownManager {
         this.playerDataManager = playerDataManager;
     }
 
+    public boolean isEnabled() {
+        return plugin.getConfigUtil() != null && plugin.getConfigUtil().getCooldownHours() > 0;
+    }
+
     public boolean isOnCooldown(UUID uuid) {
+        if (!isEnabled())
+            return false;
+
         PlayerData data = playerDataManager.getOrCreate(uuid);
         return data.isOnCooldown();
     }
 
     public long getCooldownRemainingMs(UUID uuid) {
+        if (!isEnabled())
+            return 0;
+
         PlayerData data = playerDataManager.getOrCreate(uuid);
         return data.getCooldownRemainingMs();
     }
 
     public String getCooldownFormatted(UUID uuid) {
+        if (!isEnabled())
+            return "0s";
+
         PlayerData data = playerDataManager.getOrCreate(uuid);
         return data.getCooldownFormatted();
+    }
+
+    /**
+     * Re-applies the cooldown config at runtime. When {@code cooldown-hours} is 0
+     * (or negative), every player's cooldown is reset so nobody stays locked out —
+     * including offline players persisted in the database.
+     */
+    public void applyConfig() {
+        if (isEnabled())
+            return;
+
+        for (PlayerData data : playerDataManager.getLoadedData())
+            data.setCooldownUntil(0);
+
+        playerDataManager.saveAllDirty();
+        playerDataManager.clearAllCooldowns();
     }
 
     public void setCooldown(UUID uuid) {

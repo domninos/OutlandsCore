@@ -382,6 +382,7 @@ public class AreaManager {
             plugin.getScoreboardManager().refreshAll();
 
         checkPlayerAreas();
+        autoReenterAreas();
     }
 
     public void markDirty(Area area) {
@@ -415,6 +416,38 @@ public class AreaManager {
                 plugin.getAreaClearManager().onPlayerEnter(player, area);
             } else
                 playerAreas.remove(uuid);
+        }
+    }
+
+    private void autoReenterAreas() {
+        // Free mode: no run time limit and no cooldown are configured.
+        if (plugin.getConfigUtil() == null)
+            return;
+
+        int timeLimit = plugin.getConfigUtil().getTimeLimitSeconds();
+        int cooldownHours = plugin.getConfigUtil().getCooldownHours();
+        if (timeLimit > 0 || cooldownHours > 0)
+            return;
+
+        for (Area area : areas.values()) {
+            // Only areas that have never been locked out auto re-enter players.
+            if (area.getUnavailableUntil() != 0)
+                continue;
+
+            if (!area.isReady() || !hasMobs(area))
+                continue;
+
+            for (UUID uuid : plugin.getExtractionManager().getExtractionPlayersUUID()) {
+                Player player = Bukkit.getPlayer(uuid);
+
+                if (player == null || !area.contains(player.getLocation()))
+                    continue;
+
+                if (plugin.getRunManager().isPlayerInRun(uuid))
+                    continue;
+
+                plugin.getAreaClearManager().onPlayerEnter(player, area);
+            }
         }
     }
 

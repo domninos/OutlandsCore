@@ -73,12 +73,9 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      - migrate to MariaDB/MySQL, use plugin.yml's library loader
      - loadout should be categorized and checked if they are permanent. food and potions are temporary.
-         this can be pur- when timer or cooldowns in config.yml is set to 0, and does /extraction reload, make sure the timer/cooldown gets disabled entirely for everyone.
-       - check for each area so if unavailable until = 0, and no timer/cooldown is set, automatically re enter player if in area.chaseable using outlands tokens
-         - use Vault to expose currency
      -
      -
-     -
+     - fix
      -
      -
      - add a hologram when entering an area (should show the mob/boss count + level)

@@ -14,6 +14,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -275,6 +276,26 @@ public class PlayerDataManager {
 
     public boolean isLoaded(UUID uuid) {
         return cache.containsKey(uuid);
+    }
+
+    public Collection<PlayerData> getLoadedData() {
+        return cache.values();
+    }
+
+    /**
+     * Zeroes the persisted cooldown for every player in the database, including
+     * players that are not currently loaded. Used when cooldowns are disabled.
+     */
+    public void clearAllCooldowns() {
+        plugin.getDatabaseManager().executeAsync(() -> {
+            try (Connection conn = plugin.getDatabaseManager().getConnection();
+                 PreparedStatement ps = conn.prepareStatement(
+                         "UPDATE player_data SET cooldown_until = 0 WHERE cooldown_until > 0")) {
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to clear all cooldowns", e);
+            }
+        });
     }
 
     public void saveAll() {
