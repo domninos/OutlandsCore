@@ -13,6 +13,7 @@ public class ExternalPluginManager {
     private boolean nexo;
     private boolean modelEngine;
     private boolean protocolLib;
+    private boolean vault;
 
     private MythicMobsProvider mythicMobsProvider;
 
@@ -28,6 +29,7 @@ public class ExternalPluginManager {
         nexo = isPluginLoaded("Nexo");
         modelEngine = isPluginLoaded("ModelEngine");
         protocolLib = isPluginLoaded("ProtocolLib");
+        vault = isPluginLoaded("Vault");
 
         if (placeholderAPI) {
             try {
@@ -55,6 +57,18 @@ public class ExternalPluginManager {
         if (nexo) plugin.sendConsole("<green>Hooked into Nexo.</green>");
         if (modelEngine) plugin.sendConsole("<green>Hooked into ModelEngine.</green>");
         if (protocolLib) plugin.sendConsole("<green>Hooked into ProtocolLib.</green>");
+
+        if (vault) {
+            try {
+                if (new VaultHook(plugin).register())
+                    plugin.sendConsole("<green>Hooked into Vault.</green>");
+                else
+                    vault = false;
+            } catch (Throwable e) {
+                plugin.getLogger().warning("Failed to hook Vault: " + e.getMessage());
+                vault = false;
+            }
+        }
     }
 
     private boolean isPluginLoaded(String name) {
@@ -87,6 +101,10 @@ public class ExternalPluginManager {
 
     public boolean isProtocolLib() {
         return protocolLib;
+    }
+
+    public boolean isVault() {
+        return vault;
     }
 
     public MythicMobsProvider getMythicMobsProvider() {

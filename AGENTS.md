@@ -88,7 +88,8 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
 - `integration/PlaceholderAPIHook.java`: identifier `extraction` — keep the param list in sync with
   `scoreboard/PlaceholderValues`.
 - `pom.xml`: shade relocates `com.zaxxer.hikari` → `net.omni.extraction.libs.hikari`, excludes `META-INF/*`;
-  repositories incl. `https://repo.triumphteam.dev/snapshots`; `libs/ItemEdit-3.7.10.jar` (system scope).
+  repositories incl. `https://repo.triumphteam.dev/snapshots` + `https://jitpack.io`; `libs/ItemEdit-3.7.10.jar`
+  (system scope), `com.github.MilkBowl:VaultAPI:1.7.1` (provided).
 
 ## Completed
 - Mob containment (AreaClearManager), MythicMob attribute copy, default loadout, `/upgrade` + `/tokens`
@@ -128,6 +129,19 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   collapse to one anchored entry, duplicates rejected with `AREA_CHEST_EXISTS`); loot containers support any
   `AreaChestLocation.isSupported` material (barrels/shulkers/etc preserved in-world, fresh spots get the stored type
   default CHEST) and pre-built double chests are filled/despawned as both halves.
+- Cooldowns fully disable when `settings.cooldown-hours` is 0/≤0: `CooldownManager.isEnabled()` gates
+  `isOnCooldown`/`getCooldownRemainingMs`/`getCooldownFormatted`, and `CooldownManager.applyConfig()` (called from
+  `/extraction reload`) resets every player's cooldown to 0 — loaded `PlayerData` + an async
+  `UPDATE player_data SET cooldown_until = 0` (`PlayerDataManager.clearAllCooldowns`, `getLoadedData`) so offline
+  players get unlocked too. Run timers are intentionally NOT cancelled on reload (timers only apply to new runs).
+- Auto re-enter free areas: `AreaManager` state task calls `autoReenterAreas()` — when free-mode is active
+  (`settings.time-limit-seconds` 0 AND `settings.cooldown-hours` 0), every area with `unavailableUntil == 0` that is
+  ready and has mobs automatically (re-)starts its clear for extraction players standing inside who are not in an
+  active run (`AreaClearManager.onPlayerEnter` → `startClear` for a fresh session, boss-bar/glow join otherwise).
+- Vault currency: `integration/VaultEconomy` + `integration/VaultHook` expose Outland tokens as a full read/write
+  Vault `Economy` ("token"/"tokens", integer amounts, no bank support). Registered via `ServicesManager` with
+  priority `Highest` from `ExternalPluginManager.detect()` when Vault is loaded; pom adds JitPack
+  `com.github.MilkBowl:VaultAPI:1.7.1` (provided) and `plugin.yml` softdepends `Vault`.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

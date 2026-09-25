@@ -93,6 +93,10 @@
             <id>triumph-gui</id>
             <url>https://repo.triumphteam.dev/snapshots</url>
         </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -162,6 +166,20 @@
             <version>3.7.10</version>
             <scope>system</scope>
             <systemPath>${project.basedir}/libs/ItemEdit-3.7.10.jar</systemPath>
+        </dependency>
+
+        <!-- VaultAPI (expose Outlands tokens as Vault currency) -->
+        <dependency>
+            <groupId>com.github.MilkBowl</groupId>
+            <artifactId>VaultAPI</artifactId>
+            <version>1.7.1</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.bukkit</groupId>
+                    <artifactId>bukkit</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 </project>
