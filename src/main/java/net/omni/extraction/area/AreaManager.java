@@ -3,6 +3,8 @@ package net.omni.extraction.area;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.event.PlayerEnterAreaEvent;
+import net.omni.extraction.event.PlayerLeaveAreaEvent;
 import net.omni.extraction.integration.MythicMobsProvider;
 import net.omni.extraction.mobs.MobTemplate;
 import net.omni.extraction.mobs.MobTemplateManager;
@@ -407,13 +409,16 @@ public class AreaManager {
             if (previous != null) {
                 Area oldArea = getArea(previous);
 
-                if (oldArea != null)
+                if (oldArea != null) {
                     plugin.getAreaClearManager().onPlayerLeave(player, oldArea);
+                    Bukkit.getPluginManager().callEvent(new PlayerLeaveAreaEvent(player, oldArea));
+                }
             }
 
             if (area != null) {
                 playerAreas.put(uuid, current);
                 plugin.getAreaClearManager().onPlayerEnter(player, area);
+                Bukkit.getPluginManager().callEvent(new PlayerEnterAreaEvent(player, area));
             } else
                 playerAreas.remove(uuid);
         }
@@ -481,6 +486,7 @@ public class AreaManager {
             return;
 
         plugin.getAreaClearManager().onPlayerLeave(player, area);
+        Bukkit.getPluginManager().callEvent(new PlayerLeaveAreaEvent(player, area));
     }
 
     public Area create(String name, World world, Location first, Location second) {
