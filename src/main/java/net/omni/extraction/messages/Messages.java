@@ -79,6 +79,7 @@ public enum Messages {
     AREA_SPAWN_ADDED("area.spawn-added", "<green>Added mob spawn point at <white>%x%, %y%, %z%</white>.</green>"),
     AREA_BOSS_ADDED("area.boss-added", "<green>Added boss spawn point at <white>%x%, %y%, %z%</white>.</green>"),
     AREA_CHEST_SET("area.chest-set", "<green>Set loot chest at <white>%x%, %y%, %z%</white>.</green>"),
+    AREA_CHEST_EXISTS("area.chest-exists", "<red>There is already a loot chest at this location.</red>"),
     AREA_CHEST_CLEARED("area.chest-cleared", "<green>Cleared the loot chest location.</green>"),
     AREA_CHEST_TYPE_SET("area.chest-type-set", "<green>Set loot type to <white>%type%</white> for chest <white>#%index%</white> in <white>%area%</white>.</green>"),
     AREA_CHEST_REMOVED("area.chest-removed", "<green>Removed chest <white>#%index%</white> from <white>%area%</white>.</green>"),

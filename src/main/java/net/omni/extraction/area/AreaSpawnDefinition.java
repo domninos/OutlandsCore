@@ -1,11 +1,14 @@
 package net.omni.extraction.area;
 
+import org.bukkit.Location;
+
 import java.util.HashMap;
 import java.util.Map;
 
 public class AreaSpawnDefinition {
 
     private final String group;
+    private Location boundLocation;
     private String type;
     private boolean mythic;
     private int count;
@@ -33,6 +36,14 @@ public class AreaSpawnDefinition {
 
     public String getGroup() {
         return group;
+    }
+
+    public Location getBoundLocation() {
+        return boundLocation;
+    }
+
+    public void setBoundLocation(Location boundLocation) {
+        this.boundLocation = boundLocation;
     }
 
     public String getType() {

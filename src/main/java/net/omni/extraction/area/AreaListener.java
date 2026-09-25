@@ -4,7 +4,6 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.PacketGlow;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -52,10 +51,13 @@ public class AreaListener implements Listener {
             return;
 
         Block block = event.getClickedBlock();
-        if (block == null || block.getType() != Material.CHEST)
+        if (block == null)
             return;
 
         if (!plugin.getAreaClearManager().isLootChest(block.getLocation()))
+            return;
+
+        if (!AreaChestLocation.isSupported(block.getType()))
             return;
 
         Player player = event.getPlayer();

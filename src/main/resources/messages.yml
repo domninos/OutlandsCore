@@ -73,6 +73,7 @@ area:
   spawn-added: "<green>Added mob spawn point at <white>%x%, %y%, %z%</white>.</green>"
   boss-added: "<green>Added boss spawn point at <white>%x%, %y%, %z%</white>.</green>"
   chest-set: "<green>Set loot chest at <white>%x%, %y%, %z%</white>.</green>"
+  chest-exists: "<red>There is already a loot chest at this location.</red>"
   chest-cleared: "<green>Cleared the loot chest location.</green>"
   chest-type-set: "<green>Set loot type to <white>%type%</white> for chest <white>#%index%</white> in <white>%area%</white>.</green>"
   chest-removed: "<green>Removed chest <white>#%index%</white> from <white>%area%</white>.</green>"

@@ -3,7 +3,10 @@ package net.omni.extraction.area;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.jspecify.annotations.NonNull;
 
@@ -20,6 +23,7 @@ public class Area {
     private final List<Location> bossSpawnLocations;
     private final List<AreaLootEntry> lootEntries;
     private final List<AreaChestLocation> chestLocations;
+    private final List<AreaSpawnEntry> spawnEntries;
     private String name;
     private String world;
     private String difficulty;
@@ -56,6 +60,7 @@ public class Area {
         this.bossSpawnLocations = new ArrayList<>();
         this.lootEntries = new ArrayList<>();
         this.chestLocations = new ArrayList<>();
+        this.spawnEntries = new ArrayList<>();
 
         this.lootDespawnSeconds = 300;
         this.leftoverToWithdraw = true;
@@ -126,6 +131,23 @@ public class Area {
             area.getMobSpawnLocations().addAll(deserializeLocations(config.getMapList("spawn-locations"), bukkitWorld));
             area.getBossSpawnLocations().addAll(deserializeLocations(config.getMapList("boss-locations"), bukkitWorld));
 
+            for (Map<?, ?> map : config.getMapList("spawn-entries")) {
+                Object x = map.get("x");
+                Object y = map.get("y");
+                Object z = map.get("z");
+                Object mobId = map.get("mob-id");
+
+                if (x instanceof Number nx && y instanceof Number ny && z instanceof Number nz && mobId != null) {
+                    Location location = new Location(bukkitWorld, nx.doubleValue(), ny.doubleValue(), nz.doubleValue());
+                    int count = map.get("count") instanceof Number c ? c.intValue() : 1;
+                    int level = map.get("level") instanceof Number l ? l.intValue() : 1;
+                    int respawn = map.get("respawn-seconds") instanceof Number r ? r.intValue() : 0;
+                    boolean boss = map.get("boss") instanceof Boolean b && b;
+
+                    area.addSpawnEntry(new AreaSpawnEntry(String.valueOf(mobId), location, count, level, respawn, boss));
+                }
+            }
+
             for (Map<?, ?> map : config.getMapList("loot.chest-locations")) {
                 Object x = map.get("x");
                 Object y = map.get("y");
@@ -133,9 +155,15 @@ public class Area {
 
                 if (x instanceof Number nx && y instanceof Number ny && z instanceof Number nz) {
                     Object type = map.get("type");
+                    Object material = map.get("material");
+                    Material containerType = material == null
+                            ? AreaChestLocation.DEFAULT_CONTAINER
+                            : Material.matchMaterial(String.valueOf(material));
+
                     area.addChestLocation(new AreaChestLocation(
                             new Location(bukkitWorld, nx.doubleValue(), ny.doubleValue(), nz.doubleValue()),
-                            type == null ? null : String.valueOf(type)));
+                            type == null ? null : String.valueOf(type),
+                            containerType));
                 }
             }
 
@@ -406,13 +434,95 @@ public class Area {
         return chestLocations;
     }
 
-    public void addChestLocation(AreaChestLocation chest) {
-        if (chest != null && chest.getLocation() != null)
-            chestLocations.add(chest);
+    public boolean addChestLocation(AreaChestLocation chest) {
+        if (chest == null || chest.getLocation() == null || chest.getLocation().getWorld() == null)
+            return false;
+
+        Location location = normalizeChestLocation(chest.getLocation(), chest.getContainerType());
+        chest.setLocation(location);
+
+        if (hasChestAt(location))
+            return false;
+
+        chestLocations.add(chest);
+        return true;
     }
 
-    public void addChestLocation(Location location, String lootType) {
-        addChestLocation(new AreaChestLocation(location, lootType));
+    public boolean addChestLocation(Location location, String lootType) {
+        return addChestLocation(new AreaChestLocation(location, lootType));
+    }
+
+    public boolean addChestLocation(Location location, String lootType, Material containerType) {
+        return addChestLocation(new AreaChestLocation(location, lootType, containerType));
+    }
+
+    private boolean hasChestAt(Location location) {
+        for (AreaChestLocation chest : chestLocations)
+            if (sameBlock(chest.getLocation(), location))
+                return true;
+
+        return false;
+    }
+
+    private boolean sameBlock(Location a, Location b) {
+        return a != null && b != null
+                && a.getWorld() != null && a.getWorld().equals(b.getWorld())
+                && a.getBlockX() == b.getBlockX()
+                && a.getBlockY() == b.getBlockY()
+                && a.getBlockZ() == b.getBlockZ();
+    }
+
+    private Location normalizeChestLocation(Location location, Material containerType) {
+        if (location == null || location.getWorld() == null || !AreaChestLocation.isChestType(containerType))
+            return location;
+
+        Block block = location.getBlock();
+
+        for (int[] offset : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            Block neighbor = block.getRelative(offset[0], 0, offset[1]);
+
+            if (AreaChestLocation.isChestType(neighbor.getType()) && canMergeWith(block, offset[0] != 0, neighbor))
+                return minBlock(location, neighbor.getLocation());
+        }
+
+        return location;
+    }
+
+    private boolean canMergeWith(Block chest, boolean alongX, Block neighbor) {
+        BlockFace first = chestFacing(chest);
+        BlockFace second = chestFacing(neighbor);
+
+        if (first == null || second == null)
+            return false;
+
+        return alongX
+                ? isNorthSouth(first) && isNorthSouth(second)
+                : isEastWest(first) && isEastWest(second);
+    }
+
+    private BlockFace chestFacing(Block block) {
+        if (block.getBlockData() instanceof org.bukkit.block.data.type.Chest chest)
+            return chest.getFacing();
+
+        return null;
+    }
+
+    private boolean isNorthSouth(BlockFace facing) {
+        return facing == BlockFace.NORTH || facing == BlockFace.SOUTH;
+    }
+
+    private boolean isEastWest(BlockFace facing) {
+        return facing == BlockFace.EAST || facing == BlockFace.WEST;
+    }
+
+    private Location minBlock(Location a, Location b) {
+        if (a.getBlockX() != b.getBlockX())
+            return a.getBlockX() < b.getBlockX() ? a : b;
+
+        if (a.getBlockZ() != b.getBlockZ())
+            return a.getBlockZ() < b.getBlockZ() ? a : b;
+
+        return a;
     }
 
     public boolean removeNearestChestLocation(Location location, double radius) {
@@ -437,6 +547,45 @@ public class Area {
 
     public void clearChestLocations() {
         chestLocations.clear();
+    }
+
+    public List<AreaSpawnEntry> getSpawnEntries() {
+        return spawnEntries;
+    }
+
+    public void addSpawnEntry(AreaSpawnEntry entry) {
+        if (entry != null && entry.getLocation() != null)
+            spawnEntries.add(entry);
+    }
+
+    public boolean removeSpawnEntry(AreaSpawnEntry entry) {
+        return entry != null && spawnEntries.remove(entry);
+    }
+
+    public AreaSpawnEntry removeNearestSpawnEntry(Location location, double radius) {
+        AreaSpawnEntry nearest = null;
+        double nearestDistance = radius * radius;
+
+        for (AreaSpawnEntry entry : spawnEntries) {
+            double distance = distanceSq(entry.getLocation(), location);
+
+            if (distance <= nearestDistance) {
+                nearestDistance = distance;
+                nearest = entry;
+            }
+        }
+
+        if (nearest != null)
+            spawnEntries.remove(nearest);
+
+        return nearest;
+    }
+
+    public boolean removeNearestSpawnEntity(Location location, double radius) {
+        if (removeNearestSpawnEntry(location, radius) != null)
+            return true;
+
+        return removeNearestSpawnLocation(location, radius);
     }
 
     public int getLootDespawnSeconds() {
@@ -614,10 +763,33 @@ public class Area {
             mobList.add(map);
         }
 
-        config.set("mobs", mobList);
+        if (!mobList.isEmpty())
+            config.set("mobs", mobList);
 
-        config.set("spawn-locations", serializeLocations(mobSpawnLocations));
-        config.set("boss-locations", serializeLocations(bossSpawnLocations));
+        if (!mobSpawnLocations.isEmpty())
+            config.set("spawn-locations", serializeLocations(mobSpawnLocations));
+
+        if (!bossSpawnLocations.isEmpty())
+            config.set("boss-locations", serializeLocations(bossSpawnLocations));
+
+        List<Map<String, Object>> entryList = new ArrayList<>();
+
+        for (AreaSpawnEntry entry : spawnEntries) {
+            Location location = entry.getLocation();
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("mob-id", entry.getMobId());
+            map.put("x", location.getX());
+            map.put("y", location.getY());
+            map.put("z", location.getZ());
+            map.put("count", entry.getCount());
+            map.put("level", entry.getLevel());
+            map.put("respawn-seconds", entry.getRespawnSeconds());
+            map.put("boss", entry.isBoss());
+            entryList.add(map);
+        }
+
+        config.set("spawn-entries", entryList);
 
         List<Map<String, Object>> chestList = new ArrayList<>();
 
@@ -629,6 +801,9 @@ public class Area {
 
             if (chest.getLootType() != null)
                 map.put("type", chest.getLootType());
+
+            if (chest.getContainerType() != AreaChestLocation.DEFAULT_CONTAINER)
+                map.put("material", chest.getContainerType().name());
 
             chestList.add(map);
         }

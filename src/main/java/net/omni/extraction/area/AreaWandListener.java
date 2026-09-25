@@ -73,7 +73,7 @@ public class AreaWandListener implements Listener {
 
     private void handleSpawn(Player player, Action action, Block block, AreaManager areaManager,
                              ItemStack item, boolean sneaking, PlayerInteractEvent event) {
-        if (action != Action.LEFT_CLICK_BLOCK && action != Action.RIGHT_CLICK_BLOCK)
+        if (action != Action.LEFT_CLICK_BLOCK)
             return;
 
         if (block == null)
@@ -88,17 +88,12 @@ public class AreaWandListener implements Listener {
             return;
         }
 
-        if (areaManager.isLocked(area)) {
-            plugin.sendMessage(player, Messages.AREA_EDIT_LOCKED.replace("area", area.getName()));
-            return;
-        }
-
         Location location = block.getRelative(BlockFace.UP).getLocation().add(0.5, 0, 0.5);
 
         if (sneaking) {
             double radius = plugin.getConfigUtil().getAreaOutlinePointRemoveRadius();
 
-            if (area.removeNearestSpawnLocation(location, radius)) {
+            if (area.removeNearestSpawnEntity(location, radius)) {
                 areaManager.markDirty(area);
                 plugin.sendMessage(player, Messages.AREA_POINT_REMOVED.toString());
             } else {
@@ -108,15 +103,7 @@ public class AreaWandListener implements Listener {
             return;
         }
 
-        if (action == Action.LEFT_CLICK_BLOCK) {
-            area.addMobSpawnLocation(location);
-            areaManager.markDirty(area);
-            sendPos(player, Messages.AREA_SPAWN_ADDED, location);
-        } else {
-            area.addBossSpawnLocation(location);
-            areaManager.markDirty(area);
-            sendPos(player, Messages.AREA_BOSS_ADDED, location);
-        }
+        plugin.getAreaEditorManager().openSpawnEditor(player, area, location);
     }
 
     private void handleChest(Player player, Action action, Block block, AreaManager areaManager,
@@ -133,11 +120,6 @@ public class AreaWandListener implements Listener {
             return;
         }
 
-        if (areaManager.isLocked(area)) {
-            plugin.sendMessage(player, Messages.AREA_EDIT_LOCKED.replace("area", area.getName()));
-            return;
-        }
-
         if (sneaking) {
             double radius = plugin.getConfigUtil().getAreaOutlinePointRemoveRadius();
 
@@ -151,10 +133,7 @@ public class AreaWandListener implements Listener {
             return;
         }
 
-        Location location = block.getLocation();
-        area.addChestLocation(location, null);
-        areaManager.markDirty(area);
-        sendPos(player, Messages.AREA_CHEST_SET, location);
+        plugin.getAreaEditorManager().openChestEditor(player, area, block.getLocation());
     }
 
     private Area resolveArea(AreaManager areaManager, Player player, ItemStack item) {

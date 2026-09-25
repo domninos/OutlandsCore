@@ -217,6 +217,9 @@ public class AreaSelectionVisualizer implements Listener {
         Particle.DustOptions mobDust = dust(plugin.getConfigUtil().getAreaOutlineColorMob());
         Particle.DustOptions bossDust = dust(plugin.getConfigUtil().getAreaOutlineColorBoss());
 
+        for (AreaSpawnEntry entry : area.getSpawnEntries())
+            marker(player, entry.getLocation(), entry.isBoss() ? bossDust : mobDust);
+
         for (Location location : area.getMobSpawnLocations())
             marker(player, location, mobDust);
 

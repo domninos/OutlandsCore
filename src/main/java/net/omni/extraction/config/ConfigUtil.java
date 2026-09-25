@@ -51,6 +51,49 @@ public class ConfigUtil {
     private int[] areaOutlineColorChest;
     private int areaOutlinePointRemoveRadius;
 
+    private String editorTitle;
+    private int editorRows;
+    private String editorFillerMaterial;
+    private String editorFillerName;
+    private String editorNavBackMaterial;
+    private String editorNavBackName;
+    private String editorNavNextMaterial;
+    private String editorNavNextName;
+    private String editorNavCancelMaterial;
+    private String editorNavCancelName;
+    private String editorListPrevMaterial;
+    private String editorListPrevName;
+    private List<String> editorListPrevLore;
+    private String editorListNextMaterial;
+    private String editorListNextName;
+    private List<String> editorListNextLore;
+    private String editorChestIconMaterial;
+    private String editorChestIconName;
+    private List<String> editorChestIconLore;
+    private String editorDefaultLootName;
+    private String editorMobIconMaterial;
+    private String editorMobIconName;
+    private List<Integer> editorCountIncrements;
+    private List<Integer> editorLevelIncrements;
+    private List<Integer> editorRespawnIncrements;
+    private int editorCountSmallest;
+    private int editorLevelSmallest;
+    private int editorRespawnSmallest;
+    private String editorIncrementIconMaterial;
+    private String editorIncrementIconName;
+    private String editorDecrementIconMaterial;
+    private String editorDecrementIconName;
+    private String editorCountIconMaterial;
+    private String editorCountIconName;
+    private String editorLevelIconMaterial;
+    private String editorLevelIconName;
+    private String editorRespawnIconMaterial;
+    private String editorRespawnIconName;
+    private String editorBossYesMaterial;
+    private String editorBossYesName;
+    private String editorBossNoMaterial;
+    private String editorBossNoName;
+
     private String upgradeGuiTitle;
     private int upgradeGuiRows;
     private int upgradeGuiHelmetSlot;
@@ -165,6 +208,7 @@ public class ConfigUtil {
         this.areaOutlinePointRemoveRadius = getAndDefaultInt(
                 ConfigKeys.AREAS_OUTLINE_POINT_REMOVE_RADIUS, 3, savedDefaults);
 
+        loadAreaEditor(savedDefaults);
         loadLoadoutTiers(savedDefaults);
         loadLoadoutDefaults(savedDefaults);
         loadUpgradeTokenDefinitions(savedDefaults);
@@ -400,6 +444,85 @@ public class ConfigUtil {
         this.lootTimeItemName = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_NAME, "<yellow>Extra Time</yellow>", savedDefaults);
     }
 
+    private void loadAreaEditor(AtomicInteger savedDefaults) {
+        this.editorTitle = getAndDefaultString(ConfigKeys.AREA_EDITOR_TITLE,
+                "<gradient:#00AAFF:#55FFFF>Area Editor</gradient>", savedDefaults);
+        this.editorRows = Math.clamp(getAndDefaultInt(ConfigKeys.AREA_EDITOR_ROWS, 6, savedDefaults), 3, 6);
+        this.editorFillerMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_FILLER_MATERIAL,
+                "GRAY_STAINED_GLASS_PANE", savedDefaults);
+        this.editorFillerName = getAndDefaultString(ConfigKeys.AREA_EDITOR_FILLER_NAME, " ", savedDefaults);
+        this.editorNavBackMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_NAV_BACK_MATERIAL, "ARROW", savedDefaults);
+        this.editorNavBackName = getAndDefaultString(ConfigKeys.AREA_EDITOR_NAV_BACK_NAME, "<yellow>Back</yellow>", savedDefaults);
+        this.editorNavNextMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_NAV_NEXT_MATERIAL, "LIME_DYE", savedDefaults);
+        this.editorNavNextName = getAndDefaultString(ConfigKeys.AREA_EDITOR_NAV_NEXT_NAME, "<green>Next</green>", savedDefaults);
+        this.editorNavCancelMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_NAV_CANCEL_MATERIAL, "BARRIER", savedDefaults);
+        this.editorNavCancelName = getAndDefaultString(ConfigKeys.AREA_EDITOR_NAV_CANCEL_NAME, "<red>Cancel</red>", savedDefaults);
+        this.editorListPrevMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_LIST_PREV_MATERIAL, "ARROW", savedDefaults);
+        this.editorListPrevName = getAndDefaultString(ConfigKeys.AREA_EDITOR_LIST_PREV_NAME, "<yellow>Previous Page</yellow>", savedDefaults);
+        this.editorListPrevLore = getAndDefaultStringList(ConfigKeys.AREA_EDITOR_LIST_PREV_LORE, List.of(
+                "<gray>Previous set of choices.</gray>"
+        ), savedDefaults);
+        this.editorListNextMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_LIST_NEXT_MATERIAL, "ARROW", savedDefaults);
+        this.editorListNextName = getAndDefaultString(ConfigKeys.AREA_EDITOR_LIST_NEXT_NAME, "<yellow>Next Page</yellow>", savedDefaults);
+        this.editorListNextLore = getAndDefaultStringList(ConfigKeys.AREA_EDITOR_LIST_NEXT_LORE, List.of(
+                "<gray>Next set of choices.</gray>"
+        ), savedDefaults);
+        this.editorChestIconMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_CHEST_ICON_MATERIAL, "CHEST", savedDefaults);
+        this.editorChestIconName = getAndDefaultString(ConfigKeys.AREA_EDITOR_CHEST_ICON_NAME, "<white>%name%</white>", savedDefaults);
+        this.editorChestIconLore = getAndDefaultStringList(ConfigKeys.AREA_EDITOR_CHEST_ICON_LORE, List.of(
+                "<gray>Click to set this loot table</gray>"
+        ), savedDefaults);
+        this.editorDefaultLootName = getAndDefaultString(ConfigKeys.AREA_EDITOR_DEFAULT_LOOT_NAME,
+                "<green>Default (area loot)</green>", savedDefaults);
+        this.editorMobIconMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_MOB_ICON_MATERIAL, "ZOMBIE_HEAD", savedDefaults);
+        this.editorMobIconName = getAndDefaultString(ConfigKeys.AREA_EDITOR_MOB_ICON_NAME, "<white>%name%</white>", savedDefaults);
+        this.editorCountIncrements = loadIntList(ConfigKeys.AREA_EDITOR_COUNT_INCREMENTS,
+                List.of(1, 5, 10), savedDefaults);
+        this.editorLevelIncrements = loadIntList(ConfigKeys.AREA_EDITOR_LEVEL_INCREMENTS,
+                List.of(1, 5, 10), savedDefaults);
+        this.editorRespawnIncrements = loadIntList(ConfigKeys.AREA_EDITOR_RESPAWN_INCREMENTS,
+                List.of(5, 30, 60), savedDefaults);
+        this.editorCountSmallest = Math.max(1, getAndDefaultInt(ConfigKeys.AREA_EDITOR_COUNT_SMALLEST, 1, savedDefaults));
+        this.editorLevelSmallest = Math.max(1, getAndDefaultInt(ConfigKeys.AREA_EDITOR_LEVEL_SMALLEST, 1, savedDefaults));
+        this.editorRespawnSmallest = Math.max(0, getAndDefaultInt(ConfigKeys.AREA_EDITOR_RESPAWN_SMALLEST, 0, savedDefaults));
+        this.editorIncrementIconMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_INCREMENT_ICON_MATERIAL,
+                "GREEN_STAINED_GLASS_PANE", savedDefaults);
+        this.editorIncrementIconName = getAndDefaultString(ConfigKeys.AREA_EDITOR_INCREMENT_ICON_NAME,
+                "<green>+%value%</green>", savedDefaults);
+        this.editorDecrementIconMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_DECREMENT_ICON_MATERIAL,
+                "RED_STAINED_GLASS_PANE", savedDefaults);
+        this.editorDecrementIconName = getAndDefaultString(ConfigKeys.AREA_EDITOR_DECREMENT_ICON_NAME,
+                "<red>-%value%</red>", savedDefaults);
+        this.editorCountIconMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_COUNT_ICON_MATERIAL, "GOLD_INGOT", savedDefaults);
+        this.editorCountIconName = getAndDefaultString(ConfigKeys.AREA_EDITOR_COUNT_ICON_NAME,
+                "<yellow>Amount: %count%</yellow>", savedDefaults);
+        this.editorLevelIconMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_LEVEL_ICON_MATERIAL,
+                "EXPERIENCE_BOTTLE", savedDefaults);
+        this.editorLevelIconName = getAndDefaultString(ConfigKeys.AREA_EDITOR_LEVEL_ICON_NAME,
+                "<yellow>Level: %value%</yellow>", savedDefaults);
+        this.editorRespawnIconMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_RESPAWN_ICON_MATERIAL, "CLOCK", savedDefaults);
+        this.editorRespawnIconName = getAndDefaultString(ConfigKeys.AREA_EDITOR_RESPAWN_ICON_NAME,
+                "<yellow>Respawn: %value% s</yellow>", savedDefaults);
+        this.editorBossYesMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_BOSS_YES_MATERIAL,
+                "GREEN_WOOL", savedDefaults);
+        this.editorBossYesName = getAndDefaultString(ConfigKeys.AREA_EDITOR_BOSS_YES_NAME,
+                "<green>Boss: Yes</green>", savedDefaults);
+        this.editorBossNoMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_BOSS_NO_MATERIAL,
+                "RED_WOOL", savedDefaults);
+        this.editorBossNoName = getAndDefaultString(ConfigKeys.AREA_EDITOR_BOSS_NO_NAME,
+                "<red>Boss: No</red>", savedDefaults);
+    }
+
+    private List<Integer> loadIntList(String path, List<Integer> defaultVal, AtomicInteger counter) {
+        List<Integer> values = plugin.getConfig().getIntegerList(path);
+        if (values.isEmpty()) {
+            plugin.getConfig().set(path, defaultVal);
+            counter.incrementAndGet();
+            return new ArrayList<>(defaultVal);
+        }
+        return values;
+    }
+
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> loadTierList(String path) {
         List<?> raw = plugin.getConfig().getList(path);
@@ -615,6 +738,174 @@ public class ConfigUtil {
 
     public int getAreaOutlinePointRemoveRadius() {
         return areaOutlinePointRemoveRadius;
+    }
+
+    public String getAreaEditorTitle() {
+        return editorTitle;
+    }
+
+    public int getAreaEditorSize() {
+        return editorRows * 9;
+    }
+
+    public String getAreaEditorFillerMaterial() {
+        return editorFillerMaterial;
+    }
+
+    public String getAreaEditorFillerName() {
+        return editorFillerName;
+    }
+
+    public String getAreaEditorNavBackMaterial() {
+        return editorNavBackMaterial;
+    }
+
+    public String getAreaEditorNavBackName() {
+        return editorNavBackName;
+    }
+
+    public String getAreaEditorNavNextMaterial() {
+        return editorNavNextMaterial;
+    }
+
+    public String getAreaEditorNavNextName() {
+        return editorNavNextName;
+    }
+
+    public String getAreaEditorNavCancelMaterial() {
+        return editorNavCancelMaterial;
+    }
+
+    public String getAreaEditorNavCancelName() {
+        return editorNavCancelName;
+    }
+
+    public String getAreaEditorListPrevMaterial() {
+        return editorListPrevMaterial;
+    }
+
+    public String getAreaEditorListPrevName() {
+        return editorListPrevName;
+    }
+
+    public List<String> getAreaEditorListPrevLore() {
+        return editorListPrevLore;
+    }
+
+    public String getAreaEditorListNextMaterial() {
+        return editorListNextMaterial;
+    }
+
+    public String getAreaEditorListNextName() {
+        return editorListNextName;
+    }
+
+    public List<String> getAreaEditorListNextLore() {
+        return editorListNextLore;
+    }
+
+    public String getAreaEditorChestIconMaterial() {
+        return editorChestIconMaterial;
+    }
+
+    public String getAreaEditorChestIconName() {
+        return editorChestIconName;
+    }
+
+    public List<String> getAreaEditorChestIconLore() {
+        return editorChestIconLore;
+    }
+
+    public String getAreaEditorDefaultLootName() {
+        return editorDefaultLootName;
+    }
+
+    public String getAreaEditorMobIconMaterial() {
+        return editorMobIconMaterial;
+    }
+
+    public String getAreaEditorMobIconName() {
+        return editorMobIconName;
+    }
+
+    public List<Integer> getAreaEditorCountIncrements() {
+        return editorCountIncrements;
+    }
+
+    public List<Integer> getAreaEditorLevelIncrements() {
+        return editorLevelIncrements;
+    }
+
+    public List<Integer> getAreaEditorRespawnIncrements() {
+        return editorRespawnIncrements;
+    }
+
+    public int getAreaEditorCountSmallest() {
+        return editorCountSmallest;
+    }
+
+    public int getAreaEditorLevelSmallest() {
+        return editorLevelSmallest;
+    }
+
+    public int getAreaEditorRespawnSmallest() {
+        return editorRespawnSmallest;
+    }
+
+    public String getAreaEditorIncrementIconMaterial() {
+        return editorIncrementIconMaterial;
+    }
+
+    public String getAreaEditorIncrementIconName() {
+        return editorIncrementIconName;
+    }
+
+    public String getAreaEditorDecrementIconMaterial() {
+        return editorDecrementIconMaterial;
+    }
+
+    public String getAreaEditorDecrementIconName() {
+        return editorDecrementIconName;
+    }
+
+    public String getAreaEditorCountIconMaterial() {
+        return editorCountIconMaterial;
+    }
+
+    public String getAreaEditorCountIconName() {
+        return editorCountIconName;
+    }
+
+    public String getAreaEditorLevelIconMaterial() {
+        return editorLevelIconMaterial;
+    }
+
+    public String getAreaEditorLevelIconName() {
+        return editorLevelIconName;
+    }
+
+    public String getAreaEditorRespawnIconMaterial() {
+        return editorRespawnIconMaterial;
+    }
+
+    public String getAreaEditorRespawnIconName() {
+        return editorRespawnIconName;
+    }
+
+    public String getAreaEditorBossYesMaterial() {
+        return editorBossYesMaterial;
+    }
+
+    public String getAreaEditorBossYesName() {
+        return editorBossYesName;
+    }
+
+    public String getAreaEditorBossNoMaterial() {
+        return editorBossNoMaterial;
+    }
+
+    public String getAreaEditorBossNoName() {
+        return editorBossNoName;
     }
 
     public Location getSpawnLocation() {

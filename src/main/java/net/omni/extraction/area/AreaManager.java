@@ -151,45 +151,99 @@ public class AreaManager {
         if (area == null)
             return result;
 
-        MobTemplateManager mobs = plugin.getMobTemplateManager();
+        for (AreaSpawnEntry entry : area.getSpawnEntries()) {
+            AreaSpawnDefinition definition = resolveDefinition(area, entry.getMobId(),
+                    entry.getCount(), entry.isBoss(), entry.getLevel(), entry.getRespawnSeconds());
+
+            if (definition == null)
+                continue;
+
+            definition.setBoundLocation(entry.getLocation());
+            result.add(definition);
+        }
 
         for (AreaMobReference reference : area.getMobReferences()) {
-            MobTemplate template = mobs == null ? null : mobs.get(reference.getMobId());
+            AreaSpawnDefinition definition = resolveDefinition(area, reference.getMobId(),
+                    reference.getCount() != null ? reference.getCount() : templateCount(reference.getMobId()),
+                    reference.getBoss() != null ? reference.getBoss() : templateBoss(reference.getMobId()),
+                    reference.getLevel() != null ? reference.getLevel() : templateLevel(reference.getMobId()),
+                    reference.getRespawnSeconds() != null
+                            ? reference.getRespawnSeconds() : templateRespawn(reference.getMobId()));
 
-            AreaSpawnDefinition definition;
-
-            if (template != null) {
-                definition = new AreaSpawnDefinition(reference.getMobId());
-                definition.setType(template.getType());
-                definition.setMythic(template.isMythic());
-                definition.setDisplayName(template.getDisplayName());
-                definition.setHealth(template.getHealth());
-                definition.setDamage(template.getDamage());
-                definition.setEquipment(new HashMap<>(template.getEquipment()));
-                definition.setCount(reference.getCount() != null ? reference.getCount() : template.getCount());
-                definition.setBoss(reference.getBoss() != null ? reference.getBoss() : template.isBoss());
-                definition.setLevel(reference.getLevel() != null ? reference.getLevel() : template.getLevel());
-                definition.setRespawnSeconds(reference.getRespawnSeconds() != null
-                        ? reference.getRespawnSeconds() : template.getRespawnSeconds());
-            } else if (parseSpawnType(reference.getMobId()) != null) {
-                definition = new AreaSpawnDefinition(reference.getMobId());
-                definition.setType(reference.getMobId().toLowerCase(Locale.ROOT));
-                applyReferenceOverrides(definition, reference);
-            } else if (isMythicId(reference.getMobId())) {
-                definition = new AreaSpawnDefinition(reference.getMobId());
-                definition.setMythic(true);
-                definition.setType(reference.getMobId());
-                applyReferenceOverrides(definition, reference);
-            } else {
-                plugin.getLogger().warning("Area '" + area.getName() + "' references unknown mob '"
-                        + reference.getMobId() + "'.");
+            if (definition == null)
                 continue;
-            }
 
             result.add(definition);
         }
 
         return result;
+    }
+
+    private MobTemplate template(String mobId) {
+        MobTemplateManager mobs = plugin.getMobTemplateManager();
+        return mobs == null ? null : mobs.get(mobId);
+    }
+
+    private int templateCount(String mobId) {
+        MobTemplate template = template(mobId);
+        return template == null ? 1 : template.getCount();
+    }
+
+    private boolean templateBoss(String mobId) {
+        MobTemplate template = template(mobId);
+        return template != null && template.isBoss();
+    }
+
+    private int templateLevel(String mobId) {
+        MobTemplate template = template(mobId);
+        return template == null ? 1 : template.getLevel();
+    }
+
+    private int templateRespawn(String mobId) {
+        MobTemplate template = template(mobId);
+        return template == null ? 0 : template.getRespawnSeconds();
+    }
+
+    private AreaSpawnDefinition resolveDefinition(Area area, String mobId, int count, boolean boss,
+                                                  int level, int respawnSeconds) {
+        MobTemplate template = template(mobId);
+
+        AreaSpawnDefinition definition;
+
+        if (template != null) {
+            definition = new AreaSpawnDefinition(mobId);
+            definition.setType(template.getType());
+            definition.setMythic(template.isMythic());
+            definition.setDisplayName(template.getDisplayName());
+            definition.setHealth(template.getHealth());
+            definition.setDamage(template.getDamage());
+            definition.setEquipment(new HashMap<>(template.getEquipment()));
+            definition.setCount(count);
+            definition.setBoss(boss);
+            definition.setLevel(level);
+            definition.setRespawnSeconds(respawnSeconds);
+        } else if (parseSpawnType(mobId) != null) {
+            definition = new AreaSpawnDefinition(mobId);
+            definition.setType(mobId.toLowerCase(Locale.ROOT));
+            definition.setCount(count);
+            definition.setBoss(boss);
+            definition.setLevel(level);
+            definition.setRespawnSeconds(respawnSeconds);
+        } else if (isMythicId(mobId)) {
+            definition = new AreaSpawnDefinition(mobId);
+            definition.setMythic(true);
+            definition.setType(mobId);
+            definition.setCount(count);
+            definition.setBoss(boss);
+            definition.setLevel(level);
+            definition.setRespawnSeconds(respawnSeconds);
+        } else {
+            plugin.getLogger().warning("Area '" + area.getName() + "' references unknown mob '"
+                    + mobId + "'.");
+            return null;
+        }
+
+        return definition;
     }
 
     private EntityType parseSpawnType(String name) {
@@ -203,20 +257,6 @@ public class AreaManager {
         } catch (IllegalArgumentException e) {
             return null;
         }
-    }
-
-    private void applyReferenceOverrides(AreaSpawnDefinition definition, AreaMobReference reference) {
-        if (reference.getCount() != null)
-            definition.setCount(reference.getCount());
-
-        if (reference.getBoss() != null)
-            definition.setBoss(reference.getBoss());
-
-        if (reference.getLevel() != null)
-            definition.setLevel(reference.getLevel());
-
-        if (reference.getRespawnSeconds() != null)
-            definition.setRespawnSeconds(reference.getRespawnSeconds());
     }
 
     private boolean isMythicId(String id) {
@@ -234,19 +274,38 @@ public class AreaManager {
     }
 
     public boolean hasMobs(Area area) {
+        if (area == null)
+            return false;
+
+        for (AreaSpawnEntry entry : area.getSpawnEntries()) {
+            String id = entry.getMobId();
+
+            if (isKnownMobId(id))
+                return true;
+        }
+
         MobTemplateManager mobs = plugin.getMobTemplateManager();
 
-        if (area == null || mobs == null)
+        if (mobs == null)
             return false;
 
         for (AreaMobReference reference : area.getMobReferences()) {
             String id = reference.getMobId();
 
-            if (mobs.exists(id) || parseSpawnType(id) != null || isMythicId(id))
+            if (isKnownMobId(id))
                 return true;
         }
 
         return false;
+    }
+
+    private boolean isKnownMobId(String id) {
+        MobTemplateManager mobs = plugin.getMobTemplateManager();
+
+        if (mobs != null && mobs.exists(id))
+            return true;
+
+        return parseSpawnType(id) != null || isMythicId(id);
     }
 
     public void saveDirty() {
@@ -545,12 +604,11 @@ public class AreaManager {
                 lore.add(mini.deserialize("<gray>Right-click a block: <white>corner 2</white></gray>"));
             }
             case SPAWN -> {
-                lore.add(mini.deserialize("<gray>Left-click a block: <green>mob spawn</green></gray>"));
-                lore.add(mini.deserialize("<gray>Right-click a block: <red>boss spawn</red></gray>"));
+                lore.add(mini.deserialize("<gray>Left-click a block: <green>mob spawn editor</green></gray>"));
                 lore.add(mini.deserialize("<gray>Shift + left-click: <yellow>remove nearest</yellow></gray>"));
             }
             case CHEST -> {
-                lore.add(mini.deserialize("<gray>Left-click a block: <gold>loot chest</gold></gray>"));
+                lore.add(mini.deserialize("<gray>Left-click a block: <gold>choose loot table</gold></gray>"));
                 lore.add(mini.deserialize("<gray>Shift + left-click: <yellow>clear chest</yellow></gray>"));
             }
         }

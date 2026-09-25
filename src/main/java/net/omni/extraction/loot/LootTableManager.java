@@ -40,6 +40,10 @@ public class LootTableManager {
 
             LootTable table = new LootTable(id);
             table.setItemsPerChest(section.getInt("items-per-chest", -1));
+            table.setIconMaterial(section.getString("icon"));
+            table.setDisplayName(section.getString("display-name"));
+            if (section.contains("lore"))
+                table.setLore(section.getStringList("lore"));
 
             for (Map<?, ?> map : section.getMapList("entries")) {
                 Object type = map.get("type");
@@ -102,6 +106,15 @@ public class LootTableManager {
         for (LootTable table : tables.values()) {
             String base = table.getName() + ".";
             config.set(base + "items-per-chest", table.getItemsPerChest());
+
+            if (table.getIconMaterial() != null)
+                config.set(base + "icon", table.getIconMaterial());
+
+            if (table.getDisplayName() != null)
+                config.set(base + "display-name", table.getDisplayName());
+
+            if (table.getLore() != null)
+                config.set(base + "lore", table.getLore());
 
             List<Map<String, Object>> entries = new ArrayList<>();
 

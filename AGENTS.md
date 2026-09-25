@@ -66,9 +66,16 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   `AreaClearSession` tracks `bossMobs` (from `AreaSpawnDefinition.isBoss()` at spawn) so `AreaClearManager.isBossMob(UUID)`
   lets `AreaListener.onEntityDeath` credit boss vs normal kills to the killer's run.
   Loot chests are **per-area lists** (`Area.chestLocations`, `loot.chest-locations` in the area file; legacy single
-  `loot.chest-location` migrates on load). Each chest has an optional `type` = a loot table id (`AreaChestLocation.lootType`);
+  `loot.chest-location` migrates on load). Each chest has an optional `type` = a loot table id (`AreaChestLocation.lootType`)
+  and a stored container `Material` (`material:`, default CHEST; saved only when non-CHEST).
   `buildLoot(area, chestType)` falls back to the area's loot table then legacy entries, rolling a fresh full batch per chest.
-  Wand CHEST mode left-clicks to add a chest, sneaks to remove the nearest; `/areas setchest {area} {index} {type|remove}`.
+  `Area.addChestLocation` returns boolean: double-chest marks collapse to a single anchor (min-corner of the pair; merge
+  detected via adjacent chest-type blocks + `Chest` BlockData facing), and a duplicate at an already-registered block is
+  rejected (`AREA_CHEST_EXISTS`). `AreaClearManager` preserves pre-placed world containers (chests/barrels/shulkers/
+  furnaces/hopper/etc — `AreaChestLocation.isSupported`), fills combined double-chest inventories, and registers/despawns
+  **both halves** of a double. `Area.save` omits empty legacy `mobs`/`spawn-locations`/`boss-locations` keys.
+  Wand CHEST mode left-clicks to open the loot-table picker (sneak removes the nearest; the picker applies the type);
+  `/areas setchest {area} {index} {type|remove}`.
 - `chat/ActionBarManager.java`: the default HUD (replaces the scoreboard). Repeating task (`actionbar.update-ticks`)
   sends the run/cooldown timer (`%extraction_timer%`) while a player is in a run or on cooldown; `showTokens(UUID,int)`
   overlays `+{n} tokens` for `actionbar.kill-feedback-ticks`. Reads `actionbar.enabled`.
@@ -105,6 +112,22 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
 - Timers now disableable via 0: `settings.time-limit-seconds: 0` skips the run countdown (`RunManager.enterRun`),
   `settings.cooldown-hours: 0` disables the extract cooldown (`CooldownManager.setCooldown`).
 - Upgrade tokens are max stack size 1 (`UpgradeTokenUtil.createTokenItem`).
+- Wand GUI editor (`areaeditor` package): CHEST left-click opens a paginated loot-table picker (uses optional
+  `icon`/`display-name`/`lore` fields in `loot_tables.yml`, falling back to `area-editor.chest-icon-*`); SPAWN
+  left-click opens a 5-step wizard (mob select → count → level → respawn → boss) that writes a per-spawn
+  `spawn-entries` entry bound to the clicked block. Wand boss right-click was removed (boss set via the GUI).
+  Config section `area-editor.*` (title/rows/filler/nav icons, count/level/respawn increments + smallest,
+  +/- and counter icons, boss yes/no icons, mob/chest icon fallbacks, page-nav lore). SPAWN wizard boss YES/NO
+  page uses the same full-size GUI with the two buttons stacked at the exact center (slots 13/22 in the default
+  36-slot layout, center column with equal margins on both axes).
+  Bottom nav row: back = first cell, prev-page = center -1, question = center,
+  next-page = center +1, next-step = last cell. Prev/next-page buttons render only when the current list has a
+  previous/next page.
+- Area-config cleanup + container support: `Area.save` omits empty legacy `mobs`/`spawn-locations`/`boss-locations`
+  keys; editor page-nav hides when there is no previous/next page; chest locations dedupe on add (double-chest marks
+  collapse to one anchored entry, duplicates rejected with `AREA_CHEST_EXISTS`); loot containers support any
+  `AreaChestLocation.isSupported` material (barrels/shulkers/etc preserved in-world, fresh spots get the stored type
+  default CHEST) and pre-built double chests are filled/despawned as both halves.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

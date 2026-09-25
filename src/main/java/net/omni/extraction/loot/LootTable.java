@@ -9,11 +9,17 @@ public class LootTable {
     private final String name;
     private final List<LootEntry> entries;
     private int itemsPerChest;
+    private String iconMaterial;
+    private String displayName;
+    private List<String> lore;
 
     public LootTable(String name) {
         this.name = name;
         this.itemsPerChest = -1;
         this.entries = new ArrayList<>();
+        this.iconMaterial = null;
+        this.displayName = null;
+        this.lore = null;
     }
 
     public String getName() {
@@ -26,6 +32,30 @@ public class LootTable {
 
     public void setItemsPerChest(int itemsPerChest) {
         this.itemsPerChest = itemsPerChest;
+    }
+
+    public String getIconMaterial() {
+        return iconMaterial;
+    }
+
+    public void setIconMaterial(String iconMaterial) {
+        this.iconMaterial = iconMaterial;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public List<String> getLore() {
+        return lore;
+    }
+
+    public void setLore(List<String> lore) {
+        this.lore = lore;
     }
 
     public List<LootEntry> getEntries() {

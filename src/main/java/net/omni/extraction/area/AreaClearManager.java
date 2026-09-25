@@ -15,11 +15,13 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
-import org.bukkit.block.Chest;
+import org.bukkit.block.Container;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
@@ -174,42 +176,52 @@ public class AreaClearManager {
 
     private void createLootChests(Area area, AreaClearSession session) {
         for (AreaChestLocation chestLocation : area.resolveChestLocations()) {
-            Location location = chestLocation.getLocation();
+            Location anchor = chestLocation.getLocation();
 
-            if (location == null || location.getWorld() == null) continue;
+            if (anchor == null || anchor.getWorld() == null) continue;
 
-            Block block = location.getBlock();
-            block.setType(Material.CHEST);
+            List<Block> blocks = containerBlocks(anchor, chestLocation.getContainerType());
 
-            BlockState state = block.getState();
+            for (Block block : blocks)
+                if (!AreaChestLocation.isSupported(block.getType()))
+                    block.setType(chestLocation.getContainerType());
 
-            if (state instanceof Chest chest) {
-                Inventory inventory = chest.getBlockInventory();
-                int slot = 0;
+            List<ItemStack> loot = buildLoot(area, chestLocation.getLootType());
+            boolean filled = false;
 
-                for (ItemStack item : buildLoot(area, chestLocation.getLootType())) {
-                    if (slot >= inventory.getSize())
-                        break;
+            for (Block block : blocks) {
+                BlockState state = block.getState();
 
-                    inventory.setItem(slot++, item);
-                }
-            }
+                if (state instanceof InventoryHolder holder && !filled) {
+                    Inventory inventory = holder.getInventory();
+                    int slot = 0;
 
-            Location chestLoc = block.getLocation();
-            session.addChestLocation(chestLoc);
-            chestSessions.put(locationKey(chestLoc), session);
+                    for (ItemStack item : loot) {
+                        if (slot >= inventory.getSize())
+                            break;
 
-            int despawnSeconds = area.getLootDespawnSeconds();
-
-            if (despawnSeconds > 0) {
-                BukkitTask task = new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        removeChest(session, chestLoc);
+                        inventory.setItem(slot++, item);
                     }
-                }.runTaskLater(plugin, despawnSeconds * 20L);
 
-                session.setChestTask(chestLoc, task);
+                    filled = true;
+                }
+
+                Location chestLoc = block.getLocation();
+                session.addChestLocation(chestLoc);
+                chestSessions.put(locationKey(chestLoc), session);
+
+                int despawnSeconds = area.getLootDespawnSeconds();
+
+                if (despawnSeconds > 0) {
+                    BukkitTask task = new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            removeChest(session, chestLoc);
+                        }
+                    }.runTaskLater(plugin, despawnSeconds * 20L);
+
+                    session.setChestTask(chestLoc, task);
+                }
             }
         }
     }
@@ -253,6 +265,51 @@ public class AreaClearManager {
                 + ":" + location.getBlockZ();
     }
 
+    private List<Block> containerBlocks(Location anchor, Material containerType) {
+        List<Block> blocks = new ArrayList<>();
+        Block block = anchor.getBlock();
+        blocks.add(block);
+
+        if (!AreaChestLocation.isChestType(containerType))
+            return blocks;
+
+        for (int[] offset : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            Block neighbor = block.getRelative(offset[0], 0, offset[1]);
+
+            if (AreaChestLocation.isChestType(neighbor.getType()) && canMergeWith(block, offset[0] != 0, neighbor))
+                blocks.add(neighbor);
+        }
+
+        return blocks;
+    }
+
+    private boolean canMergeWith(Block chest, boolean alongX, Block neighbor) {
+        BlockFace first = chestFacing(chest);
+        BlockFace second = chestFacing(neighbor);
+
+        if (first == null || second == null)
+            return false;
+
+        return alongX
+                ? isNorthSouth(first) && isNorthSouth(second)
+                : isEastWest(first) && isEastWest(second);
+    }
+
+    private BlockFace chestFacing(Block block) {
+        if (block.getBlockData() instanceof org.bukkit.block.data.type.Chest chest)
+            return chest.getFacing();
+
+        return null;
+    }
+
+    private boolean isNorthSouth(BlockFace facing) {
+        return facing == BlockFace.NORTH || facing == BlockFace.SOUTH;
+    }
+
+    private boolean isEastWest(BlockFace facing) {
+        return facing == BlockFace.EAST || facing == BlockFace.WEST;
+    }
+
     public void removeChest(AreaClearSession session, Location location) {
         if (location == null || location.getWorld() == null)
             return;
@@ -260,13 +317,11 @@ public class AreaClearManager {
         Location blockLoc = location.getBlock().getLocation();
         Block block = blockLoc.getBlock();
 
-        if (block.getType() == Material.CHEST) {
-            BlockState state = block.getState();
-
-            if (state instanceof Chest chest) {
+        if (AreaChestLocation.isSupported(block.getType())) {
+            if (block.getState() instanceof InventoryHolder holder) {
                 List<ItemStack> leftover = new ArrayList<>();
 
-                for (ItemStack item : chest.getBlockInventory().getContents())
+                for (ItemStack item : holder.getInventory().getContents())
                     if (item != null)
                         leftover.add(item);
 
@@ -274,9 +329,19 @@ public class AreaClearManager {
                     storeLeftover(session.getOwner(), leftover);
             }
 
-            block.setType(Material.AIR);
+            for (Block b : containerBlocks(blockLoc, block.getType())) {
+                b.setType(Material.AIR);
+                unregisterChestBlock(session, b.getLocation());
+            }
+
+            return;
         }
 
+        unregisterChestBlock(session, blockLoc);
+    }
+
+    private void unregisterChestBlock(AreaClearSession session, Location location) {
+        Location blockLoc = location.getBlock().getLocation();
         chestSessions.remove(locationKey(blockLoc));
         session.removeChestLocation(blockLoc);
     }
@@ -426,13 +491,10 @@ public class AreaClearManager {
             return -1;
 
         Block block = location.getBlock();
-        if (block.getType() != Material.CHEST)
-            return 0;
-
         List<ItemStack> loot = new ArrayList<>();
 
-        if (block.getState() instanceof Chest chest) {
-            for (ItemStack item : chest.getBlockInventory().getContents()) {
+        if (block.getState() instanceof InventoryHolder holder) {
+            for (ItemStack item : holder.getInventory().getContents()) {
                 if (item != null)
                     loot.add(item);
             }
@@ -460,10 +522,10 @@ public class AreaClearManager {
     }
 
     public void handleChestClose(Inventory inventory) {
-        if (!(inventory.getHolder() instanceof Chest chest))
+        if (!(inventory.getHolder() instanceof Container container))
             return;
 
-        Location location = chest.getLocation();
+        Location location = container.getBlock().getLocation();
         AreaClearSession session = chestSessions.get(locationKey(location));
 
         if (session == null)
@@ -569,7 +631,8 @@ public class AreaClearManager {
     private void spawnMobs(Area area, AreaClearSession session) {
         for (AreaSpawnDefinition definition : areaManager.resolveSpawns(area)) {
             for (int i = 0; i < definition.getCount(); i++) {
-                Location location = area.getSpawnLocation(definition, random);
+                Location location = definition.getBoundLocation() != null
+                        ? definition.getBoundLocation() : area.getSpawnLocation(definition, random);
                 if (location == null) continue;
 
                 Entity entity = mobFactory.spawn(definition, location);

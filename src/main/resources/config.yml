@@ -268,6 +268,67 @@ areas:
     # Radius (in blocks) used by shift + left-click to remove a spawn point
     point-remove-radius: 3
 
+# Wand GUI editor (/areas wand)
+# Left-clicking a block in SPAWN mode opens a multi-page editor to pick the mob,
+# count, level, respawn time and boss flag. Left-clicking a block in CHEST mode
+# opens a picker for the chest's loot table. Icons use Material names.
+area-editor:
+  title: "<gradient:#00AAFF:#55FFFF>Area Editor</gradient>"
+  rows: 6
+  filler-material: GRAY_STAINED_GLASS_PANE
+  filler-name: " "
+  # Navigation bar (any GUI size): back = first cell of the bottom row,
+  # previous-page = center -1, question = center, next-page = center +1,
+  # next-step = last cell. Example (54-slot GUI): 45 = back, 48 = previous page,
+  # 49 = question, 50 = next page, 53 = next step. Clicking "back" on the first
+  # step cancels.
+  nav-back-material: ARROW
+  nav-back-name: "<yellow>Back</yellow>"
+  nav-next-material: LIME_DYE
+  nav-next-name: "<green>Next</green>"
+  nav-cancel-material: BARRIER
+  nav-cancel-name: "<red>Cancel</red>"
+  list-prev-material: ARROW
+  list-prev-name: "<yellow>Previous Page</yellow>"
+  list-prev-lore:
+    - "<gray>Previous set of choices.</gray>"
+  list-next-material: ARROW
+  list-next-name: "<yellow>Next Page</yellow>"
+  list-next-lore:
+    - "<gray>Next set of choices.</gray>"
+  # Loot table picker (CHEST mode). %name% = table display-name/id.
+  chest-icon-material: CHEST
+  chest-icon-name: "<white>%name%</white>"
+  chest-icon-lore:
+    - "<gray>Click to set this loot table</gray>"
+  default-loot-name: "<green>Default (area loot)</green>"
+  # Mob select (SPAWN mode). %name% = mob template id / provider / vanilla type.
+  mob-icon-material: ZOMBIE_HEAD
+  mob-icon-name: "<white>%name%</white>"
+  # Numeric pages. The counter row shows the current value and +/- buttons for
+  # each configured increment. The icon/name of a step can be overridden below.
+  count-smallest: 1
+  count-increments: [1, 5, 10]
+  level-smallest: 1
+  level-increments: [1, 5, 10]
+  respawn-smallest: 0
+  respawn-increments: [5, 30, 60]
+  increment-icon-material: GREEN_STAINED_GLASS_PANE
+  increment-icon-name: "<green>+%value%</green>"
+  decrement-icon-material: RED_STAINED_GLASS_PANE
+  decrement-icon-name: "<red>-%value%</red>"
+  count-icon-material: GOLD_INGOT
+  count-icon-name: "<yellow>Amount: %count%</yellow>"
+  level-icon-material: EXPERIENCE_BOTTLE
+  level-icon-name: "<yellow>Level: %value%</yellow>"
+  respawn-icon-material: CLOCK
+  respawn-icon-name: "<yellow>Respawn: %value% s</yellow>"
+  # Boss flag page
+  boss-yes-material: GREEN_WOOL
+  boss-yes-name: "<green>Boss: Yes</green>"
+  boss-no-material: RED_WOOL
+  boss-no-name: "<red>Boss: No</red>"
+
 # Actionbar HUD
 # Replaces the sidebar scoreboard as the default in-game HUD: shows the run
 # timer while in a run and the cooldown while on extract cooldown. Killing a

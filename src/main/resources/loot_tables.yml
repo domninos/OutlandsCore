@@ -14,8 +14,19 @@
 #
 # items-per-chest: rolls per chest (overrides loot.default-items-per-chest; an
 # area's loot.items-per-chest overrides this)
+#
+# Optional icon/display-name/lore fields are used by the wand chest picker
+# (SPAWN/CHEST editor). Without them the picker falls back to the
+# area-editor.chest-icon-* config and this table's name.
 Easy:
   items-per-chest: 5
+  # Picker icon (Paper material name)
+  icon: GOLDEN_APPLE
+  # Display name shown in the picker (MiniMessage supported)
+  display-name: "<gold>Easy</gold>"
+  # Lore shown in the picker (MiniMessage supported)
+  lore:
+    - "<gray>Safe picks for a warm-up run.</gray>"
   entries:
     - type: IRON_INGOT
       amount: 40

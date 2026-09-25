@@ -3,6 +3,8 @@ package net.omni.extraction;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.omni.extraction.area.*;
+import net.omni.extraction.areaeditor.AreaEditorListener;
+import net.omni.extraction.areaeditor.AreaEditorManager;
 import net.omni.extraction.chat.ActionBarManager;
 import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.chat.PaperChatRenderer;
@@ -60,6 +62,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private ScoreboardManager scoreboardManager;
     private ActionBarManager actionBarManager;
     private GUIManager guiManager;
+    private AreaEditorManager areaEditorManager;
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
     private ExtractionManager extractionManager;
@@ -70,17 +73,11 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      - migrate to MariaDB/MySQL, use plugin.yml's library loader
      - loadout should be categorized and checked if they are permanent. food and potions are temporary.
-         this can be purchaseable using outlands tokens
+         this can be pur- when timer or cooldowns in config.yml is set to 0, and does /extraction reload, make sure the timer/cooldown gets disabled entirely for everyone.
+       - check for each area so if unavailable until = 0, and no timer/cooldown is set, automatically re enter player if in area.chaseable using outlands tokens
          - use Vault to expose currency
      -
-     - make it so that upon adding a chest, open gui (picking between loot tables set on config. add icon, lore)
-       - the picked one will be set to be the type of the loot chest (e.g. Easy)
-     - do this for adding spawn location as well. remove right click = boss spawn point. left click means open
-       - mob editor gui, select mob based on mythicmobs/other mobs provider/vanilla,
-       - select count (add increment +1, +5, +10, decrement -1, -5, -10) each click should count to the counter in the middle
-         - the icon for this is configurable, add the values being added configurable as well.
-      - and then have the ability to use a back and next page, when the back button is clicked, open the previous gui, same for next
-       - this nav buttons are universal on the mob editor/loot chest editor.
+     -
      -
      -
      -
@@ -151,6 +148,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         if (guiManager != null)
             guiManager.clearAll();
 
+        if (areaEditorManager != null)
+            areaEditorManager.clearAll();
+
         extractionManager.flush();
 
         configUtil.flush();
@@ -201,6 +201,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.scoreboardManager = new ScoreboardManager(this);
         this.actionBarManager = new ActionBarManager(this);
         this.guiManager = new GUIManager(this);
+        this.areaEditorManager = new AreaEditorManager(this);
 
         this.lootTableManager = new LootTableManager(this);
         this.lootTableManager.load();
@@ -250,6 +251,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new AreaListener(this).register();
         areaSelectionVisualizer.register();
         new ScoreboardListener(this).register();
+        new AreaEditorListener(this).register();
     }
 
     private void startSaveTask() {
@@ -354,6 +356,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public GUIManager getGuiManager() {
         return guiManager;
+    }
+
+    public AreaEditorManager getAreaEditorManager() {
+        return areaEditorManager;
     }
 
     public LootTableManager getLootTableManager() {
