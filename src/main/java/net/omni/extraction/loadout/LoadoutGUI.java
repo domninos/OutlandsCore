@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
+import net.omni.extraction.upgrade.UpgradeTier;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -93,10 +94,12 @@ public class LoadoutGUI {
                 if (slot != null) {
                     int tierLevel = plugin.getLoadoutManager().getEffectiveTier(data, slot);
 
-                    if (tierLevel > 0)
-                        item = plugin.getLoadoutManager().buildTierItem(
-                                plugin.getUpgradeManager().getTier(slot, tierLevel));
-                    else if (slot.isPlaceholderSlot()) {
+                    if (tierLevel > 0) {
+                        UpgradeTier tier = plugin.getUpgradeManager().getTier(slot, tierLevel);
+
+                        if (tier != null)
+                            item = plugin.getLoadoutManager().buildTierItem(tier);
+                    } else if (slot.isPlaceholderSlot()) {
                         item = createDropPlaceholder(plugin, slot);
                         pane = true;
                     }

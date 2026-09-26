@@ -57,7 +57,7 @@ public class RunManager {
             return false;
         }
 
-        PlayerData data = playerDataManager.getOrCreate(uuid);
+        PlayerData data = playerDataManager.getOrLoadSync(uuid);
 
         data.setReturnLocation(player.getLocation().clone());
         data.setPreRunInventory(Arrays.asList(player.getInventory().getContents()));

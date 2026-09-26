@@ -82,7 +82,8 @@ public class LoadoutManager {
         if (tierLevel <= 0)
             return null;
 
-        return safeItem(buildTierItem(upgradeManager.getTier(slot, tierLevel)));
+        UpgradeTier tier = upgradeManager.getTier(slot, tierLevel);
+        return tier == null ? null : safeItem(buildTierItem(tier));
     }
 
     private static ItemStack safeItem(ItemStack item) {
@@ -170,7 +171,43 @@ public class LoadoutManager {
 
         if (nextTier != null) {
             data.setLoadoutTier(slot.getConfigKey(), nextTier.getTierLevel());
+            materializeTier(slot, currentTier, nextTier.getTierLevel(), data);
             plugin.getPlayerDataManager().savePlayer(data.getUuid());
+        }
+    }
+
+    /**
+     * Materializes the new tier's item in place over every stored cell that
+     * still holds a tier item from a tier at or below {@code fromTier} — so the
+     * upgraded gear replaces the old tier wherever the player moved it (fully
+     * movable WYSIWYG). Genuinely custom items are never overwritten. Called
+     * after a tier upgrade so the GUI and the run grant reflect the new gear.
+     */
+    public void materializeTier(LoadoutSlot slot, int fromTier, int toTier, PlayerData data) {
+        UpgradeTier newTier = upgradeManager.getTier(slot, toTier);
+        if (newTier == null)
+            return;
+
+        ItemStack newItem = buildTierItem(newTier);
+        if (newItem == null)
+            return;
+
+        for (int cell = 0; cell < data.getLoadoutSize(); cell++) {
+            ItemStack stored = data.getItemAt(cell);
+            if (stored == null)
+                continue;
+
+            for (int t = 1; t <= Math.max(1, fromTier); t++) {
+                UpgradeTier prior = upgradeManager.getTier(slot, t);
+                if (prior == null)
+                    continue;
+
+                if (stored.isSimilar(buildTierItem(prior))) {
+                    data.setItemAt(cell, newItem.clone());
+                    data.setCellCustomized(cell, true);
+                    break;
+                }
+            }
         }
     }
 
@@ -181,6 +218,7 @@ public class LoadoutManager {
 
                 if (tokenTier == currentTier + 1) {
                     data.setLoadoutTier(slot.getConfigKey(), tokenTier);
+                    materializeTier(slot, currentTier, tokenTier, data);
                     plugin.getPlayerDataManager().savePlayer(data.getUuid());
                     return true;
                 }

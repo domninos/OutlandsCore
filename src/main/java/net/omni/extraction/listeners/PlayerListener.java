@@ -137,7 +137,7 @@ public class PlayerListener implements Listener {
             dataManager.savePlayer(data.getUuid());
         } else if (event.getView().getTopInventory().getHolder() instanceof UpgradeConfirmHolder confirm) {
             if (!confirm.isResolved())
-                reopenUpgrade(player);
+                Bukkit.getScheduler().runTask(plugin, () -> reopenUpgrade(player));
         } else if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
             ItemStack cursor = player.getItemOnCursor();
             if (LoadoutGUI.isPlaceholder(cursor)) {
@@ -337,7 +337,7 @@ public class PlayerListener implements Listener {
     }
 
     private void openUpgradeConfirm(Player player, LoadoutSlot slot) {
-        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
         UpgradeTier nextTier = plugin.getUpgradeManager().getNextTier(slot,
                 plugin.getLoadoutManager().getEffectiveTier(data, slot));
 
@@ -646,10 +646,10 @@ public class PlayerListener implements Listener {
         }
 
         final int previousTier = plugin.getLoadoutManager().getEffectiveTier(
-                plugin.getPlayerDataManager().getOrCreate(player.getUniqueId()), slot);
+                plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId()), slot);
 
         Bukkit.getScheduler().runTask(plugin, () -> {
-            PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+            PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
 
             if (!plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), tokenTier, data)) {
                 sendWrongTier(player, slot, data);
@@ -658,6 +658,7 @@ public class PlayerListener implements Listener {
 
             if (!consumeUpgradeToken(player, token)) {
                 data.setLoadoutTier(slot.getConfigKey(), previousTier);
+                plugin.getLoadoutManager().materializeTier(slot, tokenTier, previousTier, data);
                 plugin.getPlayerDataManager().savePlayer(data.getUuid());
                 plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
                 return;

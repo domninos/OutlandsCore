@@ -276,7 +276,21 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   `setCellCustomized`. `applyLoadout` places exact-slot: customized→stored (null→empty), uncustomized category→
   tier default, everything else blank; armor/offhand via equipment slots; default tiers no longer gated by a
   "custom loadout" flag (`hasCustomLoadout` and `materializeTierItem` were removed — upgrades just set the tier
-  and it reflects live in the GUI/grant). Sequential free-fill and the 36-slot overflow→storage branch were
+  and it reflects live in the GUI/grant). Loadout is fully WYSIWYG: tier cells (armor/weapon/tool/food/potions)
+  show the STORED item when customized and the effective-tier item otherwise — the `/extraction` grant is exactly
+  the final arrangement. Upgrades materialize into that arrangement via `LoadoutManager.materializeTier(slot,
+  fromTier, toTier, data)`: `applyUpgradeToken`/`upgradeSlot` call it right after setting the tier; it scans
+  EVERY stored cell and replaces, in place, any item matching a tier iteration `1..fromTier`
+  (`ItemStack.isSimilar` against `buildTierItem(getTier(slot,t))`) with the new tier item, marking the cell
+  customized — so the upgraded gear replaces the old tier wherever the player moved it (not just the default
+  slot). Genuinely custom items are never overwritten, so the arrangement survives. The scan also heals
+  previously-frozen cells: a stale prior-tier item is replaced on the next
+  upgrade. `PlayerListener.applyUpgradeDeferred`'s consume-failure rollback calls
+  `materializeTier(slot, tokenTier, previousTier, data)` so the reverted tier's item/null is restored (the
+  materialized new-tier item can't linger). Stored customization applies to all cells including tier cells
+  (charm/artifact/pet/offhand + free inventory-mirror slots). `RunManager.enterRun` reads player data via
+  `getOrLoadSync` (not `getOrCreate`) so `applyLoadout` never sees an unloaded tier-0 instance after a fresh
+  join / mid-session reload. Sequential free-fill and the 36-slot overflow→storage branch were
   removed (1 cell = 1 exact slot).
 - Upgrade quality: upgrade tokens apply ONLY to the exact next tier — `LoadoutManager.applyUpgradeToken` requires
   `tokenTier == getEffectiveTier(slot) + 1` (any skip is rejected with `loadout.token-wrong-tier`, wired through
