@@ -47,6 +47,8 @@ public class PlayerListener implements Listener {
 
     private final ExtractionPlugin plugin;
 
+    private static final long DEATH_RESPAWN_DELAY_TICKS = 2L;
+
     private final Map<UUID, Long> lastBlockBlocked = new HashMap<>();
 
     public PlayerListener(ExtractionPlugin plugin) {
@@ -61,16 +63,49 @@ public class PlayerListener implements Listener {
         if (!plugin.getRunManager().isPlayerInRun(uuid))
             return;
 
-        RunManager runManager = plugin.getRunManager();
-        RunManager.ActiveRun run = runManager.getActiveRun(uuid);
-
+        // Cancel the death entirely: on Paper 1.21.11 a forced respawn leaves the
+        // client stuck waitingForRespawn (teleported but never truly respawned),
+        // so instead we revive the player in place and teleport them back after
+        // a short delay.
+        event.setCancelled(true);
         event.getDrops().clear();
         event.setDroppedExp(0);
 
-        runManager.handleDeath(uuid);
+        RunManager runManager = plugin.getRunManager();
+        RunManager.ActiveRun run = runManager.getActiveRun(uuid);
+        Location returnLocation = run != null
+                ? run.getReturnLocation().clone()
+                : plugin.getPlayerDataManager().getOrCreate(uuid).getReturnLocation();
 
-        if (run != null)
-            player.spigot().respawn();
+        runManager.handleDeath(uuid);
+        runManager.restoreDeathGear(player);
+
+        Location finalLocation = returnLocation;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!player.isValid() || !player.isOnline())
+                return;
+
+            player.setInvulnerable(true);
+            player.setFireTicks(0);
+            player.setFallDistance(0);
+            player.setHealth(player.getMaxHealth());
+            player.setFoodLevel(20);
+            player.setSaturation(5.0f);
+
+            if (finalLocation != null && finalLocation.getWorld() != null)
+                player.teleport(finalLocation);
+
+            player.setInvulnerable(false);
+
+            // Consume the stored return location so a later normal death does
+            // not respawn the player at the old extraction entry point.
+            PlayerData data = plugin.getPlayerDataManager().getOrCreate(uuid);
+
+            if (data.getReturnLocation() != null) {
+                data.setReturnLocation(null);
+                plugin.getPlayerDataManager().savePlayer(uuid);
+            }
+        }, DEATH_RESPAWN_DELAY_TICKS);
     }
 
     @EventHandler

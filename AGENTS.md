@@ -167,9 +167,14 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   `com.github.MilkBowl:VaultAPI:1.7.1` (provided) and `plugin.yml` softdepends `Vault`.
 - Run-death behavior: dying mid-run makes you leave immediately — `RunManager.handleDeath` clears the carried run
   loot/loadout (`event.getDrops().clear()` alone kept items in the inventory), sets `PlayerData.pendingDeathRestore`
-  and keeps the pre-run snapshot; `PlayerListener.onPlayerRespawn` + `RunManager.restoreDeathGear` respawn you at the
-  entry location with the gear you came in with. No extraction rewards on death (live kill/boss payouts stay); the
-  cooldown still applies.
+  and keeps the pre-run snapshot. `PlayerListener.onPlayerDeath` CANCELS the `PlayerDeathEvent`
+  (`event.setCancelled(true)` — a forced `spigot().respawn()` is broken on Paper 1.21.11: the client stays stuck
+  `waitingForRespawn`, teleported but never truly respawned), calls `handleDeath` then `restoreDeathGear` immediately,
+  and after `DEATH_RESPAWN_DELAY_TICKS` (2) heals the player (health/food/saturation, clears fire/fall) and teleports
+  to the entry location under a brief `setInvulnerable` guard. No death screen/animation, no extraction rewards on
+  death (live kill/boss payouts stay), no PlayerRespawnEvent for run deaths, and the persisted return location is
+  consumed so a later normal death does not respawn at the stale entry point; `onPlayerRespawn` still restores gear
+  for any residual pending-death flag and serves normal deaths. The cooldown still applies.
 - Custom events: `event/PlayerEnterAreaEvent` + `event/PlayerLeaveAreaEvent` (non-cancellable, expose `getPlayer()`/
   `getArea()`) fired by `AreaManager` on area transitions (`checkPlayerAreas`) and on quit (`handlePlayerQuit`).
 - Loadout defaults are "once touched, gone": `LoadoutManager.hasCustomLoadout(data)` scans the whole GUI — true once

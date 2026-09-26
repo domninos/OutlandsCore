@@ -72,8 +72,6 @@ public final class ExtractionPlugin extends JavaPlugin {
     TODO:
      -
      - migrate to MariaDB/MySQL, use plugin.yml's library loader
-     - fix respawn, if they die while in extraction, respawn them and add a delay so that it actually respawns and teleports them properly.
-       - currently, it doesn't actually respawn me, but it does teleport me to my return location
      -
      -
      - Boss Creator
