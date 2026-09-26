@@ -18,6 +18,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -33,10 +34,12 @@ public class PlayerDataManager {
     }
 
     public void loadPlayer(UUID uuid, @Nullable Runnable onComplete) {
-        if (cache.containsKey(uuid)) {
+        PlayerData current = cache.get(uuid);
+
+        if (current != null && current.isDirty()) {
+            current.setLoaded(true);
             if (onComplete != null)
                 onComplete.run();
-
             return;
         }
 
@@ -46,60 +49,20 @@ public class PlayerDataManager {
                 ps.setString(1, uuid.toString());
                 ResultSet rs = ps.executeQuery();
 
-                PlayerData data = new PlayerData(uuid);
+                PlayerData existing = cache.get(uuid);
 
-                if (rs.next()) {
-                    data.setTokens(rs.getInt("tokens"));
-
-                    String loadoutJson = rs.getString("loadout");
-                    if (loadoutJson != null && !loadoutJson.isEmpty() && !loadoutJson.equals("{}")) {
-                        Map<String, Integer> tiers = plugin.getGson().fromJson(loadoutJson, new TypeToken<Map<String, Integer>>() {
-                        }.getType());
-
-                        if (tiers != null)
-                            data.setLoadoutTiers(tiers);
-                    }
-
-                    String itemJson = rs.getString("loadout_contents");
-                    if (itemJson != null && !itemJson.isEmpty() && !itemJson.equals("[]")) {
-                        data.setLoadoutItems(migrateLoadoutItems(deserializeItems(itemJson)));
-                    }
-
-                    String customizedJson = rs.getString("customized_cells");
-                    if (customizedJson != null && !customizedJson.isEmpty() && !customizedJson.equals("[]")) {
-                        List<Integer> cells = plugin.getGson().fromJson(customizedJson, new TypeToken<List<Integer>>() {
-                        }.getType());
-
-                        if (cells != null)
-                            data.setCustomizedCells(cells);
-                    }
-
-                    String lootJson = rs.getString("extracted_loot");
-                    if (lootJson != null && !lootJson.isEmpty() && !lootJson.equals("[]")) {
-                        List<ItemStack> items = deserializeItems(lootJson);
-                        data.setExtractedLoot(items);
-                    }
-
-                    data.setCooldownUntil(rs.getLong("cooldown_until"));
-                    data.setLastKillCount(rs.getInt("last_kill_count"));
-                    data.setLastEventCount(rs.getInt("last_event_count"));
-                    data.setLastBossCount(rs.getInt("last_boss_count"));
-
-                    data.setReturnLocation(deserializeLocation(rs.getString("return_location")));
-
-                    String preRunInventoryJson = rs.getString("pre_run_inventory");
-                    if (preRunInventoryJson != null && !preRunInventoryJson.isEmpty() && !preRunInventoryJson.equals("[]"))
-                        data.setPreRunInventory(deserializeItems(preRunInventoryJson));
-
-                    String preRunArmorJson = rs.getString("pre_run_armor");
-                    if (preRunArmorJson != null && !preRunArmorJson.isEmpty() && !preRunArmorJson.equals("[]"))
-                        data.setPreRunArmor(deserializeItems(preRunArmorJson));
-
-                    data.setPendingReturn(rs.getInt("pending_return") == 1);
+                if (existing != null && existing.isDirty()) {
+                    existing.setLoaded(true);
+                    if (onComplete != null)
+                        plugin.getDatabaseManager().executeSync(onComplete);
+                    return;
                 }
 
+                PlayerData data = existing != null ? existing : new PlayerData(uuid);
+                applyRow(data, rs);
+                data.setLoaded(true);
                 data.clearDirty();
-                cache.put(uuid, data);
+                cache.putIfAbsent(uuid, data);
 
                 if (onComplete != null)
                     plugin.getDatabaseManager().executeSync(onComplete);
@@ -109,13 +72,128 @@ public class PlayerDataManager {
         });
     }
 
+    /**
+     * Loads a player's data synchronously on the calling (main) thread and
+     * registers it in the cache. Used by code that must never work against a
+     * fresh throwaway {@link PlayerData} (e.g. opening the loadout upgrade
+     * GUIs), where the async {@link #loadPlayer} may not have finished yet.
+     * Populates the already-cached instance (never replaces it) so a
+     * concurrently-created instance can't lose its edits, and force-loads
+     * unloaded cached instances so no caller ever reads stale-empty data.
+     */
+    public PlayerData getOrLoadSync(UUID uuid) {
+        PlayerData data = cache.get(uuid);
+
+        if (data != null) {
+            if (data.isDirty()) {
+                data.setLoaded(true);
+            } else if (!data.isLoaded()) {
+                loadSyncInto(data);
+                data.clearDirty();
+            }
+
+            return data;
+        }
+
+        data = new PlayerData(uuid);
+        loadSyncInto(data);
+        data.clearDirty();
+        cache.putIfAbsent(uuid, data);
+        return cache.get(uuid);
+    }
+
+    /** Populates {@code data} from its database row (if present). */
+    private void loadSyncInto(PlayerData data) {
+        try (Connection conn = plugin.getDatabaseManager().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM player_data WHERE uuid = ?")) {
+            ps.setString(1, data.getUuid().toString());
+            ResultSet rs = ps.executeQuery();
+            applyRow(data, rs);
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to load player data for " + data.getUuid(), e);
+        }
+
+        data.setLoaded(true);
+    }
+
+    private void applyRow(PlayerData data, ResultSet rs) throws SQLException {
+        if (!rs.next())
+            return;
+
+        data.setTokens(rs.getInt("tokens"));
+
+        String loadoutJson = rs.getString("loadout");
+        if (loadoutJson != null && !loadoutJson.isEmpty() && !loadoutJson.equals("{}")) {
+            Map<String, Integer> tiers = plugin.getGson().fromJson(loadoutJson, new TypeToken<Map<String, Integer>>() {
+            }.getType());
+
+            if (tiers != null)
+                data.setLoadoutTiers(tiers);
+        }
+
+        String itemJson = rs.getString("loadout_contents");
+        if (itemJson != null && !itemJson.isEmpty() && !itemJson.equals("[]")) {
+            data.setLoadoutItems(migrateLoadoutItems(deserializeItems(itemJson)));
+        }
+
+        String customizedJson = rs.getString("customized_cells");
+        if (customizedJson != null && !customizedJson.isEmpty() && !customizedJson.equals("[]")) {
+            List<Integer> cells = plugin.getGson().fromJson(customizedJson, new TypeToken<List<Integer>>() {
+            }.getType());
+
+            if (cells != null)
+                data.setCustomizedCells(cells);
+        }
+
+        String lootJson = rs.getString("extracted_loot");
+        if (lootJson != null && !lootJson.isEmpty() && !lootJson.equals("[]")) {
+            List<ItemStack> items = deserializeItems(lootJson);
+            data.setExtractedLoot(items);
+        }
+
+        data.setCooldownUntil(rs.getLong("cooldown_until"));
+        data.setLastKillCount(rs.getInt("last_kill_count"));
+        data.setLastEventCount(rs.getInt("last_event_count"));
+        data.setLastBossCount(rs.getInt("last_boss_count"));
+
+        data.setReturnLocation(deserializeLocation(rs.getString("return_location")));
+
+        String preRunInventoryJson = rs.getString("pre_run_inventory");
+        if (preRunInventoryJson != null && !preRunInventoryJson.isEmpty() && !preRunInventoryJson.equals("[]"))
+            data.setPreRunInventory(deserializeItems(preRunInventoryJson));
+
+        String preRunArmorJson = rs.getString("pre_run_armor");
+        if (preRunArmorJson != null && !preRunArmorJson.isEmpty() && !preRunArmorJson.equals("[]"))
+            data.setPreRunArmor(deserializeItems(preRunArmorJson));
+
+        data.setPendingReturn(rs.getInt("pending_return") == 1);
+
+        List<ItemStack> loadedItems = data.getLoadoutItems();
+        Map<String, Integer> loadedTiers = data.getLoadoutTiers();
+
+        boolean storedItems = itemJson != null && !itemJson.isEmpty() && !itemJson.equals("[]");
+        boolean storedTiers = loadoutJson != null && !loadoutJson.isEmpty() && !loadoutJson.equals("{}");
+
+        if ((storedItems && (loadedItems == null || loadedItems.stream().noneMatch(Objects::nonNull)))
+                || (storedTiers && (loadedTiers == null || loadedTiers.isEmpty()))) {
+            plugin.getLogger().log(Level.WARNING,
+                    "Row for " + data.getUuid() + " declares stored loadout data (items=" + storedItems
+                            + ", tiers=" + storedTiers
+                            + ") but decoded to 0 items/0 tiers — possible data loss");
+        } else if (storedItems || storedTiers) {
+            plugin.getLogger().info("Loaded loadout for " + data.getUuid() + ": "
+                    + (loadedItems == null ? 0 : loadedItems.stream().filter(Objects::nonNull).count())
+                    + " item(s), " + (loadedTiers == null ? 0 : loadedTiers.size()) + " tier(s)");
+        }
+    }
+
     private List<ItemStack> deserializeItems(String base64) {
         return ItemSerializationUtil.fromBase64(base64);
     }
 
     private static final int LEGACY_SLOT_COUNT = 11;
 
-    /** Legacy format (11 entries, LoadoutSlot ordinal-indexed) + array-shape migrations. */
+    /** Legacy format (11 entries, LoadoutSlot ordinal-indexed). */
     private List<ItemStack> migrateLoadoutItems(List<ItemStack> items) {
         int guiSize = plugin.getConfigUtil().getLoadoutGuiSize();
         List<ItemStack> out = new ArrayList<>(Collections.nCopies(guiSize, null));
@@ -135,13 +213,13 @@ public class PlayerDataManager {
                     out.set(target, item);
             }
 
+            relocateLegacyArmorPositions(out);
             return out;
         }
 
         for (int i = 0; i < items.size() && i < out.size(); i++)
             out.set(i, items.get(i));
 
-        relocateLegacyArmorPositions(out);
         return out;
     }
 
@@ -190,7 +268,7 @@ public class PlayerDataManager {
             ps.setString(1, uuid.toString());
             ps.setInt(2, data.getTokens());
             ps.setString(3, plugin.getGson().toJson(data.getLoadoutTiers()));
-            ps.setString(4, serializeItems(data.getLoadoutItems()));
+            ps.setString(4, serializeItems(padLoadoutItems(data.getLoadoutItems())));
             ps.setString(5, plugin.getGson().toJson(data.getCustomizedCells()));
             ps.setString(6, serializeItems(data.getExtractedLoot()));
             ps.setLong(7, data.getCooldownUntil());
@@ -203,6 +281,13 @@ public class PlayerDataManager {
             ps.setInt(14, data.isPendingReturn() ? 1 : 0);
 
             ps.executeUpdate();
+
+            long itemCount = data.getLoadoutItems() == null
+                    ? 0 : data.getLoadoutItems().stream().filter(Objects::nonNull).count();
+            plugin.getLogger().info("Saved player data for " + uuid + ": " + itemCount
+                    + " loadout item(s), " + data.getLoadoutTiers().size() + " tier(s), "
+                    + data.getCustomizedCells().size() + " customized cell(s), "
+                    + data.getTokens() + " token(s)");
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save player data for " + uuid, e);
         }
@@ -210,6 +295,19 @@ public class PlayerDataManager {
 
     private String serializeItems(List<ItemStack> items) {
         return ItemSerializationUtil.toBase64(items);
+    }
+
+    private List<ItemStack> padLoadoutItems(List<ItemStack> items) {
+        int size = plugin.getConfigUtil().getLoadoutGuiSize();
+
+        if (items.size() >= size)
+            return new ArrayList<>(items.subList(0, size));
+
+        List<ItemStack> padded = new ArrayList<>(items);
+        while (padded.size() < size)
+            padded.add(null);
+
+        return padded;
     }
 
     private String serializeLocation(@Nullable Location location) {

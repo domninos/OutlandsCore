@@ -12,7 +12,9 @@ Extraction — a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 
 ## Build & verify
 - Compile: `mvn clean compile`
-- There is no test suite; compiling is the verification step.
+- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) → `target/Extraction-1.0.0.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.0.0.jar` into the server's `plugins/Extraction/` and restart — an IDE build does not deploy to the server folder.
+- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.0.0.jar` to confirm the server runs the current build.
+- There is no test suite; compiling `mvn clean compile` is the verification step for syntax; `mvn clean package` is required before claiming a fix is deployed.
 
 ## Conventions
 
@@ -151,6 +153,100 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   cooldown still applies.
 - Custom events: `event/PlayerEnterAreaEvent` + `event/PlayerLeaveAreaEvent` (non-cancellable, expose `getPlayer()`/
   `getArea()`) fired by `AreaManager` on area transitions (`checkPlayerAreas`) and on quit (`handlePlayerQuit`).
+- Loadout defaults are "once touched, gone": `LoadoutManager.hasCustomLoadout(data)` scans the whole GUI — true once
+  any weapon/tool/food/potions/charm/artifact/pet cell is in `customizedCells` OR any non-armor/non-offhand cell holds
+  an item (so placing things in blank/free cells flips custom mode too; pure armor upgraders — tier items materialized
+  into armor cells — stay excluded). In custom mode `LoadoutGUI.populate` shows stored items and leaves other empty
+  named cells BLANK (no placeholder, no "Empty" pane — `createEmptyCellPlaceholder` was removed), while non-custom
+  players still see the default placeholders; `applyLoadout` skips the tieredCells default grant — fresh players who
+  never touched a default slot keep the starter kit. `syncToData` never persists ANY placeholder item (it nukes the
+  stored item for the cell regardless of which slot the placeholder is tagged for — the old code only cleared
+  matching-slot tags, letting stray/mismatched panes fall through to `untagPlaceholder` and be stored as plain panes).
+  `handleLoadoutClick` cancels `HOTBAR_SWAP`/`HOTBAR_MOVE_AND_READD` (number keys) so loadout items can't leak into
+  the real inventory, and `onInventoryClose` nulls a placeholder left on the cursor so panes never drop into the
+  player's inventory. Armor placement in the loadout GUI now marks the cell customized too.
+- Loadout grants never deliver placeholders/filler: `applyLoadout`'s free-inventory copy skips any cell that is a
+  first-row filler cell (`isFirstRowFillerCell`) or whose item is a placeholder (`isPlaceholder`, unconditional — the
+  old `slot != null` guard let non-slot cells through). Armor/offhand placeholders already resolve to tier/null.
+- Loadout contents persisted padded to the current GUI size: `PlayerDataManager.padLoadoutItems` writes
+  `loadout_items` as a full `guiSize`-length list, so the legacy `migrateLoadoutItems` size-11 path can only ever
+  match genuine legacy rows (a modern short row — edits ending at cell ≤ 10 — used to be re-interpreted by slot
+  ordinal and shift items to the wrong cells).
+- Armor tier is the source of truth: `RunManager → applyLoadout` equips `buildTierItem(effectiveTier)` for
+  NON-customized armor cells (ignores stale cell contents), materializeTierItem skips customized cells, and
+  `LoadoutGUI.populate` shows the tier placeholder for uncustomized armor — the armor actually worn/displayed always
+  matches the player's current armor tier across runs and relogs.
+- Storage GUI is free-select: `PlayerListener` no longer cancels all storage clicks/drags — only the button row
+  (slots 45-53 = prev/page/claim-all/close/next/discard) is intercepted; loot items move freely between the storage
+  inventory and the player inventory. Per-item click-claim was removed (that was the dupe source); `LootManager.
+  syncStorageFromInventory(data, page, inv)` rebuilds `extractedLoot` from the visible page (merging other pages) and
+  saves, called on storage close and before every nav/claim-all/discard action.
+
+- Stale area-clear sessions: the periodic containment task now always runs (decoupled from
+  `mob-containment.enabled`). `AreaClearManager.scanStaleSessions()` cancels any session whose mobs
+  can't complete — a mob UUID with `Bukkit.getEntity(id) == null` (despawned without dying: player
+  left, chunk unload, etc.) permanently bricks the clear because the boss-bar total can never hit 0 —
+  and `cancelSession(session, notifyOwner)`: despawns survivors, hides boss bar, removes loot chests,
+  sets the area READY + `unavailableUntil(0)` + saves, then sends `AREA_CLEAR_CANCELLED` to the owner.
+  `cancelClear(area)` now delegates to `cancelSession(..., false)` (admin `/areas reset` stays silent).
+- Loadout overflow into storage: `applyLoadout`'s free-inventory copy stops placing items at the 36
+  main-slot capacity but no longer silently drops the rest — leftover loadout items go into the
+  player's `extractedLoot` (claimable via `/extraction` storage) and the player gets
+  `LOADOUT_INVENTORY_OVERFLOW` ("%count% loadout item(s) exceeded your 36-slot inventory and were
+  moved to /extraction storage.").
+- Deterministic loadout drags + non-destructive sync: `handleLoadoutDrag` cancels the event and
+  applies `event.getNewItems()` only to the allowed hovered cells (arms/first-row filler/bottom still
+  cancel) — a drag can never repaint rows 2-5 behind the plugin's back. `LoadoutGUI` tracks a
+  per-session `touchedCells` set (markTouched on every click/drag target; reset on open/refresh), and
+  `syncToData` ONLY reconciles touched cells on close — every other cell (customized or not, free or
+  slot) is never written from the view, so a transient empty/placeholder/repaint view can never wipe
+  stored items. Removals still work because taking an item touches the cell. `syncLoadout` saves
+  UNCONDITIONALLY after sync (no `updated` flag gate; `savePlayer` is a no-op when clean).
+  Player-data load racing: `PlayerData.loaded` starts false (`getOrCreate` mints unloaded instances)
+  and is set true by any DB-read path; `getOrLoadSync(uuid)` force-loads unloaded cached instances
+  synchronously before returning (skips load when dirty — in-flight edits win), and `loadPlayer` NEVER
+  bails on a cached instance (it async-populates the existing instance; only dirty instances skip the
+  DB snapshot, never replaced via `putIfAbsent`). `/loadout` and `/upgrade` open use `getOrLoadSync`,
+  and `handleLoadoutClick`/`handleLoadoutDrag`/`handleUpgradeClick`/`handleUpgradeDrag`/`syncStorage`
+  are load-guarded; `onInventoryClose` upgrades the upgrade-GUI close to also `savePlayer` (tiers
+  always committed). `/extraction reload` now closes open loadout/upgrade GUIs FIRST (so close-time
+  sync/tier-save run with real data) before `guiManager.clearAll()`, instead of severing live GUIs and
+  silently dropping edits. `applyRow` logs the loaded item/tier counts and WARNINGs when a row declares
+  stored loadout data but decodes to 0 items/0 tiers (possible data loss); `syncToData` and
+  `writePlayerToDb` log per-close/per-save item/tier/customized/token summaries. `migrateLoadoutItems` only
+  re-shapes EXACT 11-entry legacy rows (ordinal map + armor relocate); any other short row maps
+  cell-for-cell with no relocation, and `padLoadoutItems` (write) truncates to the canonical guiSize.
+- Single tier-item source of truth: `LoadoutManager.buildTierItem(tier)` is the only builder for tier gear —
+  material + amount + enchantments (level 1) + potion meta (`potion_type`/`level` → `PotionMeta`,
+  base potion type + custom effect with amplifier `level-1`). `LoadoutGUI.createPlaceholder` (default loadout
+  panes), `LoadoutManager.applyLoadout` (run grants for unset armor/tiered cells + `materializeTierItem`), and
+  `UpgradeGUI.createSlotItem` (base item, chrome name/lore layered on top for buying info) all use it, so the
+  gear shown in `/upgrade`, the loadout panes, and the `/extraction` grant are the same item with the tier's meta.
+- Loadout GUI = exact-slot inventory mirror (redesign): the GUI is a 1:1 editor of the player's real inventory.
+  First row (0-8) = armor (helmet/chestplate/leggings/boots → equipment 39/38/37/36) + offhand (8) + filler (4-7);
+  cells 9-35 map 1:1 to main inventory slots (identity) and the bottom row 36-44 is the hotbar →
+  `LoadoutGUI`/`PlayerListener`/`LoadoutManager` use `LoadoutManager.inventorySlotForCell(cell)`
+  (≤8 → -1, ≥36 → cell-36, else cell). `populate` shows the stored item for
+  customized cells and the live tier default (`buildTierItem`, same item as `/upgrade`) for uncustomized
+  category cells; charm/artifact/pet + offhand cells show a tagged *drop-here* pane while empty
+  (`LoadoutSlot.isPlaceholderSlot()`, `LoadoutGUI.createDropPlaceholder`: labelled panes for charm/artifact/pet,
+  a "Drop item here" pane for offhand at the top-row end). Charm/artifact/pet panes are MOVABLE markers:
+  `handleLoadoutClick` lets an empty cursor pick them up (no cancel; the vacated cell is marked touched so it
+  goes blank) and placing them elsewhere stores the pane verbatim (`syncToData` no longer clears placeholders),
+  so the moved marker persists in `loadout_items` and the old cell never regenerates it. The offhand pane is the
+  only fixed drop-here target — empty cursor is always cancelled on it. Item on cursor replaces any pane.
+  `onInventoryClose` nulls a placeholder left on the cursor so panes never leak out.
+  Legacy
+  `isPlaceholder`/`untagPlaceholder` kept as an inert safety so tagged panes never show as stored or grant
+  (`getPlaceholderSlot` returns the source slot tag — used by the click interception; panes are never granted
+  because `applyLoadout`'s `safeItem` skips them). `syncToData` persists touched cells verbatim (item stored, null cleared) and marks
+  each customized; untouched cells are never written so live defaults survive; saved via close→`syncLoadout`→
+  `savePlayer`→DB queue. Customization is decided ONLY at sync — click/drag handlers no longer
+  `setCellCustomized`. `applyLoadout` places exact-slot: customized→stored (null→empty), uncustomized category→
+  tier default, everything else blank; armor/offhand via equipment slots; default tiers no longer gated by a
+  "custom loadout" flag (`hasCustomLoadout` and `materializeTierItem` were removed — upgrades just set the tier
+  and it reflects live in the GUI/grant). Sequential free-fill and the 36-slot overflow→storage branch were
+  removed (1 cell = 1 exact slot).
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

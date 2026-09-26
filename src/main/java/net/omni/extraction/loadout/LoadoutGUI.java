@@ -4,8 +4,6 @@ import net.kyori.adventure.text.Component;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
-import net.omni.extraction.update.UpgradeManager;
-import net.omni.extraction.update.UpgradeTier;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -14,8 +12,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 public class LoadoutGUI {
@@ -32,7 +32,7 @@ public class LoadoutGUI {
     private final UUID owner;
     private Inventory inventory;
     private ItemStack filler;
-    private boolean updated;
+    private final Set<Integer> touchedCells = new HashSet<>();
 
     public LoadoutGUI(ExtractionPlugin plugin, Player player) {
         this.plugin = plugin;
@@ -43,23 +43,24 @@ public class LoadoutGUI {
         return owner;
     }
 
-    public void markUpdated() {
-        updated = true;
+    /** Remembers a cell the player explicitly edited this open session. */
+    public void markTouched(int cell) {
+        touchedCells.add(cell);
     }
 
-    public boolean consumeUpdated() {
-        boolean wasUpdated = updated;
-        updated = false;
-        return wasUpdated;
+    public void resetTouched() {
+        touchedCells.clear();
     }
 
     public void open(Player player, PlayerData data) {
+        resetTouched();
         ensureInventory();
         populate(inventory, data);
         player.openInventory(inventory);
     }
 
     public void refresh(PlayerData data) {
+        resetTouched();
         ensureInventory();
         populate(inventory, data);
     }
@@ -76,23 +77,34 @@ public class LoadoutGUI {
         inv.clear();
 
         for (int i = 0; i < inv.getSize(); i++) {
-            ItemStack item = data.getItemAt(i);
-            if (item != null) {
-                inv.setItem(i, item);
-                continue;
-            }
-
-            LoadoutSlot slot = getSlotFromClick(plugin, i);
-            if (slot != null) {
-                if (slot == LoadoutSlot.OFFHAND || !data.isCellCustomized(i))
-                    inv.setItem(i, createPlaceholder(plugin, slot, data));
-                else
-                    inv.setItem(i, createEmptyCellPlaceholder(plugin, slot));
-                continue;
-            }
-
-            if (isFirstRowFillerCell(plugin, i))
+            if (isFirstRowFillerCell(plugin, i)) {
                 inv.setItem(i, firstRowFiller(plugin));
+                continue;
+            }
+
+            ItemStack item = null;
+            boolean pane = false;
+
+            if (data.isCellCustomized(i)) {
+                item = data.getItemAt(i);
+            } else {
+                LoadoutSlot slot = getSlotFromClick(plugin, i);
+
+                if (slot != null) {
+                    int tierLevel = plugin.getLoadoutManager().getEffectiveTier(data, slot);
+
+                    if (tierLevel > 0)
+                        item = plugin.getLoadoutManager().buildTierItem(
+                                plugin.getUpgradeManager().getTier(slot, tierLevel));
+                    else if (slot.isPlaceholderSlot()) {
+                        item = createDropPlaceholder(plugin, slot);
+                        pane = true;
+                    }
+                }
+            }
+
+            if (item != null && (pane || data.isCellCustomized(i) || !isPlaceholder(item)))
+                inv.setItem(i, item);
         }
     }
 
@@ -100,117 +112,67 @@ public class LoadoutGUI {
         if (inventory == null)
             return;
 
-        for (int i = 0; i < inventory.getSize(); i++) {
+        Set<Integer> cells = new HashSet<>(touchedCells);
+        int written = 0;
+        int removed = 0;
+
+        for (int i : cells) {
+            if (isFirstRowFillerCell(plugin, i))
+                continue;
+
             ItemStack current = inventory.getItem(i);
-
-            if (current == null || isFirstRowFillerCell(plugin, i)) {
-                if (data.getItemAt(i) != null)
-                    data.setItemAt(i, null);
-                continue;
-            }
-
-            LoadoutSlot slot = getSlotFromClick(plugin, i);
-
-            if (slot != null && isPlaceholder(current)
-                    && slot.getConfigKey().equals(getPlaceholderSlot(current))) {
-                if (data.getItemAt(i) != null)
-                    data.setItemAt(i, null);
-                data.setCellCustomized(i, false);
-                continue;
-            }
-
-            if (isPlaceholder(current))
-                current = untagPlaceholder(current);
-
             data.setCellCustomized(i, true);
+
+            if (current == null) {
+                if (data.getItemAt(i) != null) {
+                    data.setItemAt(i, null);
+                    removed++;
+                }
+                continue;
+            }
 
             ItemStack stored = data.getItemAt(i);
             if (current.equals(stored))
                 continue;
 
             data.setItemAt(i, current);
+            written++;
+        }
+
+        if (written + removed > 0) {
+            long count = data.getLoadoutItems() == null
+                    ? 0 : data.getLoadoutItems().stream().filter(Objects::nonNull).count();
+            plugin.getLogger().info("Synced loadout for " + data.getUuid() + ": wrote " + written
+                    + ", removed " + removed + "; stored " + count + " item(s), "
+                    + data.getCustomizedCells().size() + " customized cell(s)");
         }
     }
 
-    public static ItemStack createPlaceholder(ExtractionPlugin plugin, LoadoutSlot slot, PlayerData data) {
-        int currentTier = plugin.getLoadoutManager().getEffectiveTier(data, slot);
-        UpgradeTier tier = currentTier > 0 ? plugin.getUpgradeManager().getTier(slot, currentTier) : null;
+    private static ItemStack createDropPlaceholder(ExtractionPlugin plugin, LoadoutSlot slot) {
+        Material material = Material.GRAY_STAINED_GLASS_PANE;
+        String matName = plugin.getConfigUtil().getLoadoutGuiFillerMaterial();
 
-        if (tier != null) {
-            ItemStack tierItem = plugin.getLoadoutManager().buildTierItem(tier);
-
-            if (tierItem != null)
-                return tagAsPlaceholder(tierItem, slot);
+        if (matName != null && !matName.isEmpty()) {
+            Material configured = Material.matchMaterial(matName);
+            if (configured != null)
+                material = configured;
         }
 
-        ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
 
         if (meta == null)
             return item;
 
-        plugin.getChatRenderer().setDisplayName(meta, switch (slot) {
-            case HELMET -> "<yellow>Helmet</yellow>";
-            case CHESTPLATE -> "<yellow>Chestplate</yellow>";
-            case LEGGINGS -> "<yellow>Leggings</yellow>";
-            case BOOTS -> "<yellow>Boots</yellow>";
-            case WEAPON -> "<red>Sword</red>";
-            case TOOL -> "<aqua>Pickaxe</aqua>";
-            case FOOD -> "<gold>Food</gold>";
-            case POTION -> "<light_purple>Potions</light_purple>";
-            case CHARM -> "<dark_purple>Charm</dark_purple>";
-            case ARTIFACT -> "<dark_aqua>Artifact</dark_aqua>";
-            case PET -> "<green>Pet</green>";
-            case OFFHAND -> "<yellow>Off-hand</yellow>";
-        });
-
-        List<String> lore = new ArrayList<>();
-        lore.add("");
-
-        UpgradeManager upgradeManager = plugin.getUpgradeManager();
-
-        if (tier != null)
-            lore.add(plugin.getChatRenderer().parse("<gray>Current: <white>" + tier.getTierName() + "</white></gray>"));
-        else
-            lore.add(plugin.getChatRenderer().parse("<gray>Current: <red>None</red></gray>"));
-
-        int maxTier = upgradeManager.getMaxTier(slot);
-        if (upgradeManager.canUpgrade(slot, currentTier)) {
-            UpgradeTier nextTier = upgradeManager.getNextTier(slot, currentTier);
-
-            if (nextTier != null)
-                lore.add(plugin.getChatRenderer().parse("<gray>Next: <green>" + nextTier.getTierName() + "</green></gray>"));
-
-            lore.add("");
-            lore.add(plugin.getChatRenderer().parse("<gray>Upgrade <white>" + slot.getDisplayName()
-                    + "</white> via /upgrades</gray>"));
-        } else if (maxTier > 0) {
-            lore.add(plugin.getChatRenderer().parse("<gray>Tier: <green>" + currentTier + "/" + maxTier + "</green></gray>"));
-            lore.add("");
-            lore.add(plugin.getChatRenderer().parse("<green>MAX TIER</green>"));
+        if (slot == LoadoutSlot.OFFHAND) {
+            plugin.getChatRenderer().setDisplayName(meta, "<yellow>Drop item here</yellow>");
+            plugin.getChatRenderer().setLore(meta, List.of(
+                    "", "<gray>Click or drag an item onto this slot</gray>"));
         } else {
-            lore.add("");
-            lore.add(plugin.getChatRenderer().parse("<dark_gray>No tiers available.</dark_gray>"));
+            plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
+            plugin.getChatRenderer().setLore(meta, List.of(
+                    "", "<gray>Drop an item here</gray>"));
         }
-
-        plugin.getChatRenderer().setLore(meta, lore);
-        item.setItemMeta(meta);
-        return tagAsPlaceholder(item, slot);
-    }
-
-    private static ItemStack createEmptyCellPlaceholder(ExtractionPlugin plugin, LoadoutSlot slot) {
-        ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta == null)
-            return tagAsPlaceholder(item, slot);
-
-        plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
-
-        List<String> lore = new ArrayList<>();
-        lore.add("");
-        lore.add(plugin.getChatRenderer().parse("<dark_gray>Empty - place an item</dark_gray>"));
-        plugin.getChatRenderer().setLore(meta, lore);
 
         item.setItemMeta(meta);
         return tagAsPlaceholder(item, slot);

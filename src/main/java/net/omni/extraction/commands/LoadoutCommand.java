@@ -34,7 +34,7 @@ public class LoadoutCommand implements CommandExecutor {
             return true;
         }
 
-        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
         plugin.getGuiManager().openLoadout(player, data);
         plugin.sendMessage(player, Messages.LOADOUT_OPENED.toString());
         return true;

@@ -4,12 +4,16 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.messages.MessageUtil;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.loadout.LoadoutGuiHolder;
+import net.omni.extraction.update.UpgradeGuiHolder;
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.jspecify.annotations.NonNull;
 
@@ -144,6 +148,17 @@ public class ExtractionCommand implements CommandExecutor {
 
         if (plugin.getConfigUtil().isScoreboardEnabled())
             plugin.getScoreboardManager().start();
+
+        // Close any open loadout/upgrade GUIs FIRST so close-time sync (and
+        // the upgrade-GUI tier save) runs with real data, then drop the cached
+        // GUI objects so the next open reflects any size/title/layout changes.
+        for (World world : plugin.getServer().getWorlds()) {
+            for (Player player : world.getPlayers()) {
+                Inventory top = player.getOpenInventory().getTopInventory();
+                if (top.getHolder() instanceof LoadoutGuiHolder || top.getHolder() instanceof UpgradeGuiHolder)
+                    player.closeInventory();
+            }
+        }
 
         plugin.getGuiManager().clearAll();
         plugin.sendMessage(sender, Messages.RELOADED.toString());

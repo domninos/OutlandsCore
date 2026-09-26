@@ -32,6 +32,7 @@ public enum Messages {
     EXTRACT_LOOT_STORED("extract.loot-stored", "<gray>Your loot has been stored. Use <white>/extraction withdraw</white> to claim it.</gray>"),
 
     LOADOUT_OPENED("loadout.opened", "<gray>Opened your Extraction loadout.</gray>"),
+    LOADOUT_INVENTORY_OVERFLOW("loadout.inventory-overflow", "<gold>%count% loadout item(s) exceeded your 36-slot inventory and were moved to <white>/extraction storage</white>.</gold>"),
     LOADOUT_UPGRADED("loadout.upgraded", "<green>Upgraded %slot% to %tier%!</green>"),
     LOADOUT_MAX_TIER("loadout.max-tier", "<yellow>%slot% is already at maximum tier.</yellow>"),
     LOADOUT_INVALID_TOKEN("loadout.invalid-token", "<red>This upgrade token is not valid for %slot%.</red>"),
@@ -57,6 +58,7 @@ public enum Messages {
 
     AREA_ENTERED("area.entered", "<gray>You entered <white>%area%</white>. Clear the mobs!</gray>"),
     AREA_CLEARED("area.cleared", "<green>Area <white>%area%</white> cleared! Loot is waiting in the chest.</green>"),
+    AREA_CLEAR_CANCELLED("area.cleared-cancelled", "<gold>Area clear in <white>%area%</white> was cancelled because its mobs despawned. The area has been reset — enter again to restart it.</gold>"),
     AREA_ALREADY_ACTIVE("area.already-active", "<red>An area clear is already in progress.</red>"),
     AREA_NOT_READY("area.not-ready", "<red>This area is unavailable for another %time%.</red>"),
     AREA_COOLDOWN_BLOCK("area.cooldown-block", "<red><white>%area%</white> is not ready. Try again in <white>%time%</white>.</red>"),

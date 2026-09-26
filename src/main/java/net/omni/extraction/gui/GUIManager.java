@@ -38,16 +38,14 @@ public class GUIManager {
             return;
 
         gui.syncToData(data);
-
-        if (gui.consumeUpdated())
-            plugin.getPlayerDataManager().savePlayer(data.getUuid());
+        plugin.getPlayerDataManager().savePlayer(data.getUuid());
     }
 
-    public void notifyLoadoutInteraction(Player player) {
+    public void markLoadoutTouched(Player player, int cell) {
         LoadoutGUI gui = findLoadout(player);
 
         if (gui != null)
-            gui.markUpdated();
+            gui.markTouched(cell);
     }
 
     private LoadoutGUI findLoadout(Player player) {

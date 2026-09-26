@@ -2,6 +2,7 @@ package net.omni.extraction.listeners;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.data.PlayerData;
+import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
@@ -34,7 +35,6 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 public class PlayerListener implements Listener {
@@ -120,13 +120,23 @@ public class PlayerListener implements Listener {
         if (!(event.getPlayer() instanceof Player player))
             return;
 
-        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+        PlayerDataManager dataManager = plugin.getPlayerDataManager();
+        PlayerData data = dataManager.getOrLoadSync(player.getUniqueId());
 
-        if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder)
+        if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder) {
             plugin.getGuiManager().refreshUpgrade(player, data);
-        else if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
+            dataManager.savePlayer(data.getUuid());
+        } else if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
+            ItemStack cursor = player.getItemOnCursor();
+            if (cursor != null && LoadoutGUI.isPlaceholder(cursor)) {
+                player.setItemOnCursor(null);
+                player.updateInventory();
+            }
             plugin.getGuiManager().syncLoadout(player, data);
             plugin.getGuiManager().refreshLoadout(player, data);
+        } else if (event.getView().getTopInventory().getHolder() instanceof StorageHolder storage) {
+            plugin.getLootManager().syncStorageFromInventory(data, storage.page(),
+                    event.getView().getTopInventory());
         }
     }
 
@@ -155,18 +165,23 @@ public class PlayerListener implements Listener {
         }
 
         if (event.getView().getTopInventory().getHolder() instanceof StorageHolder storage) {
-            event.setCancelled(true);
-            handleStorageClick(player, event, storage);
+            if (isStorageButtonSlot(event.getRawSlot())) {
+                event.setCancelled(true);
+                handleStorageClick(player, event, storage);
+            }
             return;
         }
 
         if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
             handleLoadoutClick(player, event);
-            plugin.getGuiManager().notifyLoadoutInteraction(player);
         }
     }
 
     private void handleUpgradeClick(Player player, InventoryClickEvent event) {
+        PlayerDataManager dataManager = plugin.getPlayerDataManager();
+        if (!dataManager.isLoaded(player.getUniqueId()))
+            dataManager.getOrLoadSync(player.getUniqueId());
+
         LoadoutSlot slot = UpgradeGUI.getSlotFromClick(plugin, event.getRawSlot());
 
         if (slot == null)
@@ -189,16 +204,19 @@ public class PlayerListener implements Listener {
         int rawSlot = event.getRawSlot();
 
         if (rawSlot == LootManager.SLOT_PREV) {
+            syncStorage(player, holder, event);
             plugin.getLootManager().openStorageGUI(player, holder.page() - 1);
             return;
         }
 
         if (rawSlot == LootManager.SLOT_NEXT) {
+            syncStorage(player, holder, event);
             plugin.getLootManager().openStorageGUI(player, holder.page() + 1);
             return;
         }
 
         if (rawSlot == LootManager.SLOT_CLAIM_ALL) {
+            syncStorage(player, holder, event);
             handleClaimAll(player);
             return;
         }
@@ -209,41 +227,22 @@ public class PlayerListener implements Listener {
         }
 
         if (rawSlot == LootManager.SLOT_DISCARD_ALL) {
+            syncStorage(player, holder, event);
             plugin.getLootManager().claimAll(player.getUniqueId());
             plugin.getLootManager().clearPage(player.getUniqueId());
             plugin.sendMessage(player, Messages.WITHDRAW_EMPTY.toString());
             player.closeInventory();
             return;
         }
+    }
 
-        if (rawSlot >= 0 && rawSlot < LootManager.PAGE_SIZE) {
-            int index = holder.page() * LootManager.PAGE_SIZE + rawSlot;
-            PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
-            List<ItemStack> loot = data.getExtractedLoot();
+    private boolean isStorageButtonSlot(int rawSlot) {
+        return rawSlot >= LootManager.SLOT_PREV && rawSlot <= LootManager.SLOT_DISCARD_ALL;
+    }
 
-            if (index >= loot.size())
-                return;
-
-            ItemStack item = loot.get(index);
-            if (item == null)
-                return;
-
-            Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
-
-            if (!leftover.isEmpty()) {
-                plugin.sendMessage(player, Messages.WITHDRAW_INVENTORY_FULL.toString());
-                return;
-            }
-
-            plugin.sendMessage(player, Messages.WITHDRAW_CLAIMED
-                    .replace(
-                            "item", item.getType().name(),
-                            "amount", String.valueOf(item.getAmount())
-                    ));
-
-            plugin.getLootManager().removeLootItem(player.getUniqueId(), index);
-            plugin.getLootManager().openStorageGUI(player);
-        }
+    private void syncStorage(Player player, StorageHolder holder, InventoryClickEvent event) {
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        plugin.getLootManager().syncStorageFromInventory(data, holder.page(), event.getView().getTopInventory());
     }
 
     private void handleLoadoutClick(Player player, InventoryClickEvent event) {
@@ -252,8 +251,13 @@ public class PlayerListener implements Listener {
             return;
         }
 
+        PlayerDataManager dataManager = plugin.getPlayerDataManager();
+        if (!dataManager.isLoaded(player.getUniqueId()))
+            dataManager.getOrLoadSync(player.getUniqueId());
+
         switch (event.getAction()) {
-            case DROP_ALL_SLOT, DROP_ONE_SLOT, DROP_ALL_CURSOR, DROP_ONE_CURSOR -> {
+            case DROP_ALL_SLOT, DROP_ONE_SLOT, DROP_ALL_CURSOR, DROP_ONE_CURSOR,
+                    HOTBAR_SWAP, HOTBAR_MOVE_AND_READD -> {
                 event.setCancelled(true);
                 return;
             }
@@ -271,29 +275,46 @@ public class PlayerListener implements Listener {
             return;
         }
 
+        ItemStack current = event.getClickedInventory().getItem(event.getRawSlot());
+
+        if (LoadoutGUI.isPlaceholder(current)) {
+            ItemStack cursor = event.getCursor();
+
+            if (cursor != null && cursor.getType() != Material.AIR) {
+                event.setCancelled(true);
+                event.getClickedInventory().setItem(event.getRawSlot(), cursor.clone());
+                event.setCursor(null);
+                player.updateInventory();
+                plugin.getGuiManager().markLoadoutTouched(player, event.getRawSlot());
+                return;
+            }
+
+            // Empty cursor on a placeholder pane.
+            String paneSlot = LoadoutGUI.getPlaceholderSlot(current);
+
+            // The off-hand pane is a fixed drop-here target: it can never be picked up.
+            if ("offhand".equalsIgnoreCase(paneSlot)) {
+                event.setCancelled(true);
+                return;
+            }
+
+            // Charm/artifact/pet panes are movable markers: vanilla picks the pane up
+            // and the cell still counts as touched so it does not regenerate here.
+            plugin.getGuiManager().markLoadoutTouched(player, event.getRawSlot());
+        }
+
         LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, event.getRawSlot());
 
         if (slot != null && (slot.isArmor() || slot == LoadoutSlot.OFFHAND)) {
             ItemStack cursor = event.getCursor();
 
-            if (cursor == null || cursor.getType() == Material.AIR) {
+            if (cursor != null && cursor.getType() != Material.AIR
+                    && slot.isArmor() && !isMatchingArmor(cursor, slot)) {
                 event.setCancelled(true);
                 return;
             }
 
-            if (slot.isArmor() && !isMatchingArmor(cursor, slot)) {
-                event.setCancelled(true);
-                return;
-            }
-
-            ItemStack current = event.getClickedInventory().getItem(event.getRawSlot());
-
-            if (LoadoutGUI.isPlaceholder(current)) {
-                event.setCancelled(true);
-                event.getClickedInventory().setItem(event.getRawSlot(), cursor.clone());
-                event.setCursor(null);
-                player.updateInventory();
-            }
+            plugin.getGuiManager().markLoadoutTouched(player, event.getRawSlot());
             return;
         }
 
@@ -302,9 +323,7 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        if (slot != null && slot.isCustomizableCell())
-            plugin.getPlayerDataManager().getOrCreate(player.getUniqueId())
-                    .setCellCustomized(event.getRawSlot(), true);
+        plugin.getGuiManager().markLoadoutTouched(player, event.getRawSlot());
     }
 
     private void buyUpgradeSlot(Player player, LoadoutSlot slot) {
@@ -437,17 +456,25 @@ public class PlayerListener implements Listener {
         }
 
         if (event.getView().getTopInventory().getHolder() instanceof StorageHolder) {
-            event.setCancelled(true);
+            for (int rawSlot : event.getRawSlots()) {
+                if (isStorageButtonSlot(rawSlot)) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
             return;
         }
 
         if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
             handleLoadoutDrag(player, event);
-            plugin.getGuiManager().notifyLoadoutInteraction(player);
         }
     }
 
     private void handleUpgradeDrag(Player player, InventoryDragEvent event) {
+        PlayerDataManager dataManager = plugin.getPlayerDataManager();
+        if (!dataManager.isLoaded(player.getUniqueId()))
+            dataManager.getOrLoadSync(player.getUniqueId());
+
         for (int rawSlot : event.getRawSlots()) {
             LoadoutSlot slot = UpgradeGUI.getSlotFromClick(plugin, rawSlot);
 
@@ -469,6 +496,10 @@ public class PlayerListener implements Listener {
     private void handleLoadoutDrag(Player player, InventoryDragEvent event) {
         Inventory top = event.getView().getTopInventory();
 
+        PlayerDataManager dataManager = plugin.getPlayerDataManager();
+        if (!dataManager.isLoaded(player.getUniqueId()))
+            dataManager.getOrLoadSync(player.getUniqueId());
+
         for (int rawSlot : event.getRawSlots()) {
             if (rawSlot >= top.getSize()) {
                 event.setCancelled(true);
@@ -488,10 +519,20 @@ public class PlayerListener implements Listener {
             }
         }
 
-        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+        event.setCancelled(true);
 
-        for (int rawSlot : event.getRawSlots())
-            data.setCellCustomized(rawSlot, true);
+        for (int rawSlot : event.getRawSlots()) {
+            ItemStack newItem = event.getNewItems().get(rawSlot);
+
+            if (newItem == null || newItem.getType() == Material.AIR)
+                top.setItem(rawSlot, null);
+            else
+                top.setItem(rawSlot, newItem);
+
+            plugin.getGuiManager().markLoadoutTouched(player, rawSlot);
+        }
+
+        player.updateInventory();
     }
 
     private ItemStack resolveDragToken(InventoryDragEvent event, int rawSlot) {

@@ -25,6 +25,7 @@ extract:
   loot-stored: "<gray>Your loot has been stored. Use <white>/extraction withdraw</white> to claim it.</gray>"
 loadout:
   opened: "<gray>Opened your Extraction loadout.</gray>"
+  inventory-overflow: "<gold>%count% loadout item(s) exceeded your 36-slot inventory and were moved to <white>/extraction storage</white>.</gold>"
   upgraded: "<green>Upgraded %slot% to %tier%!</green>"
   max-tier: "<yellow>%slot% is already at maximum tier.</yellow>"
   invalid-token: "<red>This upgrade token is not valid for %slot%.</red>"
@@ -51,6 +52,7 @@ withdraw:
 area:
   entered: "<gray>You entered <white>%area%</white>. Clear the mobs!</gray>"
   cleared: "<green>Area <white>%area%</white> cleared! Loot is waiting in the chest.</green>"
+  cleared-cancelled: "<gold>Area clear in <white>%area%</white> was cancelled because its mobs despawned. The area has been reset — enter again to restart it.</gold>"
   already-active: "<red>An area clear is already in progress.</red>"
   not-ready: "<red>This area is unavailable for another %time%.</red>"
   cooldown-block: "<red><white>%area%</white> is not ready. Try again in <white>%time%</white>.</red>"

@@ -75,8 +75,11 @@ public class UpgradeGUI {
         ItemStack item;
 
         if (tier != null && tier.getMaterial() != null)
-            item = new ItemStack(tier.getMaterial());
+            item = plugin.getLoadoutManager().buildTierItem(tier);
         else
+            item = new ItemStack(Material.BARRIER);
+
+        if (item == null)
             item = new ItemStack(Material.BARRIER);
 
         ItemMeta meta = item.getItemMeta();

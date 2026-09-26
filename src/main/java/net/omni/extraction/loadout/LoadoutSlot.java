@@ -45,6 +45,10 @@ public enum LoadoutSlot {
         return !isArmor() && this != OFFHAND;
     }
 
+    public boolean isPlaceholderSlot() {
+        return this == CHARM || this == ARTIFACT || this == PET || this == OFFHAND;
+    }
+
     public int getInventorySlot() {
         return switch (this) {
             case HELMET -> 39;

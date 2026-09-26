@@ -80,6 +80,8 @@ public final class ExtractionPlugin extends JavaPlugin {
      - fix /extraction withdraw/storage when clicked = shouldn't do anything. move the items freely.
      - once a run is finished, make /extraction withdraw/storage the same. all collected loot must be inside it.
      -
+     - only ever claim items on /extraction storage when they're not in a run or outside extraction
+     -
      - Boss Creator
         Create bosses with:
         Health
@@ -87,6 +89,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         Abilities
         Loot
      -
+     - fix mobs despawning chances (cancel clear, but no loot reward)
      -
      -
      - add a hologram when entering an area (should show the mob/boss count + level)
@@ -171,6 +174,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        getLogger().info("Enabled Extraction v" + getPluginMeta().getVersion()
+                + " (jar: " + getFile().getName() + ", last-modified: "
+                + java.time.Instant.ofEpochMilli(getFile().lastModified()) + ")");
+
         initChatRenderer();
 
         this.messagesConfig = new ExtractionConfig(this, "messages.yml");

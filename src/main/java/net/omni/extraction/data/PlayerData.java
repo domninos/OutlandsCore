@@ -23,6 +23,7 @@ public class PlayerData {
     private boolean pendingReturn;
     private boolean pendingDeathRestore;
     private boolean dirty;
+    private boolean loaded;
 
     public PlayerData(UUID uuid) {
         this.uuid = uuid;
@@ -41,6 +42,20 @@ public class PlayerData {
         this.pendingReturn = false;
         this.pendingDeathRestore = false;
         this.dirty = false;
+        this.loaded = false;
+    }
+
+    /**
+     * Whether this instance reflects the persisted database row. Instances
+     * minted by {@code getOrCreate} start unloaded and are populated by
+     * {@code loadPlayer} / {@code getOrLoadSync} before live data is used.
+     */
+    public boolean isLoaded() {
+        return loaded;
+    }
+
+    public void setLoaded(boolean loaded) {
+        this.loaded = loaded;
     }
 
     public boolean isDirty() {

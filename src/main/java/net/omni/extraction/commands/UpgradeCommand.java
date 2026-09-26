@@ -30,7 +30,7 @@ public class UpgradeCommand implements CommandExecutor {
             return true;
         }
 
-        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
         plugin.getGuiManager().openUpgrade(player, data);
         plugin.sendMessage(player, Messages.UPGRADE_OPENED.toString());
         return true;

@@ -73,6 +73,32 @@ public class LootManager {
         pages.remove(uuid);
     }
 
+    public void syncStorageFromInventory(PlayerData data, int page, Inventory inv) {
+        int start = page * PAGE_SIZE;
+
+        List<ItemStack> pageItems = new ArrayList<>();
+        for (int i = 0; i < PAGE_SIZE; i++) {
+            ItemStack item = inv.getItem(i);
+            if (item != null)
+                pageItems.add(item);
+        }
+
+        List<ItemStack> existing = data.getExtractedLoot();
+        List<ItemStack> rebuilt = new ArrayList<>();
+
+        if (start > 0)
+            rebuilt.addAll(existing.subList(0, Math.min(start, existing.size())));
+
+        rebuilt.addAll(pageItems);
+
+        int end = Math.min(start + PAGE_SIZE, existing.size());
+        if (end < existing.size())
+            rebuilt.addAll(existing.subList(end, existing.size()));
+
+        data.setExtractedLoot(rebuilt);
+        playerDataManager.savePlayer(data.getUuid());
+    }
+
     public int getPages() {
         return pages.size();
     }

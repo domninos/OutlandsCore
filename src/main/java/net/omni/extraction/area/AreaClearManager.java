@@ -52,13 +52,14 @@ public class AreaClearManager {
     public void start() {
         stop();
 
-        if (plugin.getConfigUtil() == null || !plugin.getConfigUtil().isMobContainmentEnabled()) return;
+        if (plugin.getConfigUtil() == null) return;
 
         long ticks = Math.max(1, plugin.getConfigUtil().getMobContainmentCheckTicks());
 
         containmentTask = new BukkitRunnable() {
             @Override
             public void run() {
+                scanStaleSessions();
                 containMobs();
             }
         }.runTaskTimer(plugin, ticks, ticks);
@@ -72,7 +73,10 @@ public class AreaClearManager {
     }
 
     private void containMobs() {
-        double margin = plugin.getConfigUtil() == null ? 0 : plugin.getConfigUtil().getMobContainmentMargin();
+        if (plugin.getConfigUtil() == null || !plugin.getConfigUtil().isMobContainmentEnabled())
+            return;
+
+        double margin = plugin.getConfigUtil().getMobContainmentMargin();
 
         for (AreaClearSession session : sessions.values()) {
             for (UUID mobId : session.getMobs()) {
@@ -88,6 +92,83 @@ public class AreaClearManager {
 
                 if (origin != null) entity.teleport(origin);
             }
+        }
+    }
+
+    /**
+     * Cancels any active clear whose mobs can no longer finish it: a mob that
+     * despawned without dying (natural despawn after players leave, chunk unload,
+     * etc.) leaves a stale UUID in the session — the boss bar can never reach 0,
+     * {@link #completeClear} never runs, and the area stays locked in
+     * {@link AreaState#IN_PROGRESS} forever. Any missing mob bricks the clear, so
+     * the whole session is cancelled and the area returned to READY.
+     */
+    private void scanStaleSessions() {
+        List<AreaClearSession> stale = null;
+
+        for (AreaClearSession session : sessions.values()) {
+            if (session.getMobs().isEmpty())
+                continue;
+
+            boolean missing = false;
+
+            for (UUID mobId : session.getMobs()) {
+                if (Bukkit.getEntity(mobId) == null) {
+                    missing = true;
+                    break;
+                }
+            }
+
+            if (missing) {
+                if (stale == null) stale = new ArrayList<>();
+                stale.add(session);
+            }
+        }
+
+        if (stale == null)
+            return;
+
+        for (AreaClearSession session : stale)
+            cancelSession(session, true);
+    }
+
+    /**
+     * Removes an active clear, cleans up its mobs/boss bar/loot chests and returns
+     * the area to READY so players can start a fresh clear. When {@code notifyOwner}
+     * is true the session owner is told the clear was cancelled (used for stale
+     * despawned sessions; admin resets pass false).
+     */
+    private void cancelSession(AreaClearSession session, boolean notifyOwner) {
+        Area area = session.getArea();
+
+        sessions.remove(area.getName().toLowerCase(Locale.ROOT));
+        mobSessions.entrySet().removeIf(entry -> entry.getValue() == session);
+
+        for (UUID mobId : new HashSet<>(session.getMobs())) {
+            Entity entity = Bukkit.getEntity(mobId);
+
+            if (entity != null)
+                entity.remove();
+
+            mobSessions.remove(mobId);
+        }
+
+        if (session.getBossBar() != null) {
+            for (Player player : Bukkit.getOnlinePlayers())
+                player.hideBossBar(session.getBossBar());
+        }
+
+        removeSessionChests(session);
+
+        area.setState(AreaState.READY);
+        area.setUnavailableUntil(0);
+        areaManager.save(area);
+
+        if (notifyOwner) {
+            Player owner = Bukkit.getPlayer(session.getOwner());
+
+            if (owner != null)
+                plugin.sendMessage(owner, Messages.AREA_CLEAR_CANCELLED.replace("area", area.getName()));
         }
     }
 
@@ -684,25 +765,12 @@ public class AreaClearManager {
     }
 
     public boolean cancelClear(Area area) {
-        AreaClearSession session = sessions.remove(area.getName().toLowerCase(Locale.ROOT));
+        AreaClearSession session = sessions.get(area.getName().toLowerCase(Locale.ROOT));
 
-        if (session == null) return false;
+        if (session == null)
+            return false;
 
-        for (UUID mobId : new HashSet<>(session.getMobs())) {
-            Entity entity = Bukkit.getEntity(mobId);
-
-            if (entity != null)
-                entity.remove();
-
-            mobSessions.remove(mobId);
-        }
-
-        if (session.getBossBar() != null) {
-            for (Player player : Bukkit.getOnlinePlayers())
-                player.hideBossBar(session.getBossBar());
-        }
-
-        removeSessionChests(session);
+        cancelSession(session, false);
         return true;
     }
 
