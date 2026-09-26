@@ -3,6 +3,7 @@ package net.omni.extraction.config;
 import net.omni.extraction.ExtractionPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -156,6 +157,9 @@ public class ConfigUtil {
     private int hologramsUpdateTicks;
     private List<String> hologramLines;
 
+    private List<String> containers;
+    private List<String> lootChestHologram;
+
     private int lootDefaultItemsPerChest;
     private String lootTokenItemMaterial;
     private String lootTokenItemName;
@@ -172,6 +176,8 @@ public class ConfigUtil {
         this.defaultLoadoutTiers = new HashMap<>();
         this.scoreboardLines = new ArrayList<>();
         this.hologramLines = new ArrayList<>();
+        this.containers = new ArrayList<>();
+        this.lootChestHologram = new ArrayList<>();
     }
 
     public void reloadConfig() {
@@ -186,6 +192,8 @@ public class ConfigUtil {
         spawnLocation = null;
         scoreboardLines = new ArrayList<>();
         hologramLines = new ArrayList<>();
+        containers = new ArrayList<>();
+        lootChestHologram = new ArrayList<>();
     }
 
     public void load() {
@@ -242,6 +250,7 @@ public class ConfigUtil {
         loadActionbar(savedDefaults);
         loadHolograms(savedDefaults);
         loadLoot(savedDefaults);
+        loadContainers(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
 
@@ -554,6 +563,26 @@ public class ConfigUtil {
         this.lootTokenItemName = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_NAME, "<gold>Extraction Token</gold>", savedDefaults);
         this.lootTimeItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_MATERIAL, "CLOCK", savedDefaults);
         this.lootTimeItemName = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_NAME, "<yellow>Extra Time (+%time% minutes)</yellow>", savedDefaults);
+        this.lootChestHologram = getAndDefaultStringList(ConfigKeys.LOOT_CHEST_HOLOGRAM, List.of(
+                "<yellow><bold>Loot</bold></yellow>"
+        ), savedDefaults);
+    }
+
+    private void loadContainers(AtomicInteger savedDefaults) {
+        this.containers = getAndDefaultStringList(ConfigKeys.CONTAINERS, List.of(
+                "CHEST",
+                "TRAPPED_CHEST",
+                "BARREL",
+                "DISPENSER",
+                "DROPPER",
+                "HOPPER",
+                "FURNACE",
+                "BLAST_FURNACE",
+                "SMOKER",
+                "SHULKER_BOX"
+        ), savedDefaults);
+
+        net.omni.extraction.area.AreaChestLocation.refreshContainers(containers);
     }
 
     private void loadAreaEditor(AtomicInteger savedDefaults) {
@@ -1243,6 +1272,36 @@ public class ConfigUtil {
 
     public List<String> getHologramLines() {
         return hologramLines;
+    }
+
+    public List<String> getContainers() {
+        return containers;
+    }
+
+    public boolean isContainerMaterial(Material material) {
+        if (material == null)
+            return false;
+
+        String name = material.name();
+
+        for (String entry : containers) {
+            if (entry == null || entry.isBlank())
+                continue;
+
+            String trimmed = entry.trim();
+
+            if (trimmed.endsWith("_SHULKER_BOX"))
+                return name.endsWith("_SHULKER_BOX");
+
+            if (name.equalsIgnoreCase(trimmed))
+                return true;
+        }
+
+        return false;
+    }
+
+    public List<String> getLootChestHologram() {
+        return lootChestHologram;
     }
 
     public boolean isScoreboardOnlyInWorld() {

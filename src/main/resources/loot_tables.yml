@@ -19,6 +19,10 @@
 # Optional icon/display-name/lore fields are used by the wand chest picker
 # (SPAWN/CHEST editor). Without them the picker falls back to the
 # area-editor.chest-icon-* config and this table's name.
+#
+# Optional hologram: list of MiniMessage lines shown above every spawned loot
+# chest that uses this table (DecentHolograms required). Chests whose table has
+# no hologram fall back to loot.chest-hologram in config.yml.
 Easy:
   items-per-chest: 5
   # Picker icon (Paper material name)
@@ -28,6 +32,10 @@ Easy:
   # Lore shown in the picker (MiniMessage supported)
   lore:
     - "<gray>Safe picks for a warm-up run.</gray>"
+  # Hologram shown above loot chests that roll from this table
+  hologram:
+    - "<yellow><bold>Easy Loot</bold></yellow>"
+    - "<gray>Open the chest below</gray>"
   entries:
     - type: IRON_INGOT
       amount: 8

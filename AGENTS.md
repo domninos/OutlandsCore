@@ -77,6 +77,10 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   Loot chests are **per-area lists** (`Area.chestLocations`, `loot.chest-locations` in the area file; legacy single
   `loot.chest-location` migrates on load). Each chest has an optional `type` = a loot table id (`AreaChestLocation.lootType`)
   and a stored container `Material` (`material:`, default CHEST; saved only when non-CHEST).
+  The accepted container materials come from config.yml `containers` (`ConfigKeys.CONTAINERS`, `ConfigUtil.isContainerMaterial` —
+  a `SHULKER_BOX` entry matches every `*_SHULKER_BOX`); `AreaChestLocation.refreshContainers` seeds the hardcoded
+  `CONTAINER_TYPES` set from it on startup/reload, so wand gating and fill/preserve detection share one source. The CHEST-mode
+  wand rejects any left-clicked block not in the list (`area.not-container`).
   `buildLoot(area, chestType)` falls back to the area's loot table then legacy entries, rolling a fresh full batch per chest.
   Loot-table entries roll by weighted chance (`LootEntry.weight`) only — the bundled `Easy` table uses small
   `amount`s to avoid stack floods; `UPGRADE` and `TIME` are single items per roll, and `randomTimeKey` picks a
@@ -107,6 +111,11 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   `AreaSpawnDefinition.getLevel()`), and live `%mobs%`/`%bosses%`/`%total%` during an active
   `AreaClearSession` (`getMobs()`−`getBossMobs()`, `getBossMobs()`, `getTotalMobs()`) falling back to configured
   counts when idle. Config `holograms.enabled/update-ticks/lines` in config.yml (`ConfigKeys.HOLOGRAMS_*`).
+  Also owns the per-loot-chest holograms: `createChestHologram(name, anchor, lootType)` spawns a hologram
+  (`extraction_chest_<world>_<x>_<y>_<z>`) one block above a spawned loot container using the effective loot
+  table's `hologram:` lines (MiniMessage, same legacy conversion) falling back to config `loot.chest-hologram`;
+  `removeChestHologram` tears it down; `reload()`/`clearAll()` reapply/prune them via
+  `AreaClearManager.getLiveChestHolograms()`.
   `ExtractionPlugin` constructs after `areaClearManager`, `start()`s after `actionBarManager`, `stop()`s on disable;
   `/extraction reload` → `hologramManager.reload()`.
 - `scoreboard/ScoreboardManager.java`, `ScoreboardListener.java`, `PlaceholderValues.java`: internal-only
@@ -339,6 +348,16 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   `saveToFile=false`, named `extraction_area_<lowercase>`. Guarded by `DecentHologramsAPI.isRunning()` +
   `isPluginEnabled("DecentHolograms")` (missing plugin = silent no-op). pom gained the `codemc` repo
   (`repo.codemc.io/repository/maven-public`) to resolve DH's runtime `de.tr7zw:item-nbt-api`.
+- Container config + loot-chest holograms: config.yml `containers` is now the single source of truth for accepted
+  container materials (`AreaChestLocation.refreshContainers` re-seeds `CONTAINER_TYPES` on load/reload; a
+  `SHULKER_BOX` entry matches every `*_SHULKER_BOX`). The CHEST-mode wand rejects left-clicked blocks not in the
+  list (`area.not-container`) before opening the picker, and the same list drives fill/preserve detection.
+  Spawned loot chests get a DecentHolograms hologram one block above the container
+  (`HologramManager.createChestHologram`, name `extraction_chest_<world>_<x>_<y>_<z>`): lines come from the
+  effective loot table's `hologram:` (loot_tables.yml) falling back to config `loot.chest-hologram` (empty = none).
+  `AreaClearManager.createLootChests` creates them at clear completion and `removeChest` tears them down on
+  redeem/despawn/cancel/shutdown (per half-block association in `AreaClearSession` so a double chest shares one
+  hologram); `/extraction reload` re-applies them from `getLiveChestHolograms()`.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

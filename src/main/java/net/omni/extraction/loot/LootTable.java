@@ -12,6 +12,7 @@ public class LootTable {
     private String iconMaterial;
     private String displayName;
     private List<String> lore;
+    private List<String> hologram;
 
     public LootTable(String name) {
         this.name = name;
@@ -20,6 +21,7 @@ public class LootTable {
         this.iconMaterial = null;
         this.displayName = null;
         this.lore = null;
+        this.hologram = null;
     }
 
     public String getName() {
@@ -56,6 +58,14 @@ public class LootTable {
 
     public void setLore(List<String> lore) {
         this.lore = lore;
+    }
+
+    public List<String> getHologram() {
+        return hologram;
+    }
+
+    public void setHologram(List<String> hologram) {
+        this.hologram = hologram;
     }
 
     public List<LootEntry> getEntries() {

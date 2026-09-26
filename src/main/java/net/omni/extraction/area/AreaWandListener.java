@@ -133,6 +133,11 @@ public class AreaWandListener implements Listener {
             return;
         }
 
+        if (!plugin.getConfigUtil().isContainerMaterial(block.getType())) {
+            plugin.sendMessage(player, Messages.AREA_NOT_CONTAINER.replace("block", block.getType().name()));
+            return;
+        }
+
         plugin.getAreaEditorManager().openChestEditor(player, area, block.getLocation());
     }
 

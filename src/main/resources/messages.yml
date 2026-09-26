@@ -92,6 +92,7 @@ area:
   point-removed: "<green>Removed the nearest spawn point.</green>"
   point-none: "<red>No spawn point found nearby.</red>"
   not-bound: "<red>This wand is not bound to an area. Use <white>/areas wand {name}</white>.</red>"
+  not-container: "<red>That block (<white>%block%</white>) is not a container. Use a block listed in the <white>containers</white> config.</red>"
   edit-locked: "<red>You cannot edit <white>%area%</white> while a clear is active.</red>"
   renamed: "<green>Renamed area <white>%old%</white> to <white>%new%</white>.</green>"
   resized: "<green>Resized area <white>%area%</white>.</green>"

@@ -44,6 +44,8 @@ public class LootTableManager {
             table.setDisplayName(section.getString("display-name"));
             if (section.contains("lore"))
                 table.setLore(section.getStringList("lore"));
+            if (section.contains("hologram"))
+                table.setHologram(section.getStringList("hologram"));
 
             for (Map<?, ?> map : section.getMapList("entries")) {
                 Object type = map.get("type");
@@ -133,6 +135,9 @@ public class LootTableManager {
 
             if (table.getLore() != null)
                 config.set(base + "lore", table.getLore());
+
+            if (table.getHologram() != null)
+                config.set(base + "hologram", table.getHologram());
 
             List<Map<String, Object>> entries = new ArrayList<>();
 

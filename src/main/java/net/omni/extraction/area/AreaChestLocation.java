@@ -3,14 +3,16 @@ package net.omni.extraction.area;
 import org.bukkit.Location;
 import org.bukkit.Material;
 
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 public class AreaChestLocation {
 
     public static final Material DEFAULT_CONTAINER = Material.CHEST;
 
-    private static final Set<Material> CONTAINER_TYPES = new HashSet<>();
+    private static Set<Material> CONTAINER_TYPES = new HashSet<>();
 
     static {
         CONTAINER_TYPES.add(Material.CHEST);
@@ -26,6 +28,32 @@ public class AreaChestLocation {
         for (Material material : Material.values())
             if (material.name().endsWith("_SHULKER_BOX"))
                 CONTAINER_TYPES.add(material);
+    }
+
+    public static void refreshContainers(Collection<String> names) {
+        Set<Material> refreshed = new HashSet<>();
+
+        if (names != null) {
+            for (String name : names) {
+                if (name == null || name.isBlank())
+                    continue;
+
+                String entry = name.trim().toUpperCase(Locale.ROOT);
+
+                if (entry.endsWith("_SHULKER_BOX")) {
+                    for (Material material : Material.values())
+                        if (material.name().endsWith("_SHULKER_BOX"))
+                            refreshed.add(material);
+                    continue;
+                }
+
+                Material material = Material.matchMaterial(entry);
+                if (material != null)
+                    refreshed.add(material);
+            }
+        }
+
+        CONTAINER_TYPES = refreshed;
     }
 
     private Location location;

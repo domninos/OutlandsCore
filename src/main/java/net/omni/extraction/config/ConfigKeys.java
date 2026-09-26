@@ -151,6 +151,9 @@ public final class ConfigKeys {
     public static final String LOOT_TOKEN_ITEM_NAME = "loot.token-item-name";
     public static final String LOOT_TIME_ITEM_MATERIAL = "loot.time-item-material";
     public static final String LOOT_TIME_ITEM_NAME = "loot.time-item-name";
+    public static final String LOOT_CHEST_HOLOGRAM = "loot.chest-hologram";
+
+    public static final String CONTAINERS = "containers";
 
     public static final String MESSAGES_PREFIX = "messages.prefix";
 }

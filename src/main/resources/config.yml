@@ -483,8 +483,33 @@ loot:
   # Material/display name of the physical TOKENS loot item (credits balance on pickup)
   token-item-material: GOLD_INGOT
   token-item-name: "<gold>Extraction Token</gold>"
+  # Hologram line(s) shown above a spawned loot chest whose loot table has no
+  # "hologram:" section of its own (e.g. default area loot / legacy chests).
+  # Set to [] to disable the fallback (only tables that define a hologram get one).
+  # Uses DecentHolograms; the table's hologram takes precedence.
+  chest-hologram:
+    - "<yellow><bold>Loot</bold></yellow>"
 # Material/display name of the TIME loot item (right-click while in a run adds
 # time). Only used as a fallback when the time-loot section above is empty.
 # Supports the %time% placeholder; names without it get a "(+N minutes)" suffix.
 time-item-material: CLOCK
 time-item-name: "<yellow>Extra Time (+%time% minutes)</yellow>"
+
+# Container block materials accepted as loot chest locations by the CHEST-mode
+# wand (Material names, case-insensitive; e.g. CHEST, BARREL, ANVIL). The wand
+# only opens the loot-table picker when the left-clicked block matches this list.
+# The same list drives the hardcoded AreaChestLocation.isSupported set, i.e.
+# which pre-placed world containers are preserved/refilled during a clear (any
+# other block in a chest spot is replaced). Entries should be real inventory
+# containers. A "SHULKER_BOX" entry matches every "<color>_SHULKER_BOX" variant.
+containers:
+  - CHEST
+  - TRAPPED_CHEST
+  - BARREL
+  - DISPENSER
+  - DROPPER
+  - HOPPER
+  - FURNACE
+  - BLAST_FURNACE
+  - SMOKER
+  - SHULKER_BOX

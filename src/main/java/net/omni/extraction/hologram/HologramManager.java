@@ -8,8 +8,10 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
+import net.omni.extraction.area.AreaClearManager;
 import net.omni.extraction.area.AreaClearSession;
 import net.omni.extraction.area.AreaSpawnDefinition;
+import net.omni.extraction.loot.LootTable;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -18,11 +20,13 @@ import org.bukkit.scheduler.BukkitTask;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class HologramManager {
 
     private static final String HOLOGRAM_PREFIX = "extraction_area_";
+    private static final String CHEST_HOLOGRAM_PREFIX = "extraction_chest_";
 
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.builder()
             .hexColors()
@@ -79,6 +83,14 @@ public class HologramManager {
         stop();
         start();
         refreshAll();
+        reapplyChestHolograms();
+    }
+
+    private void reapplyChestHolograms() {
+        for (AreaClearManager.ChestHologram spec : plugin.getAreaClearManager().getLiveChestHolograms()) {
+            removeChestHologram(spec.name());
+            createChestHologram(spec.name(), spec.anchor(), spec.lootType());
+        }
     }
 
     public void clearAll() {
@@ -95,7 +107,75 @@ public class HologramManager {
             }
         }
 
+        for (AreaClearManager.ChestHologram spec : plugin.getAreaClearManager().getLiveChestHolograms())
+            removeChestHologram(spec.name());
+
         lastLocations.clear();
+    }
+
+    public static String chestHologramName(Location anchor) {
+        if (anchor == null || anchor.getWorld() == null)
+            return null;
+
+        return CHEST_HOLOGRAM_PREFIX + anchor.getWorld().getName().toLowerCase(Locale.ROOT)
+                + "_" + anchor.getBlockX()
+                + "_" + anchor.getBlockY()
+                + "_" + anchor.getBlockZ();
+    }
+
+    public boolean createChestHologram(String name, Location anchor, String lootType) {
+        if (name == null)
+            return false;
+
+        if (!available())
+            return false;
+
+        if (!plugin.getConfigUtil().isHologramsEnabled())
+            return false;
+
+        List<String> lines = chestHologramLines(lootType);
+        if (lines.isEmpty())
+            return false;
+
+        Location position = anchor == null || anchor.getWorld() == null
+                ? null : anchor.getBlock().getLocation().add(0.5, 1.0, 0.5);
+        if (position == null)
+            return false;
+
+        try {
+            if (DecentHologramsAPI.get().getHologramManager().containsHologram(name))
+                return true;
+
+            DHAPI.createHologram(name, position, false, lines);
+            return true;
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+    }
+
+    public void removeChestHologram(String name) {
+        if (name == null)
+            return;
+
+        if (!available())
+            return;
+
+        try {
+            if (DecentHologramsAPI.get().getHologramManager().containsHologram(name))
+                DHAPI.removeHologram(name);
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    private List<String> chestHologramLines(String lootType) {
+        if (lootType != null && !lootType.isBlank()) {
+            LootTable table = plugin.getLootTableManager().get(lootType);
+
+            if (table != null && table.getHologram() != null && !table.getHologram().isEmpty())
+                return table.getHologram();
+        }
+
+        return plugin.getConfigUtil().getLootChestHologram();
     }
 
     public boolean isAvailable() {
