@@ -152,6 +152,9 @@ public final class ConfigKeys {
     public static final String LOOT_TIME_ITEM_MATERIAL = "loot.time-item-material";
     public static final String LOOT_TIME_ITEM_NAME = "loot.time-item-name";
     public static final String LOOT_CHEST_HOLOGRAM = "loot.chest-hologram";
+    public static final String LOOT_CHEST_HOLOGRAM_ONGOING = "loot.chest-hologram.ongoing";
+    public static final String LOOT_CHEST_HOLOGRAM_READY = "loot.chest-hologram.ready";
+    public static final String LOOT_CHEST_HOLOGRAM_EMPTY = "loot.chest-hologram.empty";
 
     public static final String CONTAINERS = "containers";
 

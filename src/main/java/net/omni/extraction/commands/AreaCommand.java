@@ -2,6 +2,7 @@ package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.*;
+import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.integration.MythicMobsProvider;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.mobs.MobTemplate;
@@ -619,9 +620,13 @@ public class AreaCommand implements CommandExecutor {
         AreaChestLocation chest = chestLocations.get(index);
 
         if (args[3].equalsIgnoreCase("remove")) {
-            chestLocations.remove(index);
+            AreaChestLocation removed = chestLocations.remove(index);
             areaManager.markDirty(area);
             areaManager.save(area);
+
+            if (removed != null)
+                plugin.getHologramManager().removeChestHologram(HologramManager.chestHologramName(removed.getLocation()));
+
             plugin.sendMessage(sender, Messages.AREA_CHEST_REMOVED.replace("index", args[2], "area", area.getName()));
             return true;
         }
@@ -629,6 +634,7 @@ public class AreaCommand implements CommandExecutor {
         chest.setLootType(args[3]);
         areaManager.markDirty(area);
         areaManager.save(area);
+        plugin.getHologramManager().updateChestHologram(area, chest);
         plugin.sendMessage(sender, Messages.AREA_CHEST_TYPE_SET.replace("type", args[3], "index", args[2], "area", area.getName()));
         return true;
     }

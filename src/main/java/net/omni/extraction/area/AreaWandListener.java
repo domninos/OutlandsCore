@@ -1,6 +1,7 @@
 package net.omni.extraction.area;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -122,9 +123,12 @@ public class AreaWandListener implements Listener {
 
         if (sneaking) {
             double radius = plugin.getConfigUtil().getAreaOutlinePointRemoveRadius();
+            AreaChestLocation removed = area.removeNearestChestLocation(block.getLocation(), radius);
 
-            if (area.removeNearestChestLocation(block.getLocation(), radius)) {
+            if (removed != null) {
                 areaManager.markDirty(area);
+                plugin.getHologramManager().removeChestHologram(
+                        HologramManager.chestHologramName(removed.getLocation()));
                 plugin.sendMessage(player, Messages.AREA_POINT_REMOVED.toString());
             } else {
                 plugin.sendMessage(player, Messages.AREA_POINT_NONE.toString());

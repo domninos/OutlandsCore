@@ -69,6 +69,7 @@ public enum Messages {
     AREA_COOLDOWN_BLOCK("area.cooldown-block", "<red><white>%area%</white> is not ready. Try again in <white>%time%</white>.</red>"),
     AREA_NO_SPAWNS("area.no-spawns", "<red>This area has no configured spawns.</red>"),
     AREA_CHEST_LOCKED("area.chest-locked", "<red>This loot chest belongs to another player.</red>"),
+    AREA_CHEST_ONGOING("area.chest-ongoing", "<red>The area is still being cleared - loot is not available yet.</red>"),
     AREA_WAND_GIVEN("area.wand-given", "<green>You received the area wand (<white>%mode%</white>).</green>"),
     AREA_POS1_SET("area.pos1-set", "<green>Corner 1 set at <white>%x%, %y%, %z%</white>.</green>"),
     AREA_POS2_SET("area.pos2-set", "<green>Corner 2 set at <white>%x%, %y%, %z%</white>.</green>"),

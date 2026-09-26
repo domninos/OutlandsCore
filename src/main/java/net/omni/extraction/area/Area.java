@@ -533,7 +533,7 @@ public class Area {
         return a;
     }
 
-    public boolean removeNearestChestLocation(Location location, double radius) {
+    public AreaChestLocation removeNearestChestLocation(Location location, double radius) {
         AreaChestLocation nearest = null;
         double nearestDistance = radius * radius;
 
@@ -547,10 +547,10 @@ public class Area {
         }
 
         if (nearest == null)
-            return false;
+            return null;
 
         chestLocations.remove(nearest);
-        return true;
+        return nearest;
     }
 
     public void clearChestLocations() {

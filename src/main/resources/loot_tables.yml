@@ -20,9 +20,10 @@
 # (SPAWN/CHEST editor). Without them the picker falls back to the
 # area-editor.chest-icon-* config and this table's name.
 #
-# Optional hologram: list of MiniMessage lines shown above every spawned loot
-# chest that uses this table (DecentHolograms required). Chests whose table has
-# no hologram fall back to loot.chest-hologram in config.yml.
+# Optional hologram: list of MiniMessage lines shown above loot-chest locations
+# that use this table (DecentHolograms required). This overrides loot.chest-hologram.ready
+# while the chest holds claimable loot; the ongoing/empty states always come from
+# the loot.chest-hologram section in config.yml.
 Easy:
   items-per-chest: 5
   # Picker icon (Paper material name)

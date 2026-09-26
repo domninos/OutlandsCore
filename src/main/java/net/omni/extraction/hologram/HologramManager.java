@@ -4,11 +4,13 @@ import eu.decentsoftware.holograms.api.DHAPI;
 import eu.decentsoftware.holograms.api.DecentHologramsAPI;
 import eu.decentsoftware.holograms.api.holograms.Hologram;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
-import net.omni.extraction.area.AreaClearManager;
+import net.omni.extraction.area.AreaChestLocation;
 import net.omni.extraction.area.AreaClearSession;
 import net.omni.extraction.area.AreaSpawnDefinition;
 import net.omni.extraction.loot.LootTable;
@@ -19,46 +21,54 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class HologramManager {
 
     private static final String HOLOGRAM_PREFIX = "extraction_area_";
     private static final String CHEST_HOLOGRAM_PREFIX = "extraction_chest_";
 
-    private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.builder()
-            .hexColors()
-            .character('&')
-            .build();
-
     private final ExtractionPlugin plugin;
     private final Map<String, Location> lastLocations;
+    private final Map<String, Location> lastChestPositions;
+    private final Map<String, List<String>> appliedChestLines;
+    private boolean enabled = false;
     private BukkitTask task;
 
     public HologramManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
         this.lastLocations = new HashMap<>();
+        this.lastChestPositions = new HashMap<>();
+        this.appliedChestLines = new HashMap<>();
     }
 
     private static String hologramName(Area area) {
         return HOLOGRAM_PREFIX + area.getName().toLowerCase();
     }
 
+    private void init() {
+        this.enabled = Bukkit.getPluginManager().getPlugin("DecentHolograms") != null;
+    }
+
     private boolean available() {
-        if (Bukkit.getPluginManager().getPlugin("DecentHolograms") == null)
+        if (!enabled)
             return false;
 
         try {
             return DecentHologramsAPI.isRunning();
         } catch (NoClassDefFoundError | RuntimeException ignored) {
+            enabled = false;
             return false;
         }
     }
 
     public void start() {
         stop();
+        init();
 
         if (!available())
             return;
@@ -69,7 +79,10 @@ public class HologramManager {
         }
 
         int ticks = plugin.getConfigUtil().getHologramsUpdateTicks();
-        task = Bukkit.getScheduler().runTaskTimer(plugin, this::refreshAll, 0L, ticks);
+        task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            refreshAll();
+            refreshChestHolograms();
+        }, 0L, ticks);
     }
 
     public void stop() {
@@ -83,14 +96,7 @@ public class HologramManager {
         stop();
         start();
         refreshAll();
-        reapplyChestHolograms();
-    }
-
-    private void reapplyChestHolograms() {
-        for (AreaClearManager.ChestHologram spec : plugin.getAreaClearManager().getLiveChestHolograms()) {
-            removeChestHologram(spec.name());
-            createChestHologram(spec.name(), spec.anchor(), spec.lootType());
-        }
+        refreshChestHolograms();
     }
 
     public void clearAll() {
@@ -101,16 +107,18 @@ public class HologramManager {
             String name = hologramName(area);
 
             try {
-                if (DecentHologramsAPI.get().getHologramManager().containsHologram(name))
+                if (DHAPI.getHologram(name) != null)
                     DHAPI.removeHologram(name);
             } catch (RuntimeException ignored) {
             }
         }
 
-        for (AreaClearManager.ChestHologram spec : plugin.getAreaClearManager().getLiveChestHolograms())
-            removeChestHologram(spec.name());
+        for (String name : new ArrayList<>(appliedChestLines.keySet()))
+            removeChestHologram(name);
 
         lastLocations.clear();
+        lastChestPositions.clear();
+        appliedChestLines.clear();
     }
 
     public static String chestHologramName(Location anchor) {
@@ -123,51 +131,137 @@ public class HologramManager {
                 + "_" + anchor.getBlockZ();
     }
 
-    public boolean createChestHologram(String name, Location anchor, String lootType) {
-        if (name == null)
-            return false;
+    /**
+     * Creates or refreshes the persistent hologram above a configured chest
+     * location. The text follows the area state: "ongoing" while a clear is
+     * active, "ready" once the chest holds claimable loot (per-loot-table
+     * {@code hologram:} overrides the config default), "empty" otherwise.
+     *
+     * @return the hologram name, or null when nothing was shown
+     */
+    public String updateChestHologram(Area area, AreaChestLocation chest) {
+        if (area == null || chest == null)
+            return null;
 
         if (!available())
-            return false;
+            return null;
 
         if (!plugin.getConfigUtil().isHologramsEnabled())
-            return false;
+            return null;
 
-        List<String> lines = chestHologramLines(lootType);
-        if (lines.isEmpty())
-            return false;
+        Location anchor = chest.getLocation();
+        String name = chestHologramName(anchor);
+        if (name == null)
+            return null;
 
-        Location position = anchor == null || anchor.getWorld() == null
-                ? null : anchor.getBlock().getLocation().add(0.5, 1.0, 0.5);
-        if (position == null)
-            return false;
+        List<String> lines = chestHologramLines(area, chest);
+        if (lines.isEmpty()) {
+            removeChestHologram(name);
+            return null;
+        }
+
+        Location position = anchor.getBlock().getLocation().add(0.5, 2.5, 0.5);
 
         try {
-            if (DecentHologramsAPI.get().getHologramManager().containsHologram(name))
-                return true;
+            if (DHAPI.getHologram(name) == null) {
+                DHAPI.createHologram(name, position, false, lines);
+                lastChestPositions.put(name, position.clone());
+                appliedChestLines.put(name, lines);
+                return name;
+            }
 
-            DHAPI.createHologram(name, position, false, lines);
-            return true;
+            Hologram hologram = DHAPI.getHologram(name);
+
+            Location last = lastChestPositions.get(name);
+            if (last == null || !sameSpot(last, position)) {
+                DHAPI.moveHologram(hologram, position);
+                lastChestPositions.put(name, position.clone());
+            }
+
+            List<String> applied = appliedChestLines.get(name);
+            if (applied == null || !applied.equals(lines)) {
+                DHAPI.setHologramLines(hologram, lines);
+                appliedChestLines.put(name, lines);
+            }
+
+            return name;
         } catch (RuntimeException ignored) {
-            return false;
+            return name;
         }
+    }
+
+    /**
+     * Updates every configured chest-location hologram and prunes holograms
+     * whose chest location no longer exists (removed via wand / setchest /
+     * area delete).
+     */
+    public void refreshChestHolograms() {
+        if (!available())
+            return;
+
+        Set<String> expected = new HashSet<>();
+
+        for (Area area : plugin.getAreaManager().getAreas()) {
+            for (AreaChestLocation chest : area.getChestLocations()) {
+                String name = updateChestHologram(area, chest);
+
+                if (name != null)
+                    expected.add(name);
+            }
+        }
+
+        for (String name : new ArrayList<>(appliedChestLines.keySet()))
+            if (!expected.contains(name))
+                removeChestHologram(name);
     }
 
     public void removeChestHologram(String name) {
         if (name == null)
             return;
 
+        lastChestPositions.remove(name);
+        appliedChestLines.remove(name);
+
         if (!available())
             return;
 
         try {
-            if (DecentHologramsAPI.get().getHologramManager().containsHologram(name))
+            if (DHAPI.getHologram(name) != null)
                 DHAPI.removeHologram(name);
         } catch (RuntimeException ignored) {
         }
     }
 
-    private List<String> chestHologramLines(String lootType) {
+    private List<String> chestHologramLines(Area area, AreaChestLocation chest) {
+        List<String> raw;
+
+        if (plugin.getAreaClearManager().isActive(area)) {
+            raw = plugin.getConfigUtil().getLootChestHologramOngoing();
+        } else if (plugin.getAreaClearManager().isLootChest(chest.getLocation())) {
+            raw = readyChestHologramLines(area, chest);
+        } else {
+            raw = plugin.getConfigUtil().getLootChestHologramEmpty();
+        }
+
+        if (raw == null || raw.isEmpty())
+            return List.of();
+
+        List<String> lines = new ArrayList<>(raw.size());
+
+        for (String line : raw) {
+            if (line == null)
+                continue;
+
+            lines.add(toDh(line.replace("%area%", area.getName())));
+        }
+
+        return lines;
+    }
+
+    private List<String> readyChestHologramLines(Area area, AreaChestLocation chest) {
+        String lootType = chest.getLootType() != null && !chest.getLootType().isBlank()
+                ? chest.getLootType() : area.getLootTable();
+
         if (lootType != null && !lootType.isBlank()) {
             LootTable table = plugin.getLootTableManager().get(lootType);
 
@@ -175,7 +269,7 @@ public class HologramManager {
                 return table.getHologram();
         }
 
-        return plugin.getConfigUtil().getLootChestHologram();
+        return plugin.getConfigUtil().getLootChestHologramReady();
     }
 
     public boolean isAvailable() {
@@ -207,7 +301,7 @@ public class HologramManager {
             return;
 
         try {
-            if (DecentHologramsAPI.get().getHologramManager().containsHologram(name))
+            if (DHAPI.getHologram(name) != null)
                 DHAPI.removeHologram(name);
         } catch (RuntimeException ignored) {
         }
@@ -231,13 +325,13 @@ public class HologramManager {
         String name = hologramName(area);
 
         try {
-            if (!DecentHologramsAPI.get().getHologramManager().containsHologram(name)) {
+            if (DHAPI.getHologram(name) == null) {
                 DHAPI.createHologram(name, location, false, lines);
                 lastLocations.put(name, location.clone());
                 return;
             }
 
-            Hologram hologram = DecentHologramsAPI.get().getHologramManager().getHologram(name);
+            Hologram hologram = DHAPI.getHologram(name);
 
             Location last = lastLocations.get(name);
             if (last == null || !sameSpot(last, location)) {
@@ -279,7 +373,7 @@ public class HologramManager {
             for (Map.Entry<String, String> entry : values.entrySet())
                 filled = filled.replace(entry.getKey(), entry.getValue());
 
-            lines.add(toLegacy(filled));
+            lines.add(toDh(filled));
         }
 
         return lines;
@@ -320,13 +414,65 @@ public class HologramManager {
         return values;
     }
 
-    private String toLegacy(String raw) {
+    /**
+     * Converts a MiniMessage string to DecentHolograms' native text format
+     * (IridiumColorAPI): {@code &} legacy codes plus {@code <#RRGGBB>} solid
+     * hex. Colors and decorations are resolved per component node while walking
+     * the tree, so nesting and hex gradients (MiniMessage flattens those into
+     * per-character solid colors) survive the conversion.
+     */
+    private String toDh(String raw) {
         try {
             Component component = MiniMessage.miniMessage().deserialize(raw);
-            return LEGACY.serialize(component);
+            StringBuilder builder = new StringBuilder();
+            appendDh(component, null, 0, builder);
+            return builder.toString();
         } catch (RuntimeException ignored) {
             return ChatColor.stripColor(raw);
         }
+    }
+
+    private void appendDh(Component component, TextColor parentColor, int parentDecorations, StringBuilder builder) {
+        TextColor color = component.style().color() != null ? component.style().color() : parentColor;
+        int decorations = parentDecorations;
+
+        for (TextDecoration decoration : TextDecoration.values()) {
+            TextDecoration.State state = component.style().decoration(decoration);
+
+            if (state == TextDecoration.State.TRUE)
+                decorations |= decorationBit(decoration);
+            else if (state == TextDecoration.State.FALSE)
+                decorations &= ~decorationBit(decoration);
+        }
+
+        if (color != null)
+            builder.append("<#").append(color.asHexString().substring(1)).append(">");
+
+        appendDecorationCodes(decorations, builder);
+
+        if (component instanceof TextComponent text)
+            builder.append(text.content());
+
+        for (Component child : component.children())
+            appendDh(child, color, decorations, builder);
+    }
+
+    private int decorationBit(TextDecoration decoration) {
+        return switch (decoration) {
+            case BOLD -> 1;
+            case ITALIC -> 2;
+            case UNDERLINED -> 4;
+            case STRIKETHROUGH -> 8;
+            case OBFUSCATED -> 16;
+        };
+    }
+
+    private void appendDecorationCodes(int decorations, StringBuilder builder) {
+        if ((decorations & 1) != 0) builder.append("&l");
+        if ((decorations & 2) != 0) builder.append("&o");
+        if ((decorations & 4) != 0) builder.append("&n");
+        if ((decorations & 8) != 0) builder.append("&m");
+        if ((decorations & 16) != 0) builder.append("&k");
     }
 
     private boolean sameSpot(Location first, Location second) {

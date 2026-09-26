@@ -63,12 +63,17 @@ public class AreaListener implements Listener {
         Player player = event.getPlayer();
         event.setCancelled(true);
 
-        if (!plugin.getAreaClearManager().canOpenChest(player, block.getLocation())) {
-            plugin.sendMessage(player, Messages.AREA_CHEST_LOCKED.toString());
+        int stored = plugin.getAreaClearManager().redeemChest(player, block.getLocation());
+
+        if (stored == -2) {
+            plugin.sendMessage(player, Messages.AREA_CHEST_ONGOING.toString());
             return;
         }
 
-        int stored = plugin.getAreaClearManager().redeemChest(player, block.getLocation());
+        if (stored == -1) {
+            plugin.sendMessage(player, Messages.AREA_CHEST_LOCKED.toString());
+            return;
+        }
 
         if (stored > 0)
             plugin.sendMessage(player, Messages.LOOT_STORED.replace("amount", String.valueOf(stored)));

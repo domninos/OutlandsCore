@@ -53,7 +53,7 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   messages before config loads use `getLogger()`.
 - `commands/ExtractionCommand.java` (the `/extraction` command): enter / toggle-extract via RunManager,
   help/about/reload/settokens/givetokens/giveupgrade/forceextract/setspawn/storage/tokens/loadout +
-  `admin` (wraps `admin hologram {area} [remove]`).
+  `admin` (wraps `admin addhologram/sethologram/delhologram {area}`).
   `handleReload` re-applies the prefix after `configUtil.reloadConfig()`.
 - `commands/AreaCommand.java` + `AreaTabCompleter.java`: `/areas` management (perm `extraction.areas`).
 - `commands/ExtractCommand.java`, `TokensCommand.java`, `UpgradeCommand.java`, `LoadoutCommand.java`.
@@ -94,8 +94,10 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   `Area.addChestLocation` returns boolean: double-chest marks collapse to a single anchor (min-corner of the pair; merge
   detected via adjacent chest-type blocks + `Chest` BlockData facing), and a duplicate at an already-registered block is
   rejected (`AREA_CHEST_EXISTS`). `AreaClearManager` preserves pre-placed world containers (chests/barrels/shulkers/
-  furnaces/hopper/etc — `AreaChestLocation.isSupported`), fills combined double-chest inventories, and registers/despawns
-  **both halves** of a double. `Area.save` omits empty legacy `mobs`/`spawn-locations`/`boss-locations` keys.
+  furnaces/hopper/etc — `AreaChestLocation.isSupported`), fills combined double-chest inventories, and registers
+  **both halves** of a double. Chest blocks persist forever (a missing container is converted to the stored type, but
+  never despawned/removed); each clear refills them in place, and loot only leaves the world when claimed by the clear
+  owner. `Area.save` omits empty legacy `mobs`/`spawn-locations`/`boss-locations` keys.
   Wand CHEST mode left-clicks to open the loot-table picker (sneak removes the nearest; the picker applies the type);
   `/areas setchest {area} {index} {type|remove}`.
   Per-area hologram position: `Area.hologramLocation` ↔ `hologram.x/y/z` in the area file, omitted when unset.
@@ -104,18 +106,24 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   overlays `+{n} tokens` for `actionbar.kill-feedback-ticks`. Reads `actionbar.enabled`.
 - `hologram/HologramManager.java`: area holograms via DecentHolograms (`DHAPI` + ` DecentHologramsAPI.isRunning()`,
   gated by `isPluginEnabled("DecentHolograms")`; always-runtime `saveToFile=false` holograms named
-  `extraction_area_<lowercase>`; `LegacyComponentSerializer` MiniMessage→`&`/`&#hex` conversion because DH text
-  lines don't parse MiniMessage tags). Created/moved/updated by a repeating task (`holograms.update-ticks`, always
+  `extraction_area_<lowercase>`; a MiniMessage→DH-native converter (`toDh`, component walker emitting `<#rrggbb>` +
+  `&l/&o/&n/&m/&k`) because DH text lines only parse IridiumColorAPI formats — no MiniMessage tags). Created/moved/updated
+  by a repeating task (`holograms.update-ticks`, always
   visible once placed); line-count mismatch on reload rebuilds the hologram; `lastLocations` avoids re-teleporting.
-  `setPosition`/`remove` wire the `/extraction admin hologram` subcommand. Placeholders `%area%`, `%level%` (max
+  `setPosition`/`remove` wire the `/extraction admin addhologram/sethologram/delhologram` subcommands.
+  Hologram existence/update checks use `DHAPI.getHologram(name)` — runtime DHAPI holograms live only in
+  `Hologram.CACHED_HOLOGRAMS`, so the manager's file-backed `containsHologram` would always be false (a frozen-empty /
+  never-removed hologram). Placeholders `%area%`, `%level%` (max
   `AreaSpawnDefinition.getLevel()`), and live `%mobs%`/`%bosses%`/`%total%` during an active
   `AreaClearSession` (`getMobs()`−`getBossMobs()`, `getBossMobs()`, `getTotalMobs()`) falling back to configured
   counts when idle. Config `holograms.enabled/update-ticks/lines` in config.yml (`ConfigKeys.HOLOGRAMS_*`).
-  Also owns the per-loot-chest holograms: `createChestHologram(name, anchor, lootType)` spawns a hologram
-  (`extraction_chest_<world>_<x>_<y>_<z>`) one block above a spawned loot container using the effective loot
-  table's `hologram:` lines (MiniMessage, same legacy conversion) falling back to config `loot.chest-hologram`;
-  `removeChestHologram` tears it down; `reload()`/`clearAll()` reapply/prune them via
-  `AreaClearManager.getLiveChestHolograms()`.
+  Also owns the **persistent per-loot-chest holograms** (`extraction_chest_<world>_<x>_<y>_<z>`,
+  `store=true`): `updateChestHologram(area, chest)` creates/moves/updates one hologram one block above each configured
+  chest location, `refreshChestHolograms()` (run each tick + reload) reconciles all of them and prunes locations that
+  were removed via wand/setchest/area delete. State-driven text: `loot.chest-hologram.ongoing` while the area's clear is
+  active, `ready` (effective loot table's `hologram:` lines overriding config `loot.chest-hologram.ready`) while it
+  holds claimable loot, `empty` after the owner claims; all support `%area%`, empty list hides the hologram.
+  `removeChestHologram(name)` tears one down; `clearAll()` clears every chest hologram on disable.
   `ExtractionPlugin` constructs after `areaClearManager`, `start()`s after `actionBarManager`, `stop()`s on disable;
   `/extraction reload` → `hologramManager.reload()`.
 - `scoreboard/ScoreboardManager.java`, `ScoreboardListener.java`, `PlaceholderValues.java`: internal-only
@@ -173,7 +181,7 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   keys; editor page-nav hides when there is no previous/next page; chest locations dedupe on add (double-chest marks
   collapse to one anchored entry, duplicates rejected with `AREA_CHEST_EXISTS`); loot containers support any
   `AreaChestLocation.isSupported` material (barrels/shulkers/etc preserved in-world, fresh spots get the stored type
-  default CHEST) and pre-built double chests are filled/despawned as both halves.
+  default CHEST) and pre-built double chests are filled as both halves (blocks persist — never despawned).
 - Cooldowns fully disable when `settings.cooldown-hours` is 0/≤0: `CooldownManager.isEnabled()` gates
   `isOnCooldown`/`getCooldownRemainingMs`/`getCooldownFormatted`, and `CooldownManager.applyConfig()` (called from
   `/extraction reload`) resets every player's cooldown to 0 — loaded `PlayerData` + an async
@@ -338,7 +346,8 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   default tokens follow it (stone_weapon=2, iron_helmet=3, diamond_chestplate=4). Note the static check cannot
   catch off-by-one labeling where the declared tier happens to be valid for some player state.
 - Area holograms (DecentHolograms): `hologram/HologramManager` creates an always-visible hologram per area whose
-  position is set via `/extraction admin hologram {area}` (your location) and cleared with `{area} remove`
+  position is set via `/extraction admin addhologram {area}` (at your feet) or `/extraction admin sethologram {area}`
+  (eye level) and cleared with `/extraction admin delhologram {area}`
   (perm `extraction.admin`, messages `area.hologram-set/removed/disabled`). Position persists in the area file as
   `hologram.x/y/z` (omitted when unset). Content comes from config.yml `holograms.lines` (MiniMessage, converted
   to DH's `&`/`&#hex` legacy) with `%area%`, `%level%` (highest configured `AreaSpawnDefinition.getLevel()`), and
@@ -352,12 +361,17 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   container materials (`AreaChestLocation.refreshContainers` re-seeds `CONTAINER_TYPES` on load/reload; a
   `SHULKER_BOX` entry matches every `*_SHULKER_BOX`). The CHEST-mode wand rejects left-clicked blocks not in the
   list (`area.not-container`) before opening the picker, and the same list drives fill/preserve detection.
-  Spawned loot chests get a DecentHolograms hologram one block above the container
-  (`HologramManager.createChestHologram`, name `extraction_chest_<world>_<x>_<y>_<z>`): lines come from the
-  effective loot table's `hologram:` (loot_tables.yml) falling back to config `loot.chest-hologram` (empty = none).
-  `AreaClearManager.createLootChests` creates them at clear completion and `removeChest` tears them down on
-  redeem/despawn/cancel/shutdown (per half-block association in `AreaClearSession` so a double chest shares one
-  hologram); `/extraction reload` re-applies them from `getLiveChestHolograms()`.
+  Chest blocks persist forever (never despawned/removed — `loot.despawn-seconds` is legacy/unused); each clear refills
+  registered containers in place. Loot is claimed by right-clicking a registered chest: `redeemChest` returns `-2`
+  while the area's clear is still active (`area.chest-ongoing`), `-1` when another player owns the clear
+  (`area.chest-locked`), `0` when nothing is registered, else the item count (banked to `/extraction` storage via
+  `extractedLoot`); claiming drains the container and unregisters it, `handleChestClose` unregisters once a chest is
+  emptied, and `removeChest` (cancel/shutdown) only unregisters + stores leftover (`leftover-to-withdraw`). Each
+  configured chest location gets one persistent hologram one block above it
+  (`HologramManager.updateChestHologram`, name `extraction_chest_<world>_<x>_<y>_<z>`) shown immediately when the
+  location is set via the wand/`/areas setchest`, with state text from config `loot.chest-hologram.ongoing/ready/empty`
+  (state `ready` uses the effective loot table's `hologram:` from loot_tables.yml as its override); topics follow
+  `refreshChestHolograms()` each tick, pruned when a location is removed.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

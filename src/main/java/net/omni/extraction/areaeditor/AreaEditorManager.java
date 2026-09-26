@@ -292,6 +292,9 @@ public class AreaEditorManager {
 
         plugin.getAreaManager().markDirty(area);
 
+        AreaChestLocation added = area.getChestLocations().get(area.getChestLocations().size() - 1);
+        plugin.getHologramManager().updateChestHologram(area, added);
+
         plugin.sendMessage(player, Messages.AREA_CHEST_SET.replace(
                 "x", String.valueOf(location.getBlockX()),
                 "y", String.valueOf(location.getBlockY()),

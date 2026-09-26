@@ -158,7 +158,9 @@ public class ConfigUtil {
     private List<String> hologramLines;
 
     private List<String> containers;
-    private List<String> lootChestHologram;
+    private List<String> lootChestHologramOngoing;
+    private List<String> lootChestHologramReady;
+    private List<String> lootChestHologramEmpty;
 
     private int lootDefaultItemsPerChest;
     private String lootTokenItemMaterial;
@@ -177,7 +179,9 @@ public class ConfigUtil {
         this.scoreboardLines = new ArrayList<>();
         this.hologramLines = new ArrayList<>();
         this.containers = new ArrayList<>();
-        this.lootChestHologram = new ArrayList<>();
+        this.lootChestHologramOngoing = new ArrayList<>();
+        this.lootChestHologramReady = new ArrayList<>();
+        this.lootChestHologramEmpty = new ArrayList<>();
     }
 
     public void reloadConfig() {
@@ -193,7 +197,9 @@ public class ConfigUtil {
         scoreboardLines = new ArrayList<>();
         hologramLines = new ArrayList<>();
         containers = new ArrayList<>();
-        lootChestHologram = new ArrayList<>();
+        lootChestHologramOngoing = new ArrayList<>();
+        lootChestHologramReady = new ArrayList<>();
+        lootChestHologramEmpty = new ArrayList<>();
     }
 
     public void load() {
@@ -563,9 +569,31 @@ public class ConfigUtil {
         this.lootTokenItemName = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_NAME, "<gold>Extraction Token</gold>", savedDefaults);
         this.lootTimeItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_MATERIAL, "CLOCK", savedDefaults);
         this.lootTimeItemName = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_NAME, "<yellow>Extra Time (+%time% minutes)</yellow>", savedDefaults);
-        this.lootChestHologram = getAndDefaultStringList(ConfigKeys.LOOT_CHEST_HOLOGRAM, List.of(
-                "<yellow><bold>Loot</bold></yellow>"
+        this.lootChestHologramOngoing = loadLootChestHologramState("ongoing", List.of(
+                "<red><bold>AREA ONGOING</bold></red>"
         ), savedDefaults);
+        this.lootChestHologramReady = loadLootChestHologramState("ready", List.of(
+                "<green><bold>OPEN LOOT</bold></green>"
+        ), savedDefaults);
+        this.lootChestHologramEmpty = loadLootChestHologramState("empty", List.of(
+                "<gray>EMPTY</gray>"
+        ), savedDefaults);
+    }
+
+    /**
+     * Loads one state of the {@code loot.chest-hologram} section. A legacy
+     * flat-list value (the pre-state single "Loot" line) is treated as the
+     * "ready" text so old configs keep working.
+     */
+    private List<String> loadLootChestHologramState(String state, List<String> defaults, AtomicInteger counter) {
+        if (plugin.getConfig().isList(ConfigKeys.LOOT_CHEST_HOLOGRAM)) {
+            if (state.equals("ready"))
+                return new ArrayList<>(plugin.getConfig().getStringList(ConfigKeys.LOOT_CHEST_HOLOGRAM));
+
+            return new ArrayList<>(defaults);
+        }
+
+        return getAndDefaultStringList(ConfigKeys.LOOT_CHEST_HOLOGRAM + "." + state, defaults, counter);
     }
 
     private void loadContainers(AtomicInteger savedDefaults) {
@@ -1300,8 +1328,16 @@ public class ConfigUtil {
         return false;
     }
 
-    public List<String> getLootChestHologram() {
-        return lootChestHologram;
+    public List<String> getLootChestHologramOngoing() {
+        return lootChestHologramOngoing;
+    }
+
+    public List<String> getLootChestHologramReady() {
+        return lootChestHologramReady;
+    }
+
+    public List<String> getLootChestHologramEmpty() {
+        return lootChestHologramEmpty;
     }
 
     public boolean isScoreboardOnlyInWorld() {

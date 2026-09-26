@@ -5,7 +5,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.data.PlayerData;
-import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.integration.ExternalItemProvider;
 import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootItemUtil;
@@ -31,9 +30,6 @@ import java.util.*;
 
 public class AreaClearManager {
 
-    public record ChestHologram(String name, Location anchor, String lootType) {
-    }
-
     private final ExtractionPlugin plugin;
     private final AreaManager areaManager;
     private final AreaMobFactory mobFactory;
@@ -41,7 +37,6 @@ public class AreaClearManager {
     private final Map<String, AreaClearSession> sessions;
     private final Map<UUID, AreaClearSession> mobSessions;
     private final Map<String, AreaClearSession> chestSessions;
-    private final Map<String, ChestHologram> liveChestHolograms;
     private BukkitTask containmentTask;
 
     public AreaClearManager(ExtractionPlugin plugin, AreaManager areaManager) {
@@ -52,7 +47,6 @@ public class AreaClearManager {
         this.sessions = new HashMap<>();
         this.mobSessions = new HashMap<>();
         this.chestSessions = new HashMap<>();
-        this.liveChestHolograms = new HashMap<>();
     }
 
     public void start() {
@@ -296,30 +290,6 @@ public class AreaClearManager {
                 Location chestLoc = block.getLocation();
                 session.addChestLocation(chestLoc);
                 chestSessions.put(locationKey(chestLoc), session);
-
-                int despawnSeconds = area.getLootDespawnSeconds();
-
-                if (despawnSeconds > 0) {
-                    BukkitTask task = new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            removeChest(session, chestLoc);
-                        }
-                    }.runTaskLater(plugin, despawnSeconds * 20L);
-
-                    session.setChestTask(chestLoc, task);
-                }
-            }
-
-            String effectiveLootType = chestLocation.getLootType() != null && !chestLocation.getLootType().isBlank()
-                    ? chestLocation.getLootType() : area.getLootTable();
-            String hologramName = HologramManager.chestHologramName(anchor);
-
-            if (plugin.getHologramManager().createChestHologram(hologramName, anchor, effectiveLootType)) {
-                liveChestHolograms.put(hologramName, new ChestHologram(hologramName, anchor, effectiveLootType));
-
-                for (Block block : blocks)
-                    session.associateChestHologram(block.getLocation(), hologramName);
             }
         }
     }
@@ -412,42 +382,21 @@ public class AreaClearManager {
         if (location == null || location.getWorld() == null)
             return;
 
-        removeChestHologram(session, location.getBlock().getLocation());
-
         Location blockLoc = location.getBlock().getLocation();
-        Block block = blockLoc.getBlock();
 
-        if (AreaChestLocation.isSupported(block.getType())) {
-            if (block.getState() instanceof InventoryHolder holder) {
-                List<ItemStack> leftover = new ArrayList<>();
+        for (Block b : containerBlocks(blockLoc, blockLoc.getBlock().getType()))
+            unregisterChestBlock(session, b.getLocation());
 
-                for (ItemStack item : holder.getInventory().getContents())
-                    if (item != null)
-                        leftover.add(item);
+        if (blockLoc.getBlock().getState() instanceof InventoryHolder holder) {
+            List<ItemStack> leftover = new ArrayList<>();
 
-                if (session.getArea().isLeftoverToWithdraw() && !leftover.isEmpty())
-                    storeLeftover(session.getOwner(), leftover);
-            }
+            for (ItemStack item : holder.getInventory().getContents())
+                if (item != null)
+                    leftover.add(item);
 
-            for (Block b : containerBlocks(blockLoc, block.getType())) {
-                b.setType(Material.AIR);
-                unregisterChestBlock(session, b.getLocation());
-            }
-
-            return;
+            if (session.getArea().isLeftoverToWithdraw() && !leftover.isEmpty())
+                storeLeftover(session.getOwner(), leftover);
         }
-
-        unregisterChestBlock(session, blockLoc);
-    }
-
-    private void removeChestHologram(AreaClearSession session, Location blockLocation) {
-        String name = session.takeChestHologram(blockLocation);
-
-        if (name == null)
-            return;
-
-        liveChestHolograms.remove(name);
-        plugin.getHologramManager().removeChestHologram(name);
     }
 
 private void unregisterChestBlock(AreaClearSession session, Location location) {
@@ -646,6 +595,9 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
         if (session == null)
             return 0;
 
+        if (isActive(session.getArea()))
+            return -2;
+
         if (!session.getOwner().equals(player.getUniqueId()))
             return -1;
 
@@ -668,16 +620,10 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
             plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
         }
 
-        removeChest(session, location);
+        for (Block b : containerBlocks(block.getLocation(), block.getType()))
+            unregisterChestBlock(session, b.getLocation());
+
         return loot.size();
-    }
-
-    public boolean canOpenChest(Player player, Location location) {
-        AreaClearSession session = chestSessions.get(locationKey(location));
-        if (session == null)
-            return true;
-
-        return session.getOwner().equals(player.getUniqueId());
     }
 
     public void handleChestClose(Inventory inventory) {
@@ -699,8 +645,12 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
             }
         }
 
-        if (empty)
-            removeChest(session, location);
+        if (empty) {
+            Block block = container.getBlock();
+
+            for (Block b : containerBlocks(block.getLocation(), block.getType()))
+                unregisterChestBlock(session, b.getLocation());
+        }
     }
 
     public void onPlayerEnter(Player player, Area area) {
@@ -829,10 +779,6 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
         return sessions.get(area.getName().toLowerCase(Locale.ROOT));
     }
 
-    public Collection<ChestHologram> getLiveChestHolograms() {
-        return liveChestHolograms.values();
-    }
-
     public boolean isActive(Area area) {
         return sessions.containsKey(area.getName().toLowerCase(Locale.ROOT));
     }
@@ -880,6 +826,5 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
         sessions.clear();
         mobSessions.clear();
         chestSessions.clear();
-        liveChestHolograms.clear();
     }
 }

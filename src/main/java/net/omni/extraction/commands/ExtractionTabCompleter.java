@@ -45,7 +45,8 @@ public class ExtractionTabCompleter implements TabCompleter {
 
         if (args.length == 2) {
             if (args[0].equalsIgnoreCase("admin") && sender.hasPermission("extraction.admin")) {
-                return StringUtil.copyPartialMatches(args[1], List.of("hologram"), new ArrayList<>());
+                return StringUtil.copyPartialMatches(args[1],
+                        List.of("addhologram", "sethologram", "delhologram"), new ArrayList<>());
             }
 
             return switch (args[0].toLowerCase()) {
@@ -54,19 +55,15 @@ public class ExtractionTabCompleter implements TabCompleter {
             };
         }
 
-        if (args.length == 3 && args[0].equalsIgnoreCase("admin")
-                && args[1].equalsIgnoreCase("hologram")
+        if (args.length == 3
+                && (args[1].equalsIgnoreCase("addhologram")
+                || args[1].equalsIgnoreCase("sethologram")
+                || args[1].equalsIgnoreCase("delhologram"))
                 && sender.hasPermission("extraction.admin")) {
             List<String> areaNames = plugin.getAreaManager().getAreas().stream()
                     .map(area -> area.getName())
                     .toList();
             return StringUtil.copyPartialMatches(args[2], areaNames, new ArrayList<>());
-        }
-
-        if (args.length == 4 && args[0].equalsIgnoreCase("admin")
-                && args[1].equalsIgnoreCase("hologram")
-                && sender.hasPermission("extraction.admin")) {
-            return StringUtil.copyPartialMatches(args[3], List.of("remove"), new ArrayList<>());
         }
 
         if (args.length == 3 && args[0].equalsIgnoreCase("giveupgrade")) {

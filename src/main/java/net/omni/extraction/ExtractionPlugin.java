@@ -85,13 +85,15 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      -
      -
-     - add a hologram when entering an area (should show the mob/boss count + level)
-      - hologram position can be set via /extraction admin hologram <area>
-      - the hologram info should be configurable.
-      - use DecentHolograms API
      - fix holograms not being removed when /extraction admin hologram <area> remove
        - make it /extraction admin addhologram <area> and /extraction admin delhologram <area>
        - add /extraction admin sethologram <area> - sets the hologram position their eye level
+     -
+     - fix loot being duplicated. right click loot chest -> gives to /extraction storage, but still got the items added to it
+       - make the loot scattered randomly on the chest inventory
+       - suggest what improvements to make this realistically close to DMZ or to any other extraction games (looting part)
+     -
+     - add the possibility to increase the level of an area without recreating it
      -
      - add API
      -

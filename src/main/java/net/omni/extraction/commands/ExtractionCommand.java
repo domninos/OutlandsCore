@@ -9,6 +9,7 @@ import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.upgrade.UpgradeConfirmHolder;
 import net.omni.extraction.upgrade.UpgradeGuiHolder;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -106,7 +107,9 @@ public class ExtractionCommand implements CommandExecutor {
             MessageUtil.append("extraction giveupgrade {player} {token}", "Give an upgrade token", help);
             MessageUtil.append("extraction forceextract {player}", "Force extract a player", help);
             MessageUtil.append("extraction setspawn", "Set the Extraction entry spawn", help);
-            MessageUtil.append("extraction admin hologram {area}", "Set/remove the area hologram position", help);
+            MessageUtil.append("extraction admin addhologram {area}", "Place the area hologram at your feet", help);
+            MessageUtil.append("extraction admin sethologram {area}", "Move the area hologram to your eye level", help);
+            MessageUtil.append("extraction admin delhologram {area}", "Remove the area hologram", help);
         }
 
         help.append("\n").append(Messages.HELP_FOOTER);
@@ -330,9 +333,16 @@ public class ExtractionCommand implements CommandExecutor {
             return true;
         }
 
-        if (args.length < 3 || !args[1].equalsIgnoreCase("hologram")) {
+        if (args.length < 3) {
             plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction admin hologram {area} [remove]"));
+                    .replace("usage", "/extraction admin <addhologram|sethologram|delhologram> {area}"));
+            return true;
+        }
+
+        String action = args[1].toLowerCase();
+        if (!action.equals("addhologram") && !action.equals("sethologram") && !action.equals("delhologram")) {
+            plugin.sendMessage(sender, Messages.USAGE
+                    .replace("usage", "/extraction admin <addhologram|sethologram|delhologram> {area}"));
             return true;
         }
 
@@ -342,14 +352,12 @@ public class ExtractionCommand implements CommandExecutor {
             return true;
         }
 
-        boolean remove = args.length >= 4 && args[3].equalsIgnoreCase("remove");
-
         if (!plugin.getHologramManager().isAvailable()) {
             plugin.sendMessage(sender, Messages.AREA_HOLOGRAM_DISABLED.toString());
             return true;
         }
 
-        if (remove) {
+        if (action.equals("delhologram")) {
             plugin.getHologramManager().remove(area);
             plugin.sendMessage(sender, Messages.AREA_HOLOGRAM_REMOVED.replace("area", area.getName()));
             return true;
@@ -360,7 +368,8 @@ public class ExtractionCommand implements CommandExecutor {
             return true;
         }
 
-        plugin.getHologramManager().setPosition(area, player.getLocation());
+        Location location = action.equals("sethologram") ? player.getEyeLocation() : player.getLocation();
+        plugin.getHologramManager().setPosition(area, location);
         plugin.sendMessage(sender, Messages.AREA_HOLOGRAM_SET.replace("area", area.getName()));
         return true;
     }

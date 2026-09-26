@@ -415,8 +415,9 @@ actionbar:
 
 # Area holograms (DecentHolograms)
 # Place a hologram at a fixed position per area showing its mob/boss info.
-# Position is set in-game: /extraction admin hologram {area} (at your feet) or
-# /extraction admin hologram {area} remove. The hologram stays visible once
+# Position is set in-game: /extraction admin addhologram {area} (at your feet),
+# /extraction admin sethologram {area} (at your eye level), or removed with
+# /extraction admin delhologram {area}. The hologram stays visible once
 # placed. During an active clear %mobs%/%bosses% show the REMAINING counts
 # (like the boss bar); when the area is idle they show the configured totals.
 # %level% is the highest configured mob level of the area. Requires the
@@ -483,12 +484,21 @@ loot:
   # Material/display name of the physical TOKENS loot item (credits balance on pickup)
   token-item-material: GOLD_INGOT
   token-item-name: "<gold>Extraction Token</gold>"
-  # Hologram line(s) shown above a spawned loot chest whose loot table has no
-  # "hologram:" section of its own (e.g. default area loot / legacy chests).
-  # Set to [] to disable the fallback (only tables that define a hologram get one).
-  # Uses DecentHolograms; the table's hologram takes precedence.
+  # Holograms shown above configured loot-chest locations (DecentHolograms),
+  # one hologram per chest location. The section picks the text by state:
+  #   ongoing - a clear is in progress in that area (loot cannot be claimed)
+  #   ready   - the chest holds claimable loot; a loot table's own "hologram:"
+  #             section (loot_tables.yml) overrides this for chests using it
+  #   empty   - the owner already claimed this chest's loot
+  # Lines use MiniMessage (converted to DecentHolograms colors); %area% is the
+  # area name. Set a state to [] to hide the hologram in that state.
   chest-hologram:
-    - "<yellow><bold>Loot</bold></yellow>"
+    ongoing:
+      - "<red><bold>AREA ONGOING</bold></red>"
+    ready:
+      - "<green><bold>OPEN LOOT</bold></green>"
+    empty:
+      - "<gray>EMPTY</gray>"
 # Material/display name of the TIME loot item (right-click while in a run adds
 # time). Only used as a fallback when the time-loot section above is empty.
 # Supports the %time% placeholder; names without it get a "(+N minutes)" suffix.
