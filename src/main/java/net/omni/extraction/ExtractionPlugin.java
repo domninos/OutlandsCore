@@ -31,7 +31,7 @@ import net.omni.extraction.messages.MessageUtil;
 import net.omni.extraction.mobs.MobTemplateManager;
 import net.omni.extraction.scoreboard.ScoreboardListener;
 import net.omni.extraction.scoreboard.ScoreboardManager;
-import net.omni.extraction.update.UpgradeManager;
+import net.omni.extraction.upgrade.UpgradeManager;
 import net.omni.extraction.upgrade.UpgradeTokenUtil;
 import net.omni.extraction.util.PacketGlow;
 import org.bukkit.Bukkit;
@@ -74,10 +74,6 @@ public final class ExtractionPlugin extends JavaPlugin {
      - migrate to MariaDB/MySQL, use plugin.yml's library loader
      - loadout should be categorized and checked if they are permanent. food and potions are temporary.
      -
-     -
-     - fix loadout, the default slots / pickaxe, charm, pet, etc. are reset (but the moved slots/items aren't. so the default item slots come back but persists the updated slots that the player moved themselves.
-     - fix upgrading armor (current tier should persist)
-     - fix /extraction withdraw/storage when clicked = shouldn't do anything. move the items freely.
      - once a run is finished, make /extraction withdraw/storage the same. all collected loot must be inside it.
      -
      - only ever claim items on /extraction storage when they're not in a run or outside extraction

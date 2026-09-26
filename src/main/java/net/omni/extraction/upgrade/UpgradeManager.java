@@ -1,8 +1,7 @@
-package net.omni.extraction.update;
+package net.omni.extraction.upgrade;
 
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.loadout.LoadoutSlot;
-import net.omni.extraction.upgrade.UpgradeTokenUtil;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;

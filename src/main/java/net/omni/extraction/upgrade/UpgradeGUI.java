@@ -1,4 +1,4 @@
-package net.omni.extraction.update;
+package net.omni.extraction.upgrade;
 
 import net.kyori.adventure.text.Component;
 import net.omni.extraction.ExtractionPlugin;

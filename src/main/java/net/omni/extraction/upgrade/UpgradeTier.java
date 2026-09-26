@@ -1,4 +1,4 @@
-package net.omni.extraction.update;
+package net.omni.extraction.upgrade;
 
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;

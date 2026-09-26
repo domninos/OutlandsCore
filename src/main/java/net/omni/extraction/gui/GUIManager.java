@@ -3,7 +3,7 @@ package net.omni.extraction.gui;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.loadout.LoadoutGUI;
-import net.omni.extraction.update.UpgradeGUI;
+import net.omni.extraction.upgrade.UpgradeGUI;
 import org.bukkit.entity.Player;
 
 import java.util.HashSet;

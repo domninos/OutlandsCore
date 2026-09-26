@@ -5,7 +5,7 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.messages.MessageUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
-import net.omni.extraction.update.UpgradeGuiHolder;
+import net.omni.extraction.upgrade.UpgradeGuiHolder;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.Command;
