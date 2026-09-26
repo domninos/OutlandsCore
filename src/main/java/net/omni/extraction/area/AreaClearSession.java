@@ -50,6 +50,10 @@ public class AreaClearSession {
         bossMobs.add(uuid);
     }
 
+    public Set<UUID> getBossMobs() {
+        return bossMobs;
+    }
+
     public boolean isBossMob(UUID uuid) {
         return bossMobs.contains(uuid);
     }

@@ -413,6 +413,24 @@ actionbar:
   # How long (in ticks) the "+N tokens" feedback stays on a mob/boss kill
   kill-feedback-ticks: 40
 
+# Area holograms (DecentHolograms)
+# Place a hologram at a fixed position per area showing its mob/boss info.
+# Position is set in-game: /extraction admin hologram {area} (at your feet) or
+# /extraction admin hologram {area} remove. The hologram stays visible once
+# placed. During an active clear %mobs%/%bosses% show the REMAINING counts
+# (like the boss bar); when the area is idle they show the configured totals.
+# %level% is the highest configured mob level of the area. Requires the
+# DecentHolograms plugin on the server.
+holograms:
+  enabled: true
+  # How often (in ticks) the hologram lines refresh (20 ticks = 1 second)
+  update-ticks: 10
+  lines:
+    - "<yellow><bold>%area%</bold></yellow>"
+    - "<gray>Level <white>%level%</white></gray>"
+    - "<gray>Mobs: <white>%mobs%/%total%</white></gray>"
+    - "<gold>Bosses: <white>%bosses%</white></gold>"
+
 # Sidebar scoreboard
 # Disabled by default — the actionbar HUD above is the default. Set enabled:
 # true to show the sidebar instead (or alongside). Lines support MiniMessage

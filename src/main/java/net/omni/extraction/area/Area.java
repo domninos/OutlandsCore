@@ -42,6 +42,7 @@ public class Area {
     private int itemsPerChest;
     private AreaState state;
     private long unavailableUntil;
+    private Location hologramLocation;
 
     public Area(String name, String world) {
         this.name = name;
@@ -102,6 +103,13 @@ public class Area {
                     config.getDouble("bounds.max.x"),
                     config.getDouble("bounds.max.y"),
                     config.getDouble("bounds.max.z")));
+        }
+
+        if (config.contains("hologram.x") && bukkitWorld != null) {
+            area.setHologramLocation(new Location(bukkitWorld,
+                    config.getDouble("hologram.x"),
+                    config.getDouble("hologram.y"),
+                    config.getDouble("hologram.z")));
         }
 
         List<?> mobs = config.getList("mobs");
@@ -644,6 +652,14 @@ public class Area {
         this.unavailableUntil = unavailableUntil;
     }
 
+    public Location getHologramLocation() {
+        return hologramLocation;
+    }
+
+    public void setHologramLocation(Location hologramLocation) {
+        this.hologramLocation = hologramLocation;
+    }
+
     public boolean isReady() {
         if (!isDefined())
             return false;
@@ -748,6 +764,12 @@ public class Area {
             config.set("bounds.max.x", max.getX());
             config.set("bounds.max.y", max.getY());
             config.set("bounds.max.z", max.getZ());
+        }
+
+        if (hologramLocation != null) {
+            config.set("hologram.x", hologramLocation.getX());
+            config.set("hologram.y", hologramLocation.getY());
+            config.set("hologram.z", hologramLocation.getZ());
         }
 
         List<Object> mobList = new ArrayList<>();

@@ -52,7 +52,8 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   legacy on Spigot). `plugin.sendMessage()`/`sendConsole()` route through the renderer; startup console
   messages before config loads use `getLogger()`.
 - `commands/ExtractionCommand.java` (the `/extraction` command): enter / toggle-extract via RunManager,
-  help/about/reload/settokens/givetokens/giveupgrade/forceextract/setspawn/storage/tokens/loadout.
+  help/about/reload/settokens/givetokens/giveupgrade/forceextract/setspawn/storage/tokens/loadout +
+  `admin` (wraps `admin hologram {area} [remove]`).
   `handleReload` re-applies the prefix after `configUtil.reloadConfig()`.
 - `commands/AreaCommand.java` + `AreaTabCompleter.java`: `/areas` management (perm `extraction.areas`).
 - `commands/ExtractCommand.java`, `TokensCommand.java`, `UpgradeCommand.java`, `LoadoutCommand.java`.
@@ -93,9 +94,21 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   **both halves** of a double. `Area.save` omits empty legacy `mobs`/`spawn-locations`/`boss-locations` keys.
   Wand CHEST mode left-clicks to open the loot-table picker (sneak removes the nearest; the picker applies the type);
   `/areas setchest {area} {index} {type|remove}`.
+  Per-area hologram position: `Area.hologramLocation` ↔ `hologram.x/y/z` in the area file, omitted when unset.
 - `chat/ActionBarManager.java`: the default HUD (replaces the scoreboard). Repeating task (`actionbar.update-ticks`)
   sends the run/cooldown timer (`%extraction_timer%`) while a player is in a run or on cooldown; `showTokens(UUID,int)`
   overlays `+{n} tokens` for `actionbar.kill-feedback-ticks`. Reads `actionbar.enabled`.
+- `hologram/HologramManager.java`: area holograms via DecentHolograms (`DHAPI` + ` DecentHologramsAPI.isRunning()`,
+  gated by `isPluginEnabled("DecentHolograms")`; always-runtime `saveToFile=false` holograms named
+  `extraction_area_<lowercase>`; `LegacyComponentSerializer` MiniMessage→`&`/`&#hex` conversion because DH text
+  lines don't parse MiniMessage tags). Created/moved/updated by a repeating task (`holograms.update-ticks`, always
+  visible once placed); line-count mismatch on reload rebuilds the hologram; `lastLocations` avoids re-teleporting.
+  `setPosition`/`remove` wire the `/extraction admin hologram` subcommand. Placeholders `%area%`, `%level%` (max
+  `AreaSpawnDefinition.getLevel()`), and live `%mobs%`/`%bosses%`/`%total%` during an active
+  `AreaClearSession` (`getMobs()`−`getBossMobs()`, `getBossMobs()`, `getTotalMobs()`) falling back to configured
+  counts when idle. Config `holograms.enabled/update-ticks/lines` in config.yml (`ConfigKeys.HOLOGRAMS_*`).
+  `ExtractionPlugin` constructs after `areaClearManager`, `start()`s after `actionBarManager`, `stop()`s on disable;
+  `/extraction reload` → `hologramManager.reload()`.
 - `scoreboard/ScoreboardManager.java`, `ScoreboardListener.java`, `PlaceholderValues.java`: internal-only
   Paper-backed scoreboard (Team prefix/suffix Components, `NumberFormat.blank()`), objective key
   `extraction_side`, team prefix `extraction_line_`. **Disabled by default** (`scoreboard.enabled: false`);
@@ -315,6 +328,17 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   applied. `upgrade-tier` is the 1-based index of the item the token grants (first tier-list entry = 1); the
   default tokens follow it (stone_weapon=2, iron_helmet=3, diamond_chestplate=4). Note the static check cannot
   catch off-by-one labeling where the declared tier happens to be valid for some player state.
+- Area holograms (DecentHolograms): `hologram/HologramManager` creates an always-visible hologram per area whose
+  position is set via `/extraction admin hologram {area}` (your location) and cleared with `{area} remove`
+  (perm `extraction.admin`, messages `area.hologram-set/removed/disabled`). Position persists in the area file as
+  `hologram.x/y/z` (omitted when unset). Content comes from config.yml `holograms.lines` (MiniMessage, converted
+  to DH's `&`/`&#hex` legacy) with `%area%`, `%level%` (highest configured `AreaSpawnDefinition.getLevel()`), and
+  `%mobs%`/`%bosses%`/`%total%` — live `AreaClearSession` remaining counts during a clear, configured totals
+  otherwise. A repeating task (`holograms.update-ticks`) refreshes numbers and moves/rebuilds (`lastLocations`
+  avoids re-teleporting; line-count change on `/extraction reload` rebuilds). Runtime holograms are
+  `saveToFile=false`, named `extraction_area_<lowercase>`. Guarded by `DecentHologramsAPI.isRunning()` +
+  `isPluginEnabled("DecentHolograms")` (missing plugin = silent no-op). pom gained the `codemc` repo
+  (`repo.codemc.io/repository/maven-public`) to resolve DH's runtime `de.tr7zw:item-nbt-api`.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

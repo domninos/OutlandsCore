@@ -2,6 +2,7 @@ package net.omni.extraction.commands;
 
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.area.Area;
 import net.omni.extraction.messages.MessageUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
@@ -51,6 +52,7 @@ public class ExtractionCommand implements CommandExecutor {
             case "giveupgrade" -> handleGiveUpgrade(sender, args);
             case "forceextract" -> handleForceExtract(sender, args);
             case "setspawn" -> handleSetSpawn(sender);
+            case "admin" -> handleAdmin(sender, args);
             default -> {
                 plugin.sendMessage(sender, Messages.UNKNOWN_COMMAND.toString());
                 yield true;
@@ -104,6 +106,7 @@ public class ExtractionCommand implements CommandExecutor {
             MessageUtil.append("extraction giveupgrade {player} {token}", "Give an upgrade token", help);
             MessageUtil.append("extraction forceextract {player}", "Force extract a player", help);
             MessageUtil.append("extraction setspawn", "Set the Extraction entry spawn", help);
+            MessageUtil.append("extraction admin hologram {area}", "Set/remove the area hologram position", help);
         }
 
         help.append("\n").append(Messages.HELP_FOOTER);
@@ -143,6 +146,7 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getUpgradeManager().reload();
         plugin.getScoreboardManager().reload();
         plugin.getActionBarManager().reload();
+        plugin.getHologramManager().reload();
         plugin.getLootTableManager().reload();
 
         plugin.getCooldownManager().applyConfig();
@@ -317,6 +321,47 @@ public class ExtractionCommand implements CommandExecutor {
         else
             plugin.sendMessage(sender, Messages.EXTRACT_NOT_IN.toString());
 
+        return true;
+    }
+
+    private boolean handleAdmin(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("extraction.admin")) {
+            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
+            return true;
+        }
+
+        if (args.length < 3 || !args[1].equalsIgnoreCase("hologram")) {
+            plugin.sendMessage(sender, Messages.USAGE
+                    .replace("usage", "/extraction admin hologram {area} [remove]"));
+            return true;
+        }
+
+        Area area = plugin.getAreaManager().getArea(args[2]);
+        if (area == null) {
+            plugin.sendMessage(sender, Messages.AREA_NOT_FOUND.replace("area", args[2]));
+            return true;
+        }
+
+        boolean remove = args.length >= 4 && args[3].equalsIgnoreCase("remove");
+
+        if (!plugin.getHologramManager().isAvailable()) {
+            plugin.sendMessage(sender, Messages.AREA_HOLOGRAM_DISABLED.toString());
+            return true;
+        }
+
+        if (remove) {
+            plugin.getHologramManager().remove(area);
+            plugin.sendMessage(sender, Messages.AREA_HOLOGRAM_REMOVED.replace("area", area.getName()));
+            return true;
+        }
+
+        if (!(sender instanceof Player player)) {
+            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
+            return true;
+        }
+
+        plugin.getHologramManager().setPosition(area, player.getLocation());
+        plugin.sendMessage(sender, Messages.AREA_HOLOGRAM_SET.replace("area", area.getName()));
         return true;
     }
 

@@ -6,7 +6,7 @@ main: net.omni.extraction.ExtractionPlugin
 api-version: '1.21'
 load: POSTWORLD
 
-softdepend: [ PlaceholderAPI, ProtocolLib, MythicMobs, MMOItems, ItemEdit, Nexo, Vault ]
+softdepend: [ PlaceholderAPI, ProtocolLib, MythicMobs, MMOItems, ItemEdit, Nexo, Vault, DecentHolograms ]
 
 authors: [ domninos ]
 

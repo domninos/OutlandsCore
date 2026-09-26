@@ -128,6 +128,11 @@ public final class ConfigKeys {
     public static final String ACTIONBAR_UPDATE_TICKS = "actionbar.update-ticks";
     public static final String ACTIONBAR_KILL_FEEDBACK_TICKS = "actionbar.kill-feedback-ticks";
 
+    public static final String HOLOGRAMS = "holograms";
+    public static final String HOLOGRAMS_ENABLED = "holograms.enabled";
+    public static final String HOLOGRAMS_UPDATE_TICKS = "holograms.update-ticks";
+    public static final String HOLOGRAMS_LINES = "holograms.lines";
+
     public static final String SCOREBOARD = "scoreboard";
     public static final String SCOREBOARD_ENABLED = "scoreboard.enabled";
     public static final String SCOREBOARD_ONLY_IN_WORLD = "scoreboard.only-in-world";

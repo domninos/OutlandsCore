@@ -152,6 +152,10 @@ public class ConfigUtil {
     private int actionbarUpdateTicks;
     private int actionbarKillFeedbackTicks;
 
+    private boolean hologramsEnabled;
+    private int hologramsUpdateTicks;
+    private List<String> hologramLines;
+
     private int lootDefaultItemsPerChest;
     private String lootTokenItemMaterial;
     private String lootTokenItemName;
@@ -167,6 +171,7 @@ public class ConfigUtil {
         this.tokenLootDefinitions = new HashMap<>();
         this.defaultLoadoutTiers = new HashMap<>();
         this.scoreboardLines = new ArrayList<>();
+        this.hologramLines = new ArrayList<>();
     }
 
     public void reloadConfig() {
@@ -180,6 +185,7 @@ public class ConfigUtil {
         defaultLoadoutTiers.clear();
         spawnLocation = null;
         scoreboardLines = new ArrayList<>();
+        hologramLines = new ArrayList<>();
     }
 
     public void load() {
@@ -234,6 +240,7 @@ public class ConfigUtil {
         loadSpawn();
         loadScoreboard(savedDefaults);
         loadActionbar(savedDefaults);
+        loadHolograms(savedDefaults);
         loadLoot(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
@@ -528,6 +535,17 @@ public class ConfigUtil {
         this.actionbarUpdateTicks = Math.max(1, getAndDefaultInt(ConfigKeys.ACTIONBAR_UPDATE_TICKS, 20, savedDefaults));
         this.actionbarKillFeedbackTicks = Math.max(1,
                 getAndDefaultInt(ConfigKeys.ACTIONBAR_KILL_FEEDBACK_TICKS, 40, savedDefaults));
+    }
+
+    private void loadHolograms(AtomicInteger savedDefaults) {
+        this.hologramsEnabled = getAndDefaultBoolean(ConfigKeys.HOLOGRAMS_ENABLED, true, savedDefaults);
+        this.hologramsUpdateTicks = Math.max(1, getAndDefaultInt(ConfigKeys.HOLOGRAMS_UPDATE_TICKS, 10, savedDefaults));
+        this.hologramLines = getAndDefaultStringList(ConfigKeys.HOLOGRAMS_LINES, List.of(
+                "<yellow><bold>%area%</bold></yellow>",
+                "<gray>Level <white>%level%</white></gray>",
+                "<gray>Mobs: <white>%mobs%/%total%</white></gray>",
+                "<gold>Bosses: <white>%bosses%</white></gold>"
+        ), savedDefaults);
     }
 
     private void loadLoot(AtomicInteger savedDefaults) {
@@ -1213,6 +1231,18 @@ public class ConfigUtil {
 
     public int getActionbarKillFeedbackTicks() {
         return actionbarKillFeedbackTicks;
+    }
+
+    public boolean isHologramsEnabled() {
+        return hologramsEnabled;
+    }
+
+    public int getHologramsUpdateTicks() {
+        return hologramsUpdateTicks;
+    }
+
+    public List<String> getHologramLines() {
+        return hologramLines;
     }
 
     public boolean isScoreboardOnlyInWorld() {

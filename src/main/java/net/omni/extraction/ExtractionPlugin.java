@@ -17,6 +17,7 @@ import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.gameplay.CooldownManager;
 import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.gui.GUIManager;
+import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.integration.ExternalPluginManager;
 import net.omni.extraction.listeners.PlayerListener;
 import net.omni.extraction.loadout.LoadoutGUI;
@@ -63,6 +64,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private ActionBarManager actionBarManager;
     private GUIManager guiManager;
     private AreaEditorManager areaEditorManager;
+    private HologramManager hologramManager;
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
     private ExtractionManager extractionManager;
@@ -87,6 +89,9 @@ public final class ExtractionPlugin extends JavaPlugin {
       - hologram position can be set via /extraction admin hologram <area>
       - the hologram info should be configurable.
       - use DecentHolograms API
+     - fix holograms not being removed when /extraction admin hologram <area> remove
+       - make it /extraction admin addhologram <area> and /extraction admin delhologram <area>
+       - add /extraction admin sethologram <area> - sets the hologram position their eye level
      -
      - add API
      -
@@ -126,6 +131,9 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         if (actionBarManager != null)
             actionBarManager.stop();
+
+        if (hologramManager != null)
+            hologramManager.stop();
 
         stopSaveTask();
 
@@ -202,6 +210,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.actionBarManager = new ActionBarManager(this);
         this.guiManager = new GUIManager(this);
         this.areaEditorManager = new AreaEditorManager(this);
+        this.hologramManager = new HologramManager(this);
 
         this.lootTableManager = new LootTableManager(this);
         this.lootTableManager.load();
@@ -219,6 +228,7 @@ public final class ExtractionPlugin extends JavaPlugin {
 
 
         actionBarManager.start();
+        hologramManager.start();
         startSaveTask();
 
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
@@ -360,6 +370,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public AreaEditorManager getAreaEditorManager() {
         return areaEditorManager;
+    }
+
+    public HologramManager getHologramManager() {
+        return hologramManager;
     }
 
     public LootTableManager getLootTableManager() {
