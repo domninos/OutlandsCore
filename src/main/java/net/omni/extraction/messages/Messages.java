@@ -55,6 +55,7 @@ public enum Messages {
     WITHDRAW_CLAIMED_ALL("withdraw.claimed-all", "<green>Claimed all extracted loot.</green>"),
     WITHDRAW_INVENTORY_FULL("withdraw.inventory-full", "<gold>Your inventory is full — some items were kept in storage.</gold>"),
     WITHDRAW_EXPIRED("withdraw.expired", "<red>Your extracted loot has expired and was lost.</red>"),
+    WITHDRAW_BLOCKED("withdraw.blocked", "<red>Your stored loot is view-only here. You can reclaim it once you leave the extraction world or /extract.</red>"),
 
     AREA_ENTERED("area.entered", "<gray>You entered <white>%area%</white>. Clear the mobs!</gray>"),
     AREA_CLEARED("area.cleared", "<green>Area <white>%area%</white> cleared! Loot is waiting in the chest.</green>"),

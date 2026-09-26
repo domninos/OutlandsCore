@@ -181,6 +181,19 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   inventory and the player inventory. Per-item click-claim was removed (that was the dupe source); `LootManager.
   syncStorageFromInventory(data, page, inv)` rebuilds `extractedLoot` from the visible page (merging other pages) and
   saves, called on storage close and before every nav/claim-all/discard action.
+- Storage = chest loot ONLY: the run inventory is NEVER stored. `RunManager.extractPlayer`/`handleDisconnect`/
+  `shutdown` no longer write `player.getInventory().getContents()` into `extractedLoot` (they used to REPLACE it,
+  wiping banked chest loot); the list is fed strictly by `AreaClearManager.redeemChest`/`storeLeftover` (both now
+  `getOrLoadSync` so a still-loading owner can't blank a real DB row). Death still wipes storage on purpose
+  (`handleDeath`). `restorePendingReturn` still announces banked loot via `EXTRACT_LOOT_STORED` on relog.
+- Storage GUI is view-only while a player is in a run OR inside the extraction world (`settings.world-name`):
+  `PlayerListener.isWithdrawBlocked` gates `onInventoryClick`/`onInventoryDrag` (StorageHolder branches) — every
+  click/drag cancels with a `WITHDRAW_BLOCKED` (`withdraw.blocked`) message, so the player can see banked loot but
+  neither withdraw nor deposit until they leave the world / `/extract`. Opening the GUI stays allowed.
+- Actionbar timer is disabled in free mode (`time-limit-seconds <= 0` AND `cooldown-hours <= 0`): `ActionBarManager.
+  refresh` skips the `%extraction_timer%` HUD entirely (previously it flashed "0:00" every tick during free-mode
+  runs) but still renders the `+N tokens` kill overlay (`showTokens`). Enabled when either value is > 0; recomputed
+  each tick, so `/extraction reload` (→ `actionBarManager.reload()`) re-enables automatically.
 
 - Stale area-clear sessions: the periodic containment task now always runs (decoupled from
   `mob-containment.enabled`). `AreaClearManager.scanStaleSessions()` cancels any session whose mobs

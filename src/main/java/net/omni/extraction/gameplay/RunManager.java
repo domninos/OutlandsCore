@@ -108,12 +108,6 @@ public class RunManager {
         Player player = Bukkit.getPlayer(uuid);
         PlayerData data = playerDataManager.getOrCreate(uuid);
 
-        List<ItemStack> loot = new ArrayList<>();
-        if (player != null)
-            loot = new ArrayList<>(Arrays.asList(player.getInventory().getContents()));
-
-        data.setExtractedLoot(loot);
-
         int tokens = calculateTokens(run);
         tokenManager.addTokens(uuid, tokens);
         cooldownManager.setCooldown(uuid);
@@ -130,9 +124,6 @@ public class RunManager {
 
             plugin.sendMessage(player, Messages.EXTRACT_SUCCESS.toString());
             plugin.sendMessage(player, Messages.EXTRACT_TOKENS.replace("tokens", String.valueOf(tokens)));
-
-            if (!loot.isEmpty())
-                plugin.sendMessage(player, Messages.EXTRACT_LOOT_STORED.toString());
         }
 
         data.clearRunSnapshot();
@@ -236,10 +227,6 @@ public class RunManager {
 
         PlayerData data = playerDataManager.getOrCreate(uuid);
 
-        Player player = Bukkit.getPlayer(uuid);
-        if (player != null)
-            data.setExtractedLoot(Arrays.asList(player.getInventory().getContents()));
-
         int tokens = calculateTokens(run);
         tokenManager.addTokens(uuid, tokens);
         cooldownManager.setCooldown(uuid);
@@ -296,9 +283,6 @@ public class RunManager {
             Player player = Bukkit.getPlayer(uuid);
 
             if (player != null) {
-                List<ItemStack> loot = new ArrayList<>(Arrays.asList(player.getInventory().getContents()));
-                data.setExtractedLoot(loot);
-
                 int tokens = calculateTokens(run);
                 tokenManager.addTokens(uuid, tokens);
                 cooldownManager.setCooldown(uuid);
@@ -313,7 +297,6 @@ public class RunManager {
                 plugin.sendMessage(player, Messages.EXTRACT_SUCCESS.toString());
                 plugin.sendMessage(player, Messages.EXTRACT_TOKENS.replace("tokens", String.valueOf(tokens)));
             } else {
-                data.setExtractedLoot(new ArrayList<>());
                 cooldownManager.setCooldown(uuid);
             }
 

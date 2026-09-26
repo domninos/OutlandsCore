@@ -128,14 +128,14 @@ public class PlayerListener implements Listener {
             dataManager.savePlayer(data.getUuid());
         } else if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
             ItemStack cursor = player.getItemOnCursor();
-            if (cursor != null && LoadoutGUI.isPlaceholder(cursor)) {
+            if (LoadoutGUI.isPlaceholder(cursor)) {
                 player.setItemOnCursor(null);
                 player.updateInventory();
             }
             plugin.getGuiManager().syncLoadout(player, data);
             plugin.getGuiManager().refreshLoadout(player, data);
-        } else if (event.getView().getTopInventory().getHolder() instanceof StorageHolder storage) {
-            plugin.getLootManager().syncStorageFromInventory(data, storage.page(),
+        } else if (event.getView().getTopInventory().getHolder() instanceof StorageHolder(int page)) {
+            plugin.getLootManager().syncStorageFromInventory(data, page,
                     event.getView().getTopInventory());
         }
     }
@@ -165,6 +165,13 @@ public class PlayerListener implements Listener {
         }
 
         if (event.getView().getTopInventory().getHolder() instanceof StorageHolder storage) {
+            if (isWithdrawBlocked(player)) {
+                event.setCancelled(true);
+                player.closeInventory();
+                plugin.sendMessage(player, Messages.WITHDRAW_BLOCKED.toString());
+                return;
+            }
+
             if (isStorageButtonSlot(event.getRawSlot())) {
                 event.setCancelled(true);
                 handleStorageClick(player, event, storage);
@@ -200,6 +207,15 @@ public class PlayerListener implements Listener {
         applyUpgrade(player, token, slot, event);
     }
 
+    private boolean isWithdrawBlocked(Player player) {
+        return plugin.getRunManager().isPlayerInRun(player.getUniqueId())
+                || player.getWorld().getName().equalsIgnoreCase(plugin.getConfigUtil().getWorldName());
+    }
+
+    private boolean isStorageButtonSlot(int rawSlot) {
+        return rawSlot >= LootManager.SLOT_PREV && rawSlot <= LootManager.SLOT_DISCARD_ALL;
+    }
+
     private void handleStorageClick(Player player, InventoryClickEvent event, StorageHolder holder) {
         int rawSlot = event.getRawSlot();
 
@@ -232,17 +248,7 @@ public class PlayerListener implements Listener {
             plugin.getLootManager().clearPage(player.getUniqueId());
             plugin.sendMessage(player, Messages.WITHDRAW_EMPTY.toString());
             player.closeInventory();
-            return;
         }
-    }
-
-    private boolean isStorageButtonSlot(int rawSlot) {
-        return rawSlot >= LootManager.SLOT_PREV && rawSlot <= LootManager.SLOT_DISCARD_ALL;
-    }
-
-    private void syncStorage(Player player, StorageHolder holder, InventoryClickEvent event) {
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
-        plugin.getLootManager().syncStorageFromInventory(data, holder.page(), event.getView().getTopInventory());
     }
 
     private void handleLoadoutClick(Player player, InventoryClickEvent event) {
@@ -256,8 +262,7 @@ public class PlayerListener implements Listener {
             dataManager.getOrLoadSync(player.getUniqueId());
 
         switch (event.getAction()) {
-            case DROP_ALL_SLOT, DROP_ONE_SLOT, DROP_ALL_CURSOR, DROP_ONE_CURSOR,
-                    HOTBAR_SWAP, HOTBAR_MOVE_AND_READD -> {
+            case DROP_ALL_SLOT, DROP_ONE_SLOT, DROP_ALL_CURSOR, DROP_ONE_CURSOR, HOTBAR_SWAP -> {
                 event.setCancelled(true);
                 return;
             }
@@ -396,6 +401,11 @@ public class PlayerListener implements Listener {
         }
     }
 
+    private void syncStorage(Player player, StorageHolder holder, InventoryClickEvent event) {
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        plugin.getLootManager().syncStorageFromInventory(data, holder.page(), event.getView().getTopInventory());
+    }
+
     private void handleClaimAll(Player player) {
         PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
         List<ItemStack> kept = new ArrayList<>();
@@ -420,10 +430,6 @@ public class PlayerListener implements Listener {
         }
     }
 
-    private boolean tokenMatches(LoadoutSlot slot, String tokenSlot) {
-        return slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot);
-    }
-
     private boolean isMatchingArmor(ItemStack item, LoadoutSlot slot) {
         EquipmentSlot equipmentSlot = slot.getEquipmentSlot();
         if (equipmentSlot == null)
@@ -444,6 +450,10 @@ public class PlayerListener implements Listener {
         };
     }
 
+    private boolean tokenMatches(LoadoutSlot slot, String tokenSlot) {
+        return slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot);
+    }
+
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
         if (!(event.getWhoClicked() instanceof Player player))
@@ -456,6 +466,13 @@ public class PlayerListener implements Listener {
         }
 
         if (event.getView().getTopInventory().getHolder() instanceof StorageHolder) {
+            if (isWithdrawBlocked(player)) {
+                event.setCancelled(true);
+                player.closeInventory();
+                plugin.sendMessage(player, Messages.WITHDRAW_BLOCKED.toString());
+                return;
+            }
+
             for (int rawSlot : event.getRawSlots()) {
                 if (isStorageButtonSlot(rawSlot)) {
                     event.setCancelled(true);

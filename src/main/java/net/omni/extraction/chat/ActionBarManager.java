@@ -81,22 +81,26 @@ public class ActionBarManager {
         UUID uuid = player.getUniqueId();
         PlayerData data = plugin.getPlayerDataManager().getOrCreate(uuid);
 
-        boolean active = plugin.getRunManager().isPlayerInRun(uuid) || data.isOnCooldown();
+        boolean freeMode = plugin.getConfigUtil().getTimeLimitSeconds() <= 0
+                && plugin.getConfigUtil().getCooldownHours() <= 0;
 
-        if (!active) {
-            if (lastShown.remove(uuid) != null)
-                player.sendActionBar(Component.empty());
-            return;
-        }
+        String text = null;
 
         Overlay overlay = overlays.get(uuid);
-
-        String text;
         if (overlay != null && overlay.expire > System.currentTimeMillis()) {
             text = overlay.text;
         } else {
             overlays.remove(uuid);
-            text = PlaceholderValues.resolveLine(plugin, player, "%extraction_timer%");
+
+            if (!freeMode
+                    && (plugin.getRunManager().isPlayerInRun(uuid) || data.isOnCooldown()))
+                text = PlaceholderValues.resolveLine(plugin, player, "%extraction_timer%");
+        }
+
+        if (text == null) {
+            if (lastShown.remove(uuid) != null)
+                player.sendActionBar(Component.empty());
+            return;
         }
 
         player.sendActionBar(Component.text(text));

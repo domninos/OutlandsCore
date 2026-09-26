@@ -537,7 +537,7 @@ public class AreaClearManager {
     }
 
     private void storeLeftover(UUID ownerId, List<ItemStack> leftover) {
-        PlayerData data = plugin.getPlayerDataManager().getOrCreate(ownerId);
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(ownerId);
         List<ItemStack> stored = new ArrayList<>(data.getExtractedLoot());
 
         stored.addAll(leftover);
@@ -582,7 +582,7 @@ public class AreaClearManager {
         }
 
         if (!loot.isEmpty()) {
-            PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+            PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
             List<ItemStack> stored = new ArrayList<>(data.getExtractedLoot());
 
             stored.addAll(loot);
