@@ -181,14 +181,28 @@ public class AreaManager {
         return result;
     }
 
-    public int getLevel(Area area) {
+    public Area.AreaStats getStats(Area area) {
+        Area.AreaStats cached = area.getCachedStats();
+        if (cached != null)
+            return cached;
+
+        int configuredMobs = 0;
+        int configuredBosses = 0;
         int level = 1;
 
-        for (AreaSpawnDefinition definition : resolveSpawns(area))
+        for (AreaSpawnDefinition definition : resolveSpawns(area)) {
+            if (definition.isBoss())
+                configuredBosses += definition.getCount();
+            else
+                configuredMobs += definition.getCount();
+
             if (definition.getLevel() > level)
                 level = definition.getLevel();
+        }
 
-        return level;
+        Area.AreaStats stats = new Area.AreaStats(level, configuredMobs, configuredBosses, configuredMobs + configuredBosses);
+        area.setCachedStats(stats);
+        return stats;
     }
 
     private MobTemplate template(String mobId) {
@@ -399,8 +413,10 @@ public class AreaManager {
     }
 
     public void markDirty(Area area) {
-        if (area != null)
+        if (area != null) {
+            area.clearStatsCache();
             dirty.add(area.getName().toLowerCase(Locale.ROOT));
+        }
     }
 
     private void checkPlayerAreas() {

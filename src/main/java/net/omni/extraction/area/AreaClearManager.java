@@ -333,7 +333,7 @@ public class AreaClearManager {
         List<ItemStack> loot = new ArrayList<>();
 
         for (int i = 0; i < rolls; i++) {
-            LootEntry entry = table.roll(random, plugin.getAreaManager().getLevel(area));
+            LootEntry entry = table.roll(random, plugin.getAreaManager().getStats(area).level());
             if (entry == null)
                 continue;
 

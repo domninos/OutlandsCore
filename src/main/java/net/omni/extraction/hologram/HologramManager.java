@@ -336,17 +336,20 @@ public class HologramManager {
             return;
 
         String name = hologramName(area);
-        Map<String, String> values = placeholderValues(area);
-        String sig = values.values().toString();
-        List<String> lines = buildLines(area, values);
+        Area.AreaStats stats = plugin.getAreaManager().getStats(area);
 
-        if (lines.isEmpty())
-            return;
+        AreaClearSession session = plugin.getAreaClearManager().getSession(area);
+        String sessionSig = (session != null ? (session.getMobs().size() + "_" + session.getBossMobs().size()) : "idle");
+        String sig = stats.toSignature() + "|" + sessionSig;
 
         try {
             Hologram hologram = DHAPI.getHologram(name);
 
             if (hologram == null) {
+                Map<String, String> values = placeholderValues(area, stats);
+                List<String> lines = buildLines(area, values);
+                if (lines.isEmpty()) return;
+
                 hologram = DHAPI.createHologram(name, location, false, lines);
                 lastLocations.put(name, location.clone());
                 appliedHologramLines.put(name, lines);
@@ -360,55 +363,24 @@ public class HologramManager {
                 lastLocations.put(name, location.clone());
             }
 
-            List<String> applied = appliedHologramLines.get(name);
-            String lastSig = lastAppliedSignature.get(name);
+            if (lastAppliedSignature.containsKey(name) && lastAppliedSignature.get(name).equals(sig) && appliedHologramLines.containsKey(name))
+                return;
 
-            if (lastSig == null || !lastSig.equals(sig) || applied == null || !applied.equals(lines)) {
-                DHAPI.setHologramLines(hologram, lines);
-                appliedHologramLines.put(name, lines);
-                lastAppliedSignature.put(name, sig);
-            }
+            Map<String, String> values = placeholderValues(area, stats);
+            List<String> lines = buildLines(area, values);
+            if (lines.isEmpty()) return;
+
+            DHAPI.setHologramLines(hologram, lines);
+            appliedHologramLines.put(name, lines);
+            lastAppliedSignature.put(name, sig);
         } catch (RuntimeException ignored) {
         }
     }
 
-    private List<String> buildLines(Area area, Map<String, String> values) {
-        List<String> raw = plugin.getConfigUtil().getHologramLines();
-        if (raw == null || raw.isEmpty())
-            return List.of();
-
-        List<String> lines = new ArrayList<>();
-
-        for (String line : raw) {
-            if (line == null)
-                continue;
-
-            String filled = line;
-            for (Map.Entry<String, String> entry : values.entrySet())
-                filled = filled.replace(entry.getKey(), entry.getValue());
-
-            lines.add(toDh(filled));
-        }
-
-        return lines;
-    }
-
-    private Map<String, String> placeholderValues(Area area) {
-        int configuredMobs = 0;
-        int configuredBosses = 0;
-
-        for (AreaSpawnDefinition definition : plugin.getAreaManager().resolveSpawns(area)) {
-            if (definition.isBoss())
-                configuredBosses += definition.getCount();
-            else
-                configuredMobs += definition.getCount();
-        }
-
-        int level = plugin.getAreaManager().getLevel(area);
-
-        int mobs = configuredMobs;
-        int bosses = configuredBosses;
-        int total = configuredMobs + configuredBosses;
+    private Map<String, String> placeholderValues(Area area, Area.AreaStats stats) {
+        int mobs = stats.configuredMobs();
+        int bosses = stats.configuredBosses();
+        int total = stats.totalConfigured();
 
         AreaClearSession session = plugin.getAreaClearManager().getSession(area);
         if (session != null) {
@@ -422,7 +394,7 @@ public class HologramManager {
         values.put("%mobs%", String.valueOf(Math.max(0, mobs)));
         values.put("%bosses%", String.valueOf(Math.max(0, bosses)));
         values.put("%total%", String.valueOf(Math.max(0, total)));
-        values.put("%level%", String.valueOf(level));
+        values.put("%level%", String.valueOf(stats.level()));
         return values;
     }
 
@@ -498,5 +470,26 @@ public class HologramManager {
                 && first.getX() == second.getX()
                 && first.getY() == second.getY()
                 && first.getZ() == second.getZ();
+    }
+
+    private List<String> buildLines(Area area, Map<String, String> values) {
+        List<String> raw = plugin.getConfigUtil().getHologramLines();
+        if (raw == null || raw.isEmpty())
+            return List.of();
+
+        List<String> lines = new ArrayList<>();
+
+        for (String line : raw) {
+            if (line == null)
+                continue;
+
+            String filled = line;
+            for (Map.Entry<String, String> entry : values.entrySet())
+                filled = filled.replace(entry.getKey(), entry.getValue());
+
+            lines.add(toDh(filled));
+        }
+
+        return lines;
     }
 }

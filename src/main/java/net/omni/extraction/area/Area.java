@@ -21,6 +21,25 @@ public class Area {
     private final List<AreaMobReference> mobReferences;
     private final List<Location> mobSpawnLocations;
     private final List<Location> bossSpawnLocations;
+    private AreaStats cachedStats;
+
+    public record AreaStats(int level, int configuredMobs, int configuredBosses, int totalConfigured) {
+        public String toSignature() {
+            return level + "|" + configuredMobs + "|" + configuredBosses + "|" + totalConfigured;
+        }
+    }
+
+    public void clearStatsCache() {
+        this.cachedStats = null;
+    }
+
+    public AreaStats getCachedStats() {
+        return cachedStats;
+    }
+
+    public void setCachedStats(AreaStats cachedStats) {
+        this.cachedStats = cachedStats;
+    }
     private final List<AreaLootEntry> lootEntries;
     private final List<AreaChestLocation> chestLocations;
     private final List<AreaSpawnEntry> spawnEntries;
