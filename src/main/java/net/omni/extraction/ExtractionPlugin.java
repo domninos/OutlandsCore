@@ -183,7 +183,7 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         this.cooldownManager = new CooldownManager(this, playerDataManager);
         this.tokenManager = new TokenManager(playerDataManager);
-        this.upgradeManager = new UpgradeManager(configUtil);
+        this.upgradeManager = new UpgradeManager(this, configUtil);
         this.loadoutManager = new LoadoutManager(this, upgradeManager);
         this.lootManager = new LootManager(this, playerDataManager, configUtil);
         this.runManager = new RunManager(this);

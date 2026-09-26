@@ -275,6 +275,12 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   tier), spends, applies, and reopens `/upgrade`; NO (and ESC, and any other click) returns to `/upgrade` without a
   purchase — a `resolved` flag on the holder stops the close handler from reopening twice. `/extraction reload`
   closes open confirm views alongside loadout/upgrade GUIs.
+- Upgrade-token definition validation: `UpgradeManager.validateTokens()` runs after `loadTiers()` (startup and
+  `/extraction reload`) and logs a console WARNING for any `upgrade-tokens` entry whose `upgrade-slot` is
+  blank/unknown or whose `upgrade-tier` is ≤ 0 or beyond the slot's tier-list max — such tokens can never be
+  applied. `upgrade-tier` is the 1-based index of the item the token grants (first tier-list entry = 1); the
+  default tokens follow it (stone_weapon=2, iron_helmet=3, diamond_chestplate=4). Note the static check cannot
+  catch off-by-one labeling where the declared tier happens to be valid for some player state.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

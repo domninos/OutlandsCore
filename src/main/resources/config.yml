@@ -163,13 +163,16 @@ loadout:
     pet: 0
 
 # Upgrade Token definitions
-# These are physical loot items found during runs
+# These are physical loot items found during runs.
+# upgrade-tier = the 1-based loadout tier index of the item this token grants
+# (tier 1 = first entry of the slot's tier list, e.g. WOODEN_SWORD = 1,
+# STONE_SWORD = 2). A token only applies when it is the exact next tier.
 upgrade-tokens:
   stone_weapon:
     material: PAPER
     display-name: "<gray>Stone Weapon Upgrade</gray>"
     upgrade-slot: WEAPON
-    upgrade-tier: 1
+    upgrade-tier: 2
     lore:
       - "<gray>Apply to your weapon loadout"
       - "<gray>to upgrade to Stone tier."
@@ -177,7 +180,7 @@ upgrade-tokens:
     material: PAPER
     display-name: "<gray>Iron Helmet Upgrade</gray>"
     upgrade-slot: HELMET
-    upgrade-tier: 2
+    upgrade-tier: 3
     lore:
       - "<gray>Apply to your helmet loadout"
       - "<gray>to upgrade to Iron tier."
@@ -185,7 +188,7 @@ upgrade-tokens:
     material: PAPER
     display-name: "<gray>Diamond Chestplate Upgrade</gray>"
     upgrade-slot: CHESTPLATE
-    upgrade-tier: 3
+    upgrade-tier: 4
     lore:
       - "<gray>Apply to your chestplate loadout"
       - "<gray>to upgrade to Diamond tier."
