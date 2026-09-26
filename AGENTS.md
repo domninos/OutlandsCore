@@ -266,6 +266,15 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   "custom loadout" flag (`hasCustomLoadout` and `materializeTierItem` were removed — upgrades just set the tier
   and it reflects live in the GUI/grant). Sequential free-fill and the 36-slot overflow→storage branch were
   removed (1 cell = 1 exact slot).
+- Upgrade quality: upgrade tokens apply ONLY to the exact next tier — `LoadoutManager.applyUpgradeToken` requires
+  `tokenTier == getEffectiveTier(slot) + 1` (any skip is rejected with `loadout.token-wrong-tier`, wired through
+  click, drag, and confirm paths). Buying with tokens via `/upgrade` (empty-cursor click on a slot) opens a
+  config-driven confirm menu (`upgrade/UpgradeConfirmHolder` + `UpgradeConfirmGUI`, section `upgrade-confirm.*` in
+  config.yml: title/rows/prompt/yes/no icons+names, prompt placeholders `%slot%`/`%current%`/`%next%`/`%cost%`;
+  layout YES=center−1, prompt=center, NO=center+1, upgrade-gui filler reused). YES re-validates (tokens + still next
+  tier), spends, applies, and reopens `/upgrade`; NO (and ESC, and any other click) returns to `/upgrade` without a
+  purchase — a `resolved` flag on the holder stops the close handler from reopening twice. `/extraction reload`
+  closes open confirm views alongside loadout/upgrade GUIs.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

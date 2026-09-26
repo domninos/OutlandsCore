@@ -5,6 +5,7 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.messages.MessageUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
+import net.omni.extraction.upgrade.UpgradeConfirmHolder;
 import net.omni.extraction.upgrade.UpgradeGuiHolder;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -155,7 +156,9 @@ public class ExtractionCommand implements CommandExecutor {
         for (World world : plugin.getServer().getWorlds()) {
             for (Player player : world.getPlayers()) {
                 Inventory top = player.getOpenInventory().getTopInventory();
-                if (top.getHolder() instanceof LoadoutGuiHolder || top.getHolder() instanceof UpgradeGuiHolder)
+                if (top.getHolder() instanceof LoadoutGuiHolder
+                        || top.getHolder() instanceof UpgradeGuiHolder
+                        || top.getHolder() instanceof UpgradeConfirmHolder)
                     player.closeInventory();
             }
         }

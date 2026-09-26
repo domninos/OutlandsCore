@@ -29,9 +29,12 @@ loadout:
   upgraded: "<green>Upgraded %slot% to %tier%!</green>"
   max-tier: "<yellow>%slot% is already at maximum tier.</yellow>"
   invalid-token: "<red>This upgrade token is not valid for %slot%.</red>"
+  token-wrong-tier: "<red>Your next %slot% tier is <white>%tier%</white> — you can only apply the next upgrade in sequence.</red>"
   token-applied: "<green>Applied %token_name% to your %slot%!</green>"
 upgrade:
   opened: "<gray>Opened your armor upgrade menu.</gray>"
+block:
+  blocked: "<red>You cannot break or place blocks in Extraction.</red>"
 tokens:
   balance: "<gold>You have %tokens% Extraction Tokens.</gold>"
   insufficient: "<red>You need %required% tokens but only have %available%.</red>"

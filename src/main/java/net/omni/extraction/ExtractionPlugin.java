@@ -74,9 +74,6 @@ public final class ExtractionPlugin extends JavaPlugin {
      - migrate to MariaDB/MySQL, use plugin.yml's library loader
      - loadout should be categorized and checked if they are permanent. food and potions are temporary.
      -
-     - once a run is finished, make /extraction withdraw/storage the same. all collected loot must be inside it.
-     -
-     - only ever claim items on /extraction storage when they're not in a run or outside extraction
      -
      - Boss Creator
         Create bosses with:
@@ -85,7 +82,6 @@ public final class ExtractionPlugin extends JavaPlugin {
         Abilities
         Loot
      -
-     - fix mobs despawning chances (cancel clear, but no loot reward)
      -
      -
      - add a hologram when entering an area (should show the mob/boss count + level)
@@ -93,16 +89,6 @@ public final class ExtractionPlugin extends JavaPlugin {
       - the hologram info should be configurable.
       - use DecentHolograms API
      -
-     -
-     -
-     - fix claiming on /outland storage to say the display name
-      - fix dupe bug when clicking a loot in /outland storage. don't cancel the click, just have free select
-     -
-     - fix /extraction loadout, say "Upgrade armor via /upgrades". disable clicking.
-     - fix loadout not saving/getting fetched automatically in /loadout
-     -
-     -
-     - add custom events (PlayerEnterArea)
      - add API
      -
      -

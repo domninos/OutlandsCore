@@ -11,6 +11,8 @@ import net.omni.extraction.loot.LootItemUtil;
 import net.omni.extraction.loot.LootManager;
 import net.omni.extraction.loot.StorageHolder;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.upgrade.UpgradeConfirmGUI;
+import net.omni.extraction.upgrade.UpgradeConfirmHolder;
 import net.omni.extraction.upgrade.UpgradeGUI;
 import net.omni.extraction.upgrade.UpgradeGuiHolder;
 import net.omni.extraction.upgrade.UpgradeTier;
@@ -22,6 +24,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -34,12 +38,16 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class PlayerListener implements Listener {
 
     private final ExtractionPlugin plugin;
+
+    private final Map<UUID, Long> lastBlockBlocked = new HashMap<>();
 
     public PlayerListener(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -113,6 +121,7 @@ public class PlayerListener implements Listener {
 
         plugin.getPlayerDataManager().unloadPlayer(uuid);
         plugin.getGuiManager().removePlayer(uuid);
+        lastBlockBlocked.remove(uuid);
     }
 
     @EventHandler
@@ -126,6 +135,9 @@ public class PlayerListener implements Listener {
         if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder) {
             plugin.getGuiManager().refreshUpgrade(player, data);
             dataManager.savePlayer(data.getUuid());
+        } else if (event.getView().getTopInventory().getHolder() instanceof UpgradeConfirmHolder confirm) {
+            if (!confirm.isResolved())
+                reopenUpgrade(player);
         } else if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
             ItemStack cursor = player.getItemOnCursor();
             if (LoadoutGUI.isPlaceholder(cursor)) {
@@ -164,6 +176,11 @@ public class PlayerListener implements Listener {
             return;
         }
 
+        if (event.getView().getTopInventory().getHolder() instanceof UpgradeConfirmHolder confirm) {
+            handleUpgradeConfirmClick(player, event, confirm);
+            return;
+        }
+
         if (event.getView().getTopInventory().getHolder() instanceof StorageHolder storage) {
             if (isWithdrawBlocked(player)) {
                 event.setCancelled(true);
@@ -197,7 +214,7 @@ public class PlayerListener implements Listener {
         ItemStack token = event.getCursor();
 
         if (token.getType() == Material.AIR) {
-            buyUpgradeSlot(player, slot);
+            openUpgradeConfirm(player, slot);
             return;
         }
 
@@ -330,7 +347,7 @@ public class PlayerListener implements Listener {
         plugin.getGuiManager().markLoadoutTouched(player, event.getRawSlot());
     }
 
-    private void buyUpgradeSlot(Player player, LoadoutSlot slot) {
+    private void openUpgradeConfirm(Player player, LoadoutSlot slot) {
         PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
         UpgradeTier nextTier = plugin.getUpgradeManager().getNextTier(slot,
                 plugin.getLoadoutManager().getEffectiveTier(data, slot));
@@ -340,22 +357,69 @@ public class PlayerListener implements Listener {
             return;
         }
 
+        if (nextTier.getCost() > 0
+                && !plugin.getTokenManager().hasTokens(player.getUniqueId(), nextTier.getCost())) {
+            plugin.sendMessage(player, Messages.TOKENS_INSUFFICIENT.replace(
+                    "required", String.valueOf(nextTier.getCost()),
+                    "available", String.valueOf(plugin.getTokenManager().getTokens(player.getUniqueId()))));
+            return;
+        }
+
+        UpgradeConfirmGUI.open(plugin, player, slot, nextTier);
+    }
+
+    private void handleUpgradeConfirmClick(Player player, InventoryClickEvent event, UpgradeConfirmHolder holder) {
+        if (event.getClickedInventory() == null)
+            return;
+
+        event.setCancelled(true);
+
+        int rawSlot = event.getRawSlot();
+        int size = plugin.getConfigUtil().getUpgradeConfirmSize();
+
+        if (rawSlot == UpgradeConfirmGUI.getYesSlot(size)) {
+            holder.markResolved();
+            confirmPurchase(player, holder);
+            return;
+        }
+
+        if (rawSlot == UpgradeConfirmGUI.getNoSlot(size))
+            holder.markResolved();
+
+        reopenUpgrade(player);
+    }
+
+    private void confirmPurchase(Player player, UpgradeConfirmHolder holder) {
+        LoadoutSlot slot = holder.getSlot();
+        UpgradeTier nextTier = holder.getNextTier();
+
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+
+        // Re-validate the purchase still applies to the next tier (the player's
+        // tier may have changed while the confirm menu was open).
+        if (plugin.getLoadoutManager().getEffectiveTier(data, slot) + 1 != nextTier.getTierLevel()) {
+            reopenUpgrade(player);
+            return;
+        }
+
         int cost = nextTier.getCost();
 
-        if (cost > 0) {
-            if (!plugin.getTokenManager().hasTokens(player.getUniqueId(), cost)) {
-                plugin.sendMessage(player, Messages.TOKENS_INSUFFICIENT.replace(
-                        "required", String.valueOf(cost),
-                        "available", String.valueOf(plugin.getTokenManager().getTokens(player.getUniqueId()))));
-                return;
-            }
+        if (cost > 0 && !plugin.getTokenManager().hasTokens(player.getUniqueId(), cost)) {
+            plugin.sendMessage(player, Messages.TOKENS_INSUFFICIENT.replace(
+                    "required", String.valueOf(cost),
+                    "available", String.valueOf(plugin.getTokenManager().getTokens(player.getUniqueId()))));
+            reopenUpgrade(player);
+            return;
+        }
 
+        if (cost > 0) {
             plugin.getTokenManager().removeTokens(player.getUniqueId(), cost);
             plugin.sendMessage(player, Messages.TOKENS_SPENT.replace("amount", String.valueOf(cost)));
         }
 
         if (!plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), nextTier.getTierLevel(), data)) {
-            plugin.getGuiManager().refreshUpgrade(player, data);
+            sendWrongTier(player, slot, data);
+            reopenUpgrade(player);
             return;
         }
 
@@ -363,7 +427,21 @@ public class PlayerListener implements Listener {
                 "slot", slot.getDisplayName(),
                 "tier", nextTier.getTierName()));
 
-        plugin.getGuiManager().refreshUpgrade(player, data);
+        reopenUpgrade(player);
+    }
+
+    private void reopenUpgrade(Player player) {
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        plugin.getGuiManager().openUpgrade(player, data);
+    }
+
+    private void sendWrongTier(Player player, LoadoutSlot slot, PlayerData data) {
+        UpgradeTier next = plugin.getUpgradeManager().getNextTier(slot,
+                plugin.getLoadoutManager().getEffectiveTier(data, slot));
+
+        plugin.sendMessage(player, Messages.LOADOUT_TOKEN_WRONG_TIER.replace(
+                "slot", slot.getDisplayName(),
+                "tier", next != null ? next.getTierName() : "None"));
     }
 
     private void applyUpgrade(Player player, ItemStack token, LoadoutSlot slot, InventoryClickEvent event) {
@@ -396,7 +474,7 @@ public class PlayerListener implements Listener {
 
             plugin.getGuiManager().refreshUpgrade(player, data);
         } else {
-            plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
+            sendWrongTier(player, slot, data);
         }
     }
 
@@ -461,6 +539,11 @@ public class PlayerListener implements Listener {
         if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder) {
             event.setCancelled(true);
             handleUpgradeDrag(player, event);
+            return;
+        }
+
+        if (event.getView().getTopInventory().getHolder() instanceof UpgradeConfirmHolder) {
+            event.setCancelled(true);
             return;
         }
 
@@ -587,12 +670,13 @@ public class PlayerListener implements Listener {
             PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
 
             if (!plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), tokenTier, data)) {
-                plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
+                sendWrongTier(player, slot, data);
                 return;
             }
 
             if (!consumeUpgradeToken(player, token)) {
                 data.setLoadoutTier(slot.getConfigKey(), previousTier);
+                plugin.getPlayerDataManager().savePlayer(data.getUuid());
                 plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
                 return;
             }
@@ -697,6 +781,39 @@ public class PlayerListener implements Listener {
         item.setAmount(item.getAmount() - 1);
 
         plugin.sendMessage(player, Messages.LOOT_TIME_ADDED.replace("time", String.valueOf(minutes)));
+    }
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        if (shouldBlockWorldEdit(event.getPlayer()))
+            event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onBlockPlace(BlockPlaceEvent event) {
+        if (shouldBlockWorldEdit(event.getPlayer()))
+            event.setCancelled(true);
+    }
+
+    private boolean shouldBlockWorldEdit(Player player) {
+        if (!player.getWorld().getName().equalsIgnoreCase(plugin.getConfigUtil().getWorldName()))
+            return false;
+
+        if (player.hasPermission("extraction.admin"))
+            return false;
+
+        if (plugin.getAreaManager().isWand(player.getInventory().getItemInMainHand()))
+            return false;
+
+        long now = System.currentTimeMillis();
+        Long last = lastBlockBlocked.get(player.getUniqueId());
+
+        if (last == null || now - last > 2000) {
+            lastBlockBlocked.put(player.getUniqueId(), now);
+            plugin.sendMessage(player, Messages.BLOCK_BLOCKED.toString());
+        }
+
+        return true;
     }
 
     public void register() {

@@ -36,8 +36,10 @@ public enum Messages {
     LOADOUT_UPGRADED("loadout.upgraded", "<green>Upgraded %slot% to %tier%!</green>"),
     LOADOUT_MAX_TIER("loadout.max-tier", "<yellow>%slot% is already at maximum tier.</yellow>"),
     LOADOUT_INVALID_TOKEN("loadout.invalid-token", "<red>This upgrade token is not valid for %slot%.</red>"),
+    LOADOUT_TOKEN_WRONG_TIER("loadout.token-wrong-tier", "<red>Your next %slot% tier is <white>%tier%</white> — you can only apply the next upgrade in sequence.</red>"),
     LOADOUT_TOKEN_APPLIED("loadout.token-applied", "<green>Applied %token_name% to your %slot%!</green>"),
     UPGRADE_OPENED("upgrade.opened", "<gray>Opened your armor upgrade menu.</gray>"),
+    BLOCK_BLOCKED("block.blocked", "<red>You cannot break or place blocks in Extraction.</red>"),
 
     TOKENS_BALANCE("tokens.balance", "<gold>You have %tokens% Extraction Tokens.</gold>"),
     TOKENS_INSUFFICIENT("tokens.insufficient", "<red>You need %required% tokens but only have %available%.</red>"),

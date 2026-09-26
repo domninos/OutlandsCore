@@ -105,6 +105,16 @@ public class ConfigUtil {
     private String upgradeGuiFillerMaterial;
     private String upgradeGuiFillerName;
 
+    private String upgradeConfirmTitle;
+    private int upgradeConfirmRows;
+    private String upgradeConfirmPromptMaterial;
+    private String upgradeConfirmPromptName;
+    private List<String> upgradeConfirmPromptLore;
+    private String upgradeConfirmYesMaterial;
+    private String upgradeConfirmYesName;
+    private String upgradeConfirmNoMaterial;
+    private String upgradeConfirmNoName;
+
     private String loadoutGuiTitle;
     private int loadoutGuiRows;
     private int loadoutGuiHelmetSlot;
@@ -213,6 +223,7 @@ public class ConfigUtil {
         loadLoadoutDefaults(savedDefaults);
         loadUpgradeTokenDefinitions(savedDefaults);
         loadUpgradeGui(savedDefaults);
+        loadUpgradeConfirm(savedDefaults);
         loadLoadoutGui(savedDefaults);
         loadSpawn();
         loadScoreboard(savedDefaults);
@@ -367,6 +378,29 @@ public class ConfigUtil {
         this.upgradeGuiFillerMaterial = getAndDefaultString(ConfigKeys.UPGRADE_GUI_FILLER_MATERIAL,
                 "BLACK_STAINED_GLASS_PANE", savedDefaults);
         this.upgradeGuiFillerName = getAndDefaultString(ConfigKeys.UPGRADE_GUI_FILLER_NAME, "", savedDefaults);
+    }
+
+    private void loadUpgradeConfirm(AtomicInteger savedDefaults) {
+        this.upgradeConfirmTitle = getAndDefaultString(ConfigKeys.UPGRADE_CONFIRM_GUI_TITLE,
+                "<gradient:#00AAFF:#55FFFF>Confirm Upgrade</gradient>", savedDefaults);
+        this.upgradeConfirmRows = Math.clamp(getAndDefaultInt(ConfigKeys.UPGRADE_CONFIRM_GUI_ROWS, 1, savedDefaults), 1, 6);
+        this.upgradeConfirmPromptMaterial = getAndDefaultString(ConfigKeys.UPGRADE_CONFIRM_PROMPT_MATERIAL,
+                "GOLD_INGOT", savedDefaults);
+        this.upgradeConfirmPromptName = getAndDefaultString(ConfigKeys.UPGRADE_CONFIRM_PROMPT_NAME,
+                "<yellow>Confirm purchase of <white>%next%</white> with <white>%cost%</white> tokens?</yellow>", savedDefaults);
+        this.upgradeConfirmPromptLore = getAndDefaultStringList(ConfigKeys.UPGRADE_CONFIRM_PROMPT_LORE, List.of(
+                "<gray>Slot: <white>%slot%</white>",
+                "<gray>Current: <white>%current%</white>",
+                "<gray>Next: <green>%next%</green>"
+        ), savedDefaults);
+        this.upgradeConfirmYesMaterial = getAndDefaultString(ConfigKeys.UPGRADE_CONFIRM_YES_MATERIAL,
+                "LIME_DYE", savedDefaults);
+        this.upgradeConfirmYesName = getAndDefaultString(ConfigKeys.UPGRADE_CONFIRM_YES_NAME,
+                "<green>Yes</green>", savedDefaults);
+        this.upgradeConfirmNoMaterial = getAndDefaultString(ConfigKeys.UPGRADE_CONFIRM_NO_MATERIAL,
+                "RED_DYE", savedDefaults);
+        this.upgradeConfirmNoName = getAndDefaultString(ConfigKeys.UPGRADE_CONFIRM_NO_NAME,
+                "<red>No</red>", savedDefaults);
     }
 
     private void loadLoadoutGui(AtomicInteger savedDefaults) {
@@ -977,6 +1011,42 @@ public class ConfigUtil {
 
     public String getUpgradeGuiFillerName() {
         return upgradeGuiFillerName;
+    }
+
+    public String getUpgradeConfirmTitle() {
+        return upgradeConfirmTitle;
+    }
+
+    public int getUpgradeConfirmSize() {
+        return upgradeConfirmRows * 9;
+    }
+
+    public String getUpgradeConfirmPromptMaterial() {
+        return upgradeConfirmPromptMaterial;
+    }
+
+    public String getUpgradeConfirmPromptName() {
+        return upgradeConfirmPromptName;
+    }
+
+    public List<String> getUpgradeConfirmPromptLore() {
+        return upgradeConfirmPromptLore;
+    }
+
+    public String getUpgradeConfirmYesMaterial() {
+        return upgradeConfirmYesMaterial;
+    }
+
+    public String getUpgradeConfirmYesName() {
+        return upgradeConfirmYesName;
+    }
+
+    public String getUpgradeConfirmNoMaterial() {
+        return upgradeConfirmNoMaterial;
+    }
+
+    public String getUpgradeConfirmNoName() {
+        return upgradeConfirmNoName;
     }
 
     public String getLoadoutGuiTitle() {

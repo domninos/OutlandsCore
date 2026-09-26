@@ -41,6 +41,17 @@ public final class ConfigKeys {
     public static final String UPGRADE_GUI_FILLER_MATERIAL = "upgrade-gui.filler.material";
     public static final String UPGRADE_GUI_FILLER_NAME = "upgrade-gui.filler.name";
 
+    public static final String UPGRADE_CONFIRM_GUI = "upgrade-confirm";
+    public static final String UPGRADE_CONFIRM_GUI_TITLE = "upgrade-confirm.title";
+    public static final String UPGRADE_CONFIRM_GUI_ROWS = "upgrade-confirm.rows";
+    public static final String UPGRADE_CONFIRM_PROMPT_MATERIAL = "upgrade-confirm.prompt-material";
+    public static final String UPGRADE_CONFIRM_PROMPT_NAME = "upgrade-confirm.prompt-name";
+    public static final String UPGRADE_CONFIRM_PROMPT_LORE = "upgrade-confirm.prompt-lore";
+    public static final String UPGRADE_CONFIRM_YES_MATERIAL = "upgrade-confirm.yes-material";
+    public static final String UPGRADE_CONFIRM_YES_NAME = "upgrade-confirm.yes-name";
+    public static final String UPGRADE_CONFIRM_NO_MATERIAL = "upgrade-confirm.no-material";
+    public static final String UPGRADE_CONFIRM_NO_NAME = "upgrade-confirm.no-name";
+
     public static final String LOADOUT_GUI = "loadout-gui";
     public static final String LOADOUT_GUI_TITLE = "loadout-gui.title";
     public static final String LOADOUT_GUI_ROWS = "loadout-gui.rows";

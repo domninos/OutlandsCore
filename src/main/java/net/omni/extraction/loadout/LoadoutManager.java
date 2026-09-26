@@ -179,7 +179,7 @@ public class LoadoutManager {
             if (slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot)) {
                 int currentTier = getEffectiveTier(data, slot);
 
-                if (tokenTier > currentTier) {
+                if (tokenTier == currentTier + 1) {
                     data.setLoadoutTier(slot.getConfigKey(), tokenTier);
                     plugin.getPlayerDataManager().savePlayer(data.getUuid());
                     return true;

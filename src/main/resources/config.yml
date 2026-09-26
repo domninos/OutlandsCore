@@ -206,6 +206,23 @@ upgrade-gui:
     material: BLACK_STAINED_GLASS_PANE
     name: ""
 
+# Upgrade confirm menu (opened when clicking an upgrade slot in /upgrade)
+# after buying with tokens. Yes spends the tokens and applies the next tier;
+# No (or ESC) returns to /upgrade. Placeholders: %slot%, %current%, %next%, %cost%.
+upgrade-confirm:
+  title: "<gradient:#00AAFF:#55FFFF>Confirm Upgrade</gradient>"
+  rows: 1
+  prompt-material: GOLD_INGOT
+  prompt-name: "<yellow>Confirm purchase of <white>%next%</white> with <white>%cost%</white> tokens?</yellow>"
+  prompt-lore:
+    - "<gray>Slot: <white>%slot%</white>"
+    - "<gray>Current: <white>%current%</white>"
+    - "<gray>Next: <green>%next%</green>"
+  yes-material: LIME_DYE
+  yes-name: "<green>Yes</green>"
+  no-material: RED_DYE
+  no-name: "<red>No</red>"
+
 # Loadout GUI (/extraction loadout)
 # Loadout editor. The GUI mirrors the player's real inventory: the first row
 # holds the armor + off-hand slots (only matching armor can be placed on the
