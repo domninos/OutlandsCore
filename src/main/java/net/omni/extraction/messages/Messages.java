@@ -25,6 +25,7 @@ public enum Messages {
     RUN_WORLD_NOT_FOUND("run.world-not-found", "<red>The Extraction world '%world%' was not found. Contact an administrator.</red>"),
     RUN_COOLDOWN("run.cooldown", "<red>You must wait %time% before entering Extraction again.</red>"),
     RUN_TELEPORT_BACK("run.teleport-back", "<gray>Teleporting you back...</gray>"),
+    RUN_EXTRA_TIME_APPLIED("run.extra-time-applied", "<yellow>+%time% extra minutes added to this run.</yellow>"),
 
     EXTRACT_NOT_IN("extract.not-in", "<red>You are not currently in Extraction.</red>"),
     EXTRACT_SUCCESS("extract.success", "<green>You have successfully extracted from Extraction!</green>"),
@@ -47,6 +48,7 @@ public enum Messages {
 
     LOOT_TOKENS("loot.tokens", "<gold>+%amount% Extraction Tokens</gold>"),
     LOOT_TIME_ADDED("loot.time-added", "<yellow>+%time% minutes added to your run!</yellow>"),
+    LOOT_TIME_BANKED("loot.time-banked", "<yellow>+%time% minute(s) banked and added to your next run.</yellow>"),
     LOOT_STORED("loot.stored", "<green>Stored %amount% item(s) in <white>/extraction storage</white>.</green>"),
 
     ACTIONBAR_KILL_TOKENS("actionbar.kill-tokens", "<green>+%amount% tokens</green>"),

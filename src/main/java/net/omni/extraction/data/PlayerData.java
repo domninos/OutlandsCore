@@ -17,6 +17,7 @@ public class PlayerData {
     private int lastKillCount;
     private int lastEventCount;
     private int lastBossCount;
+    private int extraTimeSeconds;
     private Location returnLocation;
     private List<ItemStack> preRunInventory;
     private List<ItemStack> preRunArmor;
@@ -36,6 +37,7 @@ public class PlayerData {
         this.lastKillCount = 0;
         this.lastEventCount = 0;
         this.lastBossCount = 0;
+        this.extraTimeSeconds = 0;
         this.returnLocation = null;
         this.preRunInventory = new ArrayList<>();
         this.preRunArmor = new ArrayList<>();
@@ -228,6 +230,20 @@ public class PlayerData {
 
     public void setLastBossCount(int count) {
         this.lastBossCount = count;
+        markDirty();
+    }
+
+    public int getExtraTimeSeconds() {
+        return extraTimeSeconds;
+    }
+
+    public void setExtraTimeSeconds(int seconds) {
+        this.extraTimeSeconds = Math.max(0, seconds);
+        markDirty();
+    }
+
+    public void addExtraTimeSeconds(int seconds) {
+        this.extraTimeSeconds = Math.max(0, this.extraTimeSeconds + seconds);
         markDirty();
     }
 

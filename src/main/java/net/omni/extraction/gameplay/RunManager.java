@@ -63,6 +63,13 @@ public class RunManager {
         data.setPreRunInventory(Arrays.asList(player.getInventory().getContents()));
         data.setPreRunArmor(Arrays.asList(player.getInventory().getArmorContents()));
         data.setPendingReturn(true);
+
+        int baseLimit = plugin.getConfigUtil().getTimeLimitSeconds();
+        int extraTime = Math.max(0, data.getExtraTimeSeconds());
+
+        if (baseLimit > 0 && extraTime > 0)
+            data.setExtraTimeSeconds(0);
+
         playerDataManager.savePlayer(uuid);
 
         player.getInventory().clear();
@@ -77,13 +84,16 @@ public class RunManager {
 
         player.teleport(spawn);
 
-        int timeLimit = plugin.getConfigUtil().getTimeLimitSeconds();
+        int timeLimit = baseLimit > 0 ? baseLimit + extraTime : 0;
 
         ActiveRun run = new ActiveRun(uuid, data.getReturnLocation(), System.currentTimeMillis(), timeLimit);
         activeRuns.put(uuid, run);
 
         if (timeLimit > 0)
             run.startTimer(plugin, this, player);
+
+        if (baseLimit > 0 && extraTime > 0)
+            plugin.sendMessage(player, Messages.RUN_EXTRA_TIME_APPLIED.replace("time", String.valueOf(extraTime / 60)));
 
         plugin.sendMessage(player, Messages.RUN_ENTERED.toString());
         return true;

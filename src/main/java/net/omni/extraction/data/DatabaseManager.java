@@ -47,6 +47,7 @@ public class DatabaseManager {
                             last_kill_count INTEGER DEFAULT 0,
                             last_event_count INTEGER DEFAULT 0,
                             last_boss_count INTEGER DEFAULT 0,
+                            extra_time_seconds INTEGER DEFAULT 0,
                             return_location TEXT DEFAULT '',
                             pre_run_inventory TEXT DEFAULT '',
                             pre_run_armor TEXT DEFAULT '',
@@ -85,6 +86,11 @@ public class DatabaseManager {
             }
             try {
                 stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN pending_return INTEGER DEFAULT 0");
+            } catch (SQLException ignored) {
+                // Column already exists.
+            }
+            try {
+                stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN extra_time_seconds INTEGER DEFAULT 0");
             } catch (SQLException ignored) {
                 // Column already exists.
             }

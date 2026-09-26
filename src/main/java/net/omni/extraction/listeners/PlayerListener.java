@@ -752,17 +752,27 @@ public class PlayerListener implements Listener {
 
         if (!LootItemUtil.isTimeItem(item)) return;
 
-        RunManager.ActiveRun run = plugin.getRunManager().getActiveRun(player.getUniqueId());
-        if (run == null) return;
-
         int minutes = LootItemUtil.getTimeMinutes(item);
         if (minutes <= 0) return;
 
         event.setCancelled(true);
-        run.addTime(minutes * 60);
+
+        RunManager.ActiveRun run = plugin.getRunManager().getActiveRun(player.getUniqueId());
+
+        if (run != null) {
+            run.addTime(minutes * 60);
+            item.setAmount(item.getAmount() - 1);
+
+            plugin.sendMessage(player, Messages.LOOT_TIME_ADDED.replace("time", String.valueOf(minutes)));
+            return;
+        }
+
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        data.addExtraTimeSeconds(minutes * 60);
+        plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
         item.setAmount(item.getAmount() - 1);
 
-        plugin.sendMessage(player, Messages.LOOT_TIME_ADDED.replace("time", String.valueOf(minutes)));
+        plugin.sendMessage(player, Messages.LOOT_TIME_BANKED.replace("time", String.valueOf(minutes)));
     }
 
     @EventHandler

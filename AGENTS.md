@@ -124,6 +124,12 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   strings (e.g. upgrade-token names) render correctly on Paper.
 - Timers now disableable via 0: `settings.time-limit-seconds: 0` skips the run countdown (`RunManager.enterRun`),
   `settings.cooldown-hours: 0` disables the extract cooldown (`CooldownManager.setCooldown`).
+- Banked run time: right-clicking a TIME loot item outside a run now consumes it and banks `minutes*60` seconds on
+  the player (`PlayerData.extraTimeSeconds`, `player_data.extra_time_seconds`, auto-migrated at startup) via
+  `loot.time-banked`; `RunManager.enterRun` starts the run at `time-limit-seconds + banked` (draining the bank,
+  `run.extra-time-applied`) so every player's run limit varies by the time they've banked. In-run right-clicks
+  still add straight to the live run (`ActiveRun.addTime`). When `time-limit-seconds` is 0 (infinite/free mode)
+  the bank is left untouched and no timer starts.
 - Upgrade tokens stack freely (`UpgradeTokenUtil.createTokenItem` sets no max-stack limit); each apply consumes exactly one token and returns/banks the remainder (click path: cursor stack decremented; drag path: `consumeUpgradeToken` decrements the matched cursor/inventory stack by 1).
 - Wand GUI editor (`areaeditor` package): CHEST left-click opens a paginated loot-table picker (uses optional
   `icon`/`display-name`/`lore` fields in `loot_tables.yml`, falling back to `area-editor.chest-icon-*`); SPAWN
