@@ -430,14 +430,13 @@ public class Area {
     }
 
     public Location getSpawnLocation(AreaSpawnDefinition definition, Random random) {
-        if (definition != null && definition.isBoss()) {
-            if (!bossSpawnLocations.isEmpty())
-                return bossSpawnLocations.get(random.nextInt(bossSpawnLocations.size()));
-        } else if (!mobSpawnLocations.isEmpty()) {
-            return mobSpawnLocations.get(random.nextInt(mobSpawnLocations.size()));
-        }
+        if (definition != null && definition.isBoss() && !bossSpawnLocations.isEmpty())
+            return bossSpawnLocations.get(random.nextInt(bossSpawnLocations.size()));
 
-        return mobSpawnLocations.get(random.nextInt(mobSpawnLocations.size()));
+        if (!mobSpawnLocations.isEmpty())
+            return mobSpawnLocations.get(random.nextInt(mobSpawnLocations.size()));
+
+        return null;
     }
 
     public List<AreaChestLocation> getChestLocations() {

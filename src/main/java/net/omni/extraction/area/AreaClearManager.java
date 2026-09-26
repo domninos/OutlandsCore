@@ -847,10 +847,22 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
 
     private void spawnMobs(Area area, AreaClearSession session) {
         for (AreaSpawnDefinition definition : areaManager.resolveSpawns(area)) {
+            boolean warned = false;
+
             for (int i = 0; i < definition.getCount(); i++) {
                 Location location = definition.getBoundLocation() != null
                         ? definition.getBoundLocation() : area.getSpawnLocation(definition, random);
-                if (location == null) continue;
+                if (location == null) {
+                    if (definition.getBoundLocation() == null && !warned) {
+                        warned = true;
+                        plugin.getLogger().warning("Area '" + area.getName() + "': mob '" + definition.getType()
+                                + "' (boss=" + definition.isBoss()
+                                + ") has no bound spawn entry and the area has no "
+                                + "spawn-locations/boss-locations - it will not spawn. Use the edit-wand "
+                                + "SPAWN placement or configure spawn-locations.");
+                    }
+                    continue;
+                }
 
                 Entity entity = mobFactory.spawn(definition, location);
                 if (entity == null) continue;
