@@ -195,21 +195,33 @@ upgrade-tokens:
 
 # Time loot definitions
 # Physical TIME loot items found in chests (right-click while in a run adds
-# minutes to the run). Loot-table entries of type TIME pick a random definition
-# from this list; minutes is the specific time granted by that item.
+# minutes to the run; right-click outside a run banks them for the next run).
+# Loot-table entries of type TIME pick a random definition from this list;
+# minutes is the specific time granted by that item. The display-name and lore
+# support the %time% placeholder (replaced with the item's minutes). A
+# display-name WITHOUT %time% automatically gets a "(+N minutes)" suffix.
 time-loot:
   short_time:
     material: CLOCK
-    display-name: "<yellow>Extra Time</yellow>"
+    display-name: "<yellow>Extra Time (+%time% minutes)</yellow>"
     minutes: 2
+    lore:
+      - "<gray>Right-click while holding to add %time% minutes"
+      - "<gray>to your run, even outside Extraction."
   medium_time:
     material: CLOCK
-    display-name: "<gold>Extra Time</gold>"
+    display-name: "<gold>Extra Time (+%time% minutes)</gold>"
     minutes: 5
+    lore:
+      - "<gray>Right-click while holding to add %time% minutes"
+      - "<gray>to your run, even outside Extraction."
   long_time:
     material: CLOCK
-    display-name: "<red>Extra Time</red>"
+    display-name: "<red>Extra Time (+%time% minutes)</red>"
     minutes: 10
+    lore:
+      - "<gray>Right-click while holding to add %time% minutes"
+      - "<gray>to your run, even outside Extraction."
 
 # Upgrade GUI (/upgrade)
 # Shows the player's current armor and lets them drop an upgrade token onto a piece.
@@ -442,5 +454,6 @@ loot:
   token-item-name: "<gold>Extraction Token</gold>"
 # Material/display name of the TIME loot item (right-click while in a run adds
 # time). Only used as a fallback when the time-loot section above is empty.
+# Supports the %time% placeholder; names without it get a "(+N minutes)" suffix.
 time-item-material: CLOCK
-time-item-name: "<yellow>Extra Time</yellow>"
+time-item-name: "<yellow>Extra Time (+%time% minutes)</yellow>"

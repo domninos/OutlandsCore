@@ -507,11 +507,24 @@ public class AreaClearManager {
                     String name = def.get("display-name") != null ? String.valueOf(def.get("display-name")) : plugin.getConfigUtil().getLootTimeItemName();
                     int minutes = def.get("minutes") instanceof Number num ? num.intValue() : 1;
 
-                    result.add(LootItemUtil.createTimeItem(mat, name, Math.max(1, minutes)));
+                    StringBuilder loreBuilder = new StringBuilder();
+                    Object loreObj = def.get("lore");
+
+                    if (loreObj instanceof List<?> loreList) {
+                        for (Object line : loreList) {
+                            if (!loreBuilder.isEmpty())
+                                loreBuilder.append("\n");
+
+                            loreBuilder.append(line);
+                        }
+                    }
+
+                    result.add(LootItemUtil.createTimeItem(mat, name,
+                            loreBuilder.isEmpty() ? null : loreBuilder.toString(), Math.max(1, minutes)));
                 } else {
                     String mat = plugin.getConfigUtil().getLootTimeItemMaterial();
                     String name = plugin.getConfigUtil().getLootTimeItemName();
-                    result.add(LootItemUtil.createTimeItem(mat, name, entry.getAmount()));
+                    result.add(LootItemUtil.createTimeItem(mat, name, null, entry.getAmount()));
                 }
             }
             default -> plugin.getLogger().warning("Unknown loot entry type '" + type + "'.");

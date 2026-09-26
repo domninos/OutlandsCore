@@ -1,5 +1,6 @@
 package net.omni.extraction.loot;
 
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -7,6 +8,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class LootItemUtil {
 
@@ -59,7 +63,7 @@ public class LootItemUtil {
         return item.getItemMeta().getPersistentDataContainer().has(KEY_TOKEN, PersistentDataType.BYTE);
     }
 
-    public static ItemStack createTimeItem(String materialName, String displayName, int minutes) {
+    public static ItemStack createTimeItem(String materialName, String displayName, String lore, int minutes) {
         Material material = Material.matchMaterial(materialName);
         if (material == null) material = Material.CLOCK;
 
@@ -67,7 +71,27 @@ public class LootItemUtil {
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-            meta.customName(MiniMessage.miniMessage().deserialize(displayName));
+            String name = displayName;
+
+            if (name.contains("%time%")) {
+                name = name.replace("%time%", String.valueOf(minutes));
+            } else {
+                name = name + " <gray>(+" + minutes + " minute" + (minutes == 1 ? "" : "s") + ")</gray>";
+            }
+
+            meta.customName(MiniMessage.miniMessage().deserialize(name));
+
+            if (lore != null && !lore.isEmpty()) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (String line : lore.split("\n"))
+                    loreLines.add(MiniMessage.miniMessage()
+                            .deserialize(line.replace("%time%", String.valueOf(minutes))));
+
+                meta.lore(loreLines);
+                loreLines.clear();
+            }
+
             meta.getPersistentDataContainer().set(KEY_TIME, PersistentDataType.BYTE, (byte) 1);
             meta.getPersistentDataContainer().set(KEY_TIME_MINUTES, PersistentDataType.INTEGER, Math.max(1, minutes));
             item.setItemMeta(meta);

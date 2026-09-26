@@ -505,7 +505,7 @@ public class ConfigUtil {
         this.lootTokenItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_MATERIAL, "GOLD_INGOT", savedDefaults);
         this.lootTokenItemName = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_NAME, "<gold>Extraction Token</gold>", savedDefaults);
         this.lootTimeItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_MATERIAL, "CLOCK", savedDefaults);
-        this.lootTimeItemName = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_NAME, "<yellow>Extra Time</yellow>", savedDefaults);
+        this.lootTimeItemName = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_NAME, "<yellow>Extra Time (+%time% minutes)</yellow>", savedDefaults);
     }
 
     private void loadAreaEditor(AtomicInteger savedDefaults) {
@@ -712,18 +712,24 @@ public class ConfigUtil {
 
         defs.put("short_time", Map.of(
                 "material", "CLOCK",
-                "display-name", "<yellow>Extra Time</yellow>",
-                "minutes", 2
+                "display-name", "<yellow>Extra Time (+%time% minutes)</yellow>",
+                "minutes", 2,
+                "lore", List.of("<gray>Right-click while holding to add %time% minutes",
+                        "<gray>to your run, even outside Extraction.")
         ));
         defs.put("medium_time", Map.of(
                 "material", "CLOCK",
-                "display-name", "<gold>Extra Time</gold>",
-                "minutes", 5
+                "display-name", "<gold>Extra Time (+%time% minutes)</gold>",
+                "minutes", 5,
+                "lore", List.of("<gray>Right-click while holding to add %time% minutes",
+                        "<gray>to your run, even outside Extraction.")
         ));
         defs.put("long_time", Map.of(
                 "material", "CLOCK",
-                "display-name", "<red>Extra Time</red>",
-                "minutes", 10
+                "display-name", "<red>Extra Time (+%time% minutes)</red>",
+                "minutes", 10,
+                "lore", List.of("<gray>Right-click while holding to add %time% minutes",
+                        "<gray>to your run, even outside Extraction.")
         ));
         return defs;
     }

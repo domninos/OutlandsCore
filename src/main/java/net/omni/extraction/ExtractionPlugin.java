@@ -72,7 +72,8 @@ public final class ExtractionPlugin extends JavaPlugin {
     TODO:
      -
      - migrate to MariaDB/MySQL, use plugin.yml's library loader
-     - loadout should be categorized and checked if they are permanent. food and potions are temporary.
+     - fix respawn, if they die while in extraction, respawn them and add a delay so that it actually respawns and teleports them properly.
+       - currently, it doesn't actually respawn me, but it does teleport me to my return location
      -
      -
      - Boss Creator
@@ -113,6 +114,10 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      -
      - events
+     -
+     -
+     -
+     - daily/weekly missions
 
      */
 
