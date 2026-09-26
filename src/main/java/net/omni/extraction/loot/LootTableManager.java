@@ -107,6 +107,15 @@ public class LootTableManager {
         return keys.get(random.nextInt(keys.size()));
     }
 
+    public String randomTokenKey(Random random) {
+        List<String> keys = new ArrayList<>(plugin.getConfigUtil().getTokenLootDefinitions().keySet());
+
+        if (keys.isEmpty())
+            return null;
+
+        return keys.get(random.nextInt(keys.size()));
+    }
+
     public void save() {
         if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) return;
 

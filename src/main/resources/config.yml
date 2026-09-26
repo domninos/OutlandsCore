@@ -223,6 +223,19 @@ time-loot:
       - "<gray>Right-click while holding to add %time% minutes"
       - "<gray>to your run, even outside Extraction."
 
+# Token loot definitions
+# Physical TOKENS loot items found in chests (credits balance on pickup).
+# Loot-table entries of type TOKENS pick a random definition from this list.
+# The display-name and lore support the %amount% placeholder (replaced with the
+# entry's token amount). Falls back to loot.token-item-* when this section is empty.
+token-loot:
+  extraction_token:
+    material: GOLD_INGOT
+    display-name: "<gold>Extraction Token (+%amount%)</gold>"
+    lore:
+      - "<gray>Contains %amount% Extraction Tokens"
+      - "<gray>that can be spent on upgrades."
+
 # Upgrade GUI (/upgrade)
 # Shows the player's current armor and lets them drop an upgrade token onto a piece.
 upgrade-gui:

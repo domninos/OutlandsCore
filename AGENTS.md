@@ -82,7 +82,10 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   config-defined `time-loot` entry (config.yml, like `upgrade-tokens`) whose `minutes` set the item's time
   (`LootItemUtil.createTimeItem` substitutes the `%time%` placeholder in the definition's display-name/lore and
   auto-appends a gray `(+N minutes)` suffix when the name lacks it); the legacy `loot.time-item-*` + entry
-  `amount` fallback only applies when `time-loot` is empty.
+  `amount` fallback only applies when `time-loot` is empty. `TOKENS` entries get their cosmetic from a config-defined
+  `token-loot` section (like `time-loot`): `randomTokenKey` picks one per chest and `LootItemUtil.createTokenItem`
+  substitutes the `%amount%` placeholder in the definition's display-name/lore; the legacy `loot.token-item-*`
+  fallback applies when `token-loot` is empty.
   `Area.addChestLocation` returns boolean: double-chest marks collapse to a single anchor (min-corner of the pair; merge
   detected via adjacent chest-type blocks + `Chest` BlockData facing), and a duplicate at an already-registered block is
   rejected (`AREA_CHEST_EXISTS`). `AreaClearManager` preserves pre-placed world containers (chests/barrels/shulkers/

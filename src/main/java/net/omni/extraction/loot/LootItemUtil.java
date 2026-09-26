@@ -26,7 +26,7 @@ public class LootItemUtil {
         KEY_TIME_MINUTES = new NamespacedKey(plg, "time_minutes");
     }
 
-    public static ItemStack createTokenItem(String materialName, String displayName, int amount) {
+    public static ItemStack createTokenItem(String materialName, String displayName, String lore, int amount) {
         Material material = Material.matchMaterial(materialName);
 
         if (material == null)
@@ -36,7 +36,19 @@ public class LootItemUtil {
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-            meta.customName(MiniMessage.miniMessage().deserialize(displayName));
+            meta.customName(MiniMessage.miniMessage().deserialize(displayName.replace("%amount%", String.valueOf(amount))));
+
+            if (lore != null && !lore.isEmpty()) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (String line : lore.split("\n"))
+                    loreLines.add(MiniMessage.miniMessage()
+                            .deserialize(line.replace("%amount%", String.valueOf(amount))));
+
+                meta.lore(loreLines);
+                loreLines.clear();
+            }
+
             meta.getPersistentDataContainer().set(KEY_TOKEN, PersistentDataType.BYTE, (byte) 1);
             meta.getPersistentDataContainer().set(KEY_TOKEN_AMOUNT, PersistentDataType.INTEGER, Math.max(1, amount));
             item.setItemMeta(meta);

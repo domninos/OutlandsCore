@@ -24,6 +24,7 @@ public class ConfigUtil {
     private final Map<String, List<Map<String, Object>>> loadoutTiers;
     private final Map<String, Map<String, Object>> upgradeTokenDefinitions;
     private final Map<String, Map<String, Object>> timeLootDefinitions;
+    private final Map<String, Map<String, Object>> tokenLootDefinitions;
     private final Map<String, Integer> defaultLoadoutTiers;
     private String worldName;
     private int timeLimitSeconds;
@@ -163,6 +164,7 @@ public class ConfigUtil {
         this.loadoutTiers = new HashMap<>();
         this.upgradeTokenDefinitions = new HashMap<>();
         this.timeLootDefinitions = new HashMap<>();
+        this.tokenLootDefinitions = new HashMap<>();
         this.defaultLoadoutTiers = new HashMap<>();
         this.scoreboardLines = new ArrayList<>();
     }
@@ -225,6 +227,7 @@ public class ConfigUtil {
         loadLoadoutDefaults(savedDefaults);
         loadUpgradeTokenDefinitions(savedDefaults);
         loadTimeLootDefinitions(savedDefaults);
+        loadTokenLootDefinitions(savedDefaults);
         loadUpgradeGui(savedDefaults);
         loadUpgradeConfirm(savedDefaults);
         loadLoadoutGui(savedDefaults);
@@ -390,6 +393,33 @@ public class ConfigUtil {
                         values.put(valueKey, defSection.get(valueKey));
 
                     timeLootDefinitions.put(key, values);
+                }
+            }
+        }
+    }
+
+    private void loadTokenLootDefinitions(AtomicInteger savedDefaults) {
+        tokenLootDefinitions.clear();
+
+        ConfigurationSection section = plugin.getConfig().getConfigurationSection(ConfigKeys.TOKEN_LOOT);
+
+        if (section == null || section.getKeys(false).isEmpty()) {
+            plugin.getConfig().set(ConfigKeys.TOKEN_LOOT, getDefaultTokenLoot());
+            savedDefaults.incrementAndGet();
+            section = plugin.getConfig().getConfigurationSection(ConfigKeys.TOKEN_LOOT);
+        }
+
+        if (section != null) {
+            for (String key : section.getKeys(false)) {
+                ConfigurationSection defSection = section.getConfigurationSection(key);
+
+                if (defSection != null) {
+                    Map<String, Object> values = new HashMap<>();
+
+                    for (String valueKey : defSection.getKeys(false))
+                        values.put(valueKey, defSection.get(valueKey));
+
+                    tokenLootDefinitions.put(key, values);
                 }
             }
         }
@@ -734,6 +764,18 @@ public class ConfigUtil {
         return defs;
     }
 
+    private Map<String, Object> getDefaultTokenLoot() {
+        Map<String, Object> defs = new HashMap<>();
+
+        defs.put("extraction_token", Map.of(
+                "material", "GOLD_INGOT",
+                "display-name", "<gold>Extraction Token (+%amount%)</gold>",
+                "lore", List.of("<gray>Contains %amount% Extraction Tokens",
+                        "<gray>that can be spent on upgrades.")
+        ));
+        return defs;
+    }
+
     private List<String> getAndDefaultStringList(String path, List<String> defaultVal, AtomicInteger counter) {
         if (!plugin.getConfig().contains(path)) {
             plugin.getConfig().set(path, defaultVal);
@@ -797,6 +839,10 @@ public class ConfigUtil {
 
     public Map<String, Map<String, Object>> getTimeLootDefinitions() {
         return timeLootDefinitions;
+    }
+
+    public Map<String, Map<String, Object>> getTokenLootDefinitions() {
+        return tokenLootDefinitions;
     }
 
     public int getAreaAutoSaveSeconds() {

@@ -482,9 +482,33 @@ public class AreaClearManager {
 
         switch (type.toUpperCase(Locale.ROOT)) {
             case "TOKENS" -> {
-                String mat = plugin.getConfigUtil().getLootTokenItemMaterial();
-                String name = plugin.getConfigUtil().getLootTokenItemName();
-                result.add(LootItemUtil.createTokenItem(mat, name, entry.getAmount()));
+                String key = plugin.getLootTableManager().randomTokenKey(random);
+
+                if (key != null) {
+                    Map<String, Object> def = plugin.getConfigUtil().getTokenLootDefinitions().get(key);
+
+                    String mat = def.get("material") != null ? String.valueOf(def.get("material")) : plugin.getConfigUtil().getLootTokenItemMaterial();
+                    String name = def.get("display-name") != null ? String.valueOf(def.get("display-name")) : plugin.getConfigUtil().getLootTokenItemName();
+
+                    StringBuilder loreBuilder = new StringBuilder();
+                    Object loreObj = def.get("lore");
+
+                    if (loreObj instanceof List<?> loreList) {
+                        for (Object line : loreList) {
+                            if (!loreBuilder.isEmpty())
+                                loreBuilder.append("\n");
+
+                            loreBuilder.append(line);
+                        }
+                    }
+
+                    result.add(LootItemUtil.createTokenItem(mat, name,
+                            loreBuilder.isEmpty() ? null : loreBuilder.toString(), entry.getAmount()));
+                } else {
+                    String mat = plugin.getConfigUtil().getLootTokenItemMaterial();
+                    String name = plugin.getConfigUtil().getLootTokenItemName();
+                    result.add(LootItemUtil.createTokenItem(mat, name, null, entry.getAmount()));
+                }
             }
             case "UPGRADE" -> {
                 int count = Math.max(1, entry.getAmount());

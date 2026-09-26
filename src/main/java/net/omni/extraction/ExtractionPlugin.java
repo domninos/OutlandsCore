@@ -101,8 +101,6 @@ public final class ExtractionPlugin extends JavaPlugin {
      - add a /extraction shop (/oshop) -> for food and potions,
        unlocking enchantments, upgrading armor/weapons, purchasing passive upgrades
      -
-     - check for chances of each loot. i get stacks of them.
-     - make the upgrade time loot have specific times. add that on the upgrade-tokens on config.yml
      -
      - charm
      - pets
