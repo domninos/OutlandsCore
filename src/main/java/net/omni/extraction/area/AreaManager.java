@@ -181,6 +181,16 @@ public class AreaManager {
         return result;
     }
 
+    public int getLevel(Area area) {
+        int level = 1;
+
+        for (AreaSpawnDefinition definition : resolveSpawns(area))
+            if (definition.getLevel() > level)
+                level = definition.getLevel();
+
+        return level;
+    }
+
     private MobTemplate template(String mobId) {
         MobTemplateManager mobs = plugin.getMobTemplateManager();
         return mobs == null ? null : mobs.get(mobId);
@@ -220,6 +230,7 @@ public class AreaManager {
             definition.setHealth(template.getHealth());
             definition.setDamage(template.getDamage());
             definition.setEquipment(new HashMap<>(template.getEquipment()));
+            definition.setDrops(template.getDrops());
             definition.setCount(count);
             definition.setBoss(boss);
             definition.setLevel(level);

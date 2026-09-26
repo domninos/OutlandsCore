@@ -1,6 +1,7 @@
 package net.omni.extraction.area;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.loot.LootItemUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.PacketGlow;
 import org.bukkit.Bukkit;
@@ -13,7 +14,9 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
 
+import java.util.List;
 import java.util.UUID;
 
 public class AreaListener implements Listener {
@@ -35,6 +38,10 @@ public class AreaListener implements Listener {
 
         event.getDrops().clear();
         event.setDroppedExp(0);
+
+        for (ItemStack drop : plugin.getAreaClearManager().rollMobDrops(uuid))
+            event.getDrops().add(drop);
+
         plugin.getAreaClearManager().handleMobDeath(event.getEntity(), killer);
 
         if (killer != null && plugin.getRunManager().isPlayerInRun(killer.getUniqueId())) {
@@ -61,6 +68,45 @@ public class AreaListener implements Listener {
             return;
 
         Player player = event.getPlayer();
+
+        if (plugin.getConfigUtil().isLootClaimOpen()) {
+            AreaClearManager manager = plugin.getAreaClearManager();
+            AreaClearSession session = manager.getChestSession(block.getLocation());
+
+            if (session == null)
+                return;
+
+            event.setCancelled(true);
+
+            if (manager.isActive(session.getArea())) {
+                plugin.sendMessage(player, Messages.AREA_CHEST_ONGOING.toString());
+                return;
+            }
+
+            if (!session.getOwner().equals(player.getUniqueId())) {
+                plugin.sendMessage(player, Messages.AREA_CHEST_LOCKED.toString());
+                return;
+            }
+
+            String keyId = manager.getChestKeyId(block.getLocation());
+
+            if (keyId != null) {
+                if (!LootItemUtil.hasKeyItem(player,
+                        plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId()), keyId)) {
+                    plugin.sendMessage(player, Messages.AREA_CHEST_KEY_NEEDED
+                            .replace("key", manager.getChestKeyName(block.getLocation())));
+                    return;
+                }
+
+                LootItemUtil.consumeKeyItem(player,
+                        plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId()), keyId);
+                plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
+            }
+
+            event.setCancelled(false);
+            return;
+        }
+
         event.setCancelled(true);
 
         int stored = plugin.getAreaClearManager().redeemChest(player, block.getLocation());
@@ -75,13 +121,20 @@ public class AreaListener implements Listener {
             return;
         }
 
+        if (stored == -3) {
+            plugin.sendMessage(player, Messages.AREA_CHEST_KEY_NEEDED
+                    .replace("key", plugin.getAreaClearManager().getChestKeyName(block.getLocation())));
+            return;
+        }
+
         if (stored > 0)
             plugin.sendMessage(player, Messages.LOOT_STORED.replace("amount", String.valueOf(stored)));
     }
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
-        plugin.getAreaClearManager().handleChestClose(event.getInventory());
+        if (event.getPlayer() instanceof Player player)
+            plugin.getAreaClearManager().handleChestClose(player, event.getInventory());
     }
 
     @EventHandler

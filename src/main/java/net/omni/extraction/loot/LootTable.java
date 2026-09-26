@@ -73,20 +73,33 @@ public class LootTable {
     }
 
     public LootEntry roll(Random random) {
+        return roll(random, 0);
+    }
+
+    public LootEntry roll(Random random, int level) {
         if (entries.isEmpty()) return null;
+
+        List<LootEntry> available = new ArrayList<>();
+
+        for (LootEntry entry : entries)
+            if (entry.isAvailableAt(level))
+                available.add(entry);
+
+        if (available.isEmpty())
+            return null;
 
         int total = 0;
 
-        for (LootEntry entry : entries)
+        for (LootEntry entry : available)
             total += Math.max(1, entry.getWeight());
 
         int roll = random.nextInt(total);
 
-        for (LootEntry entry : entries) {
+        for (LootEntry entry : available) {
             roll -= Math.max(1, entry.getWeight());
             if (roll < 0) return entry;
         }
 
-        return entries.getLast();
+        return available.getLast();
     }
 }

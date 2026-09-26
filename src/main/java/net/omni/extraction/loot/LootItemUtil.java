@@ -2,15 +2,19 @@ package net.omni.extraction.loot;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.omni.extraction.data.PlayerData;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public class LootItemUtil {
 
@@ -18,12 +22,16 @@ public class LootItemUtil {
     private static NamespacedKey KEY_TOKEN_AMOUNT;
     private static NamespacedKey KEY_TIME;
     private static NamespacedKey KEY_TIME_MINUTES;
+    private static NamespacedKey KEY_IS_KEY;
+    private static NamespacedKey KEY_KEY_ID;
 
     public static void init(Plugin plg) {
         KEY_TOKEN = new NamespacedKey(plg, "is_loot_token");
         KEY_TOKEN_AMOUNT = new NamespacedKey(plg, "token_amount");
         KEY_TIME = new NamespacedKey(plg, "is_time_item");
         KEY_TIME_MINUTES = new NamespacedKey(plg, "time_minutes");
+        KEY_IS_KEY = new NamespacedKey(plg, "is_key");
+        KEY_KEY_ID = new NamespacedKey(plg, "key_id");
     }
 
     public static ItemStack createTokenItem(String materialName, String displayName, String lore, int amount) {
@@ -131,5 +139,130 @@ public class LootItemUtil {
             return false;
 
         return item.getItemMeta().getPersistentDataContainer().has(KEY_TIME, PersistentDataType.BYTE);
+    }
+
+    public static ItemStack createKeyItem(String keyId, Map<String, Object> def) {
+        String materialName = def.get("material") != null ? String.valueOf(def.get("material")) : "TRIPWIRE_HOOK";
+        String displayName = def.get("display-name") != null ? String.valueOf(def.get("display-name")) : keyId;
+
+        Material material = Material.matchMaterial(materialName);
+
+        if (material == null)
+            material = Material.TRIPWIRE_HOOK;
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            meta.customName(MiniMessage.miniMessage().deserialize(displayName.replace("%key%", keyId)));
+
+            Object loreObj = def.get("lore");
+
+            if (loreObj instanceof List<?> list) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (Object line : list) {
+                    if (line == null) continue;
+
+                    loreLines.add(MiniMessage.miniMessage()
+                            .deserialize(String.valueOf(line).replace("%key%", keyId)));
+                }
+
+                meta.lore(loreLines);
+            } else if (loreObj != null) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (String line : String.valueOf(loreObj).split("\n"))
+                    loreLines.add(MiniMessage.miniMessage().deserialize(line.replace("%key%", keyId)));
+
+                meta.lore(loreLines);
+                loreLines.clear();
+            }
+
+            meta.getPersistentDataContainer().set(KEY_IS_KEY, PersistentDataType.BYTE, (byte) 1);
+            meta.getPersistentDataContainer().set(KEY_KEY_ID, PersistentDataType.STRING, keyId);
+            item.setItemMeta(meta);
+        }
+
+        item.setAmount(1);
+        return item;
+    }
+
+    public static boolean isKeyItem(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return false;
+        if (KEY_IS_KEY == null) return false;
+
+        return item.getItemMeta().getPersistentDataContainer().has(KEY_IS_KEY, PersistentDataType.BYTE);
+    }
+
+    public static String getKeyId(ItemStack item) {
+        if (!isKeyItem(item)) return null;
+
+        return item.getItemMeta().getPersistentDataContainer().get(KEY_KEY_ID, PersistentDataType.STRING);
+    }
+
+    public static boolean hasKeyItem(Player player, PlayerData data, String keyId) {
+        return findKeyIndex(data.getExtractedLoot(), keyId) >= 0
+                || findKeyIndex(player.getInventory().getContents(), keyId) >= 0;
+    }
+
+    public static boolean consumeKeyItem(Player player, PlayerData data, String keyId) {
+        if (data != null) {
+            List<ItemStack> stored = new ArrayList<>(data.getExtractedLoot());
+            int index = findKeyIndex(stored, keyId);
+
+            if (index >= 0) {
+                stored.set(index, decrementKey(stored.get(index)));
+                data.setExtractedLoot(stored);
+                return true;
+            }
+        }
+
+        if (player != null) {
+            ItemStack[] contents = player.getInventory().getContents();
+
+            for (int i = 0; i < contents.length; i++) {
+                if (contents[i] != null && keyId.equals(getKeyId(contents[i]))) {
+                    player.getInventory().setItem(i, decrementKey(contents[i]));
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static ItemStack decrementKey(ItemStack item) {
+        if (item.getAmount() > 1) {
+            item.setAmount(item.getAmount() - 1);
+            return item;
+        }
+
+        return null;
+    }
+
+    private static int findKeyIndex(ItemStack[] items, String keyId) {
+        if (items == null) return -1;
+
+        for (int i = 0; i < items.length; i++)
+            if (items[i] != null && keyId.equals(getKeyId(items[i])))
+                return i;
+
+        return -1;
+    }
+
+    private static int findKeyIndex(List<ItemStack> items, String keyId) {
+        if (items == null) return -1;
+
+        Iterator<ItemStack> iterator = items.iterator();
+        int i = 0;
+
+        while (iterator.hasNext()) {
+            if (keyId.equals(getKeyId(iterator.next())))
+                return i;
+            i++;
+        }
+
+        return -1;
     }
 }

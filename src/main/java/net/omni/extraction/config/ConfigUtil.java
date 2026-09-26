@@ -26,6 +26,7 @@ public class ConfigUtil {
     private final Map<String, Map<String, Object>> upgradeTokenDefinitions;
     private final Map<String, Map<String, Object>> timeLootDefinitions;
     private final Map<String, Map<String, Object>> tokenLootDefinitions;
+    private final Map<String, Map<String, Object>> keyDefinitions;
     private final Map<String, Integer> defaultLoadoutTiers;
     private String worldName;
     private int timeLimitSeconds;
@@ -162,6 +163,7 @@ public class ConfigUtil {
     private List<String> lootChestHologramReady;
     private List<String> lootChestHologramEmpty;
 
+    private String lootClaimMode;
     private int lootDefaultItemsPerChest;
     private String lootTokenItemMaterial;
     private String lootTokenItemName;
@@ -175,6 +177,7 @@ public class ConfigUtil {
         this.upgradeTokenDefinitions = new HashMap<>();
         this.timeLootDefinitions = new HashMap<>();
         this.tokenLootDefinitions = new HashMap<>();
+        this.keyDefinitions = new HashMap<>();
         this.defaultLoadoutTiers = new HashMap<>();
         this.scoreboardLines = new ArrayList<>();
         this.hologramLines = new ArrayList<>();
@@ -248,6 +251,7 @@ public class ConfigUtil {
         loadUpgradeTokenDefinitions(savedDefaults);
         loadTimeLootDefinitions(savedDefaults);
         loadTokenLootDefinitions(savedDefaults);
+        loadKeyDefinitions(savedDefaults);
         loadUpgradeGui(savedDefaults);
         loadUpgradeConfirm(savedDefaults);
         loadLoadoutGui(savedDefaults);
@@ -420,6 +424,33 @@ public class ConfigUtil {
         }
     }
 
+    private void loadKeyDefinitions(AtomicInteger savedDefaults) {
+        keyDefinitions.clear();
+
+        ConfigurationSection section = plugin.getConfig().getConfigurationSection(ConfigKeys.KEYS);
+
+        if (section == null || section.getKeys(false).isEmpty()) {
+            plugin.getConfig().set(ConfigKeys.KEYS, getDefaultKeys());
+            savedDefaults.incrementAndGet();
+            section = plugin.getConfig().getConfigurationSection(ConfigKeys.KEYS);
+        }
+
+        if (section != null) {
+            for (String key : section.getKeys(false)) {
+                ConfigurationSection defSection = section.getConfigurationSection(key);
+
+                if (defSection != null) {
+                    Map<String, Object> values = new HashMap<>();
+
+                    for (String valueKey : defSection.getKeys(false))
+                        values.put(valueKey, defSection.get(valueKey));
+
+                    keyDefinitions.put(key, values);
+                }
+            }
+        }
+    }
+
     private void loadTokenLootDefinitions(AtomicInteger savedDefaults) {
         tokenLootDefinitions.clear();
 
@@ -564,6 +595,7 @@ public class ConfigUtil {
     }
 
     private void loadLoot(AtomicInteger savedDefaults) {
+        this.lootClaimMode = getAndDefaultString(ConfigKeys.LOOT_CLAIM_MODE, "instant", savedDefaults);
         this.lootDefaultItemsPerChest = Math.max(1, getAndDefaultInt(ConfigKeys.LOOT_DEFAULT_ITEMS_PER_CHEST, 3, savedDefaults));
         this.lootTokenItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_MATERIAL, "GOLD_INGOT", savedDefaults);
         this.lootTokenItemName = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_NAME, "<gold>Extraction Token</gold>", savedDefaults);
@@ -851,6 +883,22 @@ public class ConfigUtil {
         return defs;
     }
 
+    private Map<String, Object> getDefaultKeys() {
+        Map<String, Object> defs = new HashMap<>();
+
+        defs.put("rusted_key", Map.of(
+                "material", "TRIPWIRE_HOOK",
+                "display-name", "<gray>Rusted Key</gray>",
+                "lore", List.of("<gray>Opens a rusty Extraction chest.")
+        ));
+        defs.put("golden_key", Map.of(
+                "material", "GOLD_NUGGET",
+                "display-name", "<gold>Golden Key</gold>",
+                "lore", List.of("<gray>Opens a secure Extraction chest.")
+        ));
+        return defs;
+    }
+
     private List<String> getAndDefaultStringList(String path, List<String> defaultVal, AtomicInteger counter) {
         if (!plugin.getConfig().contains(path)) {
             plugin.getConfig().set(path, defaultVal);
@@ -918,6 +966,10 @@ public class ConfigUtil {
 
     public Map<String, Map<String, Object>> getTokenLootDefinitions() {
         return tokenLootDefinitions;
+    }
+
+    public Map<String, Map<String, Object>> getKeyDefinitions() {
+        return keyDefinitions;
     }
 
     public int getAreaAutoSaveSeconds() {
@@ -1398,5 +1450,9 @@ public class ConfigUtil {
 
     public String getLootTimeItemName() {
         return lootTimeItemName;
+    }
+
+    public boolean isLootClaimOpen() {
+        return "open".equalsIgnoreCase(lootClaimMode);
     }
 }

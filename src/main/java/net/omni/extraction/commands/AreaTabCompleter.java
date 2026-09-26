@@ -109,6 +109,12 @@ public class AreaTabCompleter implements TabCompleter {
                 return switch (args.length) {
                     case 3 -> filter(List.of("0", "1", "2"), args[2]);
                     case 4 -> filter(chestTypeSuggestions(), args[3]);
+                    case 5 -> {
+                        if (args[3].equalsIgnoreCase("key"))
+                            yield filter(new ArrayList<>(plugin.getConfigUtil().getKeyDefinitions().keySet()), args[4]);
+
+                        yield List.of();
+                    }
                     default -> List.of();
                 };
             }
@@ -200,6 +206,7 @@ public class AreaTabCompleter implements TabCompleter {
     private List<String> chestTypeSuggestions() {
         List<String> suggestions = new ArrayList<>(plugin.getLootTableManager().getIds());
         suggestions.add(0, "remove");
+        suggestions.add(1, "key");
         return suggestions;
     }
 

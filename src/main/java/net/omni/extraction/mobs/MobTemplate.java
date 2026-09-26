@@ -1,6 +1,8 @@
 package net.omni.extraction.mobs;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class MobTemplate {
@@ -16,6 +18,7 @@ public class MobTemplate {
     private boolean boss;
     private int respawnSeconds;
     private Map<String, String> equipment;
+    private List<MobDrop> drops;
 
     public MobTemplate(String id) {
         this.id = id;
@@ -29,6 +32,7 @@ public class MobTemplate {
         this.boss = false;
         this.respawnSeconds = 0;
         this.equipment = new HashMap<>();
+        this.drops = new ArrayList<>();
     }
 
     public String getId() {
@@ -113,5 +117,13 @@ public class MobTemplate {
 
     public void setEquipment(Map<String, String> equipment) {
         this.equipment = equipment;
+    }
+
+    public List<MobDrop> getDrops() {
+        return drops;
+    }
+
+    public void setDrops(List<MobDrop> drops) {
+        this.drops = drops != null ? drops : new ArrayList<>();
     }
 }

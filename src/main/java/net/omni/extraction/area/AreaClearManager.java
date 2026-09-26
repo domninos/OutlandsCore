@@ -10,6 +10,7 @@ import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootItemUtil;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.util.PacketGlow;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -37,6 +38,7 @@ public class AreaClearManager {
     private final Map<String, AreaClearSession> sessions;
     private final Map<UUID, AreaClearSession> mobSessions;
     private final Map<String, AreaClearSession> chestSessions;
+    private final Map<String, String> chestKeys;
     private BukkitTask containmentTask;
 
     public AreaClearManager(ExtractionPlugin plugin, AreaManager areaManager) {
@@ -47,6 +49,7 @@ public class AreaClearManager {
         this.sessions = new HashMap<>();
         this.mobSessions = new HashMap<>();
         this.chestSessions = new HashMap<>();
+        this.chestKeys = new HashMap<>();
     }
 
     public void start() {
@@ -268,6 +271,15 @@ public class AreaClearManager {
                     block.setType(chestLocation.getContainerType());
 
             List<ItemStack> loot = buildLoot(area, chestLocation.getLootType());
+
+            String keyId = chestLocation.getKeyId();
+            if (keyId != null && !keyId.isBlank() && !plugin.getConfigUtil().getKeyDefinitions().containsKey(keyId)) {
+                plugin.getLogger().warning("Area '" + area.getName() + "' chest (" + anchor.getBlockX()
+                        + "," + anchor.getBlockY() + "," + anchor.getBlockZ() + ") references unknown key '"
+                        + keyId + "' — chest left unkeyed.");
+                keyId = null;
+            }
+
             boolean filled = false;
 
             for (Block block : blocks) {
@@ -275,13 +287,19 @@ public class AreaClearManager {
 
                 if (state instanceof InventoryHolder holder && !filled) {
                     Inventory inventory = holder.getInventory();
-                    int slot = 0;
 
+                    List<Integer> slots = new ArrayList<>(inventory.getSize());
+                    for (int i = 0; i < inventory.getSize(); i++)
+                        slots.add(i);
+
+                    Collections.shuffle(slots, random);
+
+                    int slot = 0;
                     for (ItemStack item : loot) {
-                        if (slot >= inventory.getSize())
+                        if (slot >= slots.size())
                             break;
 
-                        inventory.setItem(slot++, item);
+                        inventory.setItem(slots.get(slot++), item);
                     }
 
                     filled = true;
@@ -290,6 +308,7 @@ public class AreaClearManager {
                 Location chestLoc = block.getLocation();
                 session.addChestLocation(chestLoc);
                 chestSessions.put(locationKey(chestLoc), session);
+                chestKeys.put(locationKey(chestLoc), keyId);
             }
         }
     }
@@ -314,7 +333,7 @@ public class AreaClearManager {
         List<ItemStack> loot = new ArrayList<>();
 
         for (int i = 0; i < rolls; i++) {
-            LootEntry entry = table.roll(random);
+            LootEntry entry = table.roll(random, plugin.getAreaManager().getLevel(area));
             if (entry == null)
                 continue;
 
@@ -394,14 +413,17 @@ public class AreaClearManager {
                 if (item != null)
                     leftover.add(item);
 
-            if (session.getArea().isLeftoverToWithdraw() && !leftover.isEmpty())
+            if (session.getArea().isLeftoverToWithdraw() && !leftover.isEmpty()) {
                 storeLeftover(session.getOwner(), leftover);
+                holder.getInventory().clear();
+            }
         }
     }
 
 private void unregisterChestBlock(AreaClearSession session, Location location) {
         Location blockLoc = location.getBlock().getLocation();
         chestSessions.remove(locationKey(blockLoc));
+        chestKeys.remove(locationKey(blockLoc));
         session.removeChestLocation(blockLoc);
     }
 
@@ -429,11 +451,23 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
     }
 
     private List<ItemStack> resolveTableEntry(LootEntry entry) {
-        String type = entry.getType();
+        return resolveDropItems(entry.getType(), entry.getAmount());
+    }
+
+    private List<ItemStack> resolveDropItems(String type, int amount) {
         List<ItemStack> result = new ArrayList<>();
 
         if (type == null || type.isBlank())
             return result;
+
+        String upper = type.toUpperCase(Locale.ROOT);
+
+        if (upper.startsWith("KEY:")) {
+            ItemStack key = buildKeyItem(type.substring(4));
+            if (key != null)
+                result.add(key);
+            return result;
+        }
 
         if (type.contains(":")) {
             ExternalItemProvider provider = plugin.getExternalPluginManager().getItemProvider(type);
@@ -444,7 +478,7 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
                 return result;
             }
 
-            item.setAmount(Math.max(1, entry.getAmount()));
+            item.setAmount(Math.max(1, amount));
             result.add(item);
             return result;
         }
@@ -453,12 +487,12 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
 
         if (material != null) {
             ItemStack item = new ItemStack(material);
-            item.setAmount(Math.max(1, entry.getAmount()));
+            item.setAmount(Math.max(1, amount));
             result.add(item);
             return result;
         }
 
-        switch (type.toUpperCase(Locale.ROOT)) {
+        switch (upper) {
             case "TOKENS" -> {
                 String key = plugin.getLootTableManager().randomTokenKey(random);
 
@@ -481,15 +515,15 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
                     }
 
                     result.add(LootItemUtil.createTokenItem(mat, name,
-                            loreBuilder.isEmpty() ? null : loreBuilder.toString(), entry.getAmount()));
+                            loreBuilder.isEmpty() ? null : loreBuilder.toString(), amount));
                 } else {
                     String mat = plugin.getConfigUtil().getLootTokenItemMaterial();
                     String name = plugin.getConfigUtil().getLootTokenItemName();
-                    result.add(LootItemUtil.createTokenItem(mat, name, null, entry.getAmount()));
+                    result.add(LootItemUtil.createTokenItem(mat, name, null, amount));
                 }
             }
             case "UPGRADE" -> {
-                int count = Math.max(1, entry.getAmount());
+                int count = Math.max(1, amount);
 
                 for (int i = 0; i < count; i++) {
                     String key = plugin.getLootTableManager().randomUpgradeKey(random);
@@ -526,13 +560,24 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
                 } else {
                     String mat = plugin.getConfigUtil().getLootTimeItemMaterial();
                     String name = plugin.getConfigUtil().getLootTimeItemName();
-                    result.add(LootItemUtil.createTimeItem(mat, name, null, entry.getAmount()));
+                    result.add(LootItemUtil.createTimeItem(mat, name, null, amount));
                 }
             }
             default -> plugin.getLogger().warning("Unknown loot entry type '" + type + "'.");
         }
 
         return result;
+    }
+
+    private ItemStack buildKeyItem(String keyId) {
+        Map<String, Object> def = plugin.getConfigUtil().getKeyDefinitions().get(keyId);
+
+        if (def == null) {
+            plugin.getLogger().warning("Unknown loot key '" + keyId + "' — define it under 'keys:' in config.yml.");
+            return null;
+        }
+
+        return LootItemUtil.createKeyItem(keyId, def);
     }
 
     private List<ItemStack> mergeStacks(List<ItemStack> loot) {
@@ -590,6 +635,10 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
         return location != null && chestSessions.containsKey(locationKey(location));
     }
 
+    public AreaClearSession getChestSession(Location location) {
+        return chestSessions.get(locationKey(location));
+    }
+
     public int redeemChest(Player player, Location location) {
         AreaClearSession session = chestSessions.get(locationKey(location));
         if (session == null)
@@ -601,10 +650,20 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
         if (!session.getOwner().equals(player.getUniqueId()))
             return -1;
 
+        String keyId = getChestKeyId(location);
+
+        if (keyId != null) {
+            PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+
+            if (!LootItemUtil.hasKeyItem(player, data, keyId))
+                return -3;
+        }
+
         Block block = location.getBlock();
         List<ItemStack> loot = new ArrayList<>();
+        InventoryHolder holder = block.getState() instanceof InventoryHolder h ? h : null;
 
-        if (block.getState() instanceof InventoryHolder holder) {
+        if (holder != null) {
             for (ItemStack item : holder.getInventory().getContents()) {
                 if (item != null)
                     loot.add(item);
@@ -617,7 +676,13 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
 
             stored.addAll(loot);
             data.setExtractedLoot(stored);
+
+            if (keyId != null)
+                LootItemUtil.consumeKeyItem(player, data, keyId);
+
             plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
+
+            holder.getInventory().clear();
         }
 
         for (Block b : containerBlocks(block.getLocation(), block.getType()))
@@ -626,31 +691,74 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
         return loot.size();
     }
 
-    public void handleChestClose(Inventory inventory) {
-        if (!(inventory.getHolder() instanceof Container container))
+    public void handleChestClose(Player player, Inventory inventory) {
+        Location location;
+
+        if (inventory.getHolder() instanceof Container container) {
+            location = container.getBlock().getLocation();
+        } else if (inventory.getHolder() instanceof org.bukkit.block.DoubleChest dc) {
+            location = dc.getLocation();
+        } else {
+            return;
+        }
+
+        if (location == null || location.getWorld() == null)
             return;
 
-        Location location = container.getBlock().getLocation();
         AreaClearSession session = chestSessions.get(locationKey(location));
 
         if (session == null)
             return;
 
-        boolean empty = true;
+        List<ItemStack> leftover = new ArrayList<>();
 
         for (ItemStack item : inventory.getContents()) {
-            if (item != null) {
-                empty = false;
-                break;
+            if (item != null)
+                leftover.add(item);
+        }
+
+        if (!leftover.isEmpty()) {
+            PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(session.getOwner());
+            List<ItemStack> stored = new ArrayList<>(data.getExtractedLoot());
+            stored.addAll(leftover);
+            data.setExtractedLoot(stored);
+            plugin.getPlayerDataManager().savePlayer(session.getOwner());
+            inventory.clear();
+        }
+
+        List<Location> related = new ArrayList<>();
+
+        for (Location chestLoc : session.getChestLocations()) {
+            if (chestLoc.getBlock().getState() instanceof InventoryHolder holder
+                    && holder.getInventory() == inventory) {
+                related.add(chestLoc);
             }
         }
 
-        if (empty) {
-            Block block = container.getBlock();
-
-            for (Block b : containerBlocks(block.getLocation(), block.getType()))
-                unregisterChestBlock(session, b.getLocation());
+        if (related.isEmpty()) {
+            for (Block b : containerBlocks(location, location.getBlock().getType()))
+                related.add(b.getLocation());
         }
+
+        for (Location chestLoc : related)
+            unregisterChestBlock(session, chestLoc);
+    }
+
+    public String getChestKeyId(Location location) {
+        return chestKeys.get(locationKey(location));
+    }
+
+    public String getChestKeyName(Location location) {
+        String keyId = getChestKeyId(location);
+        if (keyId == null)
+            return null;
+
+        Map<String, Object> def = plugin.getConfigUtil().getKeyDefinitions().get(keyId);
+        if (def == null)
+            return keyId;
+
+        Object name = def.get("display-name");
+        return name != null ? String.valueOf(name) : keyId;
     }
 
     public void onPlayerEnter(Player player, Area area) {
@@ -747,14 +855,33 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
                 Entity entity = mobFactory.spawn(definition, location);
                 if (entity == null) continue;
 
-                session.getMobs().add(entity.getUniqueId());
-                session.getMobOrigins().put(entity.getUniqueId(), location.clone());
-                mobSessions.put(entity.getUniqueId(), session);
+                UUID mobId = entity.getUniqueId();
+                session.getMobs().add(mobId);
+                session.getMobOrigins().put(mobId, location.clone());
+                session.getMobDrops().put(mobId, definition.getDrops());
+                mobSessions.put(mobId, session);
 
                 if (definition.isBoss())
-                    session.addBossMob(entity.getUniqueId());
+                    session.addBossMob(mobId);
             }
         }
+    }
+
+    public List<ItemStack> rollMobDrops(UUID uuid) {
+        AreaClearSession session = mobSessions.get(uuid);
+        if (session == null)
+            return new ArrayList<>();
+
+        List<ItemStack> drops = new ArrayList<>();
+
+        for (MobDrop drop : session.getDropsFor(uuid)) {
+            double chance = Math.max(0.0, Math.min(1.0, drop.getChance()));
+
+            if (chance >= 1.0 || chance > random.nextDouble())
+                drops.addAll(resolveDropItems(drop.getType(), drop.getAmount()));
+        }
+
+        return drops;
     }
 
     public void onPlayerLeave(Player player, Area area) {
@@ -790,6 +917,11 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
     public boolean isBossMob(UUID uuid) {
         AreaClearSession session = mobSessions.get(uuid);
         return session != null && session.isBossMob(uuid);
+    }
+
+    public List<MobDrop> getMobDrops(UUID uuid) {
+        AreaClearSession session = mobSessions.get(uuid);
+        return session == null ? new ArrayList<>() : session.getDropsFor(uuid);
     }
 
     public boolean cancelClear(Area area) {

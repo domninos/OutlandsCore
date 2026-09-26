@@ -164,6 +164,7 @@ public class Area {
                 if (x instanceof Number nx && y instanceof Number ny && z instanceof Number nz) {
                     Object type = map.get("type");
                     Object material = map.get("material");
+                    Object key = map.get("key");
                     Material containerType = material == null
                             ? AreaChestLocation.DEFAULT_CONTAINER
                             : Material.matchMaterial(String.valueOf(material));
@@ -171,7 +172,8 @@ public class Area {
                     area.addChestLocation(new AreaChestLocation(
                             new Location(bukkitWorld, nx.doubleValue(), ny.doubleValue(), nz.doubleValue()),
                             type == null ? null : String.valueOf(type),
-                            containerType));
+                            containerType,
+                            key == null ? null : String.valueOf(key)));
                 }
             }
 
@@ -826,6 +828,9 @@ public class Area {
 
             if (chest.getContainerType() != AreaChestLocation.DEFAULT_CONTAINER)
                 map.put("material", chest.getContainerType().name());
+
+            if (chest.getKeyId() != null && !chest.getKeyId().isBlank())
+                map.put("key", chest.getKeyId());
 
             chestList.add(map);
         }

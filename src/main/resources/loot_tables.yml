@@ -12,6 +12,15 @@
 #   type: UPGRADE                    Random upgrade-token item (from the upgrade-tokens config)
 #   type: TIME                       Extra run time (right-click while in a run; the item is
 #                                    picked from the config.yml time-loot list, which sets minutes)
+#   type: "KEY:<keyId>"              Chest key (optional per-chest requirement; the key is
+#                                    consumed when claiming a chest that was assigned it via
+#                                    /areas setchest {area} {index} key {keyId}). Definitions
+#                                    live in the config.yml keys: section.
+#
+# Weighted level scaling: entries can be restricted by the area's level (the
+# highest configured mob level of the area) with min-level/max-level. 0 (the
+# default) means unrestricted; entries whose range excludes the area's level are
+# skipped by the roll.
 #
 # items-per-chest: rolls per chest (overrides loot.default-items-per-chest; an
 # area's loot.items-per-chest overrides this)

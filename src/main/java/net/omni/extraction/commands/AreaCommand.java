@@ -584,7 +584,7 @@ public class AreaCommand implements CommandExecutor {
 
     private boolean handleSetChest(CommandSender sender, String[] args) {
         if (args.length < 4) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas setchest {area} {index} {type|remove}"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas setchest {area} {index} {type|key|remove} [key]"));
             return true;
         }
 
@@ -628,6 +628,31 @@ public class AreaCommand implements CommandExecutor {
                 plugin.getHologramManager().removeChestHologram(HologramManager.chestHologramName(removed.getLocation()));
 
             plugin.sendMessage(sender, Messages.AREA_CHEST_REMOVED.replace("index", args[2], "area", area.getName()));
+            return true;
+        }
+
+        if (args[3].equalsIgnoreCase("key")) {
+            if (args.length < 5 || args[4].equalsIgnoreCase("remove")) {
+                chest.setKeyId(null);
+                areaManager.markDirty(area);
+                areaManager.save(area);
+                plugin.sendMessage(sender, Messages.AREA_CHEST_KEY_SET
+                        .replace("key", "none", "index", args[2], "area", area.getName()));
+                return true;
+            }
+
+            String keyId = args[4];
+
+            if (!plugin.getConfigUtil().getKeyDefinitions().containsKey(keyId)) {
+                plugin.sendMessage(sender, Messages.AREA_CHEST_KEY_UNKNOWN.replace("key", keyId));
+                return true;
+            }
+
+            chest.setKeyId(keyId);
+            areaManager.markDirty(area);
+            areaManager.save(area);
+            plugin.sendMessage(sender, Messages.AREA_CHEST_KEY_SET
+                    .replace("key", keyId, "index", args[2], "area", area.getName()));
             return true;
         }
 

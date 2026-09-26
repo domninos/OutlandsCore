@@ -58,11 +58,17 @@ public class LootTableManager {
 
                 Object amount = map.get("amount");
                 Object weight = map.get("weight");
+                Object minLevel = map.get("min-level");
+                Object maxLevel = map.get("max-level");
 
                 if (amount instanceof Number number)
                     entry.setAmount(Math.max(1, number.intValue()));
                 if (weight instanceof Number number)
                     entry.setWeight(Math.max(1, number.intValue()));
+                if (minLevel instanceof Number number)
+                    entry.setMinLevel(Math.max(0, number.intValue()));
+                if (maxLevel instanceof Number number)
+                    entry.setMaxLevel(Math.max(0, number.intValue()));
 
                 table.getEntries().add(entry);
             }
@@ -146,6 +152,13 @@ public class LootTableManager {
                 map.put("type", entry.getType());
                 map.put("amount", entry.getAmount());
                 map.put("weight", entry.getWeight());
+
+                if (entry.getMinLevel() > 0)
+                    map.put("min-level", entry.getMinLevel());
+
+                if (entry.getMaxLevel() > 0)
+                    map.put("max-level", entry.getMaxLevel());
+
                 entries.add(map);
             }
 

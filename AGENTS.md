@@ -372,6 +372,41 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   location is set via the wand/`/areas setchest`, with state text from config `loot.chest-hologram.ongoing/ready/empty`
   (state `ready` uses the effective loot table's `hologram:` from loot_tables.yml as its override); topics follow
   `refreshChestHolograms()` each tick, pruned when a location is removed.
+- Loot claim overhaul (dupe fix + scatter + claim-mode + level scaling + keys + mob drops):
+  - **Duplication fixed**: `AreaClearManager.redeemChest` now `inventory.clear()`s the container AFTER banking its
+    contents to `/extraction` storage, and `removeChest` clears the container when its leftovers are stored
+    (`leftover-to-withdraw`) — loot no longer stays in the world to be re-claimed.
+  - **Random scatter**: `createLootChests` fills a freshly-resolved list of `0..size-1` slots shuffled with the run's
+    `Random` instead of the first N slots.
+  - **Claim mode** `loot.claim-mode` (`ConfigKeys.LOOT_CLAIM_MODE`, `ConfigUtil.isLootClaimOpen()`, default
+    `instant`): `instant` = right-click immediately banks to storage (`redeemChest`); `open` = the owner's right-click
+    opens the real container (guards for active-`-2`/locked-`-1`/missing-key-`-3` cancel with the matching message),
+    and `handleChestClose(Player, Inventory)` banks EVERYTHING left inside to the owner's `extractedLoot`, clears the
+    inventory and unregisters the chest (+ its double-chest counterpart via shared-inventory matching; `DoubleChest`
+    holders are resolved through `DoubleChest.getLocation()` since they are not `Container`s). `redeemChest` return
+    codes: `-2` ongoing, `-1` locked, `-3` needs key, `0` unregistered, else item count.
+  - **Level-scaled loot**: `LootEntry.min-level/max-level` (0 = unrestricted) parsed/saved by `LootTableManager`;
+    `LootTable.roll(Random)` delegates to `roll(Random, int level)` which filters available entries; `buildLoot`
+    passes `AreaManager.getLevel(area)` (new helper = max `AreaSpawnDefinition.getLevel()`, also reused by
+    `HologramManager.placeholderValues` for `%level%`).
+  - **Per-chest keys**: `AreaChestLocation.keyId` persisted as the chest-location `key:` field in the area file;
+    set via `/areas setchest {area} {index} key {keyId|remove}` (`AreaTabCompleter` suggests from config keys);
+    definitions live in config.yml `keys:` (`ConfigKeys.KEYS` + `ConfigUtil.loadKeyDefinitions`/`getKeyDefinitions`,
+    mirroring token-loot incl. defaults when empty). Key ITEMS are loot: accept `KEY:<keyId>` as a loot-table/mob-drop
+    `type` (intercepted FIRST in the shared `resolveDropItems`, before the external-provider branch);
+    `LootItemUtil.createKeyItem` tags PDC `is_key`/`key_id` (+ `%key%` name/lore placeholder). `AreaClearManager`
+    keeps a `chestKeys` map (location-key → keyId) built in `createLootChests` (unknown ids WARN + leave unkeyed) and
+    removed in `unregisterChestBlock`; `redeemChest`/open gate return `-3` when the owner lacks the key
+    (`area.chest-key-needed` with `%key%` = key display-name), consuming exactly one key item on claim — keys are
+    scanned in BOTH `/extraction` storage (`extractedLoot`) AND the main inventory (`LootItemUtil.hasKeyItem`/
+    `consumeKeyItem`, stacks decremented by 1).
+  - **Mob/boss drops**: `mobs.yml` gets an optional `drops:` list (`MobTemplate.drops`, parsed/saved by
+    `MobTemplateManager`, `MobDrop` = type/chance/amount). `AreaSpawnDefinition.drops` are copied from the template in
+    `resolveDefinition`; `AreaClearSession.mobDrops` maps mob UUID → its drop list (filled in `spawnMobs`);
+    `AreaClearManager.rollMobDrops(uuid)` rolls each by chance and resolves via the shared `resolveDropItems`
+    (`MATERIAL`, `TOKENS`, `TIME`, `UPGRADE`, `provider:id` — mmoitems/nexo/itemedit — or `KEY:<id>`). `AreaListener.
+    onEntityDeath` now adds those configured drops to `event.getDrops()` instead of dropping nothing; token payouts
+    (kill/boss) still fire as before.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

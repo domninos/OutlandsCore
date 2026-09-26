@@ -236,6 +236,25 @@ token-loot:
       - "<gray>Contains %amount% Extraction Tokens"
       - "<gray>that can be spent on upgrades."
 
+# Key definitions
+# Chest keys are optional per-chest requirements: a chest whose location is
+# assigned a key (via /areas setchest {area} {index} key {keyId}) can only be
+# claimed while the player holds the matching key item. Keys are obtained as
+# loot: use type "KEY:<keyId>" in a loot table entry (or a mob drop) — the key
+# is consumed once per claimed chest. %key% in display-name/lore is replaced
+# with the key id.
+keys:
+  rusted_key:
+    material: TRIPWIRE_HOOK
+    display-name: "<gray>Rusted Key</gray>"
+    lore:
+      - "<gray>Opens a rusty Extraction chest."
+  golden_key:
+    material: GOLD_NUGGET
+    display-name: "<gold>Golden Key</gold>"
+    lore:
+      - "<gray>Opens a secure Extraction chest."
+
 # Upgrade GUI (/upgrade)
 # Shows the player's current armor and lets them drop an upgrade token onto a piece.
 upgrade-gui:
@@ -478,6 +497,13 @@ scoreboard:
 
 # Loot chest defaults (used by loot_tables.yml)
 loot:
+  # How loot gets claimed from a cleared area's chest:
+  #   instant - the default: right-click instantly banks the chest loot to
+  #             /extraction storage (a per-chest key, if any, is consumed)
+  #   open    - right-click opens the real container; walking away (closing)
+  #             banks everything left inside and unregisters the chest
+  #             (a per-chest key, if any, is consumed on open)
+  claim-mode: instant
   # Rolls per chest when neither the area file (loot.items-per-chest) nor the
   # loot table (items-per-chest) specifies a value
   default-items-per-chest: 3

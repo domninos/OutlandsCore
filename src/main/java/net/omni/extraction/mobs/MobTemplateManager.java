@@ -15,7 +15,7 @@ public class MobTemplateManager {
     public static final List<String> FIELDS = List.of(
             "type", "mythic", "display-name", "health", "damage", "level", "count", "boss", "respawn",
             "equipment.helmet", "equipment.chestplate", "equipment.leggings", "equipment.boots",
-            "equipment.mainhand", "equipment.offhand");
+            "equipment.mainhand", "equipment.offhand", "drops");
 
     private final ExtractionPlugin plugin;
     private final File file;
@@ -58,6 +58,22 @@ public class MobTemplateManager {
                 for (String slot : equipment.getKeys(false))
                     template.getEquipment().put(slot, equipment.getString(slot));
             }
+
+            List<MobDrop> drops = new ArrayList<>();
+
+            for (Map<?, ?> map : mob.getMapList("drops")) {
+                Object type = map.get("type");
+
+                if (type == null)
+                    continue;
+
+                double chance = map.get("chance") instanceof Number c ? c.doubleValue() : 1.0;
+                int amount = map.get("amount") instanceof Number a ? Math.max(1, a.intValue()) : 1;
+
+                drops.add(new MobDrop(String.valueOf(type), chance, amount));
+            }
+
+            template.setDrops(drops);
 
             templates.put(id.toLowerCase(Locale.ROOT), template);
         }
@@ -119,6 +135,25 @@ public class MobTemplateManager {
 
             for (Map.Entry<String, String> entry : template.getEquipment().entrySet())
                 config.set(base + "equipment." + entry.getKey(), entry.getValue());
+
+            if (!template.getDrops().isEmpty()) {
+                List<Map<String, Object>> dropList = new ArrayList<>();
+
+                for (MobDrop drop : template.getDrops()) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("type", drop.getType());
+
+                    if (drop.getChance() != 1.0)
+                        map.put("chance", drop.getChance());
+
+                    if (drop.getAmount() != 1)
+                        map.put("amount", drop.getAmount());
+
+                    dropList.add(map);
+                }
+
+                config.set(base + "drops", dropList);
+            }
         }
 
         try {

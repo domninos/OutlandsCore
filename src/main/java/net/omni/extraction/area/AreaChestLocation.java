@@ -59,15 +59,21 @@ public class AreaChestLocation {
     private Location location;
     private String lootType;
     private Material containerType;
+    private String keyId;
 
     public AreaChestLocation(Location location, String lootType) {
-        this(location, lootType, DEFAULT_CONTAINER);
+        this(location, lootType, DEFAULT_CONTAINER, null);
     }
 
     public AreaChestLocation(Location location, String lootType, Material containerType) {
+        this(location, lootType, containerType, null);
+    }
+
+    public AreaChestLocation(Location location, String lootType, Material containerType, String keyId) {
         this.location = location;
         this.lootType = lootType;
         this.containerType = isSupported(containerType) ? containerType : DEFAULT_CONTAINER;
+        this.keyId = keyId;
     }
 
     public Location getLocation() {
@@ -92,6 +98,14 @@ public class AreaChestLocation {
 
     public void setContainerType(Material containerType) {
         this.containerType = isSupported(containerType) ? containerType : DEFAULT_CONTAINER;
+    }
+
+    public String getKeyId() {
+        return keyId;
+    }
+
+    public void setKeyId(String keyId) {
+        this.keyId = keyId;
     }
 
     public static boolean isSupported(Material material) {

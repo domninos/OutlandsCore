@@ -14,6 +14,15 @@
 #   boss             true = spawn from an area's boss spawn points, false = mob points
 #   respawn-seconds  per-mob respawn override (optional)
 #   equipment        slot -> material (helmet, chestplate, leggings, boots, mainhand, offhand; "sword" = mainhand)
+#   drops            list of drop entries (optional). Each entry:
+#                      type   same syntax as loot table entries:
+#                             a Material name, TOKENS, TIME, UPGRADE,
+#                             "provider:item" for external items
+#                             (mmoitems:/nexo:/itemedit:), or "KEY:<keyId>"
+#                      chance 0..1 probability to roll this entry (default 1.0)
+#                      amount stack size (default 1)
+#                     Without a drops list, area mobs drop nothing (vanilla
+#                     drops are cleared) but still award their token payouts.
 mobs:
   skeleton_guard:
     type: SKELETON
@@ -28,3 +37,9 @@ mobs:
     equipment:
       helmet: IRON_HELMET
       mainhand: IRON_SWORD
+    drops:
+      - type: BONE
+        chance: 1.0
+        amount: 3
+      - type: IRON_INGOT
+        chance: 0.25

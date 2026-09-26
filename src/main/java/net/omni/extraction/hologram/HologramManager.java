@@ -382,17 +382,15 @@ public class HologramManager {
     private Map<String, String> placeholderValues(Area area) {
         int configuredMobs = 0;
         int configuredBosses = 0;
-        int level = 1;
 
         for (AreaSpawnDefinition definition : plugin.getAreaManager().resolveSpawns(area)) {
             if (definition.isBoss())
                 configuredBosses += definition.getCount();
             else
                 configuredMobs += definition.getCount();
-
-            if (definition.getLevel() > level)
-                level = definition.getLevel();
         }
+
+        int level = plugin.getAreaManager().getLevel(area);
 
         int mobs = configuredMobs;
         int bosses = configuredBosses;
