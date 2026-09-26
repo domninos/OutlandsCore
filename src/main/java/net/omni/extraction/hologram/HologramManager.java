@@ -36,6 +36,9 @@ public class HologramManager {
     private final Map<String, Location> lastLocations;
     private final Map<String, Location> lastChestPositions;
     private final Map<String, List<String>> appliedChestLines;
+    private final Map<String, List<String>> appliedHologramLines;
+    private final Map<String, String> lastAppliedSignature;
+    private final Map<String, String> lastChestState;
     private boolean enabled = false;
     private BukkitTask task;
 
@@ -44,6 +47,9 @@ public class HologramManager {
         this.lastLocations = new HashMap<>();
         this.lastChestPositions = new HashMap<>();
         this.appliedChestLines = new HashMap<>();
+        this.appliedHologramLines = new HashMap<>();
+        this.lastAppliedSignature = new HashMap<>();
+        this.lastChestState = new HashMap<>();
     }
 
     private static String hologramName(Area area) {
@@ -119,6 +125,9 @@ public class HologramManager {
         lastLocations.clear();
         lastChestPositions.clear();
         appliedChestLines.clear();
+        appliedHologramLines.clear();
+        lastAppliedSignature.clear();
+        lastChestState.clear();
     }
 
     public static String chestHologramName(Location anchor) {
@@ -163,14 +172,14 @@ public class HologramManager {
         Location position = anchor.getBlock().getLocation().add(0.5, 2.5, 0.5);
 
         try {
-            if (DHAPI.getHologram(name) == null) {
-                DHAPI.createHologram(name, position, false, lines);
+            Hologram hologram = DHAPI.getHologram(name);
+            if (hologram == null) {
+                hologram = DHAPI.createHologram(name, position, false, lines);
                 lastChestPositions.put(name, position.clone());
                 appliedChestLines.put(name, lines);
+                lastChestState.put(name, getChestState(area, chest));
                 return name;
             }
-
-            Hologram hologram = DHAPI.getHologram(name);
 
             Location last = lastChestPositions.get(name);
             if (last == null || !sameSpot(last, position)) {
@@ -178,16 +187,24 @@ public class HologramManager {
                 lastChestPositions.put(name, position.clone());
             }
 
+            String state = getChestState(area, chest);
             List<String> applied = appliedChestLines.get(name);
-            if (applied == null || !applied.equals(lines)) {
+            String lastState = lastChestState.get(name);
+
+            if (lastState == null || !lastState.equals(state) || applied == null || !applied.equals(lines)) {
                 DHAPI.setHologramLines(hologram, lines);
                 appliedChestLines.put(name, lines);
+                lastChestState.put(name, state);
             }
 
             return name;
         } catch (RuntimeException ignored) {
             return name;
         }
+    }
+
+    private String getChestState(Area area, AreaChestLocation chest) {
+        return (plugin.getAreaClearManager().isActive(area) ? "A" : "I") + "_" + (plugin.getAreaClearManager().isLootChest(chest.getLocation()) ? "R" : "E");
     }
 
     /**
@@ -318,20 +335,24 @@ public class HologramManager {
         if (location == null || location.getWorld() == null)
             return;
 
-        List<String> lines = buildLines(area);
+        String name = hologramName(area);
+        Map<String, String> values = placeholderValues(area);
+        String sig = values.values().toString();
+        List<String> lines = buildLines(area, values);
+
         if (lines.isEmpty())
             return;
 
-        String name = hologramName(area);
-
         try {
-            if (DHAPI.getHologram(name) == null) {
-                DHAPI.createHologram(name, location, false, lines);
+            Hologram hologram = DHAPI.getHologram(name);
+
+            if (hologram == null) {
+                hologram = DHAPI.createHologram(name, location, false, lines);
                 lastLocations.put(name, location.clone());
+                appliedHologramLines.put(name, lines);
+                lastAppliedSignature.put(name, sig);
                 return;
             }
-
-            Hologram hologram = DHAPI.getHologram(name);
 
             Location last = lastLocations.get(name);
             if (last == null || !sameSpot(last, location)) {
@@ -339,30 +360,23 @@ public class HologramManager {
                 lastLocations.put(name, location.clone());
             }
 
-            Hologram existing = DHAPI.getHologram(name);
-            if (existing == null)
-                return;
+            List<String> applied = appliedHologramLines.get(name);
+            String lastSig = lastAppliedSignature.get(name);
 
-            int existingLines = existing.getPage(0).getLines().size();
-            if (existingLines != lines.size()) {
-                lastLocations.remove(name);
-                DHAPI.removeHologram(name);
-                DHAPI.createHologram(name, location, false, lines);
-                lastLocations.put(name, location.clone());
-                return;
+            if (lastSig == null || !lastSig.equals(sig) || applied == null || !applied.equals(lines)) {
+                DHAPI.setHologramLines(hologram, lines);
+                appliedHologramLines.put(name, lines);
+                lastAppliedSignature.put(name, sig);
             }
-
-            DHAPI.setHologramLines(existing, lines);
         } catch (RuntimeException ignored) {
         }
     }
 
-    private List<String> buildLines(Area area) {
+    private List<String> buildLines(Area area, Map<String, String> values) {
         List<String> raw = plugin.getConfigUtil().getHologramLines();
         if (raw == null || raw.isEmpty())
             return List.of();
 
-        Map<String, String> values = placeholderValues(area);
         List<String> lines = new ArrayList<>();
 
         for (String line : raw) {

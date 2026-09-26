@@ -585,7 +585,7 @@ public class ConfigUtil {
 
     private void loadHolograms(AtomicInteger savedDefaults) {
         this.hologramsEnabled = getAndDefaultBoolean(ConfigKeys.HOLOGRAMS_ENABLED, true, savedDefaults);
-        this.hologramsUpdateTicks = Math.max(1, getAndDefaultInt(ConfigKeys.HOLOGRAMS_UPDATE_TICKS, 10, savedDefaults));
+        this.hologramsUpdateTicks = Math.max(1, getAndDefaultInt(ConfigKeys.HOLOGRAMS_UPDATE_TICKS, 20, savedDefaults));
         this.hologramLines = getAndDefaultStringList(ConfigKeys.HOLOGRAMS_LINES, List.of(
                 "<yellow><bold>%area%</bold></yellow>",
                 "<gray>Level <white>%level%</white></gray>",

@@ -444,7 +444,7 @@ actionbar:
 holograms:
   enabled: true
   # How often (in ticks) the hologram lines refresh (20 ticks = 1 second)
-  update-ticks: 10
+  update-ticks: 20
   lines:
     - "<yellow><bold>%area%</bold></yellow>"
     - "<gray>Level <white>%level%</white></gray>"

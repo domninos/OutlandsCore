@@ -94,6 +94,7 @@ public final class ExtractionPlugin extends JavaPlugin {
        - suggest what improvements to make this realistically close to DMZ or to any other extraction games (looting part)
      -
      - add the possibility to increase the level of an area without recreating it
+       - add command /areas setlevel {area} {level}
      -
      - add API
      -
@@ -106,6 +107,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      - add a /extraction shop (/oshop) -> for food and potions,
        unlocking enchantments, upgrading armor/weapons, purchasing passive upgrades
      -
+     - events
      -
      - charm
      - pets
@@ -116,7 +118,6 @@ public final class ExtractionPlugin extends JavaPlugin {
      - add "Time remaining" for all party
      -
      -
-     - events
      -
      -
      -
