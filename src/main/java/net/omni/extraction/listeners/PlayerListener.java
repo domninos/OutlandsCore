@@ -780,7 +780,7 @@ public class PlayerListener implements Listener {
 
             event.setCancelled(true);
             plugin.getTokenManager().addTokens(player.getUniqueId(), amount);
-            item.setAmount(item.getAmount() - 1);
+            LootItemUtil.consumeOne(item);
 
             plugin.sendMessage(player, Messages.LOOT_TOKENS.replace("amount", String.valueOf(amount)));
             return;
@@ -797,7 +797,7 @@ public class PlayerListener implements Listener {
 
         if (run != null) {
             run.addTime(minutes * 60);
-            item.setAmount(item.getAmount() - 1);
+            LootItemUtil.consumeOne(item);
 
             plugin.sendMessage(player, Messages.LOOT_TIME_ADDED.replace("time", String.valueOf(minutes)));
             return;
@@ -806,7 +806,7 @@ public class PlayerListener implements Listener {
         PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
         data.addExtraTimeSeconds(minutes * 60);
         plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
-        item.setAmount(item.getAmount() - 1);
+        LootItemUtil.consumeOne(item);
 
         plugin.sendMessage(player, Messages.LOOT_TIME_BANKED.replace("time", String.valueOf(minutes)));
     }

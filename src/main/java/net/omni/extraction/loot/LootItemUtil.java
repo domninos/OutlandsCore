@@ -232,6 +232,22 @@ public class LootItemUtil {
         return false;
     }
 
+    public static boolean consumeOne(ItemStack item) {
+        if (item == null)
+            return false;
+
+        int amount = item.getAmount() - 1;
+
+        if (amount <= 0) {
+            item.setType(Material.AIR);
+            item.setAmount(0);
+        } else {
+            item.setAmount(amount);
+        }
+
+        return true;
+    }
+
     private static ItemStack decrementKey(ItemStack item) {
         if (item.getAmount() > 1) {
             item.setAmount(item.getAmount() - 1);

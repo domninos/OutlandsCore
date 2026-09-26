@@ -100,7 +100,7 @@ public class PlayerData {
     }
 
     public void setLoadoutTiers(Map<String, Integer> tiers) {
-        this.loadoutTiers = tiers;
+        this.loadoutTiers = tiers == null ? new HashMap<>() : new HashMap<>(tiers);
         markDirty();
     }
 
@@ -166,7 +166,7 @@ public class PlayerData {
     }
 
     public void setExtractedLoot(List<ItemStack> loot) {
-        this.extractedLoot = loot;
+        this.extractedLoot = loot == null ? new ArrayList<>() : new ArrayList<>(loot);
         markDirty();
     }
 
