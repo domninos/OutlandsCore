@@ -27,6 +27,7 @@ public class PlayerDataManager {
 
     private final ExtractionPlugin plugin;
     private final Map<UUID, PlayerData> cache;
+    private volatile boolean disabled;
 
     public PlayerDataManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -358,7 +359,19 @@ public class PlayerDataManager {
             return;
 
         data.clearDirty();
+
+        if (disabled) {
+            writePlayerToDb(uuid, data);
+            return;
+        }
+
         plugin.getDatabaseManager().executeAsync(() -> writePlayerToDb(uuid, data));
+    }
+
+    /** Switches saves to synchronous writes (used during onDisable, when the
+     * scheduler no longer accepts tasks for this plugin). */
+    public void onDisable() {
+        this.disabled = true;
     }
 
     public void saveAllDirty() {

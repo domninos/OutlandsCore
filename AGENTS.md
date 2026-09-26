@@ -60,6 +60,10 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   config.yml and messages.yml).
 - `data/DatabaseManager.java` (SQLite `extraction.db`), `data/PlayerData.java`,
   `data/PlayerDataManager.java` (return location + pre-run inventory snapshot persistence).
+  `PlayerDataManager.onDisable()` flips `disabled` so `savePlayer` writes synchronously
+  (`writePlayerToDb` direct) instead of `executeAsync` — the scheduler refuses new tasks for a
+  disabled plugin, so `ExtractionPlugin.onDisable` calls it FIRST (before `areaClearManager.shutdown`/
+  `runManager.shutdown`'s token/cooldown/leftover saves).
 - `event/PlayerEnterAreaEvent.java`, `event/PlayerLeaveAreaEvent.java`: non-cancellable custom Bukkit events
   (`org.bukkit.event.Event`) fired by `AreaManager` on area enter/leave transitions (incl. on quit).
 - `gameplay/RunManager.java`: enterRun / extractPlayer / handleDeath / handleDisconnect / shutdown /

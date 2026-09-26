@@ -132,6 +132,8 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        playerDataManager.onDisable();
+
         if (scoreboardManager != null)
             scoreboardManager.stop();
 
