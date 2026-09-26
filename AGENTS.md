@@ -190,10 +190,12 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   wiping banked chest loot); the list is fed strictly by `AreaClearManager.redeemChest`/`storeLeftover` (both now
   `getOrLoadSync` so a still-loading owner can't blank a real DB row). Death still wipes storage on purpose
   (`handleDeath`). `restorePendingReturn` still announces banked loot via `EXTRACT_LOOT_STORED` on relog.
-- Storage GUI is view-only while a player is in a run OR inside the extraction world (`settings.world-name`):
-  `PlayerListener.isWithdrawBlocked` gates `onInventoryClick`/`onInventoryDrag` (StorageHolder branches) — every
-  click/drag cancels with a `WITHDRAW_BLOCKED` (`withdraw.blocked`) message, so the player can see banked loot but
-  neither withdraw nor deposit until they leave the world / `/extract`. Opening the GUI stays allowed.
+- Storage GUI is view-only while a player is "in extraction" (`ExtractionManager.isExtractionPlayer`:
+  `PlayerListener.isWithdrawBlocked` — no run/world-name checks). The flag is added on successful `enterRun`
+  (`ExtractionCommand.handleEnter`) and removed on extract/death (`RunManager.extractPlayer`/`handleDeath`) and
+  on quit (`AreaSelectionVisualizer.onQuit`), so `/extract` re-enables claiming immediately even inside the
+  `outlands` world while mid-run clicks/drags cancel with a `WITHDRAW_BLOCKED` (`withdraw.blocked`) message.
+  Opening the GUI stays allowed. Removing the flag also ends scoreboard/actionbar/area-transition targeting.
 - Actionbar timer is disabled in free mode (`time-limit-seconds <= 0` AND `cooldown-hours <= 0`): `ActionBarManager.
   refresh` skips the `%extraction_timer%` HUD entirely (previously it flashed "0:00" every tick during free-mode
   runs) but still renders the `+N tokens` kill overlay (`showTokens`). Enabled when either value is > 0; recomputed

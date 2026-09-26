@@ -128,6 +128,7 @@ public class RunManager {
 
         data.clearRunSnapshot();
 
+        plugin.getExtractionManager().removeExtraction(uuid);
         playerDataManager.savePlayer(uuid);
         return true;
     }
@@ -192,6 +193,8 @@ public class RunManager {
             player.getInventory().setArmorContents(null);
             plugin.sendMessage(player, Messages.RUN_DEATH.toString());
         }
+
+        plugin.getExtractionManager().removeExtraction(uuid);
     }
 
     /**

@@ -208,8 +208,7 @@ public class PlayerListener implements Listener {
     }
 
     private boolean isWithdrawBlocked(Player player) {
-        return plugin.getRunManager().isPlayerInRun(player.getUniqueId())
-                || player.getWorld().getName().equalsIgnoreCase(plugin.getConfigUtil().getWorldName());
+        return plugin.getExtractionManager().isExtractionPlayer(player.getUniqueId());
     }
 
     private boolean isStorageButtonSlot(int rawSlot) {

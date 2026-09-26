@@ -49,7 +49,7 @@ withdraw:
   claimed-all: "<green>Claimed all extracted loot.</green>"
   inventory-full: "<gold>Your inventory is full — some items were kept in storage.</gold>"
   expired: "<red>Your extracted loot has expired and was lost.</red>"
-  blocked: "<red>Your stored loot is view-only here. You can reclaim it once you leave the extraction world or /extract.</red>"
+  blocked: "<red>Your stored loot is view-only while you're in extraction. You can reclaim it after you /extract.</red>"
 area:
   entered: "<gray>You entered <white>%area%</white>. Clear the mobs!</gray>"
   cleared: "<green>Area <white>%area%</white> cleared! Loot is waiting in the chest.</green>"
