@@ -10,7 +10,8 @@
 #                                    e.g. "mmoitems:SWORD:FLAME_BLADE"
 #   type: TOKENS                     Physical token item (credits balance when taken from the chest)
 #   type: UPGRADE                    Random upgrade-token item (from the upgrade-tokens config)
-#   type: TIME                       Extra run time (right-click while in a run; amount = minutes)
+#   type: TIME                       Extra run time (right-click while in a run; the item is
+#                                    picked from the config.yml time-loot list, which sets minutes)
 #
 # items-per-chest: rolls per chest (overrides loot.default-items-per-chest; an
 # area's loot.items-per-chest overrides this)
@@ -29,20 +30,20 @@ Easy:
     - "<gray>Safe picks for a warm-up run.</gray>"
   entries:
     - type: IRON_INGOT
-      amount: 40
+      amount: 8
       weight: 10
     - type: BREAD
-      amount: 30
+      amount: 4
       weight: 10
     - type: TOKENS
-      amount: 15
+      amount: 3
       weight: 5
     - type: UPGRADE
-      amount: 8
+      amount: 1
       weight: 4
     - type: TIME
-      amount: 5
+      amount: 1
       weight: 3
     - type: "mmoitems:SWORD:FLAME_BLADE"
-      amount: 2
+      amount: 1
       weight: 1

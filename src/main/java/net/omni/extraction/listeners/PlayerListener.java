@@ -182,13 +182,6 @@ public class PlayerListener implements Listener {
         }
 
         if (event.getView().getTopInventory().getHolder() instanceof StorageHolder storage) {
-            if (isWithdrawBlocked(player)) {
-                event.setCancelled(true);
-                player.closeInventory();
-                plugin.sendMessage(player, Messages.WITHDRAW_BLOCKED.toString());
-                return;
-            }
-
             if (isStorageButtonSlot(event.getRawSlot())) {
                 event.setCancelled(true);
                 handleStorageClick(player, event, storage);
@@ -222,10 +215,6 @@ public class PlayerListener implements Listener {
             return;
 
         applyUpgrade(player, token, slot, event);
-    }
-
-    private boolean isWithdrawBlocked(Player player) {
-        return plugin.getExtractionManager().isExtractionPlayer(player.getUniqueId());
     }
 
     private boolean isStorageButtonSlot(int rawSlot) {
@@ -548,13 +537,6 @@ public class PlayerListener implements Listener {
         }
 
         if (event.getView().getTopInventory().getHolder() instanceof StorageHolder) {
-            if (isWithdrawBlocked(player)) {
-                event.setCancelled(true);
-                player.closeInventory();
-                plugin.sendMessage(player, Messages.WITHDRAW_BLOCKED.toString());
-                return;
-            }
-
             for (int rawSlot : event.getRawSlots()) {
                 if (isStorageButtonSlot(rawSlot)) {
                     event.setCancelled(true);

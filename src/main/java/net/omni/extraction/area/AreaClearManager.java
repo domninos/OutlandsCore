@@ -498,9 +498,21 @@ public class AreaClearManager {
                 }
             }
             case "TIME" -> {
-                String mat = plugin.getConfigUtil().getLootTimeItemMaterial();
-                String name = plugin.getConfigUtil().getLootTimeItemName();
-                result.add(LootItemUtil.createTimeItem(mat, name, entry.getAmount()));
+                String key = plugin.getLootTableManager().randomTimeKey(random);
+
+                if (key != null) {
+                    Map<String, Object> def = plugin.getConfigUtil().getTimeLootDefinitions().get(key);
+
+                    String mat = def.get("material") != null ? String.valueOf(def.get("material")) : plugin.getConfigUtil().getLootTimeItemMaterial();
+                    String name = def.get("display-name") != null ? String.valueOf(def.get("display-name")) : plugin.getConfigUtil().getLootTimeItemName();
+                    int minutes = def.get("minutes") instanceof Number num ? num.intValue() : 1;
+
+                    result.add(LootItemUtil.createTimeItem(mat, name, Math.max(1, minutes)));
+                } else {
+                    String mat = plugin.getConfigUtil().getLootTimeItemMaterial();
+                    String name = plugin.getConfigUtil().getLootTimeItemName();
+                    result.add(LootItemUtil.createTimeItem(mat, name, entry.getAmount()));
+                }
             }
             default -> plugin.getLogger().warning("Unknown loot entry type '" + type + "'.");
         }

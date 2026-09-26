@@ -193,6 +193,24 @@ upgrade-tokens:
       - "<gray>Apply to your chestplate loadout"
       - "<gray>to upgrade to Diamond tier."
 
+# Time loot definitions
+# Physical TIME loot items found in chests (right-click while in a run adds
+# minutes to the run). Loot-table entries of type TIME pick a random definition
+# from this list; minutes is the specific time granted by that item.
+time-loot:
+  short_time:
+    material: CLOCK
+    display-name: "<yellow>Extra Time</yellow>"
+    minutes: 2
+  medium_time:
+    material: CLOCK
+    display-name: "<gold>Extra Time</gold>"
+    minutes: 5
+  long_time:
+    material: CLOCK
+    display-name: "<red>Extra Time</red>"
+    minutes: 10
+
 # Upgrade GUI (/upgrade)
 # Shows the player's current armor and lets them drop an upgrade token onto a piece.
 upgrade-gui:
@@ -422,6 +440,7 @@ loot:
   # Material/display name of the physical TOKENS loot item (credits balance on pickup)
   token-item-material: GOLD_INGOT
   token-item-name: "<gold>Extraction Token</gold>"
-  # Material/display name of the TIME loot item (right-click while in a run adds time)
-  time-item-material: CLOCK
-  time-item-name: "<yellow>Extra Time</yellow>"
+# Material/display name of the TIME loot item (right-click while in a run adds
+# time). Only used as a fallback when the time-loot section above is empty.
+time-item-material: CLOCK
+time-item-name: "<yellow>Extra Time</yellow>"

@@ -23,6 +23,7 @@ public class ConfigUtil {
     private final ExtractionPlugin plugin;
     private final Map<String, List<Map<String, Object>>> loadoutTiers;
     private final Map<String, Map<String, Object>> upgradeTokenDefinitions;
+    private final Map<String, Map<String, Object>> timeLootDefinitions;
     private final Map<String, Integer> defaultLoadoutTiers;
     private String worldName;
     private int timeLimitSeconds;
@@ -161,6 +162,7 @@ public class ConfigUtil {
         this.plugin = plugin;
         this.loadoutTiers = new HashMap<>();
         this.upgradeTokenDefinitions = new HashMap<>();
+        this.timeLootDefinitions = new HashMap<>();
         this.defaultLoadoutTiers = new HashMap<>();
         this.scoreboardLines = new ArrayList<>();
     }
@@ -222,6 +224,7 @@ public class ConfigUtil {
         loadLoadoutTiers(savedDefaults);
         loadLoadoutDefaults(savedDefaults);
         loadUpgradeTokenDefinitions(savedDefaults);
+        loadTimeLootDefinitions(savedDefaults);
         loadUpgradeGui(savedDefaults);
         loadUpgradeConfirm(savedDefaults);
         loadLoadoutGui(savedDefaults);
@@ -360,6 +363,33 @@ public class ConfigUtil {
                         values.put(valueKey, tokenSection.get(valueKey));
 
                     upgradeTokenDefinitions.put(key, values);
+                }
+            }
+        }
+    }
+
+    private void loadTimeLootDefinitions(AtomicInteger savedDefaults) {
+        timeLootDefinitions.clear();
+
+        ConfigurationSection section = plugin.getConfig().getConfigurationSection(ConfigKeys.TIME_LOOT);
+
+        if (section == null || section.getKeys(false).isEmpty()) {
+            plugin.getConfig().set(ConfigKeys.TIME_LOOT, getDefaultTimeLoot());
+            savedDefaults.incrementAndGet();
+            section = plugin.getConfig().getConfigurationSection(ConfigKeys.TIME_LOOT);
+        }
+
+        if (section != null) {
+            for (String key : section.getKeys(false)) {
+                ConfigurationSection defSection = section.getConfigurationSection(key);
+
+                if (defSection != null) {
+                    Map<String, Object> values = new HashMap<>();
+
+                    for (String valueKey : defSection.getKeys(false))
+                        values.put(valueKey, defSection.get(valueKey));
+
+                    timeLootDefinitions.put(key, values);
                 }
             }
         }
@@ -657,24 +687,45 @@ public class ConfigUtil {
                 "material", "PAPER",
                 "display-name", "<gray>Stone Weapon Upgrade</gray>",
                 "upgrade-slot", "WEAPON",
-                "upgrade-tier", 1,
+                "upgrade-tier", 2,
                 "lore", List.of("<gray>Apply to your weapon loadout", "<gray>to upgrade to Stone tier.")
         ));
         tokens.put("iron_helmet", Map.of(
                 "material", "PAPER",
                 "display-name", "<gray>Iron Helmet Upgrade</gray>",
                 "upgrade-slot", "HELMET",
-                "upgrade-tier", 2,
+                "upgrade-tier", 3,
                 "lore", List.of("<gray>Apply to your helmet loadout", "<gray>to upgrade to Iron tier.")
         ));
         tokens.put("diamond_chestplate", Map.of(
                 "material", "PAPER",
                 "display-name", "<gray>Diamond Chestplate Upgrade</gray>",
                 "upgrade-slot", "CHESTPLATE",
-                "upgrade-tier", 3,
+                "upgrade-tier", 4,
                 "lore", List.of("<gray>Apply to your chestplate loadout", "<gray>to upgrade to Diamond tier.")
         ));
         return tokens;
+    }
+
+    private Map<String, Object> getDefaultTimeLoot() {
+        Map<String, Object> defs = new HashMap<>();
+
+        defs.put("short_time", Map.of(
+                "material", "CLOCK",
+                "display-name", "<yellow>Extra Time</yellow>",
+                "minutes", 2
+        ));
+        defs.put("medium_time", Map.of(
+                "material", "CLOCK",
+                "display-name", "<gold>Extra Time</gold>",
+                "minutes", 5
+        ));
+        defs.put("long_time", Map.of(
+                "material", "CLOCK",
+                "display-name", "<red>Extra Time</red>",
+                "minutes", 10
+        ));
+        return defs;
     }
 
     private List<String> getAndDefaultStringList(String path, List<String> defaultVal, AtomicInteger counter) {
@@ -736,6 +787,10 @@ public class ConfigUtil {
 
     public Map<String, Map<String, Object>> getUpgradeTokenDefinitions() {
         return upgradeTokenDefinitions;
+    }
+
+    public Map<String, Map<String, Object>> getTimeLootDefinitions() {
+        return timeLootDefinitions;
     }
 
     public int getAreaAutoSaveSeconds() {

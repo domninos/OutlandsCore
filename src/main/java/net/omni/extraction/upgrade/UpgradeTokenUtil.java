@@ -47,8 +47,6 @@ public class UpgradeTokenUtil {
             loreLines.clear(); // garbage
         }
 
-        meta.setMaxStackSize(1);
-
         meta.getPersistentDataContainer().set(KEY_IS_TOKEN, PersistentDataType.BYTE, (byte) 1);
         meta.getPersistentDataContainer().set(KEY_SLOT, PersistentDataType.STRING, slot);
         meta.getPersistentDataContainer().set(KEY_TIER, PersistentDataType.INTEGER, tier);

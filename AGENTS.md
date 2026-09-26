@@ -77,6 +77,10 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   `loot.chest-location` migrates on load). Each chest has an optional `type` = a loot table id (`AreaChestLocation.lootType`)
   and a stored container `Material` (`material:`, default CHEST; saved only when non-CHEST).
   `buildLoot(area, chestType)` falls back to the area's loot table then legacy entries, rolling a fresh full batch per chest.
+  Loot-table entries roll by weighted chance (`LootEntry.weight`) only — the bundled `Easy` table uses small
+  `amount`s to avoid stack floods; `UPGRADE` and `TIME` are single items per roll, and `randomTimeKey` picks a
+  config-defined `time-loot` entry (config.yml, like `upgrade-tokens`) whose `minutes` set the item's time
+  (the legacy `loot.time-item-*` + entry `amount` fallback only applies when `time-loot` is empty).
   `Area.addChestLocation` returns boolean: double-chest marks collapse to a single anchor (min-corner of the pair; merge
   detected via adjacent chest-type blocks + `Chest` BlockData facing), and a duplicate at an already-registered block is
   rejected (`AREA_CHEST_EXISTS`). `AreaClearManager` preserves pre-placed world containers (chests/barrels/shulkers/
@@ -120,7 +124,7 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   strings (e.g. upgrade-token names) render correctly on Paper.
 - Timers now disableable via 0: `settings.time-limit-seconds: 0` skips the run countdown (`RunManager.enterRun`),
   `settings.cooldown-hours: 0` disables the extract cooldown (`CooldownManager.setCooldown`).
-- Upgrade tokens are max stack size 1 (`UpgradeTokenUtil.createTokenItem`).
+- Upgrade tokens stack freely (`UpgradeTokenUtil.createTokenItem` sets no max-stack limit); each apply consumes exactly one token and returns/banks the remainder (click path: cursor stack decremented; drag path: `consumeUpgradeToken` decrements the matched cursor/inventory stack by 1).
 - Wand GUI editor (`areaeditor` package): CHEST left-click opens a paginated loot-table picker (uses optional
   `icon`/`display-name`/`lore` fields in `loot_tables.yml`, falling back to `area-editor.chest-icon-*`); SPAWN
   left-click opens a 5-step wizard (mob select → count → level → respawn → boss) that writes a per-spawn
@@ -190,12 +194,12 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
   wiping banked chest loot); the list is fed strictly by `AreaClearManager.redeemChest`/`storeLeftover` (both now
   `getOrLoadSync` so a still-loading owner can't blank a real DB row). Death still wipes storage on purpose
   (`handleDeath`). `restorePendingReturn` still announces banked loot via `EXTRACT_LOOT_STORED` on relog.
-- Storage GUI is view-only while a player is "in extraction" (`ExtractionManager.isExtractionPlayer`:
-  `PlayerListener.isWithdrawBlocked` — no run/world-name checks). The flag is added on successful `enterRun`
+- Storage GUI allows **fully free** withdraw — item clicks, shift-click, drags, claim-all, nav and number-key
+  transfers all work even mid-run (no `isWithdrawBlocked` gate; the `withdraw.blocked` message is unused/kept).
+  `ExtractionManager.isExtractionPlayer` — the "in extraction" flag added on successful `enterRun`
   (`ExtractionCommand.handleEnter`) and removed on extract/death (`RunManager.extractPlayer`/`handleDeath`) and
-  on quit (`AreaSelectionVisualizer.onQuit`), so `/extract` re-enables claiming immediately even inside the
-  `outlands` world while mid-run clicks/drags cancel with a `WITHDRAW_BLOCKED` (`withdraw.blocked`) message.
-  Opening the GUI stays allowed. Removing the flag also ends scoreboard/actionbar/area-transition targeting.
+  on quit (`AreaSelectionVisualizer.onQuit`) — now ONLY drives scoreboard/actionbar/area-transition targeting.
+  Opening the GUI stays allowed regardless.
 - Actionbar timer is disabled in free mode (`time-limit-seconds <= 0` AND `cooldown-hours <= 0`): `ActionBarManager.
   refresh` skips the `%extraction_timer%` HUD entirely (previously it flashed "0:00" every tick during free-mode
   runs) but still renders the `+N tokens` kill overlay (`showTokens`). Enabled when either value is > 0; recomputed

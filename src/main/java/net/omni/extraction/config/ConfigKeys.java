@@ -34,6 +34,8 @@ public final class ConfigKeys {
 
     public static final String UPGRADE_TOKENS = "upgrade-tokens";
 
+    public static final String TIME_LOOT = "time-loot";
+
     public static final String UPGRADE_GUI = "upgrade-gui";
     public static final String UPGRADE_GUI_TITLE = "upgrade-gui.title";
     public static final String UPGRADE_GUI_ROWS = "upgrade-gui.rows";
