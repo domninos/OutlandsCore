@@ -56,6 +56,18 @@ backpack:
   unpack-overflow: "<red>Your inventory was full — %count% item(s) were dropped at your feet.</red>"
 shop:
   opened: "<gray>Opened the Extraction shop.</gray>"
+charms:
+  no-perm: "<red>You do not have permission to open your charms.</red>"
+  opened: "<gray>Opened your charms menu.</gray>"
+artifacts:
+  no-perm: "<red>You do not have permission to open your artifacts.</red>"
+  opened: "<gray>Opened your artifacts menu.</gray>"
+relic:
+  learned: "<green>Discovered <white>%relic%</white>! Select it from /charms or /artifacts.</green>"
+  already-owned: "<yellow>You already own <white>%relic%</white>.</yellow>"
+  equipped: "<green>Equipped <white>%relic%</white>.</green>"
+  unequipped: "<gray>Unequipped <white>%relic%</white>.</gray>"
+  not-owned: "<red>You haven't discovered <white>%relic%</white> yet.</red>"
 area:
   entered: "<gray>You entered <white>%area%</white>. Clear the mobs!</gray>"
   cleared: "<green>Area <white>%area%</white> cleared! Loot is waiting in the chest.</green>"

@@ -49,6 +49,15 @@ public class ConfigUtil {
     private String shopGuiTitle;
     private int shopGuiRows;
 
+    private String relicGuiCharmsTitle;
+    private String relicGuiArtifactsTitle;
+    private int relicGuiRows;
+    private String relicGuiFillerMaterial;
+    private String relicGuiFillerName;
+    private String relicGuiPlaceholderMaterial;
+    private String relicGuiPlaceholderName;
+    private List<String> relicGuiPlaceholderLore;
+
     private Location spawnLocation;
     private int areaAutoSaveSeconds;
     private int areaStateCheckSeconds;
@@ -275,6 +284,7 @@ public class ConfigUtil {
         loadContainers(savedDefaults);
         loadBackpack(savedDefaults);
         loadShopGui(savedDefaults);
+        loadRelicGui(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
 
@@ -672,6 +682,24 @@ public class ConfigUtil {
         this.shopGuiTitle = getAndDefaultString(ConfigKeys.SHOP_GUI_TITLE,
                 "<gradient:#00AAFF:#55FFFF>Extraction Shop</gradient>", savedDefaults);
         this.shopGuiRows = Math.clamp(getAndDefaultInt(ConfigKeys.SHOP_GUI_ROWS, 3, savedDefaults), 2, 6);
+    }
+
+    private void loadRelicGui(AtomicInteger savedDefaults) {
+        this.relicGuiCharmsTitle = getAndDefaultString(ConfigKeys.RELIC_GUI_CHARMS_TITLE,
+                "<gradient:#FFD700:#FF7F50>Charms</gradient>", savedDefaults);
+        this.relicGuiArtifactsTitle = getAndDefaultString(ConfigKeys.RELIC_GUI_ARTIFACTS_TITLE,
+                "<gradient:#FF69B4:#8A2BE2>Artifacts</gradient>", savedDefaults);
+        this.relicGuiRows = Math.clamp(getAndDefaultInt(ConfigKeys.RELIC_GUI_ROWS, 6, savedDefaults), 2, 6);
+        this.relicGuiFillerMaterial = getAndDefaultString(ConfigKeys.RELIC_GUI_FILLER_MATERIAL,
+                "GRAY_STAINED_GLASS_PANE", savedDefaults);
+        this.relicGuiFillerName = getAndDefaultString(ConfigKeys.RELIC_GUI_FILLER_NAME, " ", savedDefaults);
+        this.relicGuiPlaceholderMaterial = getAndDefaultString(ConfigKeys.RELIC_GUI_PLACEHOLDER_MATERIAL,
+                "BLACK_STAINED_GLASS_PANE", savedDefaults);
+        this.relicGuiPlaceholderName = getAndDefaultString(ConfigKeys.RELIC_GUI_PLACEHOLDER_NAME,
+                "<dark_gray>???</dark_gray>", savedDefaults);
+        this.relicGuiPlaceholderLore = getAndDefaultStringList(ConfigKeys.RELIC_GUI_PLACEHOLDER_LORE, List.of(
+                "<gray>You haven't discovered this yet.</gray>",
+                "<gray>Find it by looting chests or killing mobs in areas.</gray>"), savedDefaults);
     }
 
     private void loadAreaEditor(AtomicInteger savedDefaults) {
@@ -1536,5 +1564,37 @@ public class ConfigUtil {
 
     public int getShopGuiSize() {
         return shopGuiRows * 9;
+    }
+
+    public String getRelicGuiCharmsTitle() {
+        return relicGuiCharmsTitle;
+    }
+
+    public String getRelicGuiArtifactsTitle() {
+        return relicGuiArtifactsTitle;
+    }
+
+    public int getRelicGuiRows() {
+        return relicGuiRows;
+    }
+
+    public String getRelicGuiFillerMaterial() {
+        return relicGuiFillerMaterial;
+    }
+
+    public String getRelicGuiFillerName() {
+        return relicGuiFillerName;
+    }
+
+    public String getRelicGuiPlaceholderMaterial() {
+        return relicGuiPlaceholderMaterial;
+    }
+
+    public String getRelicGuiPlaceholderName() {
+        return relicGuiPlaceholderName;
+    }
+
+    public List<String> getRelicGuiPlaceholderLore() {
+        return relicGuiPlaceholderLore;
     }
 }

@@ -19,6 +19,8 @@ import net.omni.extraction.upgrade.UpgradeGUI;
 import net.omni.extraction.upgrade.UpgradeGuiHolder;
 import net.omni.extraction.upgrade.UpgradeTier;
 import net.omni.extraction.upgrade.UpgradeTokenUtil;
+import net.omni.extraction.relics.RelicHolder;
+import net.omni.extraction.relics.RelicItemUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -143,6 +145,7 @@ public class PlayerListener implements Listener {
 
         plugin.getPlayerDataManager().loadPlayer(uuid, () -> {
             plugin.getRunManager().restorePendingReturn(player);
+            plugin.getRelicEffectManager().applyPassive(player);
         });
     }
 
@@ -237,6 +240,26 @@ public class PlayerListener implements Listener {
         if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
             handleLoadoutClick(player, event);
         }
+
+        if (event.getView().getTopInventory().getHolder() instanceof RelicHolder holder) {
+            if (event.getClickedInventory() == null)
+                return;
+
+            if (event.getClickedInventory().getType() != InventoryType.PLAYER)
+                event.setCancelled(true);
+
+            handleRelicClick(player, event, holder);
+        }
+    }
+
+    private void handleRelicClick(Player player, InventoryClickEvent event, RelicHolder holder) {
+        int rawSlot = event.getRawSlot();
+        int size = event.getView().getTopInventory().getSize();
+
+        if (rawSlot < 0 || rawSlot >= size)
+            return;
+
+        plugin.getRelicManager().click(player, holder.category(), rawSlot);
     }
 
     private void handleUpgradeClick(Player player, InventoryClickEvent event) {
@@ -590,6 +613,10 @@ public class PlayerListener implements Listener {
         if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
             handleLoadoutDrag(player, event);
         }
+
+        if (event.getView().getTopInventory().getHolder() instanceof RelicHolder) {
+            event.setCancelled(true);
+        }
     }
 
     private void handleUpgradeDrag(Player player, InventoryDragEvent event) {
@@ -810,6 +837,12 @@ public class PlayerListener implements Listener {
             } else {
                 plugin.getBackpackManager().unpackContents(player, item);
             }
+            return;
+        }
+
+        if (RelicItemUtil.isRelic(item)) {
+            event.setCancelled(true);
+            plugin.getRelicManager().learn(player, item);
             return;
         }
 

@@ -1,0 +1,57 @@
+# Charms — smaller, reliable bonuses.
+# Admins can add/remove charms freely; the effect types are fixed (see RelicEffectType).
+# Each charm is keyed by id. Effects list optional "threshold" (used by *LOW_HP types).
+
+iron:
+  name: "<green>Iron Charm</green>"
+  icon: IRON_INGOT
+  lore:
+    - "<gray>+2% damage against area mobs.</gray>"
+  effects:
+    - type: DAMAGE_DEALT
+      value: 2
+
+swift:
+  name: "<green>Swift Charm</green>"
+  icon: FEATHER
+  lore:
+    - "<gray>+3% movement speed.</gray>"
+  effects:
+    - type: MOVEMENT_SPEED
+      value: 3
+
+vitality:
+  name: "<green>Vitality Charm</green>"
+  icon: GOLDEN_APPLE
+  lore:
+    - "<gray>+10 max health.</gray>"
+  effects:
+    - type: MAX_HEALTH
+      value: 10
+
+scavenger:
+  name: "<green>Scavenger Charm</green>"
+  icon: BONE
+  lore:
+    - "<gray>+5% chance for extra common loot.</gray>"
+  effects:
+    - type: MOB_LOOT
+      value: 5
+
+miner:
+  name: "<green>Miner's Charm</green>"
+  icon: IRON_PICKAXE
+  lore:
+    - "<gray>+15% mining speed (Haste).</gray>"
+  effects:
+    - type: MINING_SPEED
+      value: 15
+
+survival:
+  name: "<green>Survival Charm</green>"
+  icon: SHIELD
+  lore:
+    - "<gray>Slightly reduced fall damage.</gray>"
+  effects:
+    - type: FALL_DAMAGE
+      value: 30

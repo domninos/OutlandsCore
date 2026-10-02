@@ -40,6 +40,10 @@ public class AreaListener implements Listener {
         for (ItemStack drop : plugin.getAreaClearManager().rollMobDrops(uuid))
             event.getDrops().add(drop);
 
+        if (killer != null)
+            for (ItemStack drop : plugin.getAreaClearManager().rollBonusMobDrops(uuid, killer, boss))
+                event.getDrops().add(drop);
+
         plugin.getAreaClearManager().handleMobDeath(event.getEntity(), killer);
 
         if (killer != null && plugin.getRunManager().isPlayerInRun(killer.getUniqueId())) {

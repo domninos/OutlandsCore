@@ -29,6 +29,12 @@ commands:
     aliases: [upgrades]
   extshop:
     description: Open the extraction shop
+  charms:
+    description: Open your charms menu
+    aliases: [extcharms]
+  artifacts:
+    description: Open your artifacts menu
+    aliases: [extartifacts]
 
 permissions:
   extraction.*:

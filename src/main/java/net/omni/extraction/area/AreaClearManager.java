@@ -237,7 +237,7 @@ public class AreaClearManager {
 
         if (area.getTokens() > 0) plugin.getTokenManager().addTokens(ownerId, area.getTokens());
 
-        createLootChests(area, session);
+        createLootChests(area, session, killer);
 
         if (session.getBossBar() != null) {
             for (Player player : Bukkit.getOnlinePlayers())
@@ -256,7 +256,7 @@ public class AreaClearManager {
             plugin.sendMessage(killer, Messages.AREA_CLEARED.replace("area", area.getName()));
     }
 
-    private void createLootChests(Area area, AreaClearSession session) {
+    private void createLootChests(Area area, AreaClearSession session, Player killer) {
         for (AreaChestLocation chestLocation : area.resolveChestLocations()) {
             Location anchor = chestLocation.getLocation();
 
@@ -268,7 +268,7 @@ public class AreaClearManager {
                 if (!AreaChestLocation.isSupported(block.getType()))
                     block.setType(chestLocation.getContainerType());
 
-            List<ItemStack> loot = buildLoot(area, chestLocation.getLootType());
+            List<ItemStack> loot = buildLoot(area, chestLocation.getLootType(), killer);
 
             String keyId = chestLocation.getKeyId();
             if (keyId != null && !keyId.isBlank() && !plugin.getConfigUtil().getKeyDefinitions().containsKey(keyId)) {
@@ -311,22 +311,28 @@ public class AreaClearManager {
         }
     }
 
-    private List<ItemStack> buildLoot(Area area, String lootType) {
+    private List<ItemStack> buildLoot(Area area, String lootType, Player killer) {
         String tableId = lootType != null && !lootType.isBlank() ? lootType : area.getLootTable();
 
         if (tableId == null || tableId.isBlank())
-            return buildLegacyLoot(area);
+            return buildLegacyLoot(area, killer);
 
         LootTable table = plugin.getLootTableManager().get(tableId);
 
         if (table == null) {
             plugin.getLogger().warning("Unknown loot table '" + tableId + "' for area '" + area.getName() + "'.");
-            return buildLegacyLoot(area);
+            return buildLegacyLoot(area, killer);
         }
+
+        int bonusRolls = killer != null
+                ? plugin.getRelicEffectManager().chestRollBonus(
+                        plugin.getPlayerDataManager().getOrLoadSync(killer.getUniqueId())) : 0;
 
         int rolls = area.getItemsPerChest() > 0 ? area.getItemsPerChest()
                 : table.getItemsPerChest() > 0 ? table.getItemsPerChest()
                   : plugin.getConfigUtil().getLootDefaultItemsPerChest();
+
+        rolls = Math.max(1, rolls + Math.max(0, bonusRolls));
 
         List<ItemStack> loot = new ArrayList<>();
 
@@ -420,19 +426,25 @@ public class AreaClearManager {
             removeChest(session, location);
     }
 
-    private List<ItemStack> buildLegacyLoot(Area area) {
+    private List<ItemStack> buildLegacyLoot(Area area, Player killer) {
         List<ItemStack> loot = new ArrayList<>();
 
-        for (AreaLootEntry entry : area.getLootEntries()) {
-            if (random.nextDouble() > entry.getChance())
-                continue;
+        int bonusRolls = killer != null
+                ? plugin.getRelicEffectManager().chestRollBonus(
+                        plugin.getPlayerDataManager().getOrLoadSync(killer.getUniqueId())) : 0;
 
-            ItemStack item = resolveEntry(entry);
-            if (item == null)
-                continue;
+        for (int i = 0; i < Math.max(1, bonusRolls); i++) {
+            for (AreaLootEntry entry : area.getLootEntries()) {
+                if (random.nextDouble() > entry.getChance())
+                    continue;
 
-            item.setAmount(Math.max(1, entry.getAmount()));
-            loot.add(item);
+                ItemStack item = resolveEntry(entry);
+                if (item == null)
+                    continue;
+
+                item.setAmount(Math.max(1, entry.getAmount()));
+                loot.add(item);
+            }
         }
 
         return loot;
@@ -454,6 +466,26 @@ public class AreaClearManager {
             ItemStack key = buildKeyItem(type.substring(4));
             if (key != null)
                 result.add(key);
+            return result;
+        }
+
+        if (upper.startsWith("CHARM:")) {
+            net.omni.extraction.relics.RelicDefinition def = plugin.getRelicManager().getDefinition(type.substring(6));
+            if (def == null) {
+                plugin.getLogger().warning("Unknown charm '" + type.substring(6) + "' in loot drop.");
+                return result;
+            }
+            result.add(plugin.getRelicManager().createRelicItem(def));
+            return result;
+        }
+
+        if (upper.startsWith("ARTIFACT:")) {
+            net.omni.extraction.relics.RelicDefinition def = plugin.getRelicManager().getDefinition(type.substring(9));
+            if (def == null) {
+                plugin.getLogger().warning("Unknown artifact '" + type.substring(9) + "' in loot drop.");
+                return result;
+            }
+            result.add(plugin.getRelicManager().createRelicItem(def));
             return result;
         }
 
@@ -768,6 +800,44 @@ public class AreaClearManager {
         }
 
         return drops;
+    }
+
+    /**
+     * Bonus loot roll granted by the MOB_LOOT / BOSS_LOOT relic effects: a free
+     * extra pass over the mob's configured drops when the killer's bonus chance
+     * succeeds. Returns an empty list when there is no kill-damage owner.
+     */
+    public List<ItemStack> rollBonusMobDrops(UUID mobUuid, Player killer, boolean boss) {
+        if (killer == null)
+            return new ArrayList<>();
+
+        AreaClearSession session = mobSessions.get(mobUuid);
+        if (session == null)
+            return new ArrayList<>();
+
+        List<MobDrop> drops = session.getDropsFor(mobUuid);
+        if (drops.isEmpty())
+            return new ArrayList<>();
+
+        double chance = plugin.getRelicEffectManager().bonusDropChancePercent(
+                plugin.getPlayerDataManager().getOrLoadSync(killer.getUniqueId()), boss);
+
+        if (chance <= 0)
+            return new ArrayList<>();
+
+        if (chance < 100 && chance <= random.nextDouble() * 100)
+            return new ArrayList<>();
+
+        List<ItemStack> bonus = new ArrayList<>();
+
+        for (MobDrop drop : drops) {
+            double dropChance = Math.max(0.0, Math.min(1.0, drop.getChance()));
+
+            if (dropChance >= 1.0 || dropChance > random.nextDouble())
+                bonus.addAll(resolveDropItems(drop.getType(), drop.getAmount()));
+        }
+
+        return bonus;
     }
 
     public void onPlayerLeave(Player player, Area area) {

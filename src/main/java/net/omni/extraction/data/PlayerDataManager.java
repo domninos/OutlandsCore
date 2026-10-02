@@ -164,6 +164,27 @@ public class PlayerDataManager {
 
         data.setPendingReturn(rs.getInt("pending_return") == 1);
 
+        String ownedCharmsJson = rs.getString("owned_charms");
+        if (ownedCharmsJson != null && !ownedCharmsJson.isEmpty() && !ownedCharmsJson.equals("[]")) {
+            List<String> ids = plugin.getGson().fromJson(ownedCharmsJson, new TypeToken<List<String>>() {
+            }.getType());
+
+            if (ids != null)
+                data.setOwnedCharms(ids);
+        }
+
+        String ownedArtifactsJson = rs.getString("owned_artifacts");
+        if (ownedArtifactsJson != null && !ownedArtifactsJson.isEmpty() && !ownedArtifactsJson.equals("[]")) {
+            List<String> ids = plugin.getGson().fromJson(ownedArtifactsJson, new TypeToken<List<String>>() {
+            }.getType());
+
+            if (ids != null)
+                data.setOwnedArtifacts(ids);
+        }
+
+        data.setActiveCharm(rs.getString("active_charm"));
+        data.setActiveArtifact(rs.getString("active_artifact"));
+
         List<ItemStack> loadedItems = data.getLoadoutItems();
         Map<String, Integer> loadedTiers = data.getLoadoutTiers();
 
@@ -254,8 +275,8 @@ public class PlayerDataManager {
 
     private void writePlayerToDb(UUID uuid, PlayerData data) {
         String insert = """
-                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_contents, customized_cells, cooldown_until, last_kill_count, last_event_count, last_boss_count, extra_time_seconds, return_location, pre_run_inventory, pre_run_armor, pending_return)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_contents, customized_cells, cooldown_until, last_kill_count, last_event_count, last_boss_count, extra_time_seconds, return_location, pre_run_inventory, pre_run_armor, pending_return, owned_charms, owned_artifacts, active_charm, active_artifact)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection conn = plugin.getDatabaseManager().getConnection();
@@ -275,6 +296,10 @@ public class PlayerDataManager {
             ps.setString(12, serializeItems(data.getPreRunInventory()));
             ps.setString(13, serializeItems(data.getPreRunArmor()));
             ps.setInt(14, data.isPendingReturn() ? 1 : 0);
+            ps.setString(15, plugin.getGson().toJson(data.getOwnedCharms()));
+            ps.setString(16, plugin.getGson().toJson(data.getOwnedArtifacts()));
+            ps.setString(17, data.getActiveCharm());
+            ps.setString(18, data.getActiveArtifact());
 
             ps.executeUpdate();
 

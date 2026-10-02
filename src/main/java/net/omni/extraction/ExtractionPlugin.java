@@ -30,6 +30,10 @@ import net.omni.extraction.managers.MessagesManager;
 import net.omni.extraction.managers.TokenManager;
 import net.omni.extraction.messages.MessageUtil;
 import net.omni.extraction.mobs.MobTemplateManager;
+import net.omni.extraction.relics.RelicEffectManager;
+import net.omni.extraction.relics.RelicItemUtil;
+import net.omni.extraction.relics.RelicListener;
+import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.scoreboard.ScoreboardListener;
 import net.omni.extraction.scoreboard.ScoreboardManager;
 import net.omni.extraction.upgrade.UpgradeManager;
@@ -68,6 +72,8 @@ public final class ExtractionPlugin extends JavaPlugin {
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
     private ExtractionManager extractionManager;
+    private RelicManager relicManager;
+    private RelicEffectManager relicEffectManager;
 
     /*
 
@@ -176,7 +182,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         Smaller, reliable bonuses that provide minor advantages.
         -
         ARTIFACTS
-        Rarer, more powerful effects that can significantly change how you approach an Outlands run.
+        Rarer, more powerful effects that can significantly change how you approach an Extraction run.
          -
          - party system (new database), update extraction.db (if SQLITE, but prefer MariaDB/MYSQL)
          - support party for loot (all party members must be able to loot it.
@@ -251,6 +257,7 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         UpgradeTokenUtil.init(this);
         LootItemUtil.init(this);
+        RelicItemUtil.init(this);
         LoadoutGUI.init(this);
         PacketGlow.init(this);
 
@@ -282,6 +289,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         this.lootTableManager = new LootTableManager(this);
         this.lootTableManager.load();
+
+        this.relicManager = new RelicManager(this);
+        this.relicManager.reload();
+        this.relicEffectManager = new RelicEffectManager(this);
 
         registerCommands();
         registerListeners();
@@ -322,6 +333,8 @@ public final class ExtractionPlugin extends JavaPlugin {
         new UpgradeCommand(this).register();
         new LoadoutCommand(this).register();
         new ShopCommand(this).register();
+        new CharmsCommand(this).register();
+        new ArtifactsCommand(this).register();
     }
 
     private void registerListeners() {
@@ -331,6 +344,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         areaSelectionVisualizer.register();
         new ScoreboardListener(this).register();
         new AreaEditorListener(this).register();
+        new RelicListener(this).register();
     }
 
     private void startSaveTask() {
@@ -455,5 +469,13 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public ExtractionManager getExtractionManager() {
         return extractionManager;
+    }
+
+    public RelicManager getRelicManager() {
+        return relicManager;
+    }
+
+    public RelicEffectManager getRelicEffectManager() {
+        return relicEffectManager;
     }
 }

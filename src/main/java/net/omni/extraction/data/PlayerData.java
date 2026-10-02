@@ -22,6 +22,10 @@ public class PlayerData {
     private List<ItemStack> preRunArmor;
     private boolean pendingReturn;
     private boolean pendingDeathRestore;
+    private Set<String> ownedCharms;
+    private Set<String> ownedArtifacts;
+    private String activeCharm;
+    private String activeArtifact;
     private boolean dirty;
     private boolean loaded;
 
@@ -41,6 +45,10 @@ public class PlayerData {
         this.preRunArmor = new ArrayList<>();
         this.pendingReturn = false;
         this.pendingDeathRestore = false;
+        this.ownedCharms = new HashSet<>();
+        this.ownedArtifacts = new HashSet<>();
+        this.activeCharm = "";
+        this.activeArtifact = "";
         this.dirty = false;
         this.loaded = false;
     }
@@ -276,6 +284,72 @@ public class PlayerData {
         markDirty();
     }
 
+    public Set<String> getOwnedCharms() {
+        return ownedCharms;
+    }
+
+    public void setOwnedCharms(java.util.Collection<String> owned) {
+        this.ownedCharms = owned == null ? new HashSet<>() : new HashSet<>(owned);
+        markDirty();
+    }
+
+    public boolean ownsCharm(String id) {
+        return id != null && ownedCharms.contains(id.toLowerCase(java.util.Locale.ROOT));
+    }
+
+    public void addOwnedCharm(String id) {
+        if (id == null)
+            return;
+
+        if (ownedCharms.add(id.toLowerCase(java.util.Locale.ROOT)))
+            markDirty();
+    }
+
+    public Set<String> getOwnedArtifacts() {
+        return ownedArtifacts;
+    }
+
+    public void setOwnedArtifacts(java.util.Collection<String> owned) {
+        this.ownedArtifacts = owned == null ? new HashSet<>() : new HashSet<>(owned);
+        markDirty();
+    }
+
+    public boolean ownsArtifact(String id) {
+        return id != null && ownedArtifacts.contains(id.toLowerCase(java.util.Locale.ROOT));
+    }
+
+    public void addOwnedArtifact(String id) {
+        if (id == null)
+            return;
+
+        if (ownedArtifacts.add(id.toLowerCase(java.util.Locale.ROOT)))
+            markDirty();
+    }
+
+    public String getActiveCharm() {
+        return activeCharm;
+    }
+
+    public void setActiveCharm(String activeCharm) {
+        String next = activeCharm == null ? "" : activeCharm;
+        if (!next.equals(this.activeCharm)) {
+            this.activeCharm = next;
+            markDirty();
+        }
+    }
+
+    public String getActiveArtifact() {
+        return activeArtifact;
+    }
+
+    public void setActiveArtifact(String activeArtifact) {
+        String next = activeArtifact == null ? "" : activeArtifact;
+        if (!next.equals(this.activeArtifact)) {
+            this.activeArtifact = next;
+            markDirty();
+        }
+    }
+
     public void clearRunSnapshot() {
         this.returnLocation = null;
         this.preRunInventory = new ArrayList<>();
@@ -290,6 +364,10 @@ public class PlayerData {
         loadoutItems = new ArrayList<>();
         customizedCells = new HashSet<>();
         pendingDeathRestore = false;
+        ownedCharms = new HashSet<>();
+        ownedArtifacts = new HashSet<>();
+        activeCharm = "";
+        activeArtifact = "";
         clearRunSnapshot();
     }
 }

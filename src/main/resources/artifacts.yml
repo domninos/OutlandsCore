@@ -1,0 +1,76 @@
+# Artifacts — rarer, more powerful items that define a build.
+# Admins can add/remove artifacts freely; the effect types are fixed (see RelicEffectType).
+# Each artifact is keyed by id. Effects list optional "threshold" (used by *LOW_HP types).
+
+hunter:
+  name: "<gold>Artifact of the Hunter</gold>"
+  icon: NETHERITE_SWORD
+  lore:
+    - "<gray>+10% damage against area mobs.</gray>"
+    - "<gray>Potentially increased rewards from Elite enemies.</gray>"
+  effects:
+    - type: DAMAGE_DEALT
+      value: 10
+    - type: BOSS_LOOT
+      value: 15
+
+fortune:
+  name: "<gold>Artifact of Fortune</gold>"
+  icon: DIAMOND
+  lore:
+    - "<gray>Increased chance of finding rare loot.</gray>"
+    - "<gray>Slightly better chest rolls.</gray>"
+  effects:
+    - type: CHEST_ROLLS
+      value: 1
+    - type: BOSS_LOOT
+      value: 20
+
+extraction:
+  name: "<gold>Artifact of Extraction</gold>"
+  icon: ENDER_EYE
+  lore:
+    - "<gray>+30 seconds to the starting run timer.</gray>"
+  effects:
+    - type: RUN_TIME
+      value: 30
+
+survivor:
+  name: "<gold>Artifact of the Survivor</gold>"
+  icon: TURTLE_HELMET
+  lore:
+    - "<gray>Small damage reduction while below 30% health.</gray>"
+  effects:
+    - type: DAMAGE_TAKEN_LOW_HP
+      value: 25
+      threshold: 30
+
+scavenger:
+  name: "<gold>Artifact of the Scavenger</gold>"
+  icon: LEATHER
+  lore:
+    - "<gray>Chance for enemies to drop additional loot.</gray>"
+  effects:
+    - type: MOB_LOOT
+      value: 12
+
+explorer:
+  name: "<gold>Artifact of the Explorer</gold>"
+  icon: FILLED_MAP
+  lore:
+    - "<gray>Reveals nearby undiscovered areas.</gray>"
+  effects: []
+
+berserker:
+  name: "<gold>Artifact of the Berserker</gold>"
+  icon: IRON_AXE
+  lore:
+    - "<gray>Increased damage while at low health.</gray>"
+    - "<gray>Reduced defense as a trade-off.</gray>"
+  effects:
+    - type: DAMAGE_DEALT_LOW_HP
+      value: 20
+      threshold: 40
+    - type: DAMAGE_TAKEN_LOW_HP
+      value: -15
+      threshold: 40

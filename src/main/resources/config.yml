@@ -71,6 +71,19 @@ shop-gui:
   title: "<gradient:#00AAFF:#55FFFF>Extraction Shop</gradient>"
   rows: 3
 
+# The relic selection GUIs (/charms and /artifacts)
+relic-gui:
+  charms-title: "<gradient:#FFD700:#FF7F50>Charms</gradient>"
+  artifacts-title: "<gradient:#FF69B4:#8A2BE2>Artifacts</gradient>"
+  rows: 6
+  filler-material: "GRAY_STAINED_GLASS_PANE"
+  filler-name: " "
+  placeholder-material: "BLACK_STAINED_GLASS_PANE"
+  placeholder-name: "<dark_gray>???</dark_gray>"
+  placeholder-lore:
+    - "<gray>You haven't discovered this yet.</gray>"
+    - "<gray>Find it by looting chests or killing mobs in areas.</gray>"
+
 # Loadout tier definitions
 # Each slot defines an ordered list of upgrade tiers (index 0 = tier 0, the starting tier)
 # Tiers can use:

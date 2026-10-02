@@ -65,9 +65,11 @@ public class RunManager {
         data.setPendingReturn(true);
 
         int baseLimit = plugin.getConfigUtil().getTimeLimitSeconds();
-        int extraTime = Math.max(0, data.getExtraTimeSeconds());
+        int bankedTime = Math.max(0, data.getExtraTimeSeconds());
+        int relicTime = baseLimit > 0 ? Math.max(0, plugin.getRelicEffectManager().runTimeBonus(data)) : 0;
+        int extraTime = bankedTime + relicTime;
 
-        if (baseLimit > 0 && extraTime > 0)
+        if (baseLimit > 0 && bankedTime > 0)
             data.setExtraTimeSeconds(0);
 
         playerDataManager.savePlayer(uuid);
@@ -97,8 +99,8 @@ public class RunManager {
         if (timeLimit > 0)
             run.startTimer(plugin, this, player);
 
-        if (baseLimit > 0 && extraTime > 0)
-            plugin.sendMessage(player, Messages.RUN_EXTRA_TIME_APPLIED.replace("time", String.valueOf(extraTime / 60)));
+        if (baseLimit > 0 && bankedTime > 0)
+            plugin.sendMessage(player, Messages.RUN_EXTRA_TIME_APPLIED.replace("time", String.valueOf(bankedTime / 60)));
 
         plugin.sendMessage(player, Messages.RUN_ENTERED.toString());
         return true;

@@ -50,7 +50,11 @@ public class DatabaseManager {
                             return_location TEXT DEFAULT '',
                             pre_run_inventory TEXT DEFAULT '',
                             pre_run_armor TEXT DEFAULT '',
-                            pending_return INTEGER DEFAULT 0
+                            pending_return INTEGER DEFAULT 0,
+                            owned_charms TEXT DEFAULT '[]',
+                            owned_artifacts TEXT DEFAULT '[]',
+                            active_charm TEXT DEFAULT '',
+                            active_artifact TEXT DEFAULT ''
                         )
                     """);
             try {
@@ -90,6 +94,26 @@ public class DatabaseManager {
             }
             try {
                 stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN extra_time_seconds INTEGER DEFAULT 0");
+            } catch (SQLException ignored) {
+                // Column already exists.
+            }
+            try {
+                stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN owned_charms TEXT DEFAULT '[]'");
+            } catch (SQLException ignored) {
+                // Column already exists.
+            }
+            try {
+                stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN owned_artifacts TEXT DEFAULT '[]'");
+            } catch (SQLException ignored) {
+                // Column already exists.
+            }
+            try {
+                stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN active_charm TEXT DEFAULT ''");
+            } catch (SQLException ignored) {
+                // Column already exists.
+            }
+            try {
+                stmt.executeUpdate("ALTER TABLE player_data ADD COLUMN active_artifact TEXT DEFAULT ''");
             } catch (SQLException ignored) {
                 // Column already exists.
             }

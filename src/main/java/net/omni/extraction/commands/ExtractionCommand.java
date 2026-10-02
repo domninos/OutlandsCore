@@ -151,11 +151,15 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getActionBarManager().reload();
         plugin.getHologramManager().reload();
         plugin.getLootTableManager().reload();
+        plugin.getRelicManager().reload();
 
         plugin.getCooldownManager().applyConfig();
 
         if (plugin.getConfigUtil().isScoreboardEnabled())
             plugin.getScoreboardManager().start();
+
+        for (Player online : Bukkit.getOnlinePlayers())
+            plugin.getRelicEffectManager().applyPassive(online);
 
         // Close any open loadout/upgrade GUIs FIRST so close-time sync (and
         // the upgrade-GUI tier save) runs with real data, then drop the cached

@@ -26,6 +26,16 @@ public final class ConfigKeys {
     public static final String BACKPACK_NAME = "backpack.name";
     public static final String BACKPACK_MATERIAL = "backpack.material";
 
+    public static final String RELIC_GUI = "relic-gui";
+    public static final String RELIC_GUI_CHARMS_TITLE = "relic-gui.charms-title";
+    public static final String RELIC_GUI_ARTIFACTS_TITLE = "relic-gui.artifacts-title";
+    public static final String RELIC_GUI_ROWS = "relic-gui.rows";
+    public static final String RELIC_GUI_FILLER_MATERIAL = "relic-gui.filler-material";
+    public static final String RELIC_GUI_FILLER_NAME = "relic-gui.filler-name";
+    public static final String RELIC_GUI_PLACEHOLDER_MATERIAL = "relic-gui.placeholder-material";
+    public static final String RELIC_GUI_PLACEHOLDER_NAME = "relic-gui.placeholder-name";
+    public static final String RELIC_GUI_PLACEHOLDER_LORE = "relic-gui.placeholder-lore";
+
     public static final String SHOP_GUI = "shop-gui";
     public static final String SHOP_GUI_TITLE = "shop-gui.title";
     public static final String SHOP_GUI_ROWS = "shop-gui.rows";
