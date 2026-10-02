@@ -24,8 +24,7 @@ public class ExtractionTabCompleter implements TabCompleter {
             subcommands.add("help");
             subcommands.add("about");
             subcommands.add("loadout");
-            subcommands.add("withdraw");
-            subcommands.add("storage");
+            subcommands.add("shop");
             subcommands.add("tokens");
 
             if (sender.hasPermission("extraction.admin")) {

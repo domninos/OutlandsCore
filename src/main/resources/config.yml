@@ -45,8 +45,31 @@ extraction:
   per-event: 5
   # Bonus tokens per boss kill
   per-boss: 20
-  # Hours before unclaimed loot expires
-  withdraw-expiry-hours: 24
+
+# Backpack (physical item, purchasable with tokens via /extraction shop or /extshop)
+# The backpack is a real item in your inventory: contents live on the item itself.
+# Right-click (air) while in a run to open it as a GUI; right-click (air) outside
+# a run to unpack its contents into your inventory. It drops if you die in a run.
+backpack:
+  # Display name of the backpack item (%player% = the player who bought it)
+  name: "%player%'s Backpack"
+  # Item material used for a newly bought backpack
+  material: CHEST
+  # Content slots per backpack tier (index 0 = Tier 1)
+  tier-slots: [9, 18, 27, 36]
+  # Token price of each backpack tier (aligned with tier-slots)
+  prices: [500, 1000, 2000, 3000]
+  # Price of a single pagination upgrade
+  pagination-price: 750
+  # How many extra pages one pagination upgrade adds
+  pagination-extra-pages: 2
+  # Maximum total pages a backpack can reach
+  pagination-max-pages: 4
+
+# The /extraction shop GUI (buys backpack tiers and pagination)
+shop-gui:
+  title: "<gradient:#00AAFF:#55FFFF>Extraction Shop</gradient>"
+  rows: 3
 
 # Loadout tier definitions
 # Each slot defines an ordered list of upgrade tiers (index 0 = tier 0, the starting tier)
@@ -497,13 +520,6 @@ scoreboard:
 
 # Loot chest defaults (used by loot_tables.yml)
 loot:
-  # How loot gets claimed from a cleared area's chest:
-  #   instant - the default: right-click instantly banks the chest loot to
-  #             /extraction storage (a per-chest key, if any, is consumed)
-  #   open    - right-click opens the real container; walking away (closing)
-  #             banks everything left inside and unregisters the chest
-  #             (a per-chest key, if any, is consumed on open)
-  claim-mode: instant
   # Rolls per chest when neither the area file (loot.items-per-chest) nor the
   # loot table (items-per-chest) specifies a value
   default-items-per-chest: 3

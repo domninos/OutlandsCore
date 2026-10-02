@@ -72,10 +72,15 @@ public class RunManager {
 
         playerDataManager.savePlayer(uuid);
 
+        // Keep the physical backpack(s) with the player through the run: they
+        // are put into the run inventory after the loadout is granted.
+        List<ItemStack> bags = plugin.getBackpackManager().collectBackpackItems(player);
+
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
 
         plugin.getLoadoutManager().applyLoadout(player, data);
+        plugin.getBackpackManager().insertBackpacks(player, bags);
 
         Location spawn = plugin.getConfigUtil().getSpawnLocation();
 
@@ -116,7 +121,7 @@ public class RunManager {
         run.cancelTimer();
 
         Player player = Bukkit.getPlayer(uuid);
-        PlayerData data = playerDataManager.getOrCreate(uuid);
+        PlayerData data = playerDataManager.getOrLoadSync(uuid);
 
         int tokens = calculateTokens(run);
         tokenManager.addTokens(uuid, tokens);
@@ -125,9 +130,16 @@ public class RunManager {
         Location returnLocation = run.getReturnLocation();
 
         if (player != null) {
+            List<ItemStack> bags = plugin.getBackpackManager().collectBackpackItems(player);
+
             player.getInventory().clear();
             player.getInventory().setArmorContents(null);
             restorePlayerInventory(player, data);
+
+            // The snapshot holds the pre-run bag copy; strip it and put the
+            // run-state bags back so exactly one bag survives extraction.
+            plugin.getBackpackManager().removeBackpacksFromPlayer(player);
+            plugin.getBackpackManager().insertBackpacks(player, bags);
 
             if (returnLocation != null)
                 player.teleport(returnLocation);
@@ -181,8 +193,13 @@ public class RunManager {
 
         run.cancelTimer();
 
-        PlayerData data = playerDataManager.getOrCreate(uuid);
-        data.setExtractedLoot(new ArrayList<>());
+        PlayerData data = playerDataManager.getOrLoadSync(uuid);
+        Player player = Bukkit.getPlayer(uuid);
+
+        // The physical backpack drops at the death location; purge the pre-run
+        // snapshot copy so the respawn restore cannot hand back a duplicate.
+        List<ItemStack> bags = plugin.getBackpackManager().collectBackpackItems(player);
+
         data.setLastKillCount(run.getKillCount());
         data.setLastEventCount(run.getEventCount());
         data.setLastBossCount(run.getBossCount());
@@ -197,12 +214,19 @@ public class RunManager {
 
         cooldownManager.setCooldown(uuid);
 
-        Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
+            for (ItemStack bag : bags) {
+                if (bag != null)
+                    player.getWorld().dropItemNaturally(player.getLocation(), bag);
+            }
+
             player.getInventory().clear();
             player.getInventory().setArmorContents(null);
             plugin.sendMessage(player, Messages.RUN_DEATH.toString());
         }
+
+        data.setPreRunInventory(plugin.getBackpackManager().purgeBackpackItems(data.getPreRunInventory()));
+        data.setPreRunArmor(plugin.getBackpackManager().purgeBackpackItems(data.getPreRunArmor()));
 
         plugin.getExtractionManager().removeExtraction(uuid);
     }
@@ -258,7 +282,7 @@ public class RunManager {
      */
     public void restorePendingReturn(Player player) {
         UUID uuid = player.getUniqueId();
-        PlayerData data = playerDataManager.getOrCreate(uuid);
+        PlayerData data = playerDataManager.getOrLoadSync(uuid);
 
         if (!data.isPendingReturn())
             return;
@@ -269,7 +293,6 @@ public class RunManager {
         player.getInventory().setArmorContents(null);
         restorePlayerInventory(player, data);
 
-        boolean lootStored = !data.getExtractedLoot().isEmpty();
         data.clearRunSnapshot();
         playerDataManager.savePlayer(uuid);
 
@@ -281,9 +304,6 @@ public class RunManager {
                     ? returnLocation.getWorld().getName() : "?";
             plugin.sendMessage(player, Messages.RUN_WORLD_NOT_FOUND.replace("world", worldName));
         }
-
-        if (lootStored)
-            plugin.sendMessage(player, Messages.EXTRACT_LOOT_STORED.toString());
     }
 
     public void shutdown() {
@@ -296,6 +316,8 @@ public class RunManager {
             Player player = Bukkit.getPlayer(uuid);
 
             if (player != null) {
+                List<ItemStack> bags = plugin.getBackpackManager().collectBackpackItems(player);
+
                 int tokens = calculateTokens(run);
                 tokenManager.addTokens(uuid, tokens);
                 cooldownManager.setCooldown(uuid);
@@ -303,6 +325,9 @@ public class RunManager {
                 player.getInventory().clear();
                 player.getInventory().setArmorContents(null);
                 restorePlayerInventory(player, data);
+
+                plugin.getBackpackManager().removeBackpacksFromPlayer(player);
+                plugin.getBackpackManager().insertBackpacks(player, bags);
 
                 if (run.getReturnLocation() != null)
                     player.teleport(run.getReturnLocation());

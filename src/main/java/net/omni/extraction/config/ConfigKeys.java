@@ -16,7 +16,19 @@ public final class ConfigKeys {
     public static final String EXTRACT_PER_KILL = "extraction.per-kill";
     public static final String EXTRACT_PER_EVENT = "extraction.per-event";
     public static final String EXTRACT_PER_BOSS = "extraction.per-boss";
-    public static final String EXTRACT_WITHDRAW_EXPIRY_HOURS = "extraction.withdraw-expiry-hours";
+
+    public static final String BACKPACK = "backpack";
+    public static final String BACKPACK_TIER_SLOTS = "backpack.tier-slots";
+    public static final String BACKPACK_PRICES = "backpack.prices";
+    public static final String BACKPACK_PAGINATION_PRICE = "backpack.pagination-price";
+    public static final String BACKPACK_EXTRA_PAGES = "backpack.pagination-extra-pages";
+    public static final String BACKPACK_MAX_PAGES = "backpack.pagination-max-pages";
+    public static final String BACKPACK_NAME = "backpack.name";
+    public static final String BACKPACK_MATERIAL = "backpack.material";
+
+    public static final String SHOP_GUI = "shop-gui";
+    public static final String SHOP_GUI_TITLE = "shop-gui.title";
+    public static final String SHOP_GUI_ROWS = "shop-gui.rows";
 
     public static final String LOADOUT_DEFAULTS = "loadout.defaults";
 
@@ -39,8 +51,6 @@ public final class ConfigKeys {
     public static final String TOKEN_LOOT = "token-loot";
 
     public static final String KEYS = "keys";
-
-    public static final String LOOT_CLAIM_MODE = "loot.claim-mode";
 
     public static final String UPGRADE_GUI = "upgrade-gui";
     public static final String UPGRADE_GUI_TITLE = "upgrade-gui.title";

@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import net.omni.extraction.area.*;
 import net.omni.extraction.areaeditor.AreaEditorListener;
 import net.omni.extraction.areaeditor.AreaEditorManager;
+import net.omni.extraction.backpack.BackpackManager;
 import net.omni.extraction.chat.ActionBarManager;
 import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.chat.PaperChatRenderer;
@@ -23,7 +24,6 @@ import net.omni.extraction.listeners.PlayerListener;
 import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutManager;
 import net.omni.extraction.loot.LootItemUtil;
-import net.omni.extraction.loot.LootManager;
 import net.omni.extraction.loot.LootTableManager;
 import net.omni.extraction.managers.ExtractionManager;
 import net.omni.extraction.managers.MessagesManager;
@@ -54,7 +54,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private LoadoutManager loadoutManager;
     private UpgradeManager upgradeManager;
     private TokenManager tokenManager;
-    private LootManager lootManager;
+    private BackpackManager backpackManager;
     private ExternalPluginManager externalPluginManager;
     private MobTemplateManager mobTemplateManager;
     private AreaManager areaManager;
@@ -86,12 +86,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      -
      - fix holograms not being removed when /extraction admin hologram <area> remove
-       - make it /extraction admin addhologram <area> and /extraction admin delhologram <area>
-       - add /extraction admin sethologram <area> - sets the hologram position their eye level
      -
-     - fix loot being duplicated. right click loot chest -> gives to /extraction storage, but still got the items added to it
-       - make the loot scattered randomly on the chest inventory
-       - suggest what improvements to make this realistically close to DMZ or to any other extraction games (looting part)
      -
      - add the possibility to increase the level of an area without recreating it
        - add command /areas setlevel {area} {level}
@@ -101,13 +96,8 @@ public final class ExtractionPlugin extends JavaPlugin {
        unlocking enchantments, upgrading armor/weapons, purchasing passive upgrades
      -
      - add join / leave extraction messages
-     - add sounds
+     - add sounds (configurable)
      -
-     -
-     - have loot system revamped. claiming a loot chest goes straight into the player inventory. /extraction storage/withdraw becomes /extraction backpack.
-       - /extraction backpack (or just /backpack) -> check if they have (this is purchasable only - temporary. 1 backpack per run)
-       - /extraction backpack becomes a second inventory. no pagination on default (purchaseable feature).
-       - if player dies in extraction, everything within the backpack drops
      -
 
      */
@@ -266,13 +256,13 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         this.databaseManager = new DatabaseManager(this);
         this.playerDataManager = new PlayerDataManager(this);
+        this.backpackManager = new BackpackManager(this);
         this.extractionManager = new ExtractionManager(this);
 
         this.cooldownManager = new CooldownManager(this, playerDataManager);
         this.tokenManager = new TokenManager(playerDataManager);
         this.upgradeManager = new UpgradeManager(this, configUtil);
         this.loadoutManager = new LoadoutManager(this, upgradeManager);
-        this.lootManager = new LootManager(this, playerDataManager, configUtil);
         this.runManager = new RunManager(this);
         this.externalPluginManager = new ExternalPluginManager(this);
         externalPluginManager.detect();
@@ -331,6 +321,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new TokensCommand(this).register();
         new UpgradeCommand(this).register();
         new LoadoutCommand(this).register();
+        new ShopCommand(this).register();
     }
 
     private void registerListeners() {
@@ -410,8 +401,8 @@ public final class ExtractionPlugin extends JavaPlugin {
         return tokenManager;
     }
 
-    public LootManager getLootManager() {
-        return lootManager;
+    public BackpackManager getBackpackManager() {
+        return backpackManager;
     }
 
     public ExternalPluginManager getExternalPluginManager() {

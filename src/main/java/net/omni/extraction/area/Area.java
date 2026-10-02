@@ -55,7 +55,6 @@ public class Area {
     private Location min;
     private Location max;
     private int lootDespawnSeconds;
-    private boolean leftoverToWithdraw;
     private int tokens;
     private String lootTable;
     private int itemsPerChest;
@@ -83,7 +82,6 @@ public class Area {
         this.spawnEntries = new ArrayList<>();
 
         this.lootDespawnSeconds = 300;
-        this.leftoverToWithdraw = true;
         this.tokens = 0;
         this.lootTable = null;
         this.itemsPerChest = -1;
@@ -205,7 +203,6 @@ public class Area {
         }
 
         area.setLootDespawnSeconds(config.getInt("loot.despawn-seconds", 300));
-        area.setLeftoverToWithdraw(config.getBoolean("loot.leftover-to-withdraw", true));
         area.setTokens(config.getInt("loot.tokens", 0));
         area.setLootTable(config.getString("loot.type"));
         area.setItemsPerChest(config.getInt("loot.items-per-chest", -1));
@@ -624,14 +621,6 @@ public class Area {
         this.lootDespawnSeconds = lootDespawnSeconds;
     }
 
-    public boolean isLeftoverToWithdraw() {
-        return leftoverToWithdraw;
-    }
-
-    public void setLeftoverToWithdraw(boolean leftoverToWithdraw) {
-        this.leftoverToWithdraw = leftoverToWithdraw;
-    }
-
     public int getTokens() {
         return tokens;
     }
@@ -856,7 +845,6 @@ public class Area {
         config.set("loot.chest-locations", chestList);
 
         config.set("loot.despawn-seconds", lootDespawnSeconds);
-        config.set("loot.leftover-to-withdraw", leftoverToWithdraw);
         config.set("loot.tokens", tokens);
 
         if (lootTable != null && !lootTable.isBlank())

@@ -2,7 +2,6 @@ package net.omni.extraction.loot;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.omni.extraction.data.PlayerData;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -12,7 +11,6 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -201,37 +199,6 @@ public class LootItemUtil {
         return item.getItemMeta().getPersistentDataContainer().get(KEY_KEY_ID, PersistentDataType.STRING);
     }
 
-    public static boolean hasKeyItem(Player player, PlayerData data, String keyId) {
-        return findKeyIndex(data.getExtractedLoot(), keyId) >= 0
-                || findKeyIndex(player.getInventory().getContents(), keyId) >= 0;
-    }
-
-    public static boolean consumeKeyItem(Player player, PlayerData data, String keyId) {
-        if (data != null) {
-            List<ItemStack> stored = new ArrayList<>(data.getExtractedLoot());
-            int index = findKeyIndex(stored, keyId);
-
-            if (index >= 0) {
-                stored.set(index, decrementKey(stored.get(index)));
-                data.setExtractedLoot(stored);
-                return true;
-            }
-        }
-
-        if (player != null) {
-            ItemStack[] contents = player.getInventory().getContents();
-
-            for (int i = 0; i < contents.length; i++) {
-                if (contents[i] != null && keyId.equals(getKeyId(contents[i]))) {
-                    player.getInventory().setItem(i, decrementKey(contents[i]));
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
     public static boolean consumeOne(ItemStack item) {
         if (item == null)
             return false;
@@ -248,37 +215,16 @@ public class LootItemUtil {
         return true;
     }
 
-    private static ItemStack decrementKey(ItemStack item) {
+    /** Consumes one from the item, returning null when the stack is emptied. */
+    public static ItemStack decrementKeyOrNull(ItemStack item) {
+        if (item == null)
+            return null;
+
         if (item.getAmount() > 1) {
             item.setAmount(item.getAmount() - 1);
             return item;
         }
 
         return null;
-    }
-
-    private static int findKeyIndex(ItemStack[] items, String keyId) {
-        if (items == null) return -1;
-
-        for (int i = 0; i < items.length; i++)
-            if (items[i] != null && keyId.equals(getKeyId(items[i])))
-                return i;
-
-        return -1;
-    }
-
-    private static int findKeyIndex(List<ItemStack> items, String keyId) {
-        if (items == null) return -1;
-
-        Iterator<ItemStack> iterator = items.iterator();
-        int i = 0;
-
-        while (iterator.hasNext()) {
-            if (keyId.equals(getKeyId(iterator.next())))
-                return i;
-            i++;
-        }
-
-        return -1;
     }
 }

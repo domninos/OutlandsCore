@@ -37,7 +37,17 @@ public class ConfigUtil {
     private int perKillTokens;
     private int perEventTokens;
     private int perBossTokens;
-    private int withdrawExpiryHours;
+
+    private List<Integer> backpackTierSlots;
+    private List<Integer> backpackPrices;
+    private int backpackPaginationPrice;
+    private int backpackExtraPages;
+    private int backpackMaxPages;
+    private String backpackName = "%player%'s Backpack";
+    private String backpackMaterial = "CHEST";
+
+    private String shopGuiTitle;
+    private int shopGuiRows;
 
     private Location spawnLocation;
     private int areaAutoSaveSeconds;
@@ -163,7 +173,6 @@ public class ConfigUtil {
     private List<String> lootChestHologramReady;
     private List<String> lootChestHologramEmpty;
 
-    private String lootClaimMode;
     private int lootDefaultItemsPerChest;
     private String lootTokenItemMaterial;
     private String lootTokenItemName;
@@ -185,6 +194,8 @@ public class ConfigUtil {
         this.lootChestHologramOngoing = new ArrayList<>();
         this.lootChestHologramReady = new ArrayList<>();
         this.lootChestHologramEmpty = new ArrayList<>();
+        this.backpackTierSlots = new ArrayList<>();
+        this.backpackPrices = new ArrayList<>();
     }
 
     public void reloadConfig() {
@@ -203,6 +214,8 @@ public class ConfigUtil {
         lootChestHologramOngoing = new ArrayList<>();
         lootChestHologramReady = new ArrayList<>();
         lootChestHologramEmpty = new ArrayList<>();
+        backpackTierSlots = new ArrayList<>();
+        backpackPrices = new ArrayList<>();
     }
 
     public void load() {
@@ -223,7 +236,6 @@ public class ConfigUtil {
         this.perKillTokens = getAndDefaultInt(ConfigKeys.EXTRACT_PER_KILL, 2, savedDefaults);
         this.perEventTokens = getAndDefaultInt(ConfigKeys.EXTRACT_PER_EVENT, 5, savedDefaults);
         this.perBossTokens = getAndDefaultInt(ConfigKeys.EXTRACT_PER_BOSS, 20, savedDefaults);
-        this.withdrawExpiryHours = getAndDefaultInt(ConfigKeys.EXTRACT_WITHDRAW_EXPIRY_HOURS, 24, savedDefaults);
 
         this.areaAutoSaveSeconds = getAndDefaultInt(ConfigKeys.AREAS_AUTO_SAVE_SECONDS, 30, savedDefaults);
         this.areaStateCheckSeconds = getAndDefaultInt(ConfigKeys.AREAS_STATE_CHECK_SECONDS, 1, savedDefaults);
@@ -261,6 +273,8 @@ public class ConfigUtil {
         loadHolograms(savedDefaults);
         loadLoot(savedDefaults);
         loadContainers(savedDefaults);
+        loadBackpack(savedDefaults);
+        loadShopGui(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
 
@@ -595,7 +609,6 @@ public class ConfigUtil {
     }
 
     private void loadLoot(AtomicInteger savedDefaults) {
-        this.lootClaimMode = getAndDefaultString(ConfigKeys.LOOT_CLAIM_MODE, "instant", savedDefaults);
         this.lootDefaultItemsPerChest = Math.max(1, getAndDefaultInt(ConfigKeys.LOOT_DEFAULT_ITEMS_PER_CHEST, 3, savedDefaults));
         this.lootTokenItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_MATERIAL, "GOLD_INGOT", savedDefaults);
         this.lootTokenItemName = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_NAME, "<gold>Extraction Token</gold>", savedDefaults);
@@ -643,6 +656,22 @@ public class ConfigUtil {
         ), savedDefaults);
 
         net.omni.extraction.area.AreaChestLocation.refreshContainers(containers);
+    }
+
+    private void loadBackpack(AtomicInteger savedDefaults) {
+        this.backpackTierSlots = getAndDefaultIntList(ConfigKeys.BACKPACK_TIER_SLOTS, List.of(9, 18, 27, 36), savedDefaults);
+        this.backpackPrices = getAndDefaultIntList(ConfigKeys.BACKPACK_PRICES, List.of(500, 1000, 2000, 3000), savedDefaults);
+        this.backpackPaginationPrice = Math.max(1, getAndDefaultInt(ConfigKeys.BACKPACK_PAGINATION_PRICE, 750, savedDefaults));
+        this.backpackExtraPages = Math.max(1, getAndDefaultInt(ConfigKeys.BACKPACK_EXTRA_PAGES, 2, savedDefaults));
+        this.backpackMaxPages = Math.max(1, getAndDefaultInt(ConfigKeys.BACKPACK_MAX_PAGES, 4, savedDefaults));
+        this.backpackName = getAndDefaultString(ConfigKeys.BACKPACK_NAME, "%player%'s Backpack", savedDefaults);
+        this.backpackMaterial = getAndDefaultString(ConfigKeys.BACKPACK_MATERIAL, "CHEST", savedDefaults);
+    }
+
+    private void loadShopGui(AtomicInteger savedDefaults) {
+        this.shopGuiTitle = getAndDefaultString(ConfigKeys.SHOP_GUI_TITLE,
+                "<gradient:#00AAFF:#55FFFF>Extraction Shop</gradient>", savedDefaults);
+        this.shopGuiRows = Math.clamp(getAndDefaultInt(ConfigKeys.SHOP_GUI_ROWS, 3, savedDefaults), 2, 6);
     }
 
     private void loadAreaEditor(AtomicInteger savedDefaults) {
@@ -908,6 +937,23 @@ public class ConfigUtil {
         return new ArrayList<>(plugin.getConfig().getStringList(path));
     }
 
+    private List<Integer> getAndDefaultIntList(String path, List<Integer> defaultVal, AtomicInteger counter) {
+        if (!plugin.getConfig().contains(path)) {
+            plugin.getConfig().set(path, defaultVal);
+            counter.incrementAndGet();
+            return new ArrayList<>(defaultVal);
+        }
+
+        List<Object> raw = new ArrayList<>(plugin.getConfig().getList(path, new ArrayList<>()));
+        List<Integer> result = new ArrayList<>();
+
+        for (Object value : raw) {
+            if (value instanceof Number number) result.add(number.intValue());
+        }
+
+        return result;
+    }
+
     public String getPrefix() {
         return prefix;
     }
@@ -946,10 +992,6 @@ public class ConfigUtil {
 
     public int getPerBossTokens() {
         return perBossTokens;
-    }
-
-    public int getWithdrawExpiryHours() {
-        return withdrawExpiryHours;
     }
 
     public Map<String, List<Map<String, Object>>> getLoadoutTiers() {
@@ -1452,7 +1494,47 @@ public class ConfigUtil {
         return lootTimeItemName;
     }
 
-    public boolean isLootClaimOpen() {
-        return "open".equalsIgnoreCase(lootClaimMode);
+    public List<Integer> getBackpackTierSlots() {
+        return new ArrayList<>(backpackTierSlots);
+    }
+
+    public List<Integer> getBackpackPrices() {
+        return new ArrayList<>(backpackPrices);
+    }
+
+    public int getBackpackTierPrice(int tier) {
+        int index = tier - 1;
+        if (index < 0 || index >= backpackPrices.size())
+            return 0;
+        return Math.max(1, backpackPrices.get(index));
+    }
+
+    public int getBackpackPaginationPrice() {
+        return backpackPaginationPrice;
+    }
+
+    public int getBackpackExtraPages() {
+        return backpackExtraPages;
+    }
+
+    public int getBackpackMaxPages() {
+        return backpackMaxPages;
+    }
+
+    public String getBackpackName() {
+        return backpackName;
+    }
+
+    public Material getBackpackMaterial() {
+        Material material = Material.matchMaterial(backpackMaterial);
+        return material != null ? material : Material.CHEST;
+    }
+
+    public String getShopGuiTitle() {
+        return shopGuiTitle;
+    }
+
+    public int getShopGuiSize() {
+        return shopGuiRows * 9;
     }
 }

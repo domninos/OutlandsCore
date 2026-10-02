@@ -4,7 +4,6 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.integration.ExternalItemProvider;
 import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootItemUtil;
@@ -18,7 +17,6 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
-import org.bukkit.block.Container;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -406,21 +404,11 @@ public class AreaClearManager {
         for (Block b : containerBlocks(blockLoc, blockLoc.getBlock().getType()))
             unregisterChestBlock(session, b.getLocation());
 
-        if (blockLoc.getBlock().getState() instanceof InventoryHolder holder) {
-            List<ItemStack> leftover = new ArrayList<>();
-
-            for (ItemStack item : holder.getInventory().getContents())
-                if (item != null)
-                    leftover.add(item);
-
-            if (session.getArea().isLeftoverToWithdraw() && !leftover.isEmpty()) {
-                storeLeftover(session.getOwner(), leftover);
-                holder.getInventory().clear();
-            }
-        }
+        if (blockLoc.getBlock().getState() instanceof InventoryHolder holder)
+            holder.getInventory().clear();
     }
 
-private void unregisterChestBlock(AreaClearSession session, Location location) {
+    private void unregisterChestBlock(AreaClearSession session, Location location) {
         Location blockLoc = location.getBlock().getLocation();
         chestSessions.remove(locationKey(blockLoc));
         chestKeys.remove(locationKey(blockLoc));
@@ -608,15 +596,6 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
         return merged;
     }
 
-    private void storeLeftover(UUID ownerId, List<ItemStack> leftover) {
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(ownerId);
-        List<ItemStack> stored = new ArrayList<>(data.getExtractedLoot());
-
-        stored.addAll(leftover);
-        data.setExtractedLoot(stored);
-        plugin.getPlayerDataManager().savePlayer(ownerId);
-    }
-
     private ItemStack resolveEntry(AreaLootEntry entry) {
         if (entry.getExternal() != null && !entry.getExternal().isBlank()) {
             ExternalItemProvider provider = plugin.getExternalPluginManager().getItemProvider(entry.getExternal());
@@ -637,111 +616,6 @@ private void unregisterChestBlock(AreaClearSession session, Location location) {
 
     public AreaClearSession getChestSession(Location location) {
         return chestSessions.get(locationKey(location));
-    }
-
-    public int redeemChest(Player player, Location location) {
-        AreaClearSession session = chestSessions.get(locationKey(location));
-        if (session == null)
-            return 0;
-
-        if (isActive(session.getArea()))
-            return -2;
-
-        if (!session.getOwner().equals(player.getUniqueId()))
-            return -1;
-
-        String keyId = getChestKeyId(location);
-
-        if (keyId != null) {
-            PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
-
-            if (!LootItemUtil.hasKeyItem(player, data, keyId))
-                return -3;
-        }
-
-        Block block = location.getBlock();
-        List<ItemStack> loot = new ArrayList<>();
-        InventoryHolder holder = block.getState() instanceof InventoryHolder h ? h : null;
-
-        if (holder != null) {
-            for (ItemStack item : holder.getInventory().getContents()) {
-                if (item != null)
-                    loot.add(item);
-            }
-        }
-
-        if (!loot.isEmpty()) {
-            PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
-            List<ItemStack> stored = new ArrayList<>(data.getExtractedLoot());
-
-            stored.addAll(loot);
-            data.setExtractedLoot(stored);
-
-            if (keyId != null)
-                LootItemUtil.consumeKeyItem(player, data, keyId);
-
-            plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
-
-            holder.getInventory().clear();
-        }
-
-        for (Block b : containerBlocks(block.getLocation(), block.getType()))
-            unregisterChestBlock(session, b.getLocation());
-
-        return loot.size();
-    }
-
-    public void handleChestClose(Player player, Inventory inventory) {
-        Location location;
-
-        if (inventory.getHolder() instanceof Container container) {
-            location = container.getBlock().getLocation();
-        } else if (inventory.getHolder() instanceof org.bukkit.block.DoubleChest dc) {
-            location = dc.getLocation();
-        } else {
-            return;
-        }
-
-        if (location == null || location.getWorld() == null)
-            return;
-
-        AreaClearSession session = chestSessions.get(locationKey(location));
-
-        if (session == null)
-            return;
-
-        List<ItemStack> leftover = new ArrayList<>();
-
-        for (ItemStack item : inventory.getContents()) {
-            if (item != null)
-                leftover.add(item);
-        }
-
-        if (!leftover.isEmpty()) {
-            PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(session.getOwner());
-            List<ItemStack> stored = new ArrayList<>(data.getExtractedLoot());
-            stored.addAll(leftover);
-            data.setExtractedLoot(stored);
-            plugin.getPlayerDataManager().savePlayer(session.getOwner());
-            inventory.clear();
-        }
-
-        List<Location> related = new ArrayList<>();
-
-        for (Location chestLoc : session.getChestLocations()) {
-            if (chestLoc.getBlock().getState() instanceof InventoryHolder holder
-                    && holder.getInventory() == inventory) {
-                related.add(chestLoc);
-            }
-        }
-
-        if (related.isEmpty()) {
-            for (Block b : containerBlocks(location, location.getBlock().getType()))
-                related.add(b.getLocation());
-        }
-
-        for (Location chestLoc : related)
-            unregisterChestBlock(session, chestLoc);
     }
 
     public String getChestKeyId(Location location) {

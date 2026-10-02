@@ -1,7 +1,6 @@
 package net.omni.extraction.area;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.loot.LootItemUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.PacketGlow;
 import org.bukkit.Bukkit;
@@ -11,7 +10,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
@@ -68,73 +66,37 @@ public class AreaListener implements Listener {
             return;
 
         Player player = event.getPlayer();
+        AreaClearManager manager = plugin.getAreaClearManager();
+        AreaClearSession session = manager.getChestSession(block.getLocation());
 
-        if (plugin.getConfigUtil().isLootClaimOpen()) {
-            AreaClearManager manager = plugin.getAreaClearManager();
-            AreaClearSession session = manager.getChestSession(block.getLocation());
-
-            if (session == null)
-                return;
-
-            event.setCancelled(true);
-
-            if (manager.isActive(session.getArea())) {
-                plugin.sendMessage(player, Messages.AREA_CHEST_ONGOING.toString());
-                return;
-            }
-
-            if (!session.getOwner().equals(player.getUniqueId())) {
-                plugin.sendMessage(player, Messages.AREA_CHEST_LOCKED.toString());
-                return;
-            }
-
-            String keyId = manager.getChestKeyId(block.getLocation());
-
-            if (keyId != null) {
-                if (!LootItemUtil.hasKeyItem(player,
-                        plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId()), keyId)) {
-                    plugin.sendMessage(player, Messages.AREA_CHEST_KEY_NEEDED
-                            .replace("key", manager.getChestKeyName(block.getLocation())));
-                    return;
-                }
-
-                LootItemUtil.consumeKeyItem(player,
-                        plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId()), keyId);
-                plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
-            }
-
-            event.setCancelled(false);
+        if (session == null)
             return;
-        }
 
         event.setCancelled(true);
 
-        int stored = plugin.getAreaClearManager().redeemChest(player, block.getLocation());
-
-        if (stored == -2) {
+        if (manager.isActive(session.getArea())) {
             plugin.sendMessage(player, Messages.AREA_CHEST_ONGOING.toString());
             return;
         }
 
-        if (stored == -1) {
+        if (!session.getOwner().equals(player.getUniqueId())) {
             plugin.sendMessage(player, Messages.AREA_CHEST_LOCKED.toString());
             return;
         }
 
-        if (stored == -3) {
-            plugin.sendMessage(player, Messages.AREA_CHEST_KEY_NEEDED
-                    .replace("key", plugin.getAreaClearManager().getChestKeyName(block.getLocation())));
-            return;
+        String keyId = manager.getChestKeyId(block.getLocation());
+
+        if (keyId != null) {
+            if (!plugin.getBackpackManager().hasKeyItem(player, keyId)) {
+                plugin.sendMessage(player, Messages.AREA_CHEST_KEY_NEEDED
+                        .replace("key", manager.getChestKeyName(block.getLocation())));
+                return;
+            }
+
+            plugin.getBackpackManager().consumeKeyItem(player, keyId);
         }
 
-        if (stored > 0)
-            plugin.sendMessage(player, Messages.LOOT_STORED.replace("amount", String.valueOf(stored)));
-    }
-
-    @EventHandler
-    public void onInventoryClose(InventoryCloseEvent event) {
-        if (event.getPlayer() instanceof Player player)
-            plugin.getAreaClearManager().handleChestClose(player, event.getInventory());
+        event.setCancelled(false);
     }
 
     @EventHandler

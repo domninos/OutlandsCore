@@ -146,12 +146,6 @@ public class PlayerDataManager {
                 data.setCustomizedCells(cells);
         }
 
-        String lootJson = rs.getString("extracted_loot");
-        if (lootJson != null && !lootJson.isEmpty() && !lootJson.equals("[]")) {
-            List<ItemStack> items = deserializeItems(lootJson);
-            data.setExtractedLoot(items);
-        }
-
         data.setCooldownUntil(rs.getLong("cooldown_until"));
         data.setLastKillCount(rs.getInt("last_kill_count"));
         data.setLastEventCount(rs.getInt("last_event_count"));
@@ -260,8 +254,8 @@ public class PlayerDataManager {
 
     private void writePlayerToDb(UUID uuid, PlayerData data) {
         String insert = """
-                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_contents, customized_cells, extracted_loot, cooldown_until, last_kill_count, last_event_count, last_boss_count, extra_time_seconds, return_location, pre_run_inventory, pre_run_armor, pending_return)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_contents, customized_cells, cooldown_until, last_kill_count, last_event_count, last_boss_count, extra_time_seconds, return_location, pre_run_inventory, pre_run_armor, pending_return)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection conn = plugin.getDatabaseManager().getConnection();
@@ -272,16 +266,15 @@ public class PlayerDataManager {
             ps.setString(3, plugin.getGson().toJson(data.getLoadoutTiers()));
             ps.setString(4, serializeItems(padLoadoutItems(data.getLoadoutItems())));
             ps.setString(5, plugin.getGson().toJson(data.getCustomizedCells()));
-            ps.setString(6, serializeItems(data.getExtractedLoot()));
-            ps.setLong(7, data.getCooldownUntil());
-            ps.setInt(8, data.getLastKillCount());
-            ps.setInt(9, data.getLastEventCount());
-            ps.setInt(10, data.getLastBossCount());
-            ps.setInt(11, data.getExtraTimeSeconds());
-            ps.setString(12, serializeLocation(data.getReturnLocation()));
-            ps.setString(13, serializeItems(data.getPreRunInventory()));
-            ps.setString(14, serializeItems(data.getPreRunArmor()));
-            ps.setInt(15, data.isPendingReturn() ? 1 : 0);
+            ps.setLong(6, data.getCooldownUntil());
+            ps.setInt(7, data.getLastKillCount());
+            ps.setInt(8, data.getLastEventCount());
+            ps.setInt(9, data.getLastBossCount());
+            ps.setInt(10, data.getExtraTimeSeconds());
+            ps.setString(11, serializeLocation(data.getReturnLocation()));
+            ps.setString(12, serializeItems(data.getPreRunInventory()));
+            ps.setString(13, serializeItems(data.getPreRunArmor()));
+            ps.setInt(14, data.isPendingReturn() ? 1 : 0);
 
             ps.executeUpdate();
 

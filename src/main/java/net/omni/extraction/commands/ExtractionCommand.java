@@ -46,7 +46,7 @@ public class ExtractionCommand implements CommandExecutor {
             case "about" -> handleAbout(sender);
             case "reload" -> handleReload(sender);
             case "loadout" -> handleLoadout(sender);
-            case "withdraw", "storage" -> handleWithdraw(sender);
+            case "shop" -> handleShop(sender);
             case "tokens" -> handleTokens(sender);
             case "settokens" -> handleSetTokens(sender, args);
             case "givetokens" -> handleGiveTokens(sender, args);
@@ -93,7 +93,7 @@ public class ExtractionCommand implements CommandExecutor {
             MessageUtil.append("extraction", "Enter Extraction", help);
             MessageUtil.append("extract", "Extract from Extraction early", help);
             MessageUtil.append("extraction loadout", "View your loadout", help);
-            MessageUtil.append("extraction storage", "View your extracted loot storage", help);
+            MessageUtil.append("extraction shop", "Buy backpack upgrades", help);
             MessageUtil.append("extraction tokens", "Check your token balance", help);
             MessageUtil.append("tokens", "Check your token balance", help);
             MessageUtil.append("upgrade", "Upgrade your armor", help);
@@ -179,7 +179,7 @@ public class ExtractionCommand implements CommandExecutor {
         return new LoadoutCommand(plugin).execute(sender);
     }
 
-    private boolean handleWithdraw(CommandSender sender) {
+    private boolean handleShop(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
             return true;
@@ -190,7 +190,8 @@ public class ExtractionCommand implements CommandExecutor {
             return true;
         }
 
-        plugin.getLootManager().openWithdrawGUI(player);
+        plugin.getBackpackManager().openShop(player);
+        plugin.sendMessage(player, Messages.SHOP_OPENED.toString());
         return true;
     }
 

@@ -12,7 +12,6 @@ public class PlayerData {
     private Map<String, Integer> loadoutTiers;
     private List<ItemStack> loadoutItems;
     private Set<Integer> customizedCells;
-    private List<ItemStack> extractedLoot;
     private long cooldownUntil;
     private int lastKillCount;
     private int lastEventCount;
@@ -32,7 +31,6 @@ public class PlayerData {
         this.loadoutTiers = new HashMap<>();
         this.loadoutItems = new ArrayList<>();
         this.customizedCells = new HashSet<>();
-        this.extractedLoot = new ArrayList<>();
         this.cooldownUntil = 0;
         this.lastKillCount = 0;
         this.lastEventCount = 0;
@@ -159,20 +157,6 @@ public class PlayerData {
         } else if (customizedCells.remove(index)) {
             markDirty();
         }
-    }
-
-    public List<ItemStack> getExtractedLoot() {
-        return extractedLoot;
-    }
-
-    public void setExtractedLoot(List<ItemStack> loot) {
-        this.extractedLoot = loot == null ? new ArrayList<>() : new ArrayList<>(loot);
-        markDirty();
-    }
-
-    public void clearExtractedLoot() {
-        this.extractedLoot.clear();
-        markDirty();
     }
 
     public long getCooldownUntil() {
@@ -305,7 +289,6 @@ public class PlayerData {
         loadoutTiers.clear();
         loadoutItems = new ArrayList<>();
         customizedCells = new HashSet<>();
-        extractedLoot.clear();
         pendingDeathRestore = false;
         clearRunSnapshot();
     }

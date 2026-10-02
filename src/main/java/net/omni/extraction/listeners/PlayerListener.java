@@ -1,6 +1,10 @@
 package net.omni.extraction.listeners;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.backpack.BackpackGUI;
+import net.omni.extraction.backpack.BackpackHolder;
+import net.omni.extraction.backpack.BackpackShopGUI;
+import net.omni.extraction.backpack.BackpackShopHolder;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.gameplay.RunManager;
@@ -8,8 +12,6 @@ import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.loadout.LoadoutSlot;
 import net.omni.extraction.loot.LootItemUtil;
-import net.omni.extraction.loot.LootManager;
-import net.omni.extraction.loot.StorageHolder;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.upgrade.UpgradeConfirmGUI;
 import net.omni.extraction.upgrade.UpgradeConfirmHolder;
@@ -139,7 +141,9 @@ public class PlayerListener implements Listener {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
 
-        plugin.getPlayerDataManager().loadPlayer(uuid, () -> plugin.getRunManager().restorePendingReturn(player));
+        plugin.getPlayerDataManager().loadPlayer(uuid, () -> {
+            plugin.getRunManager().restorePendingReturn(player);
+        });
     }
 
     @EventHandler
@@ -147,7 +151,7 @@ public class PlayerListener implements Listener {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
 
-        plugin.getLootManager().clearPage(uuid);
+        plugin.getBackpackManager().onQuit(player);
 
         if (plugin.getRunManager().isPlayerInRun(uuid)) {
             if (plugin.getConfigUtil().isReturnOnDisconnect())
@@ -181,8 +185,8 @@ public class PlayerListener implements Listener {
             }
             plugin.getGuiManager().syncLoadout(player, data);
             plugin.getGuiManager().refreshLoadout(player, data);
-        } else if (event.getView().getTopInventory().getHolder() instanceof StorageHolder(int page)) {
-            plugin.getLootManager().syncStorageFromInventory(data, page,
+        } else if (event.getView().getTopInventory().getHolder() instanceof BackpackHolder holder) {
+            plugin.getBackpackManager().closeBackpack(player, holder,
                     event.getView().getTopInventory());
         }
     }
@@ -216,11 +220,17 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        if (event.getView().getTopInventory().getHolder() instanceof StorageHolder storage) {
-            if (isStorageButtonSlot(event.getRawSlot())) {
+        if (event.getView().getTopInventory().getHolder() instanceof BackpackHolder holder) {
+            if (isBackpackButtonSlot(event.getRawSlot(), event.getView().getTopInventory().getSize())) {
                 event.setCancelled(true);
-                handleStorageClick(player, event, storage);
+                handleBackpackClick(player, event, holder);
             }
+            return;
+        }
+
+        if (event.getView().getTopInventory().getHolder() instanceof BackpackShopHolder) {
+            event.setCancelled(true);
+            handleShopClick(player, event);
             return;
         }
 
@@ -252,43 +262,60 @@ public class PlayerListener implements Listener {
         applyUpgrade(player, token, slot, event);
     }
 
-    private boolean isStorageButtonSlot(int rawSlot) {
-        return rawSlot >= LootManager.SLOT_PREV && rawSlot <= LootManager.SLOT_DISCARD_ALL;
+    private boolean isBackpackButtonSlot(int rawSlot, int size) {
+        return rawSlot >= size - 9 && rawSlot < size;
     }
 
-    private void handleStorageClick(Player player, InventoryClickEvent event, StorageHolder holder) {
+    private void handleBackpackClick(Player player, InventoryClickEvent event, BackpackHolder holder) {
+        int size = event.getView().getTopInventory().getSize();
         int rawSlot = event.getRawSlot();
 
-        if (rawSlot == LootManager.SLOT_PREV) {
-            syncStorage(player, holder, event);
-            plugin.getLootManager().openStorageGUI(player, holder.page() - 1);
+        if (rawSlot == size + BackpackGUI.PREV) {
+            plugin.getBackpackManager().navigate(player, holder.page() - 1);
             return;
         }
 
-        if (rawSlot == LootManager.SLOT_NEXT) {
-            syncStorage(player, holder, event);
-            plugin.getLootManager().openStorageGUI(player, holder.page() + 1);
+        if (rawSlot == size + BackpackGUI.NEXT) {
+            plugin.getBackpackManager().navigate(player, holder.page() + 1);
             return;
         }
 
-        if (rawSlot == LootManager.SLOT_CLAIM_ALL) {
-            syncStorage(player, holder, event);
-            handleClaimAll(player);
+        if (rawSlot == size + BackpackGUI.CLAIM_ALL) {
+            plugin.getBackpackManager().claimAll(player);
             return;
         }
 
-        if (rawSlot == LootManager.SLOT_CLOSE) {
+        if (rawSlot == size + BackpackGUI.CLOSE)
             player.closeInventory();
+    }
+
+    private void handleShopClick(Player player, InventoryClickEvent event) {
+        int rawSlot = event.getRawSlot();
+
+        int tier = tierForShopSlot(rawSlot);
+
+        if (tier > 0) {
+            plugin.getBackpackManager().purchaseTier(player, tier);
             return;
         }
 
-        if (rawSlot == LootManager.SLOT_DISCARD_ALL) {
-            syncStorage(player, holder, event);
-            plugin.getLootManager().claimAll(player.getUniqueId());
-            plugin.getLootManager().clearPage(player.getUniqueId());
-            plugin.sendMessage(player, Messages.WITHDRAW_EMPTY.toString());
-            player.closeInventory();
+        if (rawSlot == BackpackShopGUI.SLOT_PAGINATION) {
+            plugin.getBackpackManager().purchasePagination(player);
+            return;
         }
+
+        if (rawSlot == BackpackShopGUI.SLOT_CLOSE)
+            player.closeInventory();
+    }
+
+    private int tierForShopSlot(int rawSlot) {
+        return switch (rawSlot) {
+            case BackpackShopGUI.SLOT_TIER_1 -> 1;
+            case BackpackShopGUI.SLOT_TIER_2 -> 2;
+            case BackpackShopGUI.SLOT_TIER_3 -> 3;
+            case BackpackShopGUI.SLOT_TIER_4 -> 4;
+            default -> 0;
+        };
     }
 
     private void handleLoadoutClick(Player player, InventoryClickEvent event) {
@@ -502,35 +529,6 @@ public class PlayerListener implements Listener {
         }
     }
 
-    private void syncStorage(Player player, StorageHolder holder, InventoryClickEvent event) {
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
-        plugin.getLootManager().syncStorageFromInventory(data, holder.page(), event.getView().getTopInventory());
-    }
-
-    private void handleClaimAll(Player player) {
-        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
-        List<ItemStack> kept = new ArrayList<>();
-
-        for (ItemStack item : data.getExtractedLoot()) {
-            if (item == null)
-                continue;
-
-            kept.addAll(player.getInventory().addItem(item).values());
-        }
-
-        data.setExtractedLoot(kept);
-        plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
-
-        if (kept.isEmpty()) {
-            plugin.getLootManager().clearPage(player.getUniqueId());
-            plugin.sendMessage(player, Messages.WITHDRAW_CLAIMED_ALL.toString());
-            player.closeInventory();
-        } else {
-            plugin.sendMessage(player, Messages.WITHDRAW_INVENTORY_FULL.toString());
-            plugin.getLootManager().openStorageGUI(player);
-        }
-    }
-
     private boolean isMatchingArmor(ItemStack item, LoadoutSlot slot) {
         EquipmentSlot equipmentSlot = slot.getEquipmentSlot();
         if (equipmentSlot == null)
@@ -571,13 +569,21 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        if (event.getView().getTopInventory().getHolder() instanceof StorageHolder) {
+        if (event.getView().getTopInventory().getHolder() instanceof BackpackHolder holder) {
+            int size = event.getView().getTopInventory().getSize();
+
             for (int rawSlot : event.getRawSlots()) {
-                if (isStorageButtonSlot(rawSlot)) {
+                if (isBackpackButtonSlot(rawSlot, size)) {
                     event.setCancelled(true);
                     return;
                 }
             }
+
+            return;
+        }
+
+        if (event.getView().getTopInventory().getHolder() instanceof BackpackShopHolder) {
+            event.setCancelled(true);
             return;
         }
 
@@ -783,6 +789,27 @@ public class PlayerListener implements Listener {
             LootItemUtil.consumeOne(item);
 
             plugin.sendMessage(player, Messages.LOOT_TOKENS.replace("amount", String.valueOf(amount)));
+            return;
+        }
+
+        if (plugin.getBackpackManager().isBackpackItem(item)) {
+            if (action == Action.RIGHT_CLICK_BLOCK) {
+                // Allow opening interactable blocks (chests, doors, ...) but
+                // never let the bag be placed against ordinary blocks.
+                if (event.getClickedBlock() == null || !event.getClickedBlock().getType().isInteractable())
+                    event.setCancelled(true);
+                return;
+            }
+
+            event.setCancelled(true);
+
+            RunManager.ActiveRun run = plugin.getRunManager().getActiveRun(player.getUniqueId());
+
+            if (run != null) {
+                plugin.getBackpackManager().openBackpack(player, item);
+            } else {
+                plugin.getBackpackManager().unpackContents(player, item);
+            }
             return;
         }
 

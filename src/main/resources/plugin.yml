@@ -27,6 +27,8 @@ commands:
   upgrade:
     description: Open the armor upgrade menu
     aliases: [upgrades]
+  extshop:
+    description: Open the extraction shop
 
 permissions:
   extraction.*:
