@@ -9,7 +9,10 @@ import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.integration.MythicMobsProvider;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.mobs.MobTemplate;
+import net.omni.extraction.relics.RelicDefinition;
+import net.omni.extraction.relics.RelicManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
@@ -109,6 +112,9 @@ public class AreaEditorManager {
 
         fillTop(inventory, config);
 
+        if (session.getMode() == Mode.SPAWN && session.getPage() == AreaEditorSession.PAGE_MOB)
+            renderMobTabs(inventory, session, config);
+
         if (isBossPage(session))
             renderBossContent(inventory, session, config);
         else
@@ -142,6 +148,13 @@ public class AreaEditorManager {
 
         if (rawSlot == nextSlot) {
             handleNext(player, session);
+            return;
+        }
+
+        if (session.getMode() == Mode.SPAWN
+                && session.getPage() == AreaEditorSession.PAGE_MOB
+                && (rawSlot == 1 || rawSlot == 4 || rawSlot == 7)) {
+            handleMobTab(player, session, rawSlot);
             return;
         }
 
@@ -208,7 +221,12 @@ public class AreaEditorManager {
             return;
         }
 
-        if (session.getPage() < AreaEditorSession.PAGE_BOSS) {
+        if (session.getPage() < AreaEditorSession.PAGE_DROP_CHANCE) {
+            if (session.getPage() == AreaEditorSession.PAGE_DROPS
+                    && session.getCurrentRelic() == null
+                    && !session.getAssignedRelics().isEmpty())
+                session.setCurrentRelic(session.getAssignedRelics().iterator().next());
+
             session.setPage(session.getPage() + 1);
             render(player, session);
             return;
@@ -218,7 +236,7 @@ public class AreaEditorManager {
     }
 
     private void handleContent(Player player, AreaEditorSession session, String key) {
-        String[] parts = key.split(":", 2);
+        String[] parts = key.split(":", 3);
 
         switch (parts[0]) {
             case "MOB" -> selectMob(player, session, parts[1]);
@@ -236,7 +254,49 @@ public class AreaEditorManager {
                 session.setBoss(false);
                 render(player, session);
             }
+            case "RELIC" -> toggleRelic(player, session, parts[1], parts[2]);
+            case "REMOVEDROP" -> removeCurrentRelic(player, session);
         }
+    }
+
+    private void handleMobTab(Player player, AreaEditorSession session, int slot) {
+        String category = switch (slot) {
+            case 4 -> AreaEditorSession.CATEGORY_VANILLA;
+            case 7 -> AreaEditorSession.CATEGORY_MYTHIC;
+            default -> AreaEditorSession.CATEGORY_EXTRACTION;
+        };
+
+        if (category.equals(session.getMobCategory()))
+            return;
+
+        if (category.equals(AreaEditorSession.CATEGORY_MYTHIC)
+                && plugin.getExternalPluginManager().getMythicMobsProvider() == null)
+            return;
+
+        session.setMobCategory(category);
+        session.setListPage(0);
+        render(player, session);
+    }
+
+    private void toggleRelic(Player player, AreaEditorSession session, String category, String id) {
+        String dropType = (RelicManager.KIND_ARTIFACT.equals(category) ? "ARTIFACT:" : "CHARM:") + id;
+
+        if (session.getAssignedRelics().contains(dropType))
+            session.removeRelic(dropType);
+        else
+            session.addRelic(dropType);
+
+        render(player, session);
+    }
+
+    private void removeCurrentRelic(Player player, AreaEditorSession session) {
+        String current = session.getCurrentRelic();
+        if (current != null)
+            session.removeRelic(current);
+
+        session.setPage(AreaEditorSession.PAGE_DROPS);
+        session.setListPage(0);
+        render(player, session);
     }
 
     private void selectMob(Player player, AreaEditorSession session, String mobId) {
@@ -258,6 +318,7 @@ public class AreaEditorManager {
 
         session.setPage(AreaEditorSession.PAGE_COUNT);
         session.setListPage(0);
+        session.clearRelics();
         render(player, session);
     }
 
@@ -271,6 +332,15 @@ public class AreaEditorManager {
                     config.getAreaEditorLevelSmallest(), session.getLevel() + delta));
             case AreaEditorSession.PAGE_RESPAWN -> session.setRespawnSeconds(Math.max(
                     config.getAreaEditorRespawnSmallest(), session.getRespawnSeconds() + delta));
+            case AreaEditorSession.PAGE_DROP_CHANCE -> {
+                String relic = session.getCurrentRelic();
+                if (relic != null) {
+                    double smallest = config.getAreaEditorDropChanceSmallest();
+                    double chance = Math.min(AreaEditorSession.MAX_DROP_CHANCE,
+                            Math.max(smallest, session.getRelicChance(relic) + delta));
+                    session.setRelicChance(relic, chance);
+                }
+            }
         }
 
         render(player, session);
@@ -306,9 +376,13 @@ public class AreaEditorManager {
     private void confirmSpawn(Player player, AreaEditorSession session) {
         Area area = session.getArea();
 
+        List<MobDrop> drops = new ArrayList<>();
+        for (String dropType : session.getAssignedRelics())
+            drops.add(new MobDrop(dropType, session.getRelicChance(dropType) / 100.0, 1));
+
         AreaSpawnEntry entry = new AreaSpawnEntry(session.getMobId(),
                 session.getTargetLocation(), session.getCount(),
-                session.getLevel(), session.getRespawnSeconds(), session.isBoss());
+                session.getLevel(), session.getRespawnSeconds(), session.isBoss(), drops);
         area.addSpawnEntry(entry);
         plugin.getAreaManager().markDirty(area);
 
@@ -368,9 +442,21 @@ public class AreaEditorManager {
                         config.getAreaEditorLevelIconName().replace("%value%", String.valueOf(session.getLevel())));
                 case AreaEditorSession.PAGE_RESPAWN -> valueItem(config.getAreaEditorRespawnIconMaterial(),
                         config.getAreaEditorRespawnIconName().replace("%value%", String.valueOf(session.getRespawnSeconds())));
-                default -> valueItem(session.isBoss() ? config.getAreaEditorBossYesMaterial()
+                case AreaEditorSession.PAGE_BOSS -> valueItem(session.isBoss() ? config.getAreaEditorBossYesMaterial()
                                 : config.getAreaEditorBossNoMaterial(),
                         session.isBoss() ? config.getAreaEditorBossYesName() : config.getAreaEditorBossNoName());
+                case AreaEditorSession.PAGE_DROPS -> textItem(config.getAreaEditorChestIconMaterial(),
+                        "<yellow>Relic drops: %count%</yellow>".replace(
+                                "%count%", String.valueOf(session.getAssignedRelics().size())));
+                case AreaEditorSession.PAGE_DROP_CHANCE -> {
+                    String relic = session.getCurrentRelic();
+                    yield relic == null
+                            ? textItem(config.getAreaEditorFillerMaterial(), "<gray>No relics assigned</gray>")
+                            : valueItem(config.getAreaEditorDropChanceIconMaterial(),
+                            config.getAreaEditorDropChanceIconName().replace(
+                                    "%value%", String.valueOf((int) session.getRelicChance(relic))));
+                }
+                default -> filler(config);
             };
             default -> item = filler(config);
         }
@@ -390,7 +476,7 @@ public class AreaEditorManager {
         int[] slots = bossButtonSlots(sizeFor(session));
 
         for (int i = 0; i < slots.length && i < keys.size(); i++) {
-            ItemStack item = contentItem(keys.get(i), config);
+            ItemStack item = contentItem(session, keys.get(i), config);
 
             if (item != null)
                 inventory.setItem(slots[i], item);
@@ -408,7 +494,7 @@ public class AreaEditorManager {
         int slot = contentStart(session);
 
         for (int i = start; i < Math.min(keys.size(), start + contentSize); i++) {
-            ItemStack item = contentItem(keys.get(i), config);
+            ItemStack item = contentItem(session, keys.get(i), config);
 
             if (item != null)
                 inventory.setItem(slot, item);
@@ -429,7 +515,7 @@ public class AreaEditorManager {
 
         switch (session.getPage()) {
             case AreaEditorSession.PAGE_MOB -> {
-                for (String id : buildMobList())
+                for (String id : buildMobList(session.getMobCategory()))
                     keys.add("MOB:" + id);
             }
             case AreaEditorSession.PAGE_COUNT -> addNumericKeys(keys, config.getAreaEditorCountIncrements());
@@ -438,6 +524,17 @@ public class AreaEditorManager {
             case AreaEditorSession.PAGE_BOSS -> {
                 keys.add("YES");
                 keys.add("NO");
+            }
+            case AreaEditorSession.PAGE_DROPS -> {
+                for (RelicDefinition def : plugin.getRelicManager().getDefinitions(RelicManager.KIND_CHARM))
+                    keys.add("RELIC:" + RelicManager.KIND_CHARM + ":" + def.getId());
+                for (RelicDefinition def : plugin.getRelicManager().getDefinitions(RelicManager.KIND_ARTIFACT))
+                    keys.add("RELIC:" + RelicManager.KIND_ARTIFACT + ":" + def.getId());
+            }
+            case AreaEditorSession.PAGE_DROP_CHANCE -> {
+                if (session.getCurrentRelic() != null)
+                    addNumericKeys(keys, config.getAreaEditorDropChanceIncrements());
+                keys.add("REMOVEDROP");
             }
         }
 
@@ -451,7 +548,7 @@ public class AreaEditorManager {
         }
     }
 
-    private ItemStack contentItem(String key, ConfigUtil config) {
+    private ItemStack contentItem(AreaEditorSession session, String key, ConfigUtil config) {
         String[] parts = key.split(":", 2);
         String type = parts[0];
 
@@ -466,6 +563,9 @@ public class AreaEditorManager {
                     config.getAreaEditorBossYesName(), "<gray>Bosses pay out bonus tokens.</gray>");
             case "NO" -> valueItem(config.getAreaEditorBossNoMaterial(),
                     config.getAreaEditorBossNoName(), "<gray>Normal mob spawn.</gray>");
+            case "RELIC" -> relicItem(session, parts[1], parts[2], config);
+            case "REMOVEDROP" -> valueItem(config.getAreaEditorDropRemoveMaterial(),
+                    config.getAreaEditorDropRemoveName(), "<gray>Click to remove this relic assignment.</gray>");
             default -> null;
         };
     }
@@ -560,28 +660,79 @@ public class AreaEditorManager {
         return resolveMaterial(config.getAreaEditorMobIconMaterial());
     }
 
-    private List<String> buildMobList() {
+    private List<String> buildMobList(String category) {
         Set<String> mobs = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 
-        mobs.addAll(plugin.getMobTemplateManager().getIds());
-
-        for (EntityType type : EntityType.values()) {
-            try {
-                if (type.isAlive() && type.isSpawnable())
-                    mobs.add(type.name());
-            } catch (Throwable ignored) {
+        switch (category) {
+            case AreaEditorSession.CATEGORY_VANILLA -> {
+                for (EntityType type : EntityType.values()) {
+                    try {
+                        if (type.isAlive() && type.isSpawnable())
+                            mobs.add(type.name());
+                    } catch (Throwable ignored) {
+                    }
+                }
             }
-        }
-
-        MythicMobsProvider provider = plugin.getExternalPluginManager().getMythicMobsProvider();
-        if (provider != null) {
-            try {
-                mobs.addAll(provider.getMobNames());
-            } catch (Throwable ignored) {
+            case AreaEditorSession.CATEGORY_MYTHIC -> {
+                MythicMobsProvider provider = plugin.getExternalPluginManager().getMythicMobsProvider();
+                if (provider != null) {
+                    try {
+                        mobs.addAll(provider.getMobNames());
+                    } catch (Throwable ignored) {
+                    }
+                }
             }
+            default -> mobs.addAll(plugin.getMobTemplateManager().getIds());
         }
 
         return new ArrayList<>(mobs);
+    }
+
+    private ItemStack relicItem(AreaEditorSession session, String category, String id, ConfigUtil config) {
+        RelicDefinition def = plugin.getRelicManager().getDefinition(category, id);
+        if (def == null)
+            return null;
+
+        String dropType = (RelicManager.KIND_ARTIFACT.equals(category) ? "ARTIFACT:" : "CHARM:") + def.getId();
+        boolean assigned = session.getAssignedRelics().contains(dropType);
+
+        ItemStack item = new ItemStack(def.getMaterial());
+        List<String> lore = new ArrayList<>(def.getLore());
+        lore.add(plugin.getChatRenderer().parse(assigned
+                ? "<green>Assigned — " + (int) session.getRelicChance(dropType) + "%</green>"
+                : "<gray>Not assigned</gray>"));
+        lore.add(plugin.getChatRenderer().parse(assigned
+                ? "<gray>Click to remove</gray>"
+                : "<gray>Click to assign (100%)</gray>"));
+
+        item.editMeta(meta -> {
+            plugin.getChatRenderer().setDisplayName(meta,
+                    (assigned ? "<green>✔ </green>" : "") + def.getName());
+            plugin.getChatRenderer().setLore(meta, lore);
+        });
+        return item;
+    }
+
+    private void renderMobTabs(Inventory inventory, AreaEditorSession session, ConfigUtil config) {
+        String current = session.getMobCategory();
+
+        inventory.setItem(1, categoryTab(config.getAreaEditorCategoryExtractionMaterial(),
+                config.getAreaEditorCategoryExtractionName(), current.equals(AreaEditorSession.CATEGORY_EXTRACTION)));
+        inventory.setItem(4, categoryTab(config.getAreaEditorCategoryVanillaMaterial(),
+                config.getAreaEditorCategoryVanillaName(), current.equals(AreaEditorSession.CATEGORY_VANILLA)));
+
+        MythicMobsProvider provider = plugin.getExternalPluginManager().getMythicMobsProvider();
+        inventory.setItem(7, provider != null
+                ? categoryTab(config.getAreaEditorCategoryMythicMaterial(),
+                config.getAreaEditorCategoryMythicName(), current.equals(AreaEditorSession.CATEGORY_MYTHIC))
+                : filler(config));
+    }
+
+    private ItemStack categoryTab(String material, String name, boolean active) {
+        ItemStack item = new ItemStack(resolveMaterial(material));
+        String display = active ? name + " <green>✓</green>" : name;
+        item.editMeta(meta -> plugin.getChatRenderer().setDisplayName(meta, display));
+        return item;
     }
 
     private ItemStack filler(ConfigUtil config) {

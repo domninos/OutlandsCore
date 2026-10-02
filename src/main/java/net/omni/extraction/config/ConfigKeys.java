@@ -146,6 +146,18 @@ public final class ConfigKeys {
     public static final String AREA_EDITOR_BOSS_YES_NAME = "area-editor.boss-yes-name";
     public static final String AREA_EDITOR_BOSS_NO_MATERIAL = "area-editor.boss-no-material";
     public static final String AREA_EDITOR_BOSS_NO_NAME = "area-editor.boss-no-name";
+    public static final String AREA_EDITOR_MOB_CATEGORY_EXTRACTION_MATERIAL = "area-editor.mob-category-extraction-material";
+    public static final String AREA_EDITOR_MOB_CATEGORY_EXTRACTION_NAME = "area-editor.mob-category-extraction-name";
+    public static final String AREA_EDITOR_MOB_CATEGORY_VANILLA_MATERIAL = "area-editor.mob-category-vanilla-material";
+    public static final String AREA_EDITOR_MOB_CATEGORY_VANILLA_NAME = "area-editor.mob-category-vanilla-name";
+    public static final String AREA_EDITOR_MOB_CATEGORY_MYTHIC_MATERIAL = "area-editor.mob-category-mythic-material";
+    public static final String AREA_EDITOR_MOB_CATEGORY_MYTHIC_NAME = "area-editor.mob-category-mythic-name";
+    public static final String AREA_EDITOR_DROP_CHANCE_ICON_MATERIAL = "area-editor.drop-chance-icon-material";
+    public static final String AREA_EDITOR_DROP_CHANCE_ICON_NAME = "area-editor.drop-chance-icon-name";
+    public static final String AREA_EDITOR_DROP_CHANCE_INCREMENTS = "area-editor.drop-chance-increments";
+    public static final String AREA_EDITOR_DROP_CHANCE_SMALLEST = "area-editor.drop-chance-smallest";
+    public static final String AREA_EDITOR_DROP_REMOVE_MATERIAL = "area-editor.drop-remove-material";
+    public static final String AREA_EDITOR_DROP_REMOVE_NAME = "area-editor.drop-remove-name";
 
     public static final String ACTIONBAR = "actionbar";
     public static final String ACTIONBAR_ENABLED = "actionbar.enabled";

@@ -122,7 +122,6 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      - events
      -
-     - charm
      - pets
      - passive
      -

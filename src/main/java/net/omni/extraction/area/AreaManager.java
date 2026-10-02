@@ -160,6 +160,9 @@ public class AreaManager {
             if (definition == null)
                 continue;
 
+            if (entry.hasDrops())
+                definition.setDrops(entry.getDrops());
+
             definition.setBoundLocation(entry.getLocation());
             result.add(definition);
         }

@@ -1,6 +1,7 @@
 package net.omni.extraction.area;
 
 import net.kyori.adventure.bossbar.BossBar;
+import net.omni.extraction.mobs.MobDrop;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -169,7 +170,28 @@ public class Area {
                     int respawn = map.get("respawn-seconds") instanceof Number r ? r.intValue() : 0;
                     boolean boss = map.get("boss") instanceof Boolean b && b;
 
-                    area.addSpawnEntry(new AreaSpawnEntry(String.valueOf(mobId), location, count, level, respawn, boss));
+                    AreaSpawnEntry entry = new AreaSpawnEntry(String.valueOf(mobId), location, count, level, respawn, boss);
+
+                    if (map.get("drops") instanceof List<?> dropMaps) {
+                        List<MobDrop> drops = new ArrayList<>();
+
+                        for (Object dropObj : dropMaps) {
+                            if (!(dropObj instanceof Map<?, ?> drop))
+                                continue;
+
+                            Object dropType = drop.get("type");
+                            if (dropType == null)
+                                continue;
+
+                            double chance = drop.get("chance") instanceof Number c ? c.doubleValue() : 1.0;
+                            int amount = drop.get("amount") instanceof Number a ? a.intValue() : 1;
+                            drops.add(new MobDrop(String.valueOf(dropType), chance, amount));
+                        }
+
+                        entry.setDrops(drops);
+                    }
+
+                    area.addSpawnEntry(entry);
                 }
             }
 
@@ -817,6 +839,26 @@ public class Area {
             map.put("level", entry.getLevel());
             map.put("respawn-seconds", entry.getRespawnSeconds());
             map.put("boss", entry.isBoss());
+
+            if (entry.hasDrops()) {
+                List<Map<String, Object>> dropList = new ArrayList<>();
+
+                for (MobDrop drop : entry.getDrops()) {
+                    Map<String, Object> dropMap = new HashMap<>();
+                    dropMap.put("type", drop.getType());
+
+                    if (drop.getChance() != 1.0)
+                        dropMap.put("chance", drop.getChance());
+
+                    if (drop.getAmount() != 1)
+                        dropMap.put("amount", drop.getAmount());
+
+                    dropList.add(dropMap);
+                }
+
+                map.put("drops", dropList);
+            }
+
             entryList.add(map);
         }
 

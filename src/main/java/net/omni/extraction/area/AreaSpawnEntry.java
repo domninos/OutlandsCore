@@ -1,6 +1,10 @@
 package net.omni.extraction.area;
 
+import net.omni.extraction.mobs.MobDrop;
 import org.bukkit.Location;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class AreaSpawnEntry {
 
@@ -10,14 +14,21 @@ public class AreaSpawnEntry {
     private int level;
     private int respawnSeconds;
     private boolean boss;
+    private List<MobDrop> drops;
 
     public AreaSpawnEntry(String mobId, Location location, int count, int level, int respawnSeconds, boolean boss) {
+        this(mobId, location, count, level, respawnSeconds, boss, new ArrayList<>());
+    }
+
+    public AreaSpawnEntry(String mobId, Location location, int count, int level, int respawnSeconds,
+                          boolean boss, List<MobDrop> drops) {
         this.mobId = mobId;
         this.location = location;
         this.count = count;
         this.level = level;
         this.respawnSeconds = respawnSeconds;
         this.boss = boss;
+        this.drops = drops != null ? new ArrayList<>(drops) : new ArrayList<>();
     }
 
     public String getMobId() {
@@ -58,5 +69,18 @@ public class AreaSpawnEntry {
 
     public void setBoss(boolean boss) {
         this.boss = boss;
+    }
+
+    public List<MobDrop> getDrops() {
+        return drops;
+    }
+
+    public void setDrops(List<MobDrop> drops) {
+        this.drops = drops != null ? new ArrayList<>(drops) : new ArrayList<>();
+    }
+
+    /** True when this entry overrides the mob template's drop list. */
+    public boolean hasDrops() {
+        return drops != null && !drops.isEmpty();
     }
 }

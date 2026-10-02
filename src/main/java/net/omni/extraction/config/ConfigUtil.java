@@ -116,6 +116,18 @@ public class ConfigUtil {
     private String editorBossYesName;
     private String editorBossNoMaterial;
     private String editorBossNoName;
+    private String editorCategoryExtractionMaterial;
+    private String editorCategoryExtractionName;
+    private String editorCategoryVanillaMaterial;
+    private String editorCategoryVanillaName;
+    private String editorCategoryMythicMaterial;
+    private String editorCategoryMythicName;
+    private String editorDropChanceIconMaterial;
+    private String editorDropChanceIconName;
+    private List<Integer> editorDropChanceIncrements;
+    private int editorDropChanceSmallest;
+    private String editorDropRemoveMaterial;
+    private String editorDropRemoveName;
 
     private String upgradeGuiTitle;
     private int upgradeGuiRows;
@@ -769,6 +781,29 @@ public class ConfigUtil {
                 "RED_WOOL", savedDefaults);
         this.editorBossNoName = getAndDefaultString(ConfigKeys.AREA_EDITOR_BOSS_NO_NAME,
                 "<red>Boss: No</red>", savedDefaults);
+        this.editorCategoryExtractionMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_MOB_CATEGORY_EXTRACTION_MATERIAL,
+                "BOOK", savedDefaults);
+        this.editorCategoryExtractionName = getAndDefaultString(ConfigKeys.AREA_EDITOR_MOB_CATEGORY_EXTRACTION_NAME,
+                "<green>Extraction mobs</green>", savedDefaults);
+        this.editorCategoryVanillaMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_MOB_CATEGORY_VANILLA_MATERIAL,
+                "OAK_SIGN", savedDefaults);
+        this.editorCategoryVanillaName = getAndDefaultString(ConfigKeys.AREA_EDITOR_MOB_CATEGORY_VANILLA_NAME,
+                "<yellow>Vanilla mobs</yellow>", savedDefaults);
+        this.editorCategoryMythicMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_MOB_CATEGORY_MYTHIC_MATERIAL,
+                "DRAGON_EGG", savedDefaults);
+        this.editorCategoryMythicName = getAndDefaultString(ConfigKeys.AREA_EDITOR_MOB_CATEGORY_MYTHIC_NAME,
+                "<light_purple>MythicMobs</light_purple>", savedDefaults);
+        this.editorDropChanceIconMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_DROP_CHANCE_ICON_MATERIAL,
+                "EXPERIENCE_BOTTLE", savedDefaults);
+        this.editorDropChanceIconName = getAndDefaultString(ConfigKeys.AREA_EDITOR_DROP_CHANCE_ICON_NAME,
+                "<yellow>Chance: %value%%</yellow>", savedDefaults);
+        this.editorDropChanceIncrements = loadIntList(ConfigKeys.AREA_EDITOR_DROP_CHANCE_INCREMENTS,
+                List.of(10, 25, 50), savedDefaults);
+        this.editorDropChanceSmallest = Math.max(0, getAndDefaultInt(ConfigKeys.AREA_EDITOR_DROP_CHANCE_SMALLEST, 0, savedDefaults));
+        this.editorDropRemoveMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_DROP_REMOVE_MATERIAL,
+                "RED_WOOL", savedDefaults);
+        this.editorDropRemoveName = getAndDefaultString(ConfigKeys.AREA_EDITOR_DROP_REMOVE_NAME,
+                "<red>Remove relic</red>", savedDefaults);
     }
 
     private List<Integer> loadIntList(String path, List<Integer> defaultVal, AtomicInteger counter) {
@@ -1244,6 +1279,54 @@ public class ConfigUtil {
 
     public String getAreaEditorBossNoName() {
         return editorBossNoName;
+    }
+
+    public String getAreaEditorCategoryExtractionMaterial() {
+        return editorCategoryExtractionMaterial;
+    }
+
+    public String getAreaEditorCategoryExtractionName() {
+        return editorCategoryExtractionName;
+    }
+
+    public String getAreaEditorCategoryVanillaMaterial() {
+        return editorCategoryVanillaMaterial;
+    }
+
+    public String getAreaEditorCategoryVanillaName() {
+        return editorCategoryVanillaName;
+    }
+
+    public String getAreaEditorCategoryMythicMaterial() {
+        return editorCategoryMythicMaterial;
+    }
+
+    public String getAreaEditorCategoryMythicName() {
+        return editorCategoryMythicName;
+    }
+
+    public String getAreaEditorDropChanceIconMaterial() {
+        return editorDropChanceIconMaterial;
+    }
+
+    public String getAreaEditorDropChanceIconName() {
+        return editorDropChanceIconName;
+    }
+
+    public List<Integer> getAreaEditorDropChanceIncrements() {
+        return editorDropChanceIncrements;
+    }
+
+    public int getAreaEditorDropChanceSmallest() {
+        return editorDropChanceSmallest;
+    }
+
+    public String getAreaEditorDropRemoveMaterial() {
+        return editorDropRemoveMaterial;
+    }
+
+    public String getAreaEditorDropRemoveName() {
+        return editorDropRemoveName;
     }
 
     public Location getSpawnLocation() {
