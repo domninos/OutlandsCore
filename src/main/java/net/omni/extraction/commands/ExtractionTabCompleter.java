@@ -1,6 +1,8 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.relics.RelicManager;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
@@ -48,10 +50,42 @@ public class ExtractionTabCompleter implements TabCompleter {
                         List.of("addhologram", "sethologram", "delhologram"), new ArrayList<>());
             }
 
+            if (sender.hasPermission("extraction.admin")
+                    && (args[0].equalsIgnoreCase("artifacts") || args[0].equalsIgnoreCase("charms"))) {
+                return StringUtil.copyPartialMatches(args[1], List.of("give", "remove"), new ArrayList<>());
+            }
+
             return switch (args[0].toLowerCase()) {
                 case "settokens", "givetokens", "giveupgrade", "forceextract" -> null;
                 default -> Collections.emptyList();
             };
+        }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("artifacts")
+                && sender.hasPermission("extraction.admin")) {
+            List<String> ids = plugin.getRelicManager().getDefinitions(RelicManager.KIND_ARTIFACT).stream()
+                    .map(def -> def.getId())
+                    .toList();
+            return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
+        }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("charms")
+                && sender.hasPermission("extraction.admin")) {
+            List<String> ids = plugin.getRelicManager().getDefinitions(RelicManager.KIND_CHARM).stream()
+                    .map(def -> def.getId())
+                    .toList();
+            return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
+        }
+
+        if (args.length == 4
+                && (args[0].equalsIgnoreCase("artifacts") || args[0].equalsIgnoreCase("charms"))
+                && sender.hasPermission("extraction.admin")) {
+            List<String> playerNames = Bukkit.getOnlinePlayers().stream()
+                    .map(player -> player.getName())
+                    .toList();
+            return StringUtil.copyPartialMatches(args[3], playerNames, new ArrayList<>());
         }
 
         if (args.length == 3

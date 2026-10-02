@@ -141,6 +141,10 @@ public enum Messages {
     ADMIN_GIVE_UPGRADE("admin.give-upgrade", "<green>Gave %token% to %player%.</green>"),
     ADMIN_FORCE_EXTRACT("admin.force-extract", "<green>Force extracted %player% from Extraction.</green>"),
     ADMIN_SET_SPAWN("admin.set-spawn", "<green>Set the Extraction entry spawn in <white>%world%</white>.</green>"),
+    RELIC_GIVEN("relic.given", "<green>Gave <white>%relic%</white> to <white>%player%</white>.</green>"),
+    RELIC_REMOVED("relic.removed", "<yellow>Removed <white>%relic%</white> from <white>%player%</white>.</yellow>"),
+    RELIC_NOT_FOUND("relic.not-found", "<red>No %kind% with id <white>%relic%</white>.</red>"),
+    RELIC_NOT_OWNED_BY("relic.not-owned-by", "<yellow><white>%player%</white> doesn't own <white>%relic%</white>.</yellow>"),
 
     HELP_HEADER("help.header", "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"),
     HELP_FOOTER("help.footer", "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"),

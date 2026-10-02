@@ -120,6 +120,43 @@ public class RelicManager {
         return null;
     }
 
+    /** Looks up a definition scoped to a single category ({@link #KIND_CHARM} / {@link #KIND_ARTIFACT}). */
+    public RelicDefinition getDefinition(String category, String id) {
+        if (id == null)
+            return null;
+
+        String key = id.toLowerCase(Locale.ROOT);
+
+        for (RelicDefinition def : getDefinitions(category))
+            if (def.getId().equals(key))
+                return def;
+
+        return null;
+    }
+
+    /** Grants permanent ownership of a relic definition to a player. */
+    public void grant(PlayerData data, RelicDefinition def) {
+        if (def.isCharm())
+            data.addOwnedCharm(def.getId());
+        else
+            data.addOwnedArtifact(def.getId());
+    }
+
+    /** Revokes ownership; also clears the active slot when the relic is equipped.
+     * Returns {@code false} when the player did not own it. */
+    public boolean revoke(PlayerData data, RelicDefinition def) {
+        boolean removed = def.isCharm()
+                ? data.removeOwnedCharm(def.getId())
+                : data.removeOwnedArtifact(def.getId());
+
+        if (def.isCharm() && def.getId().equalsIgnoreCase(data.getActiveCharm()))
+            data.setActiveCharm("");
+        else if (!def.isCharm() && def.getId().equalsIgnoreCase(data.getActiveArtifact()))
+            data.setActiveArtifact("");
+
+        return removed;
+    }
+
     /** Builds the droppable/grantable relic item for a definition. */
     public ItemStack createRelicItem(RelicDefinition def) {
         return RelicItemUtil.createItem(def);

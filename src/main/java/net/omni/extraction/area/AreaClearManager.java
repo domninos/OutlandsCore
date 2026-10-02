@@ -10,6 +10,7 @@ import net.omni.extraction.loot.LootItemUtil;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.mobs.MobDrop;
+import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.util.PacketGlow;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -470,7 +471,7 @@ public class AreaClearManager {
         }
 
         if (upper.startsWith("CHARM:")) {
-            net.omni.extraction.relics.RelicDefinition def = plugin.getRelicManager().getDefinition(type.substring(6));
+            RelicDefinition def = plugin.getRelicManager().getDefinition(type.substring(6));
             if (def == null) {
                 plugin.getLogger().warning("Unknown charm '" + type.substring(6) + "' in loot drop.");
                 return result;
@@ -480,7 +481,7 @@ public class AreaClearManager {
         }
 
         if (upper.startsWith("ARTIFACT:")) {
-            net.omni.extraction.relics.RelicDefinition def = plugin.getRelicManager().getDefinition(type.substring(9));
+            RelicDefinition def = plugin.getRelicManager().getDefinition(type.substring(9));
             if (def == null) {
                 plugin.getLogger().warning("Unknown artifact '" + type.substring(9) + "' in loot drop.");
                 return result;
@@ -793,7 +794,7 @@ public class AreaClearManager {
         List<ItemStack> drops = new ArrayList<>();
 
         for (MobDrop drop : session.getDropsFor(uuid)) {
-            double chance = Math.max(0.0, Math.min(1.0, drop.getChance()));
+            double chance = Math.clamp(drop.getChance(), 0.0, 1.0);
 
             if (chance >= 1.0 || chance > random.nextDouble())
                 drops.addAll(resolveDropItems(drop.getType(), drop.getAmount()));

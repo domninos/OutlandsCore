@@ -3,13 +3,17 @@ package net.omni.extraction.commands;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
+import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.messages.MessageUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
+import net.omni.extraction.relics.RelicDefinition;
+import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.upgrade.UpgradeConfirmHolder;
 import net.omni.extraction.upgrade.UpgradeGuiHolder;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -53,6 +57,8 @@ public class ExtractionCommand implements CommandExecutor {
             case "giveupgrade" -> handleGiveUpgrade(sender, args);
             case "forceextract" -> handleForceExtract(sender, args);
             case "setspawn" -> handleSetSpawn(sender);
+            case "artifacts" -> handleRelicAdmin(sender, args, RelicManager.KIND_ARTIFACT);
+            case "charms" -> handleRelicAdmin(sender, args, RelicManager.KIND_CHARM);
             case "admin" -> handleAdmin(sender, args);
             default -> {
                 plugin.sendMessage(sender, Messages.UNKNOWN_COMMAND.toString());
@@ -105,6 +111,8 @@ public class ExtractionCommand implements CommandExecutor {
             MessageUtil.append("extraction settokens {player} {amount}", "Set a player's token balance", help);
             MessageUtil.append("extraction givetokens {player} {amount}", "Give tokens to a player", help);
             MessageUtil.append("extraction giveupgrade {player} {token}", "Give an upgrade token", help);
+            MessageUtil.append("extraction charms give/remove {id} {player}", "Grant or revoke a charm (online or offline)", help);
+            MessageUtil.append("extraction artifacts give/remove {id} {player}", "Grant or revoke an artifact (online or offline)", help);
             MessageUtil.append("extraction forceextract {player}", "Force extract a player", help);
             MessageUtil.append("extraction setspawn", "Set the Extraction entry spawn", help);
             MessageUtil.append("extraction admin addhologram {area}", "Place the area hologram at your feet", help);
@@ -304,6 +312,68 @@ public class ExtractionCommand implements CommandExecutor {
                     .replace("token", tokenKey));
         }
 
+        return true;
+    }
+
+    private boolean handleRelicAdmin(CommandSender sender, String[] args, String category) {
+        if (!sender.hasPermission("extraction.admin")) {
+            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
+            return true;
+        }
+
+        if (args.length < 4) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage",
+                    "/extraction " + category + " <give|remove> {id} {player}"));
+            return true;
+        }
+
+        String action = args[1].toLowerCase();
+        if (!action.equals("give") && !action.equals("remove")) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage",
+                    "/extraction " + category + " <give|remove> {id} {player}"));
+            return true;
+        }
+
+        RelicDefinition def = plugin.getRelicManager().getDefinition(category, args[2]);
+        if (def == null) {
+            plugin.sendMessage(sender, Messages.RELIC_NOT_FOUND
+                    .replace("kind", category)
+                    .replace("relic", args[2].toLowerCase()));
+            return true;
+        }
+
+        OfflinePlayer target = Bukkit.getOfflinePlayer(args[3]);
+        if (!target.hasPlayedBefore() && target.getPlayer() == null) {
+            plugin.sendMessage(sender, Messages.PLAYER_NOT_FOUND.replace("player", args[3]));
+            return true;
+        }
+
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(target.getUniqueId());
+        String relicName = def.getName();
+
+        if (action.equals("give")) {
+            plugin.getRelicManager().grant(data, def);
+            plugin.sendMessage(sender, Messages.RELIC_GIVEN
+                    .replace("relic", relicName)
+                    .replace("player", target.getName()));
+        } else {
+            if (!plugin.getRelicManager().revoke(data, def)) {
+                plugin.sendMessage(sender, Messages.RELIC_NOT_OWNED_BY
+                        .replace("relic", relicName)
+                        .replace("player", target.getName()));
+                return true;
+            }
+
+            plugin.sendMessage(sender, Messages.RELIC_REMOVED
+                    .replace("relic", relicName)
+                    .replace("player", target.getName()));
+
+            Player online = target.getPlayer();
+            if (online != null)
+                plugin.getRelicEffectManager().applyPassive(online);
+        }
+
+        plugin.getPlayerDataManager().savePlayerSync(target.getUniqueId());
         return true;
     }
 

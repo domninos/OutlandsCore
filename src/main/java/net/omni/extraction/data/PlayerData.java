@@ -305,6 +305,18 @@ public class PlayerData {
             markDirty();
     }
 
+    public boolean removeOwnedCharm(String id) {
+        if (id == null)
+            return false;
+
+        if (ownedCharms.remove(id.toLowerCase(java.util.Locale.ROOT))) {
+            markDirty();
+            return true;
+        }
+
+        return false;
+    }
+
     public Set<String> getOwnedArtifacts() {
         return ownedArtifacts;
     }
@@ -324,6 +336,18 @@ public class PlayerData {
 
         if (ownedArtifacts.add(id.toLowerCase(java.util.Locale.ROOT)))
             markDirty();
+    }
+
+    public boolean removeOwnedArtifact(String id) {
+        if (id == null)
+            return false;
+
+        if (ownedArtifacts.remove(id.toLowerCase(java.util.Locale.ROOT))) {
+            markDirty();
+            return true;
+        }
+
+        return false;
     }
 
     public String getActiveCharm() {
