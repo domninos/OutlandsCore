@@ -26,6 +26,10 @@ public final class ConfigKeys {
     public static final String BACKPACK_NAME = "backpack.name";
     public static final String BACKPACK_MATERIAL = "backpack.material";
 
+    public static final String RELICS = "relics";
+    public static final String RELIC_ACTIVATION_SECONDS = "relics.activation-duration-seconds";
+    public static final String RELIC_PARTICLE = "relics.particle";
+    public static final String RELIC_PARTICLE_TICKS = "relics.particle-ticks";
     public static final String RELIC_GUI = "relic-gui";
     public static final String RELIC_GUI_CHARMS_TITLE = "relic-gui.charms-title";
     public static final String RELIC_GUI_ARTIFACTS_TITLE = "relic-gui.artifacts-title";

@@ -59,6 +59,10 @@ public class RunManager {
 
         PlayerData data = playerDataManager.getOrLoadSync(uuid);
 
+        // Fresh run: relic effects only activate later by right-clicking the
+        // granted relic item in-run, so strip any leftover activation state.
+        plugin.getRelicEffectManager().deactivate(player);
+
         data.setReturnLocation(player.getLocation().clone());
         data.setPreRunInventory(Arrays.asList(player.getInventory().getContents()));
         data.setPreRunArmor(Arrays.asList(player.getInventory().getArmorContents()));
@@ -152,6 +156,8 @@ public class RunManager {
 
         data.clearRunSnapshot();
 
+        plugin.getRelicEffectManager().deactivate(uuid);
+
         plugin.getExtractionManager().removeExtraction(uuid);
         playerDataManager.savePlayer(uuid);
         return true;
@@ -231,6 +237,7 @@ public class RunManager {
         data.setPreRunArmor(plugin.getBackpackManager().purgeBackpackItems(data.getPreRunArmor()));
 
         plugin.getExtractionManager().removeExtraction(uuid);
+        plugin.getRelicEffectManager().deactivate(uuid);
     }
 
     /**
@@ -275,6 +282,8 @@ public class RunManager {
         // with their saved gear restored.
         data.setPendingReturn(true);
         playerDataManager.savePlayer(uuid);
+
+        plugin.getRelicEffectManager().clearRun(uuid);
     }
 
     /**
@@ -341,6 +350,7 @@ public class RunManager {
             }
 
             data.clearRunSnapshot();
+            plugin.getRelicEffectManager().deactivate(uuid);
         }
 
         activeRuns.clear();

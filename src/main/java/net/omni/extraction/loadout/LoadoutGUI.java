@@ -4,6 +4,8 @@ import net.kyori.adventure.text.Component;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
+import net.omni.extraction.relics.RelicDefinition;
+import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.upgrade.UpgradeTier;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Material;
@@ -83,15 +85,19 @@ public class LoadoutGUI {
                 continue;
             }
 
+            LoadoutSlot slot = getSlotFromClick(plugin, i);
+
             ItemStack item = null;
             boolean pane = false;
 
             if (data.isCellCustomized(i)) {
                 item = data.getItemAt(i);
-            } else {
-                LoadoutSlot slot = getSlotFromClick(plugin, i);
-
-                if (slot != null) {
+            } else if (slot != null) {
+                // Managed charm/artifact slots at their DEFAULT state auto-show
+                // the equipped relic; a dragged arrangement wins once customized.
+                if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT) {
+                    item = equippedRelicItem(plugin, data, slot);
+                } else {
                     int tierLevel = plugin.getLoadoutManager().getEffectiveTier(data, slot);
 
                     if (tierLevel > 0) {
@@ -151,6 +157,20 @@ public class LoadoutGUI {
         }
     }
 
+    private static ItemStack equippedRelicItem(ExtractionPlugin plugin, PlayerData data, LoadoutSlot slot) {
+        String kind = slot == LoadoutSlot.CHARM ? RelicManager.KIND_CHARM : RelicManager.KIND_ARTIFACT;
+        String id = slot == LoadoutSlot.CHARM ? data.getActiveCharm() : data.getActiveArtifact();
+
+        if (id == null || id.isBlank())
+            return null;
+
+        RelicDefinition def = plugin.getRelicManager().getDefinition(kind, id);
+        if (def == null)
+            return null;
+
+        return plugin.getRelicEffectManager().equippedItem(data.getUuid(), def);
+    }
+
     private static ItemStack createDropPlaceholder(ExtractionPlugin plugin, LoadoutSlot slot) {
         Material material = Material.GRAY_STAINED_GLASS_PANE;
         String matName = plugin.getConfigUtil().getLoadoutGuiFillerMaterial();
@@ -171,6 +191,11 @@ public class LoadoutGUI {
             plugin.getChatRenderer().setDisplayName(meta, "<yellow>Drop item here</yellow>");
             plugin.getChatRenderer().setLore(meta, List.of(
                     "", "<gray>Click or drag an item onto this slot</gray>"));
+        } else if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT) {
+            String sub = slot == LoadoutSlot.CHARM ? "charms" : "artifacts";
+            plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
+            plugin.getChatRenderer().setLore(meta, List.of(
+                    "", "<gray>Shift-click to open your " + sub + "</gray>"));
         } else {
             plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
             plugin.getChatRenderer().setLore(meta, List.of(

@@ -75,7 +75,9 @@ public class RelicManager {
                     section.getString("name", id),
                     section.getString("icon", "PAPER"),
                     section.getStringList("lore"),
-                    effects));
+                    effects,
+                    Math.max(0, section.getInt("duration", 0)),
+                    section.getString("particle")));
         }
     }
 
@@ -236,6 +238,13 @@ public class RelicManager {
                     data.setActiveCharm(def.getId());
                 else
                     data.setActiveArtifact(def.getId());
+
+                // Re-equipping restores the relic's loadout cell to its default
+                // (auto-displayed) state even if the player dragged it elsewhere.
+                String slotKey = def.isCharm() ? "charm" : "artifact";
+                int guiSlot = plugin.getConfigUtil().getLoadoutGuiSlot(slotKey);
+                data.setCellCustomized(guiSlot, false);
+                data.setItemAt(guiSlot, null);
 
                 plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
                 plugin.getRelicEffectManager().applyPassive(player);

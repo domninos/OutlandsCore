@@ -20,13 +20,13 @@ public class ActionBarManager {
 
     private final ExtractionPlugin plugin;
     private final Map<UUID, Overlay> overlays;
-    private final Map<UUID, Boolean> lastShown;
+    private final Map<UUID, String> lastText;
     private BukkitTask task;
 
     public ActionBarManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
         this.overlays = new HashMap<>();
-        this.lastShown = new HashMap<>();
+        this.lastText = new HashMap<>();
     }
 
     public void start() {
@@ -49,7 +49,7 @@ public class ActionBarManager {
         }
 
         overlays.clear();
-        lastShown.clear();
+        lastText.clear();
 
         for (Player player : plugin.getExtractionManager().getExtractionPlayers())
             if (player != null)
@@ -98,13 +98,18 @@ public class ActionBarManager {
         }
 
         if (text == null) {
-            if (lastShown.remove(uuid) != null)
+            if (lastText.remove(uuid) != null)
                 player.sendActionBar(Component.empty());
             return;
         }
 
+        // Change-detection: skip the re-send when the frame is identical, so an
+        // unchanged HUD costs nothing on the main thread.
+        if (text.equals(lastText.get(uuid)))
+            return;
+
         player.sendActionBar(Component.text(text));
-        lastShown.put(uuid, Boolean.TRUE);
+        lastText.put(uuid, text);
     }
 
     private record Overlay(String text, long expire) {

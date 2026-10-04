@@ -1,10 +1,13 @@
 # Artifacts — rarer, more powerful items that define a build.
 # Admins can add/remove artifacts freely; the effect types are fixed (see RelicEffectType).
 # Each artifact is keyed by id. Effects list optional "threshold" (used by *LOW_HP types).
+# Optional "particle:" spawns a particle aura near the player while the artifact is
+# active (e.g. FLAME or REDSTONE:#ff8800); omit it to use relics.particle in config.yml.
 
 hunter:
   name: "<gold>Artifact of the Hunter</gold>"
   icon: NETHERITE_SWORD
+  particle: "SWEEP_ATTACK"
   lore:
     - "<gray>+10% damage against area mobs.</gray>"
     - "<gray>Potentially increased rewards from Elite enemies.</gray>"

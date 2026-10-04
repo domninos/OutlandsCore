@@ -549,7 +549,7 @@ public class AreaEditorManager {
     }
 
     private ItemStack contentItem(AreaEditorSession session, String key, ConfigUtil config) {
-        String[] parts = key.split(":", 2);
+        String[] parts = key.split(":", 3);
         String type = parts[0];
 
         return switch (type) {

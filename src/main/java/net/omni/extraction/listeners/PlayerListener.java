@@ -13,14 +13,11 @@ import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.loadout.LoadoutSlot;
 import net.omni.extraction.loot.LootItemUtil;
 import net.omni.extraction.messages.Messages;
-import net.omni.extraction.upgrade.UpgradeConfirmGUI;
-import net.omni.extraction.upgrade.UpgradeConfirmHolder;
-import net.omni.extraction.upgrade.UpgradeGUI;
-import net.omni.extraction.upgrade.UpgradeGuiHolder;
-import net.omni.extraction.upgrade.UpgradeTier;
-import net.omni.extraction.upgrade.UpgradeTokenUtil;
+import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.relics.RelicHolder;
 import net.omni.extraction.relics.RelicItemUtil;
+import net.omni.extraction.relics.RelicManager;
+import net.omni.extraction.upgrade.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -41,18 +38,14 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 public class PlayerListener implements Listener {
 
-    private final ExtractionPlugin plugin;
-
     private static final long DEATH_RESPAWN_DELAY_TICKS = 2L;
-
+    private final ExtractionPlugin plugin;
     private final Map<UUID, Long> lastBlockBlocked = new HashMap<>();
 
     public PlayerListener(ExtractionPlugin plugin) {
@@ -143,6 +136,8 @@ public class PlayerListener implements Listener {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
 
+        plugin.getPackManager().tryResourcePack(player);
+
         plugin.getPlayerDataManager().loadPlayer(uuid, () -> {
             plugin.getRunManager().restorePendingReturn(player);
             plugin.getRelicEffectManager().applyPassive(player);
@@ -192,6 +187,11 @@ public class PlayerListener implements Listener {
             plugin.getBackpackManager().closeBackpack(player, holder,
                     event.getView().getTopInventory());
         }
+    }
+
+    private void reopenUpgrade(Player player) {
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        plugin.getGuiManager().openUpgrade(player, data);
     }
 
     @EventHandler
@@ -252,16 +252,6 @@ public class PlayerListener implements Listener {
         }
     }
 
-    private void handleRelicClick(Player player, InventoryClickEvent event, RelicHolder holder) {
-        int rawSlot = event.getRawSlot();
-        int size = event.getView().getTopInventory().getSize();
-
-        if (rawSlot < 0 || rawSlot >= size)
-            return;
-
-        plugin.getRelicManager().click(player, holder.category(), rawSlot);
-    }
-
     private void handleUpgradeClick(Player player, InventoryClickEvent event) {
         PlayerDataManager dataManager = plugin.getPlayerDataManager();
         if (!dataManager.isLoaded(player.getUniqueId()))
@@ -283,6 +273,27 @@ public class PlayerListener implements Listener {
             return;
 
         applyUpgrade(player, token, slot, event);
+    }
+
+    private void handleUpgradeConfirmClick(Player player, InventoryClickEvent event, UpgradeConfirmHolder holder) {
+        if (event.getClickedInventory() == null)
+            return;
+
+        event.setCancelled(true);
+
+        int rawSlot = event.getRawSlot();
+        int size = plugin.getConfigUtil().getUpgradeConfirmSize();
+
+        if (rawSlot == UpgradeConfirmGUI.getYesSlot(size)) {
+            holder.markResolved();
+            confirmPurchase(player, holder);
+            return;
+        }
+
+        if (rawSlot == UpgradeConfirmGUI.getNoSlot(size))
+            holder.markResolved();
+
+        reopenUpgrade(player);
     }
 
     private boolean isBackpackButtonSlot(int rawSlot, int size) {
@@ -331,16 +342,6 @@ public class PlayerListener implements Listener {
             player.closeInventory();
     }
 
-    private int tierForShopSlot(int rawSlot) {
-        return switch (rawSlot) {
-            case BackpackShopGUI.SLOT_TIER_1 -> 1;
-            case BackpackShopGUI.SLOT_TIER_2 -> 2;
-            case BackpackShopGUI.SLOT_TIER_3 -> 3;
-            case BackpackShopGUI.SLOT_TIER_4 -> 4;
-            default -> 0;
-        };
-    }
-
     private void handleLoadoutClick(Player player, InventoryClickEvent event) {
         if (event.getClickedInventory() == null) {
             event.setCancelled(true);
@@ -358,6 +359,17 @@ public class PlayerListener implements Listener {
             }
             default -> {
             }
+        }
+
+        boolean topClick = event.getClickedInventory().getType() != InventoryType.PLAYER;
+        LoadoutSlot clicked = topClick ? LoadoutGUI.getSlotFromClick(plugin, event.getRawSlot()) : null;
+
+        // Charm/artifact cells are draggable like any other cell; SHIFT-click
+        // additionally opens the matching relic selection GUI.
+        if (clicked != null && (clicked == LoadoutSlot.CHARM || clicked == LoadoutSlot.ARTIFACT)
+                && event.isShiftClick()) {
+            plugin.getRelicManager().open(player, clicked == LoadoutSlot.CHARM
+                    ? RelicManager.KIND_CHARM : RelicManager.KIND_ARTIFACT);
         }
 
         if (event.isShiftClick()) {
@@ -421,6 +433,16 @@ public class PlayerListener implements Listener {
         plugin.getGuiManager().markLoadoutTouched(player, event.getRawSlot());
     }
 
+    private void handleRelicClick(Player player, InventoryClickEvent event, RelicHolder holder) {
+        int rawSlot = event.getRawSlot();
+        int size = event.getView().getTopInventory().getSize();
+
+        if (rawSlot < 0 || rawSlot >= size)
+            return;
+
+        plugin.getRelicManager().click(player, holder.category(), rawSlot);
+    }
+
     private void openUpgradeConfirm(Player player, LoadoutSlot slot) {
         PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
         UpgradeTier nextTier = plugin.getUpgradeManager().getNextTier(slot,
@@ -442,25 +464,38 @@ public class PlayerListener implements Listener {
         UpgradeConfirmGUI.open(plugin, player, slot, nextTier);
     }
 
-    private void handleUpgradeConfirmClick(Player player, InventoryClickEvent event, UpgradeConfirmHolder holder) {
-        if (event.getClickedInventory() == null)
-            return;
+    private void applyUpgrade(Player player, ItemStack token, LoadoutSlot slot, InventoryClickEvent event) {
+        String tokenSlot = UpgradeTokenUtil.getUpgradeSlot(token);
+        int tokenTier = UpgradeTokenUtil.getUpgradeTier(token);
 
-        event.setCancelled(true);
-
-        int rawSlot = event.getRawSlot();
-        int size = plugin.getConfigUtil().getUpgradeConfirmSize();
-
-        if (rawSlot == UpgradeConfirmGUI.getYesSlot(size)) {
-            holder.markResolved();
-            confirmPurchase(player, holder);
+        if (tokenSlot == null || tokenTier <= 0 || !tokenMatches(slot, tokenSlot)) {
+            plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
             return;
         }
 
-        if (rawSlot == UpgradeConfirmGUI.getNoSlot(size))
-            holder.markResolved();
+        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+        boolean success = plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), tokenTier, data);
 
-        reopenUpgrade(player);
+        if (success) {
+            // TODO fix display name being translated first
+            /*
+            error:
+                net.kyori.adventure.text.minimessage.internal.parser.ParsingExceptionImpl: Legacy formatting codes have been detected in a MiniMessage string - this is unsupported behaviour. Please refer to the Adventure documentation (https://docs.papermc.io/adventure/) for more information.
+        <green>Applied §7Iron Helmet Upgrade to your Helmet!</green>
+                       ^^
+             */
+            plugin.sendMessage(player, Messages.LOADOUT_TOKEN_APPLIED.replace(
+                    "token_name", token.hasItemMeta() && token.getItemMeta().hasDisplayName()
+                            ? token.getItemMeta().getDisplayName() : token.getType().name(),
+                    "slot", slot.getDisplayName()));
+
+            token.setAmount(token.getAmount() - 1);
+            event.setCursor(token);
+
+            plugin.getGuiManager().refreshUpgrade(player, data);
+        } else {
+            sendWrongTier(player, slot, data);
+        }
     }
 
     private void confirmPurchase(Player player, UpgradeConfirmHolder holder) {
@@ -504,52 +539,14 @@ public class PlayerListener implements Listener {
         reopenUpgrade(player);
     }
 
-    private void reopenUpgrade(Player player) {
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
-        plugin.getGuiManager().openUpgrade(player, data);
-    }
-
-    private void sendWrongTier(Player player, LoadoutSlot slot, PlayerData data) {
-        UpgradeTier next = plugin.getUpgradeManager().getNextTier(slot,
-                plugin.getLoadoutManager().getEffectiveTier(data, slot));
-
-        plugin.sendMessage(player, Messages.LOADOUT_TOKEN_WRONG_TIER.replace(
-                "slot", slot.getDisplayName(),
-                "tier", next != null ? next.getTierName() : "None"));
-    }
-
-    private void applyUpgrade(Player player, ItemStack token, LoadoutSlot slot, InventoryClickEvent event) {
-        String tokenSlot = UpgradeTokenUtil.getUpgradeSlot(token);
-        int tokenTier = UpgradeTokenUtil.getUpgradeTier(token);
-
-        if (tokenSlot == null || tokenTier <= 0 || !tokenMatches(slot, tokenSlot)) {
-            plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
-            return;
-        }
-
-        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
-        boolean success = plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), tokenTier, data);
-
-        if (success) {
-            // TODO fix display name being translated first
-            /*
-            error:
-                net.kyori.adventure.text.minimessage.internal.parser.ParsingExceptionImpl: Legacy formatting codes have been detected in a MiniMessage string - this is unsupported behaviour. Please refer to the Adventure documentation (https://docs.papermc.io/adventure/) for more information.
-        <green>Applied §7Iron Helmet Upgrade to your Helmet!</green>
-                       ^^
-             */
-            plugin.sendMessage(player, Messages.LOADOUT_TOKEN_APPLIED.replace(
-                    "token_name", token.hasItemMeta() && token.getItemMeta().hasDisplayName()
-                            ? token.getItemMeta().getDisplayName() : token.getType().name(),
-                    "slot", slot.getDisplayName()));
-
-            token.setAmount(token.getAmount() - 1);
-            event.setCursor(token);
-
-            plugin.getGuiManager().refreshUpgrade(player, data);
-        } else {
-            sendWrongTier(player, slot, data);
-        }
+    private int tierForShopSlot(int rawSlot) {
+        return switch (rawSlot) {
+            case BackpackShopGUI.SLOT_TIER_1 -> 1;
+            case BackpackShopGUI.SLOT_TIER_2 -> 2;
+            case BackpackShopGUI.SLOT_TIER_3 -> 3;
+            case BackpackShopGUI.SLOT_TIER_4 -> 4;
+            default -> 0;
+        };
     }
 
     private boolean isMatchingArmor(ItemStack item, LoadoutSlot slot) {
@@ -574,6 +571,15 @@ public class PlayerListener implements Listener {
 
     private boolean tokenMatches(LoadoutSlot slot, String tokenSlot) {
         return slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot);
+    }
+
+    private void sendWrongTier(Player player, LoadoutSlot slot, PlayerData data) {
+        UpgradeTier next = plugin.getUpgradeManager().getNextTier(slot,
+                plugin.getLoadoutManager().getEffectiveTier(data, slot));
+
+        plugin.sendMessage(player, Messages.LOADOUT_TOKEN_WRONG_TIER.replace(
+                "slot", slot.getDisplayName(),
+                "tier", next != null ? next.getTierName() : "None"));
     }
 
     @EventHandler
@@ -842,6 +848,34 @@ public class PlayerListener implements Listener {
 
         if (RelicItemUtil.isRelic(item)) {
             event.setCancelled(true);
+
+            String relicId = RelicItemUtil.getId(item);
+            PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+
+            boolean equipped = relicId != null
+                    && (relicId.equalsIgnoreCase(data.getActiveCharm())
+                    || relicId.equalsIgnoreCase(data.getActiveArtifact()));
+
+            if (equipped && plugin.getRunManager().isPlayerInRun(player.getUniqueId())) {
+                RelicDefinition def = plugin.getRelicManager().getDefinition(relicId);
+
+                // The cooldown is the activation window: while already active
+                // nothing can be re-applied (prevents RUN_TIME farming mid-window).
+                if (plugin.getRelicEffectManager().isActivated(player.getUniqueId(), relicId))
+                    plugin.sendMessage(player, Messages.RELIC_ACTIVE.replace("relic",
+                            def != null ? def.getName() : relicId));
+                else if (def != null)
+                    plugin.getRelicEffectManager().activate(player, def);
+
+                return;
+            }
+
+            if (equipped) {
+                // The equipped relic item right-clicked outside a run is inert
+                // (never consumed, no effect pre-run).
+                return;
+            }
+
             plugin.getRelicManager().learn(player, item);
             return;
         }
@@ -877,12 +911,6 @@ public class PlayerListener implements Listener {
             event.setCancelled(true);
     }
 
-    @EventHandler
-    public void onBlockPlace(BlockPlaceEvent event) {
-        if (shouldBlockWorldEdit(event.getPlayer()))
-            event.setCancelled(true);
-    }
-
     private boolean shouldBlockWorldEdit(Player player) {
         if (!player.getWorld().getName().equalsIgnoreCase(plugin.getConfigUtil().getWorldName()))
             return false;
@@ -902,6 +930,12 @@ public class PlayerListener implements Listener {
         }
 
         return true;
+    }
+
+    @EventHandler
+    public void onBlockPlace(BlockPlaceEvent event) {
+        if (shouldBlockWorldEdit(event.getPlayer()))
+            event.setCancelled(true);
     }
 
     public void register() {

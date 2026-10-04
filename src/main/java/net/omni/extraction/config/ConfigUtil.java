@@ -49,6 +49,9 @@ public class ConfigUtil {
     private String shopGuiTitle;
     private int shopGuiRows;
 
+    private int relicActivationSeconds;
+    private String relicParticle;
+    private int relicParticleTicks;
     private String relicGuiCharmsTitle;
     private String relicGuiArtifactsTitle;
     private int relicGuiRows;
@@ -697,6 +700,9 @@ public class ConfigUtil {
     }
 
     private void loadRelicGui(AtomicInteger savedDefaults) {
+        this.relicActivationSeconds = getAndDefaultInt(ConfigKeys.RELIC_ACTIVATION_SECONDS, 60, savedDefaults);
+        this.relicParticle = getAndDefaultString(ConfigKeys.RELIC_PARTICLE, "END_ROD", savedDefaults);
+        this.relicParticleTicks = Math.clamp(getAndDefaultInt(ConfigKeys.RELIC_PARTICLE_TICKS, 5, savedDefaults), 1, 100);
         this.relicGuiCharmsTitle = getAndDefaultString(ConfigKeys.RELIC_GUI_CHARMS_TITLE,
                 "<gradient:#FFD700:#FF7F50>Charms</gradient>", savedDefaults);
         this.relicGuiArtifactsTitle = getAndDefaultString(ConfigKeys.RELIC_GUI_ARTIFACTS_TITLE,
@@ -1647,6 +1653,18 @@ public class ConfigUtil {
 
     public int getShopGuiSize() {
         return shopGuiRows * 9;
+    }
+
+    public int getRelicActivationSeconds() {
+        return relicActivationSeconds;
+    }
+
+    public String getRelicParticle() {
+        return relicParticle;
+    }
+
+    public int getRelicParticleTicks() {
+        return relicParticleTicks;
     }
 
     public String getRelicGuiCharmsTitle() {

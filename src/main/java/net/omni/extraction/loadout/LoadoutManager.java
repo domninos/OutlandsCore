@@ -4,6 +4,8 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.integration.ExternalItemProvider;
+import net.omni.extraction.relics.RelicDefinition;
+import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.upgrade.UpgradeManager;
 import net.omni.extraction.upgrade.UpgradeTier;
 import org.bukkit.enchantments.Enchantment;
@@ -75,6 +77,20 @@ public class LoadoutManager {
             return safeItem(data.getItemAt(cell));
 
         LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, cell);
+
+        // Managed charm/artifact slots at their DEFAULT state auto-grant the
+        // equipped relic; once the player drags/moves it, their arrangement wins.
+        if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT) {
+            String kind = slot == LoadoutSlot.CHARM ? RelicManager.KIND_CHARM : RelicManager.KIND_ARTIFACT;
+            String id = slot == LoadoutSlot.CHARM ? data.getActiveCharm() : data.getActiveArtifact();
+
+            if (id == null || id.isBlank())
+                return null;
+
+            RelicDefinition def = plugin.getRelicManager().getDefinition(kind, id);
+            return def == null ? null : plugin.getRelicEffectManager().equippedItem(data.getUuid(), def);
+        }
+
         if (slot == null)
             return null;
 

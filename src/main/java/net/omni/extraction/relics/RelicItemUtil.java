@@ -31,24 +31,36 @@ public class RelicItemUtil {
     }
 
     public static ItemStack createItem(RelicDefinition def) {
-        return createItem(def, null, null);
+        return createItem(def, (String) null, (Integer) null);
     }
 
     public static ItemStack createItem(RelicDefinition def, String extraLore) {
-        return createItem(def, extraLore, null);
+        return createItem(def, null, extraLore, null);
     }
 
     /**
      * Builds the droppable/grantable relic item. {@code extraLore} (already a
      * MiniMessage string) is appended as a line when non-null and non-blank.
+     * {@code nameOverride} (MiniMessage) replaces the definition name when
+     * non-null — used by the live cooldown display on the item display name.
      */
+    public static ItemStack createItem(RelicDefinition def, String nameOverride, String extraLore) {
+        return createItem(def, nameOverride, extraLore, null);
+    }
+
     public static ItemStack createItem(RelicDefinition def, String extraLore, Integer customModelData) {
+        return createItem(def, null, extraLore, customModelData);
+    }
+
+    public static ItemStack createItem(RelicDefinition def, String nameOverride,
+                                       String extraLore, Integer customModelData) {
         ItemStack item = new ItemStack(def.getMaterial());
         ItemMeta meta = item.getItemMeta();
         if (meta == null)
             return item;
 
-        meta.customName(MiniMessage.miniMessage().deserialize(def.getName()));
+        meta.customName(MiniMessage.miniMessage().deserialize(
+                nameOverride != null && !nameOverride.isBlank() ? nameOverride : def.getName()));
 
         List<Component> loreLines = new ArrayList<>();
         for (String line : def.getLore())

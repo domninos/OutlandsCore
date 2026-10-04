@@ -30,6 +30,7 @@ import net.omni.extraction.managers.MessagesManager;
 import net.omni.extraction.managers.TokenManager;
 import net.omni.extraction.messages.MessageUtil;
 import net.omni.extraction.mobs.MobTemplateManager;
+import net.omni.extraction.pack.PackManager;
 import net.omni.extraction.relics.RelicEffectManager;
 import net.omni.extraction.relics.RelicItemUtil;
 import net.omni.extraction.relics.RelicListener;
@@ -74,6 +75,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private ExtractionManager extractionManager;
     private RelicManager relicManager;
     private RelicEffectManager relicEffectManager;
+    private PackManager packManager;
 
     /*
 
@@ -88,6 +90,13 @@ public final class ExtractionPlugin extends JavaPlugin {
         Damage
         Abilities
         Loot
+     -
+     -
+     -
+     - fix
+        - artifacts/charms should automatically replace the placeholder on /loadout when equipped.
+        - when doing /extraction, make sure to give the artifact/charm item for them to right click it to where the loadout slot is. then, the placeholder item should have the "Drop item here" removed, as it is just a placeholder. so now, if player SHIFT + left/right click the placeholder, open the artifact or charm gui depending on which they shift clicked.
+        - fix
      -
      -
      -
@@ -153,6 +162,12 @@ public final class ExtractionPlugin extends JavaPlugin {
         if (hologramManager != null)
             hologramManager.stop();
 
+        if (relicEffectManager != null)
+            relicEffectManager.stop();
+
+        if (packManager != null)
+            packManager.stop();
+
         stopSaveTask();
 
         if (areaSelectionVisualizer != null)
@@ -205,6 +220,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         LoadoutGUI.init(this);
         PacketGlow.init(this);
 
+        this.packManager = new PackManager(this, "192.168.1.7");
+        packManager.init();
+
         this.databaseManager = new DatabaseManager(this);
         this.playerDataManager = new PlayerDataManager(this);
         this.backpackManager = new BackpackManager(this);
@@ -252,6 +270,7 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         actionBarManager.start();
         hologramManager.start();
+        relicEffectManager.start();
         startSaveTask();
 
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
@@ -421,5 +440,9 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public RelicEffectManager getRelicEffectManager() {
         return relicEffectManager;
+    }
+
+    public PackManager getPackManager() {
+        return packManager;
     }
 }

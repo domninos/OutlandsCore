@@ -16,15 +16,20 @@ public class RelicDefinition {
     private final String materialName;
     private final List<String> lore;
     private final List<RelicEffect> effects;
+    private final int durationSeconds;
+    private final String particle;
 
     public RelicDefinition(String id, String category, String name, String materialName,
-                           List<String> lore, List<RelicEffect> effects) {
+                           List<String> lore, List<RelicEffect> effects, int durationSeconds,
+                           String particle) {
         this.id = id;
         this.category = category;
         this.name = name;
         this.materialName = materialName;
         this.lore = lore == null ? List.of() : List.copyOf(lore);
         this.effects = effects == null ? List.of() : List.copyOf(effects);
+        this.durationSeconds = durationSeconds;
+        this.particle = particle == null || particle.isBlank() ? null : particle.trim();
     }
 
     public String getId() {
@@ -55,6 +60,16 @@ public class RelicDefinition {
 
     public List<RelicEffect> getEffects() {
         return effects;
+    }
+
+    /** Activation window in seconds for this relic; {@code <= 0} = use the global config default. */
+    public int getDurationSeconds() {
+        return durationSeconds;
+    }
+
+    /** Raw particle spawn spec ("PARTICLE" or "PARTICLE:#hex"); {@code null} = use the global default. */
+    public String getParticle() {
+        return particle;
     }
 
     public boolean isCharm() {

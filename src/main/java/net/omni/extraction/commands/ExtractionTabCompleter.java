@@ -37,6 +37,8 @@ public class ExtractionTabCompleter implements TabCompleter {
                 subcommands.add("giveupgrade");
                 subcommands.add("forceextract");
                 subcommands.add("setspawn");
+                subcommands.add("artifacts");
+                subcommands.add("charms");
             }
 
             List<String> completions = new ArrayList<>();

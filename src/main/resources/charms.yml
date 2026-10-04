@@ -1,6 +1,8 @@
 # Charms — smaller, reliable bonuses.
 # Admins can add/remove charms freely; the effect types are fixed (see RelicEffectType).
 # Each charm is keyed by id. Effects list optional "threshold" (used by *LOW_HP types).
+# Optional "particle:" spawns a particle aura near the player while the charm is
+# active (e.g. FLAME or REDSTONE:#ff8800); omit it to use relics.particle in config.yml.
 
 iron:
   name: "<green>Iron Charm</green>"
@@ -14,6 +16,7 @@ iron:
 swift:
   name: "<green>Swift Charm</green>"
   icon: FEATHER
+  particle: "CLOUD"
   lore:
     - "<gray>+3% movement speed.</gray>"
   effects:

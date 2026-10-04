@@ -4,9 +4,9 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.data.PlayerData;
+import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.messages.MessageUtil;
 import net.omni.extraction.messages.Messages;
-import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.upgrade.UpgradeConfirmHolder;
@@ -160,6 +160,7 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getHologramManager().reload();
         plugin.getLootTableManager().reload();
         plugin.getRelicManager().reload();
+        plugin.getRelicEffectManager().reload();
 
         plugin.getCooldownManager().applyConfig();
 
@@ -315,6 +316,47 @@ public class ExtractionCommand implements CommandExecutor {
         return true;
     }
 
+    private boolean handleForceExtract(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("extraction.admin")) {
+            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
+            return true;
+        }
+        if (args.length < 2) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction forceextract {player}"));
+            return true;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            plugin.sendMessage(sender, Messages.PLAYER_NOT_FOUND.replace("player", args[1]));
+            return true;
+        }
+
+        boolean success = plugin.getRunManager().extractPlayer(target.getUniqueId());
+        if (success)
+            plugin.sendMessage(sender, Messages.ADMIN_FORCE_EXTRACT.replace("player", target.getName()));
+        else
+            plugin.sendMessage(sender, Messages.EXTRACT_NOT_IN.toString());
+
+        return true;
+    }
+
+    private boolean handleSetSpawn(CommandSender sender) {
+        if (!sender.hasPermission("extraction.admin")) {
+            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
+            return true;
+        }
+
+        if (!(sender instanceof Player player)) {
+            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
+            return true;
+        }
+
+        plugin.getConfigUtil().setSpawnLocation(player.getLocation());
+        plugin.sendMessage(sender, Messages.ADMIN_SET_SPAWN.replace("world", player.getWorld().getName()));
+        return true;
+    }
+
     private boolean handleRelicAdmin(CommandSender sender, String[] args, String category) {
         if (!sender.hasPermission("extraction.admin")) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
@@ -323,14 +365,14 @@ public class ExtractionCommand implements CommandExecutor {
 
         if (args.length < 4) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage",
-                    "/extraction " + category + " <give|remove> {id} {player}"));
+                    "/extraction " + category + " {give|remove} {id} {player}"));
             return true;
         }
 
         String action = args[1].toLowerCase();
         if (!action.equals("give") && !action.equals("remove")) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage",
-                    "/extraction " + category + " <give|remove> {id} {player}"));
+                    "/extraction " + category + " {give|remove} {id} {player}"));
             return true;
         }
 
@@ -374,31 +416,6 @@ public class ExtractionCommand implements CommandExecutor {
         }
 
         plugin.getPlayerDataManager().savePlayerSync(target.getUniqueId());
-        return true;
-    }
-
-    private boolean handleForceExtract(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("extraction.admin")) {
-            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
-            return true;
-        }
-        if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction forceextract {player}"));
-            return true;
-        }
-
-        Player target = Bukkit.getPlayer(args[1]);
-        if (target == null) {
-            plugin.sendMessage(sender, Messages.PLAYER_NOT_FOUND.replace("player", args[1]));
-            return true;
-        }
-
-        boolean success = plugin.getRunManager().extractPlayer(target.getUniqueId());
-        if (success)
-            plugin.sendMessage(sender, Messages.ADMIN_FORCE_EXTRACT.replace("player", target.getName()));
-        else
-            plugin.sendMessage(sender, Messages.EXTRACT_NOT_IN.toString());
-
         return true;
     }
 
@@ -446,22 +463,6 @@ public class ExtractionCommand implements CommandExecutor {
         Location location = action.equals("sethologram") ? player.getEyeLocation() : player.getLocation();
         plugin.getHologramManager().setPosition(area, location);
         plugin.sendMessage(sender, Messages.AREA_HOLOGRAM_SET.replace("area", area.getName()));
-        return true;
-    }
-
-    private boolean handleSetSpawn(CommandSender sender) {
-        if (!sender.hasPermission("extraction.admin")) {
-            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
-            return true;
-        }
-
-        if (!(sender instanceof Player player)) {
-            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
-            return true;
-        }
-
-        plugin.getConfigUtil().setSpawnLocation(player.getLocation());
-        plugin.sendMessage(sender, Messages.ADMIN_SET_SPAWN.replace("world", player.getWorld().getName()));
         return true;
     }
 

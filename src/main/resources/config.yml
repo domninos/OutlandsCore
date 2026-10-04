@@ -71,6 +71,21 @@ shop-gui:
   title: "<gradient:#00AAFF:#55FFFF>Extraction Shop</gradient>"
   rows: 3
 
+# Relic activation
+# Right-clicking your equipped relic item DURING a run activates its effects
+# for a limited window (relics.activation-duration-seconds). A relic can supply
+# its own "duration:" override in charms.yml / artifacts.yml (0 = use this default).
+# While a relic is active you cannot reactivate it until the window wears off.
+# An active relic also emits a particle aura near the player: "particle:" per
+# relic (charms.yml / artifacts.yml) or relics.particle as the global fallback.
+# Format: PARTICLE_NAME or PARTICLE_NAME:#hexcolor (color applies to e.g. REDSTONE/DUST).
+relics:
+  activation-duration-seconds: 60
+  # Particle emitted near the player while their relic is active (global fallback)
+  particle: "END_ROD"
+  # How often (in ticks) the particle pulse fires (20 ticks = 1 second)
+  particle-ticks: 5
+
 # The relic selection GUIs (/charms and /artifacts)
 relic-gui:
   charms-title: "<gradient:#FFD700:#FF7F50>Charms</gradient>"

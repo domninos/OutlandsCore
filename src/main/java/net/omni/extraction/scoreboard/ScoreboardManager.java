@@ -26,12 +26,14 @@ public class ScoreboardManager {
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
     private final Map<UUID, Scoreboard> boards;
     private final Map<UUID, Set<String>> renderedEntries;
+    private final Map<UUID, List<String>> lastLines;
     private BukkitTask task;
 
     public ScoreboardManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
         this.boards = new HashMap<>();
         this.renderedEntries = new HashMap<>();
+        this.lastLines = new HashMap<>();
     }
 
     public void start() {
@@ -93,6 +95,13 @@ public class ScoreboardManager {
         objective.numberFormat(NumberFormat.blank());
 
         List<String> lines = resolveLines(player);
+
+        List<String> previousLines = lastLines.get(player.getUniqueId());
+        if (previousLines != null && previousLines.equals(lines))
+            return;
+
+        lastLines.put(player.getUniqueId(), lines);
+
         int shown = Math.min(lines.size(), MAX_LINES);
 
         Set<String> newEntries = new HashSet<>();
@@ -146,6 +155,7 @@ public class ScoreboardManager {
         }
 
         renderedEntries.remove(player.getUniqueId());
+        lastLines.remove(player.getUniqueId());
         player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
     }
 

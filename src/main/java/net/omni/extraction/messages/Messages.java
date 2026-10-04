@@ -146,6 +146,12 @@ public enum Messages {
     RELIC_NOT_FOUND("relic.not-found", "<red>No %kind% with id <white>%relic%</white>.</red>"),
     RELIC_NOT_OWNED_BY("relic.not-owned-by", "<yellow><white>%player%</white> doesn't own <white>%relic%</white>.</yellow>"),
 
+    RELIC_ACTIVATED("relic.activated", "<green>Your <white>%relic%</white> is now active for this run.</green>"),
+
+    RELIC_ACTIVE("relic.active", "<yellow>Your <white>%relic%</white> is already active.</yellow>"),
+
+    RELIC_EXPIRED("relic.expired", "<gray>Your <white>%relic%</white> effect wore off — right-click it again to reactivate.</gray>"),
+
     HELP_HEADER("help.header", "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"),
     HELP_FOOTER("help.footer", "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"),
     HELP_TITLE("help.title", "  <gradient:#00AAFF:#55FFFF><bold>Extraction</bold></gradient>");
