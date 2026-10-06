@@ -31,12 +31,15 @@ public class HologramManager {
 
     private static final String HOLOGRAM_PREFIX = "extraction_area_";
     private static final String CHEST_HOLOGRAM_PREFIX = "extraction_chest_";
+    private static final String WAYPOINT_HOLOGRAM_PREFIX = "extraction_event_";
 
     private final ExtractionPlugin plugin;
     private final Map<String, Location> lastLocations;
     private final Map<String, Location> lastChestPositions;
+    private final Map<String, Location> lastWaypointPositions;
     private final Map<String, List<String>> appliedChestLines;
     private final Map<String, List<String>> appliedHologramLines;
+    private final Map<String, List<String>> appliedWaypointLines;
     private final Map<String, String> lastAppliedSignature;
     private final Map<String, String> lastChestState;
     private boolean enabled = false;
@@ -46,8 +49,10 @@ public class HologramManager {
         this.plugin = plugin;
         this.lastLocations = new HashMap<>();
         this.lastChestPositions = new HashMap<>();
+        this.lastWaypointPositions = new HashMap<>();
         this.appliedChestLines = new HashMap<>();
         this.appliedHologramLines = new HashMap<>();
+        this.appliedWaypointLines = new HashMap<>();
         this.lastAppliedSignature = new HashMap<>();
         this.lastChestState = new HashMap<>();
     }
@@ -123,9 +128,15 @@ public class HologramManager {
             removeChestHologram(name);
 
         lastLocations.clear();
+
+        for (String name : new ArrayList<>(appliedWaypointLines.keySet()))
+            removeWaypointHologram(name);
+
         lastChestPositions.clear();
+        lastWaypointPositions.clear();
         appliedChestLines.clear();
         appliedHologramLines.clear();
+        appliedWaypointLines.clear();
         lastAppliedSignature.clear();
         lastChestState.clear();
     }
@@ -293,6 +304,79 @@ public class HologramManager {
         return available();
     }
 
+    public static String eventWaypointName(String id) {
+        return WAYPOINT_HOLOGRAM_PREFIX + id.toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Creates or refreshes the waypoint hologram for a world event. Not gated
+     * on the general {@code holograms.enabled} toggle — events control their
+     * own waypoint via events.yml. {@code lines} must already be in
+     * DecentHolograms text format (see {@link #toDh(String)}).
+     *
+     * @return the hologram name, or null when DecentHolograms is unavailable
+     */
+    public String updateWaypointHologram(String id, Location location, List<String> lines) {
+        if (id == null || location == null || location.getWorld() == null)
+            return null;
+
+        if (!available())
+            return null;
+
+        if (lines == null || lines.isEmpty()) {
+            removeWaypointHologram(id);
+            return null;
+        }
+
+        String name = eventWaypointName(id);
+        Location position = location.getBlock().getLocation().add(0.5, 2.0, 0.5);
+
+        try {
+            Hologram hologram = DHAPI.getHologram(name);
+
+            if (hologram == null) {
+                hologram = DHAPI.createHologram(name, position, false, lines);
+                lastWaypointPositions.put(name, position.clone());
+                appliedWaypointLines.put(name, lines);
+                return name;
+            }
+
+            Location last = lastWaypointPositions.get(name);
+            if (last == null || !sameSpot(last, position)) {
+                DHAPI.moveHologram(hologram, position);
+                lastWaypointPositions.put(name, position.clone());
+            }
+
+            List<String> applied = appliedWaypointLines.get(name);
+            if (applied == null || !applied.equals(lines)) {
+                DHAPI.setHologramLines(hologram, lines);
+                appliedWaypointLines.put(name, lines);
+            }
+
+            return name;
+        } catch (RuntimeException ignored) {
+            return name;
+        }
+    }
+
+    public void removeWaypointHologram(String id) {
+        if (id == null)
+            return;
+
+        String name = eventWaypointName(id);
+        lastWaypointPositions.remove(name);
+        appliedWaypointLines.remove(name);
+
+        if (!available())
+            return;
+
+        try {
+            if (DHAPI.getHologram(name) != null)
+                DHAPI.removeHologram(name);
+        } catch (RuntimeException ignored) {
+        }
+    }
+
     public void refreshAll() {
         if (!available())
             return;
@@ -405,7 +489,7 @@ public class HologramManager {
      * the tree, so nesting and hex gradients (MiniMessage flattens those into
      * per-character solid colors) survive the conversion.
      */
-    private String toDh(String raw) {
+    public String toDh(String raw) {
         try {
             Component component = MiniMessage.miniMessage().deserialize(raw);
             StringBuilder builder = new StringBuilder();

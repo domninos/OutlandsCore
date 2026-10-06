@@ -431,6 +431,37 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
     (`MATERIAL`, `TOKENS`, `TIME`, `UPGRADE`, `provider:id` — mmoitems/nexo/itemedit — or `KEY:<id>`). `AreaListener.
     onEntityDeath` now adds those configured drops to `event.getDrops()` instead of dropping nothing; token payouts
     (kill/boss) still fire as before.
+  - **Loot/Mob resolvers** (`loot/LootResolver.java`, `mobs/MobResolver.java`): shared single-source helpers
+    extracted from `AreaClearManager`/`AreaManager`. `LootResolver.resolveDropItems(type, amount)` covers
+    `MATERIAL`/`TOKENS`/`TIME`/`UPGRADE`/`provider:id`/`KEY:<id>` and `mergeStacks(List<ItemStack>)`;
+    `MobResolver.resolve(mobId,count,boss,level,respawnSeconds)` resolves mobs.yml template → vanilla `EntityType` →
+    MythicMobs id (defense/drops/equipment copied; boss = max armor/helmet) plus `isKnownMobId`/template helpers.
+    Constructed in `ExtractionPlugin` after `mobTemplateManager.load()`, injected into `AreaManager` (ctor
+    `(plugin, mobResolver)`) and `AreaClearManager` (ctor `(plugin, areaManager, lootResolver)`).
+  - **World Events** (`worldevent/*`, `events.yml`): random dynamic events in the extraction world. `events.yml`
+    (an `ExtractionConfig`, default shipped as a resource) holds `settings` (enabled, max-concurrent, check-seconds,
+    chance-per-check, min-gap-seconds, spawn-radius, difficulty-step, per-kill-rolls, boss-roll-multiplier,
+    completion-rolls, compass, waypoint-hologram, boss-bar) + per-event definitions. `WorldEvent` parses one event
+    (`weight` 0 = never auto-chosen, cooldown/duration-seconds, level, loot-table, spawn-locations [empty = spawn
+    near a random online in-World player], mobs/bosses `{mob,count,level,name,drops}`, broadcast warning/start/end,
+    title, sounds [Sound name + volume/pitch], boss-bar color/style, waypoint-lines).
+    `WorldEventManager` (constructed in `ExtractionPlugin` after `lootTableManager`, getter `getWorldEventManager()`)
+    auto-schedules via a weighted handler at `check-seconds`, spawns through the shared `AreaMobFactory` with the
+    difficulty multiplier `1 + (level-1)*difficulty-step` on health/damage (event-boss drops = entry `drops` if set,
+    else template drops), drives an Adventure boss bar, per-in-World-player compass targeting, and a DH waypoint
+    (`HologramManager.updateWaypointHologram`, name `extraction_event_<id>`), and pays completion loot to every
+    online **in-World** player on success (per-kill rolls during the event, bosses × boss-roll-multiplier).
+    `WorldEventListener` clears `EntityDeathEvent` drops/exp, rolls loot, `handleMobDeath` (tracked set empty =
+    success → `endEvent(instance, true)`), plus join/quit/world-change show/hide of boss bars + compass.
+    Broadcasts/titles go to ALL online players; sounds/boss bar/compass/completion loot only to players inside
+    `settings.world-name`. Placeholders `%event%`/`%location%`/`%remaining%`/`%total%` (`%distance%` reserved).
+    Stale/expired sessions `endEvent(instance,false)` (despawn mobs, hide bar, remove waypoint, cancel).
+    `/extraction events status|list|start {id}|stop [id|all]` (perm `extraction.admin`) + help + tab completer
+    wired; `shutdown()` on disable; `reload()` on `/extraction reload`.
+  - **`MobResolver` refactor detail**: resolve returns a complete `AreaSpawnDefinition`, so
+    `AreaManager.resolveSpawns` works unchanged; `AreaClearManager.spawnGroup` still overwrites count/level from the
+    spawn-entry after resolve. `AreaSpawnDefinition.count` (a template copy) is stale for per-spawn entries — read
+    the entry fields in callers.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

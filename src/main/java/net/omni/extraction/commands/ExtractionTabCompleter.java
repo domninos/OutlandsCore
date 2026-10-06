@@ -32,6 +32,7 @@ public class ExtractionTabCompleter implements TabCompleter {
             if (sender.hasPermission("extraction.admin")) {
                 subcommands.add("admin");
                 subcommands.add("reload");
+                subcommands.add("events");
                 subcommands.add("settokens");
                 subcommands.add("givetokens");
                 subcommands.add("giveupgrade");
@@ -52,6 +53,11 @@ public class ExtractionTabCompleter implements TabCompleter {
                         List.of("addhologram", "sethologram", "delhologram", "packinfo"), new ArrayList<>());
             }
 
+            if (args[0].equalsIgnoreCase("events") && sender.hasPermission("extraction.admin")) {
+                return StringUtil.copyPartialMatches(args[1],
+                        List.of("status", "list", "start", "stop"), new ArrayList<>());
+            }
+
             if (sender.hasPermission("extraction.admin")
                     && (args[0].equalsIgnoreCase("artifacts") || args[0].equalsIgnoreCase("charms"))) {
                 return StringUtil.copyPartialMatches(args[1], List.of("give", "remove"), new ArrayList<>());
@@ -61,6 +67,28 @@ public class ExtractionTabCompleter implements TabCompleter {
                 case "settokens", "givetokens", "giveupgrade", "forceextract" -> null;
                 default -> Collections.emptyList();
             };
+        }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("events")
+                && args[1].equalsIgnoreCase("start")
+                && sender.hasPermission("extraction.admin")) {
+            List<String> ids = plugin.getWorldEventManager().getEvents().values().stream()
+                    .map(event -> event.getId())
+                    .toList();
+            return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
+        }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("events")
+                && args[1].equalsIgnoreCase("stop")
+                && sender.hasPermission("extraction.admin")) {
+            List<String> ids = new ArrayList<>();
+            ids.add("all");
+            ids.addAll(plugin.getWorldEventManager().getActiveEvents().stream()
+                    .map(instance -> instance.getEvent().getId())
+                    .toList());
+            return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
         }
 
         if (args.length == 3

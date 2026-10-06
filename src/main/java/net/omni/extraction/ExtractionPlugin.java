@@ -24,11 +24,13 @@ import net.omni.extraction.listeners.PlayerListener;
 import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutManager;
 import net.omni.extraction.loot.LootItemUtil;
+import net.omni.extraction.loot.LootResolver;
 import net.omni.extraction.loot.LootTableManager;
 import net.omni.extraction.managers.ExtractionManager;
 import net.omni.extraction.managers.MessagesManager;
 import net.omni.extraction.managers.TokenManager;
 import net.omni.extraction.messages.MessageUtil;
+import net.omni.extraction.mobs.MobResolver;
 import net.omni.extraction.mobs.MobTemplateManager;
 import net.omni.extraction.pack.PackManager;
 import net.omni.extraction.relics.RelicEffectManager;
@@ -40,6 +42,8 @@ import net.omni.extraction.scoreboard.ScoreboardManager;
 import net.omni.extraction.upgrade.UpgradeManager;
 import net.omni.extraction.upgrade.UpgradeTokenUtil;
 import net.omni.extraction.util.PacketGlow;
+import net.omni.extraction.worldevent.WorldEventListener;
+import net.omni.extraction.worldevent.WorldEventManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -62,6 +66,8 @@ public final class ExtractionPlugin extends JavaPlugin {
     private BackpackManager backpackManager;
     private ExternalPluginManager externalPluginManager;
     private MobTemplateManager mobTemplateManager;
+    private MobResolver mobResolver;
+    private LootResolver lootResolver;
     private AreaManager areaManager;
     private AreaClearManager areaClearManager;
     private AreaSelectionVisualizer areaSelectionVisualizer;
@@ -76,6 +82,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private RelicManager relicManager;
     private RelicEffectManager relicEffectManager;
     private PackManager packManager;
+    private WorldEventManager worldEventManager;
 
     /*
 
@@ -182,6 +189,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         runManager.shutdown();
         playerDataManager.flush();
 
+        if (worldEventManager != null)
+            worldEventManager.shutdown();
+
         if (guiManager != null)
             guiManager.clearAll();
 
@@ -239,9 +249,12 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.mobTemplateManager = new MobTemplateManager(this);
         this.mobTemplateManager.load();
 
-        this.areaManager = new AreaManager(this);
+        this.mobResolver = new MobResolver(this);
+        this.lootResolver = new LootResolver(this);
+
+        this.areaManager = new AreaManager(this, mobResolver);
         this.areaManager.load();
-        this.areaClearManager = new AreaClearManager(this, areaManager);
+        this.areaClearManager = new AreaClearManager(this, areaManager, lootResolver);
         this.areaSelectionVisualizer = new AreaSelectionVisualizer(this);
         this.scoreboardManager = new ScoreboardManager(this);
         this.actionBarManager = new ActionBarManager(this);
@@ -251,6 +264,8 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         this.lootTableManager = new LootTableManager(this);
         this.lootTableManager.load();
+
+        this.worldEventManager = new WorldEventManager(this);
 
         this.relicManager = new RelicManager(this);
         this.relicManager.reload();
@@ -263,6 +278,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         areaManager.startStateTask();
         areaSelectionVisualizer.start();
         areaClearManager.start();
+        worldEventManager.start();
 
         if (configUtil.isScoreboardEnabled())
             scoreboardManager.start();
@@ -305,6 +321,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new AreaWandListener(this).register();
         new AreaListener(this).register();
         areaSelectionVisualizer.register();
+        new WorldEventListener(this).register();
         new ScoreboardListener(this).register();
         new AreaEditorListener(this).register();
         new RelicListener(this).register();
@@ -394,6 +411,14 @@ public final class ExtractionPlugin extends JavaPlugin {
         return mobTemplateManager;
     }
 
+    public MobResolver getMobResolver() {
+        return mobResolver;
+    }
+
+    public LootResolver getLootResolver() {
+        return lootResolver;
+    }
+
     public AreaClearManager getAreaClearManager() {
         return areaClearManager;
     }
@@ -440,6 +465,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public RelicEffectManager getRelicEffectManager() {
         return relicEffectManager;
+    }
+
+    public WorldEventManager getWorldEventManager() {
+        return worldEventManager;
     }
 
     public PackManager getPackManager() {

@@ -11,6 +11,10 @@ import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.upgrade.UpgradeConfirmHolder;
 import net.omni.extraction.upgrade.UpgradeGuiHolder;
+import net.omni.extraction.worldevent.EventInstance;
+import net.omni.extraction.worldevent.WorldEvent;
+import net.omni.extraction.worldevent.WorldEventManager;
+import net.omni.extraction.worldevent.WorldEventManager.EventStartResult;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
@@ -59,6 +63,7 @@ public class ExtractionCommand implements CommandExecutor {
             case "setspawn" -> handleSetSpawn(sender);
             case "artifacts" -> handleRelicAdmin(sender, args, RelicManager.KIND_ARTIFACT);
             case "charms" -> handleRelicAdmin(sender, args, RelicManager.KIND_CHARM);
+            case "events" -> handleEvents(sender, args);
             case "admin" -> handleAdmin(sender, args);
             default -> {
                 plugin.sendMessage(sender, Messages.UNKNOWN_COMMAND.toString());
@@ -119,6 +124,9 @@ public class ExtractionCommand implements CommandExecutor {
             MessageUtil.append("extraction admin sethologram {area}", "Move the area hologram to your eye level", help);
             MessageUtil.append("extraction admin delhologram {area}", "Remove the area hologram", help);
             MessageUtil.append("extraction admin packinfo", "Dump resource pack hosting diagnostics", help);
+            MessageUtil.append("extraction events status", "List world-event definitions and their state", help);
+            MessageUtil.append("extraction events start {event}", "Force-start a world event", help);
+            MessageUtil.append("extraction events stop [event|all]", "Stop the running world event(s)", help);
         }
 
         help.append("\n").append(Messages.HELP_FOOTER);
@@ -163,6 +171,7 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getRelicManager().reload();
         plugin.getRelicEffectManager().reload();
         plugin.getPackManager().reload();
+        plugin.getWorldEventManager().reload();
 
         plugin.getCooldownManager().applyConfig();
 
@@ -419,6 +428,123 @@ public class ExtractionCommand implements CommandExecutor {
 
         plugin.getPlayerDataManager().savePlayerSync(target.getUniqueId());
         return true;
+    }
+
+    private boolean handleEvents(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("extraction.admin")) {
+            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
+            return true;
+        }
+
+        if (args.length < 2) {
+            plugin.sendMessage(sender, Messages.USAGE
+                    .replace("usage", "/extraction events {status|list|start {event}|stop [event]}"));
+            return true;
+        }
+
+        String action = args[1].toLowerCase();
+        WorldEventManager manager = plugin.getWorldEventManager();
+
+        switch (action) {
+            case "status", "list" -> {
+                if (!manager.getEvents().isEmpty())
+                    plugin.sendMessage(sender, Messages.EVENTS_STATUS_HEADER
+                            .replace("count", String.valueOf(manager.getEvents().size())));
+
+                for (WorldEvent event : manager.getEvents().values()) {
+                    String state;
+
+                    if (!event.isEnabled()) {
+                        state = Messages.EVENTS_STATUS_DISABLED.toString();
+                    } else if (manager.getActive(event.getId()) != null) {
+                        state = Messages.EVENTS_STATUS_ACTIVE.toString();
+                    } else {
+                        long cooldown = manager.getCooldownRemaining(event.getId());
+                        state = cooldown > 0
+                                ? Messages.EVENTS_STATUS_COOLDOWN.replace("time", formatTime(cooldown))
+                                : Messages.EVENTS_STATUS_READY.toString();
+                    }
+
+                    plugin.sendMessage(sender, Messages.EVENTS_STATUS_ENTRY
+                            .replace("event", event.getDisplayName())
+                            .replace("state", state));
+                }
+
+                if (manager.getEvents().isEmpty())
+                    plugin.sendMessage(sender, Messages.EVENTS_NONE_DEFINED.toString());
+            }
+            case "start" -> {
+                if (args.length < 3) {
+                    plugin.sendMessage(sender, Messages.USAGE
+                            .replace("usage", "/extraction events start {event}"));
+                    return true;
+                }
+
+                String id = args[2];
+                WorldEvent event = manager.getEvent(id);
+
+                if (event == null) {
+                    plugin.sendMessage(sender, Messages.EVENTS_NOT_FOUND.replace("event", id));
+                    return true;
+                }
+
+                EventStartResult result = manager.startEvent(event.getId(), true);
+                sendStartResult(sender, result, event);
+            }
+            case "stop" -> {
+                if (args.length >= 3) {
+                    if (args[2].equalsIgnoreCase("all")) {
+                        int stopped = manager.stopAll();
+                        plugin.sendMessage(sender, Messages.EVENTS_STOPPED_ALL
+                                .replace("count", String.valueOf(stopped)));
+                    } else if (manager.stopEvent(args[2])) {
+                        plugin.sendMessage(sender, Messages.EVENTS_STOPPED
+                                .replace("event", args[2]));
+                    } else {
+                        plugin.sendMessage(sender, Messages.EVENTS_NONE_ACTIVE.toString());
+                    }
+                    return true;
+                }
+
+                if (!manager.hasActiveEvents()) {
+                    plugin.sendMessage(sender, Messages.EVENTS_NONE_ACTIVE.toString());
+                    return true;
+                }
+
+                for (EventInstance instance : manager.getActiveEvents()) {
+                    manager.stopEvent(instance.getEvent().getId());
+                    plugin.sendMessage(sender, Messages.EVENTS_STOPPED
+                            .replace("event", instance.getEvent().getDisplayName()));
+                }
+            }
+            default -> plugin.sendMessage(sender, Messages.USAGE
+                    .replace("usage", "/extraction events {status|list|start {event}|stop [event]}"));
+        }
+
+        return true;
+    }
+
+    private void sendStartResult(CommandSender sender, EventStartResult result, WorldEvent event) {
+        switch (result) {
+            case STARTED -> plugin.sendMessage(sender, Messages.EVENTS_STARTED
+                    .replace("event", event.getDisplayName()));
+            case DISABLED -> plugin.sendMessage(sender, Messages.EVENTS_DISABLED
+                    .replace("event", event.getDisplayName()));
+            case ALREADY_ACTIVE -> plugin.sendMessage(sender, Messages.EVENTS_ALREADY_ACTIVE
+                    .replace("event", event.getDisplayName()));
+            case NO_SPAWNS -> plugin.sendMessage(sender, Messages.EVENTS_NO_SPAWNS
+                    .replace("event", event.getDisplayName()));
+            case NOT_FOUND -> plugin.sendMessage(sender, Messages.EVENTS_NOT_FOUND
+                    .replace("event", event.getDisplayName()));
+        }
+    }
+
+    private String formatTime(long seconds) {
+        long minutes = seconds / 60;
+        long secs = seconds % 60;
+
+        if (minutes > 0) return minutes + "m " + secs + "s";
+        return secs + "s";
     }
 
     private boolean handleAdmin(CommandSender sender, String[] args) {

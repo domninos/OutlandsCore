@@ -5,13 +5,12 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.event.PlayerEnterAreaEvent;
 import net.omni.extraction.event.PlayerLeaveAreaEvent;
-import net.omni.extraction.integration.MythicMobsProvider;
+import net.omni.extraction.mobs.MobResolver;
 import net.omni.extraction.mobs.MobTemplate;
 import net.omni.extraction.mobs.MobTemplateManager;
 import org.bukkit.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -25,6 +24,7 @@ public class AreaManager {
 
     private final ExtractionPlugin plugin;
     private final File areasFolder;
+    private final MobResolver mobResolver;
     private final Map<String, Area> areas;
     private final Map<UUID, Location> pos1;
     private final Map<UUID, Location> pos2;
@@ -36,8 +36,9 @@ public class AreaManager {
     private BukkitTask autoSaveTask;
     private BukkitTask stateTask;
 
-    public AreaManager(ExtractionPlugin plugin) {
+    public AreaManager(ExtractionPlugin plugin, MobResolver mobResolver) {
         this.plugin = plugin;
+        this.mobResolver = mobResolver;
         this.areasFolder = new File(plugin.getDataFolder(), "areas");
         this.areas = new HashMap<>();
         this.pos1 = new HashMap<>();
@@ -154,7 +155,7 @@ public class AreaManager {
             return result;
 
         for (AreaSpawnEntry entry : area.getSpawnEntries()) {
-            AreaSpawnDefinition definition = resolveDefinition(area, entry.getMobId(),
+            AreaSpawnDefinition definition = mobResolver.resolve(entry.getMobId(),
                     entry.getCount(), entry.isBoss(), entry.getLevel(), entry.getRespawnSeconds());
 
             if (definition == null)
@@ -168,12 +169,12 @@ public class AreaManager {
         }
 
         for (AreaMobReference reference : area.getMobReferences()) {
-            AreaSpawnDefinition definition = resolveDefinition(area, reference.getMobId(),
-                    reference.getCount() != null ? reference.getCount() : templateCount(reference.getMobId()),
-                    reference.getBoss() != null ? reference.getBoss() : templateBoss(reference.getMobId()),
-                    reference.getLevel() != null ? reference.getLevel() : templateLevel(reference.getMobId()),
+            AreaSpawnDefinition definition = mobResolver.resolve(reference.getMobId(),
+                    reference.getCount() != null ? reference.getCount() : mobResolver.templateCount(reference.getMobId()),
+                    reference.getBoss() != null ? reference.getBoss() : mobResolver.templateBoss(reference.getMobId()),
+                    reference.getLevel() != null ? reference.getLevel() : mobResolver.templateLevel(reference.getMobId()),
                     reference.getRespawnSeconds() != null
-                            ? reference.getRespawnSeconds() : templateRespawn(reference.getMobId()));
+                            ? reference.getRespawnSeconds() : mobResolver.templateRespawn(reference.getMobId()));
 
             if (definition == null)
                 continue;
@@ -208,101 +209,6 @@ public class AreaManager {
         return stats;
     }
 
-    private MobTemplate template(String mobId) {
-        MobTemplateManager mobs = plugin.getMobTemplateManager();
-        return mobs == null ? null : mobs.get(mobId);
-    }
-
-    private int templateCount(String mobId) {
-        MobTemplate template = template(mobId);
-        return template == null ? 1 : template.getCount();
-    }
-
-    private boolean templateBoss(String mobId) {
-        MobTemplate template = template(mobId);
-        return template != null && template.isBoss();
-    }
-
-    private int templateLevel(String mobId) {
-        MobTemplate template = template(mobId);
-        return template == null ? 1 : template.getLevel();
-    }
-
-    private int templateRespawn(String mobId) {
-        MobTemplate template = template(mobId);
-        return template == null ? 0 : template.getRespawnSeconds();
-    }
-
-    private AreaSpawnDefinition resolveDefinition(Area area, String mobId, int count, boolean boss,
-                                                  int level, int respawnSeconds) {
-        MobTemplate template = template(mobId);
-
-        AreaSpawnDefinition definition;
-
-        if (template != null) {
-            definition = new AreaSpawnDefinition(mobId);
-            definition.setType(template.getType());
-            definition.setMythic(template.isMythic());
-            definition.setDisplayName(template.getDisplayName());
-            definition.setHealth(template.getHealth());
-            definition.setDamage(template.getDamage());
-            definition.setEquipment(new HashMap<>(template.getEquipment()));
-            definition.setDrops(template.getDrops());
-            definition.setCount(count);
-            definition.setBoss(boss);
-            definition.setLevel(level);
-            definition.setRespawnSeconds(respawnSeconds);
-        } else if (parseSpawnType(mobId) != null) {
-            definition = new AreaSpawnDefinition(mobId);
-            definition.setType(mobId.toLowerCase(Locale.ROOT));
-            definition.setCount(count);
-            definition.setBoss(boss);
-            definition.setLevel(level);
-            definition.setRespawnSeconds(respawnSeconds);
-        } else if (isMythicId(mobId)) {
-            definition = new AreaSpawnDefinition(mobId);
-            definition.setMythic(true);
-            definition.setType(mobId);
-            definition.setCount(count);
-            definition.setBoss(boss);
-            definition.setLevel(level);
-            definition.setRespawnSeconds(respawnSeconds);
-        } else {
-            plugin.getLogger().warning("Area '" + area.getName() + "' references unknown mob '"
-                    + mobId + "'.");
-            return null;
-        }
-
-        return definition;
-    }
-
-    private EntityType parseSpawnType(String name) {
-        if (name == null || name.isBlank())
-            return null;
-
-        try {
-            EntityType type = EntityType.valueOf(name.toUpperCase(Locale.ROOT));
-
-            return type.isAlive() && type.isSpawnable() ? type : null;
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    private boolean isMythicId(String id) {
-        MythicMobsProvider provider =
-                plugin.getExternalPluginManager().getMythicMobsProvider();
-
-        if (provider == null)
-            return false;
-
-        try {
-            return provider.exists(id);
-        } catch (Throwable e) {
-            return false;
-        }
-    }
-
     public boolean hasMobs(Area area) {
         if (area == null)
             return false;
@@ -330,12 +236,7 @@ public class AreaManager {
     }
 
     private boolean isKnownMobId(String id) {
-        MobTemplateManager mobs = plugin.getMobTemplateManager();
-
-        if (mobs != null && mobs.exists(id))
-            return true;
-
-        return parseSpawnType(id) != null || isMythicId(id);
+        return mobResolver.isKnownMobId(id);
     }
 
     public void saveDirty() {

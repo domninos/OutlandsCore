@@ -154,7 +154,23 @@ public enum Messages {
 
     HELP_HEADER("help.header", "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"),
     HELP_FOOTER("help.footer", "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"),
-    HELP_TITLE("help.title", "  <gradient:#00AAFF:#55FFFF><bold>Extraction</bold></gradient>");
+    HELP_TITLE("help.title", "  <gradient:#00AAFF:#55FFFF><bold>Extraction</bold></gradient>"),
+
+    EVENTS_STATUS_HEADER("events.status-header", "<gray>World Events (<white>%count%</white>):</gray>"),
+    EVENTS_STATUS_ENTRY("events.status-entry", "<gray> - <white>%event%</white> <dark_gray>»</dark_gray> <white>%state%</white></gray>"),
+    EVENTS_STATUS_ACTIVE("events.status-active", "<green>ACTIVE</green>"),
+    EVENTS_STATUS_READY("events.status-ready", "<gray>READY</gray>"),
+    EVENTS_STATUS_COOLDOWN("events.status-cooldown", "<yellow>%time%</yellow>"),
+    EVENTS_STATUS_DISABLED("events.status-disabled", "<dark_gray>disabled</dark_gray>"),
+    EVENTS_NONE_DEFINED("events.none-defined", "<gray>No world events are defined in events.yml.</gray>"),
+    EVENTS_NONE_ACTIVE("events.none-active", "<gray>There are no active world events.</gray>"),
+    EVENTS_NOT_FOUND("events.not-found", "<red>Event <white>%event%</white> was not found.</red>"),
+    EVENTS_DISABLED("events.disabled", "<red>Event <white>%event%</white> is disabled.</red>"),
+    EVENTS_ALREADY_ACTIVE("events.already-active", "<red>Event <white>%event%</white> is already active.</red>"),
+    EVENTS_NO_SPAWNS("events.no-spawns", "<red>Could not start <white>%event%</white> — no spawn location available.</red>"),
+    EVENTS_STARTED("events.started", "<green>Started event <white>%event%</white>.</green>"),
+    EVENTS_STOPPED("events.stopped", "<gold>Stopped event <white>%event%</white>.</gold>"),
+    EVENTS_STOPPED_ALL("events.stopped-all", "<gold>Stopped <white>%count%</white> world event(s).</gold>");
 
     private final String path;
     private final Object defaultVal;
