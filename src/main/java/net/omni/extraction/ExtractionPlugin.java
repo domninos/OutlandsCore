@@ -220,8 +220,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         LoadoutGUI.init(this);
         PacketGlow.init(this);
 
-        this.packManager = new PackManager(this,
-                getServer().getIp().isEmpty() ? "localhost" : getServer().getIp());
+        this.packManager = new PackManager(this);
         packManager.init();
 
         this.databaseManager = new DatabaseManager(this);

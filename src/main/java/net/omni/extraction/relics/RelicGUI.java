@@ -28,8 +28,8 @@ public final class RelicGUI {
         int size = rows * 9;
 
         String title = RelicManager.KIND_ARTIFACT.equals(category)
-                ? config.getRelicGuiArtifactsTitle()
-                : config.getRelicGuiCharmsTitle();
+                ? plugin.getPackManager().titleWithTexture(config.getRelicGuiArtifactsTitle(), "relics-artifacts")
+                : plugin.getPackManager().titleWithTexture(config.getRelicGuiCharmsTitle(), "relics-charms");
 
         Inventory inv = renderer.createInventory(new RelicHolder(category), size, title);
 

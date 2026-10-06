@@ -610,3 +610,37 @@ containers:
   - BLAST_FURNACE
   - SMOKER
   - SHULKER_BOX
+
+# Resource pack per-GUI texture glyphs (custom font atlas).
+# Each open GUI tiles its panel with the matching bitmap texture in
+# ExtractionPack.zip. REQUIREMENTS on the client: the pack must actually apply
+# (a reachable pack.host below), the player's Options > Language > Force Unicode
+# Font must be OFF (it blanks every custom font glyph), and the texture PNGs must
+# be 256px or smaller on both sides (vanilla font-image cap). Font images live at
+# assets/minecraft/textures/gui/gui_<key>.png and are bound to their codepoint in
+# a FULLY MERGED assets/minecraft/font/default.json (vanilla providers + ours).
+# Titles fall back to plain text when the pack isn't hosted.
+pack:
+  # Host the pack from. Best left empty on a local/LAN test if the client can
+  # reach the machine; otherwise set your public IP or domain, e.g. play.example.com.
+  # Resolution order: this value > server.properties server-ip. If neither is a
+  # usable address the pack is NOT offered (plain text titles) and a warning is
+  # logged — the pack is never silently served at localhost (unreachable for
+  # remote clients).
+  host: ""
+  # Minecraft caches a server resource pack by the UUID you offer it with. Leave
+  # this empty (recommended) to derive the UUID from the zip's content hash, so
+  # clients are automatically re-offered (and re-download) whenever the pack
+  # changes. Set a 36-char UUID here to pin a stable id — edit it to force a
+  # one-time re-offer without touching the pack.
+  id: ""
+  gui-textures:
+    pack-menu: "\uE001"
+    loadout: "\uE002"
+    upgrade: "\uE003"
+    upgrade-confirm: "\uE004"
+    relics-charms: "\uE005"
+    relics-artifacts: "\uE006"
+    backpack: "\uE007"
+    backpack-shop: "\uE008"
+    area-editor: "\uE009"

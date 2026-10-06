@@ -33,7 +33,8 @@ public final class BackpackShopGUI {
         int heldTier = held != null ? manager.getTier(held) : 0;
 
         int size = config.getShopGuiSize();
-        Inventory inv = renderer.createInventory(new BackpackShopHolder(), size, config.getShopGuiTitle());
+        Inventory inv = renderer.createInventory(new BackpackShopHolder(), size,
+                plugin.getPackManager().titleWithTexture(config.getShopGuiTitle(), "backpack-shop"));
 
         ItemStack filler = button(renderer, Material.GRAY_STAINED_GLASS_PANE, " ", null);
         for (int i = 0; i < size; i++)

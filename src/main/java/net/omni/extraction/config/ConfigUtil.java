@@ -79,6 +79,9 @@ public class ConfigUtil {
 
     private String editorTitle;
     private int editorRows;
+    private final Map<String, String> guiTextures = new HashMap<>();
+    private String packId = "";
+    private String packHost = "";
     private String editorFillerMaterial;
     private String editorFillerName;
     private String editorNavBackMaterial;
@@ -240,6 +243,9 @@ public class ConfigUtil {
         lootChestHologramEmpty = new ArrayList<>();
         backpackTierSlots = new ArrayList<>();
         backpackPrices = new ArrayList<>();
+        guiTextures.clear();
+        packId = "";
+        packHost = "";
     }
 
     public void load() {
@@ -300,6 +306,7 @@ public class ConfigUtil {
         loadBackpack(savedDefaults);
         loadShopGui(savedDefaults);
         loadRelicGui(savedDefaults);
+        loadPack(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
 
@@ -718,6 +725,29 @@ public class ConfigUtil {
         this.relicGuiPlaceholderLore = getAndDefaultStringList(ConfigKeys.RELIC_GUI_PLACEHOLDER_LORE, List.of(
                 "<gray>You haven't discovered this yet.</gray>",
                 "<gray>Find it by looting chests or killing mobs in areas.</gray>"), savedDefaults);
+    }
+
+    private void loadPack(AtomicInteger savedDefaults) {
+        guiTextures.put("pack-menu", getAndDefaultString(ConfigKeys.PACK_GUI_PACK_MENU,
+                "\\uE001", savedDefaults));
+        guiTextures.put("loadout", getAndDefaultString(ConfigKeys.PACK_GUI_LOADOUT,
+                "\\uE002", savedDefaults));
+        guiTextures.put("upgrade", getAndDefaultString(ConfigKeys.PACK_GUI_UPGRADE,
+                "\\uE003", savedDefaults));
+        guiTextures.put("upgrade-confirm", getAndDefaultString(ConfigKeys.PACK_GUI_UPGRADE_CONFIRM,
+                "\\uE004", savedDefaults));
+        guiTextures.put("relics-charms", getAndDefaultString(ConfigKeys.PACK_GUI_RELIC_CHARMS,
+                "\\uE005", savedDefaults));
+        guiTextures.put("relics-artifacts", getAndDefaultString(ConfigKeys.PACK_GUI_RELIC_ARTIFACTS,
+                "\\uE006", savedDefaults));
+        guiTextures.put("backpack", getAndDefaultString(ConfigKeys.PACK_GUI_BACKPACK,
+                "\\uE007", savedDefaults));
+        guiTextures.put("backpack-shop", getAndDefaultString(ConfigKeys.PACK_GUI_BACKPACK_SHOP,
+                "\\uE008", savedDefaults));
+        guiTextures.put("area-editor", getAndDefaultString(ConfigKeys.PACK_GUI_AREA_EDITOR,
+                "\\uE009", savedDefaults));
+        this.packId = getAndDefaultString(ConfigKeys.PACK_ID, "", savedDefaults);
+        this.packHost = getAndDefaultString(ConfigKeys.PACK_HOST, "", savedDefaults);
     }
 
     private void loadAreaEditor(AtomicInteger savedDefaults) {
@@ -1673,6 +1703,19 @@ public class ConfigUtil {
 
     public String getRelicGuiArtifactsTitle() {
         return relicGuiArtifactsTitle;
+    }
+
+    public String getGuiTexture(String key) {
+        String texture = guiTextures.get(key);
+        return texture == null ? "" : texture;
+    }
+
+    public String getPackId() {
+        return packId;
+    }
+
+    public String getPackHost() {
+        return packHost;
     }
 
     public int getRelicGuiRows() {

@@ -72,7 +72,8 @@ public class LoadoutGUI {
         if (inventory == null) {
             ConfigUtil config = plugin.getConfigUtil();
             inventory = plugin.getChatRenderer().createInventory(new LoadoutGuiHolder(),
-                    config.getLoadoutGuiSize(), config.getLoadoutGuiTitle());
+                    config.getLoadoutGuiSize(),
+                    plugin.getPackManager().titleWithTexture(config.getLoadoutGuiTitle(), "loadout"));
         }
     }
 

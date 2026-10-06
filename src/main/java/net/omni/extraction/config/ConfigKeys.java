@@ -198,5 +198,18 @@ public final class ConfigKeys {
 
     public static final String CONTAINERS = "containers";
 
+    public static final String PACK_GUI_TEXTURES = "pack.gui-textures";
+    public static final String PACK_ID = "pack.id";
+    public static final String PACK_HOST = "pack.host";
+    public static final String PACK_GUI_PACK_MENU = "pack.gui-textures.pack-menu";
+    public static final String PACK_GUI_LOADOUT = "pack.gui-textures.loadout";
+    public static final String PACK_GUI_UPGRADE = "pack.gui-textures.upgrade";
+    public static final String PACK_GUI_UPGRADE_CONFIRM = "pack.gui-textures.upgrade-confirm";
+    public static final String PACK_GUI_RELIC_CHARMS = "pack.gui-textures.relics-charms";
+    public static final String PACK_GUI_RELIC_ARTIFACTS = "pack.gui-textures.relics-artifacts";
+    public static final String PACK_GUI_BACKPACK = "pack.gui-textures.backpack";
+    public static final String PACK_GUI_BACKPACK_SHOP = "pack.gui-textures.backpack-shop";
+    public static final String PACK_GUI_AREA_EDITOR = "pack.gui-textures.area-editor";
+
     public static final String MESSAGES_PREFIX = "messages.prefix";
 }

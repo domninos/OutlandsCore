@@ -49,7 +49,8 @@ public class UpgradeGUI {
         if (inventory == null) {
             ConfigUtil config = plugin.getConfigUtil();
             inventory = plugin.getChatRenderer().createInventory(new UpgradeGuiHolder(),
-                    config.getUpgradeGuiSize(), config.getUpgradeGuiTitle());
+                    config.getUpgradeGuiSize(),
+                    plugin.getPackManager().titleWithTexture(config.getUpgradeGuiTitle(), "upgrade"));
         }
     }
 

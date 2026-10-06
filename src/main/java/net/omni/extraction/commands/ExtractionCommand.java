@@ -118,6 +118,7 @@ public class ExtractionCommand implements CommandExecutor {
             MessageUtil.append("extraction admin addhologram {area}", "Place the area hologram at your feet", help);
             MessageUtil.append("extraction admin sethologram {area}", "Move the area hologram to your eye level", help);
             MessageUtil.append("extraction admin delhologram {area}", "Remove the area hologram", help);
+            MessageUtil.append("extraction admin packinfo", "Dump resource pack hosting diagnostics", help);
         }
 
         help.append("\n").append(Messages.HELP_FOOTER);
@@ -161,6 +162,7 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getLootTableManager().reload();
         plugin.getRelicManager().reload();
         plugin.getRelicEffectManager().reload();
+        plugin.getPackManager().reload();
 
         plugin.getCooldownManager().applyConfig();
 
@@ -425,16 +427,28 @@ public class ExtractionCommand implements CommandExecutor {
             return true;
         }
 
+        if (args.length < 2) {
+            plugin.sendMessage(sender, Messages.USAGE
+                    .replace("usage", "/extraction admin <addhologram|sethologram|delhologram> {area} | packinfo"));
+            return true;
+        }
+
+        String action = args[1].toLowerCase();
+
+        if (action.equals("packinfo")) {
+            sender.sendMessage(MessageUtil.parse(plugin.getPackManager().diagnostics()));
+            return true;
+        }
+
         if (args.length < 3) {
             plugin.sendMessage(sender, Messages.USAGE
                     .replace("usage", "/extraction admin <addhologram|sethologram|delhologram> {area}"));
             return true;
         }
 
-        String action = args[1].toLowerCase();
         if (!action.equals("addhologram") && !action.equals("sethologram") && !action.equals("delhologram")) {
             plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction admin <addhologram|sethologram|delhologram> {area}"));
+                    .replace("usage", "/extraction admin <addhologram|sethologram|delhologram> {area} | packinfo"));
             return true;
         }
 

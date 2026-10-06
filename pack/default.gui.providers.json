@@ -1,0 +1,67 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "minecraft:textures/gui/gui_pack-menu.png",
+      "ascent": 20,
+      "height": 256,
+      "chars": ["\uE001"]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:textures/gui/gui_loadout.png",
+      "ascent": 20,
+      "height": 256,
+      "chars": ["\uE002"]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:textures/gui/gui_upgrade.png",
+      "ascent": 20,
+      "height": 256,
+      "chars": ["\uE003"]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:textures/gui/gui_upgrade-confirm.png",
+      "ascent": 20,
+      "height": 256,
+      "chars": ["\uE004"]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:textures/gui/gui_relics-charms.png",
+      "ascent": 20,
+      "height": 256,
+      "chars": ["\uE005"]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:textures/gui/gui_relics-artifacts.png",
+      "ascent": 20,
+      "height": 256,
+      "chars": ["\uE006"]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:textures/gui/gui_backpack.png",
+      "ascent": 20,
+      "height": 256,
+      "chars": ["\uE007"]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:textures/gui/gui_backpack-shop.png",
+      "ascent": 20,
+      "height": 256,
+      "chars": ["\uE008"]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:textures/gui/gui_area-editor.png",
+      "ascent": 20,
+      "height": 256,
+      "chars": ["\uE009"]
+    }
+  ]
+}

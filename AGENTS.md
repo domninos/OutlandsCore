@@ -104,6 +104,30 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
 - `chat/ActionBarManager.java`: the default HUD (replaces the scoreboard). Repeating task (`actionbar.update-ticks`)
   sends the run/cooldown timer (`%extraction_timer%`) while a player is in a run or on cooldown; `showTokens(UUID,int)`
   overlays `+{n} tokens` for `actionbar.kill-feedback-ticks`. Reads `actionbar.enabled`.
+- `pack/PackManager.java`: hosts `ExtractionPack.zip` over a local HTTP server (port 25393, bound to `0.0.0.0`)
+  and offers it on join (`addResourcePack`, `required=true`). The offered pack UUID is **content-derived**
+  (SHA-256 of the zip, unless
+  config `pack.id` pins a fixed one) so clients re-download changed packs instead of reusing Minecraft's
+  UUID-keyed cache; the served URL appends `?h=<hash8>` to defeat HTTP caches. **The host clients download
+  from is resolved in `init()` → `resolveHost()`: config `pack.host` first, else `server.properties server-ip`
+  (skipping `0.0.0.0`), else the pack is NOT offered (plain text titles) with a loud warning — never a
+  silent `localhost`** (that was the original "pack doesn't apply" bug: Bukkit `getServer().getIp()` is empty
+  on normal servers). `/extraction reload` →
+  `packManager.reload()` recomputes the id and re-offers the pack to every online player. Per-GUI
+  resource-pack texture glyphs: GUIs are **pure-texture** when the pack hosts their glyph —
+  `titleWithTexture(title, key)` returns the **bare `\uE0XX` codepoint** (a lone-glyph title line is
+  centered by the client, so the panel lands dead-center) as the whole inventory title, else the plain
+  text title; `guiTexture(key)` returns the bare glyph (only while the pack is hosted) + `decodeUnicode`
+  converts `\uXXXX` escape text. Font-image textures are capped at **256×256** in vanilla — the
+  providers (`pack/default.gui.providers.json`, `height: 256`) match 256² PNGs, and the client's
+  **Force Unicode Font (Options→Language) must be OFF** for custom glyphs to render. `diagnostics()` backs the
+  `/extraction admin packinfo` command — it prints hosting state + zip internals (font/default.json provider
+  count + all 9 glyphs present + merged-vanilla heuristic, pack.mcmeta `pack_format`, each `gui_*.png` size
+  and real ImageIO dimensions vs the 256 cap). Codepoints come from
+  config.yml `pack.gui-textures` (defaults
+  `\uE001` pack-menu … `\uE009` area-editor; ConfigKeys `PACK_GUI_*`+`PACK_HOST`, ConfigUtil `loadPack`/`getGuiTexture`/`getPackHost`) — wired into
+  LoadoutGUI, UpgradeGUI, UpgradeConfirmGUI, RelicGUI (charms/artifacts), BackpackGUI, BackpackShopGUI, AreaEditorManager.
+  Empty value or missing pack = plain titles.
 - `hologram/HologramManager.java`: area holograms via DecentHolograms (`DHAPI` + ` DecentHologramsAPI.isRunning()`,
   gated by `isPluginEnabled("DecentHolograms")`; always-runtime `saveToFile=false` holograms named
   `extraction_area_<lowercase>`; a MiniMessage→DH-native converter (`toDh`, component walker emitting `<#rrggbb>` +

@@ -30,7 +30,7 @@ public final class BackpackGUI {
 
         ChatRenderer renderer = plugin.getChatRenderer();
         Inventory inv = renderer.createInventory(new BackpackHolder(session.getUid(), page), size,
-                "<gradient:#00AAFF:#55FFFF>Backpack</gradient>");
+                plugin.getPackManager().titleWithTexture("<gradient:#00AAFF:#55FFFF>Backpack</gradient>", "backpack"));
 
         int start = page * slotsPerPage;
         List<ItemStack> items = session.getContents();

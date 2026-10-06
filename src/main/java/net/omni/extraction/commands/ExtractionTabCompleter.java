@@ -49,7 +49,7 @@ public class ExtractionTabCompleter implements TabCompleter {
         if (args.length == 2) {
             if (args[0].equalsIgnoreCase("admin") && sender.hasPermission("extraction.admin")) {
                 return StringUtil.copyPartialMatches(args[1],
-                        List.of("addhologram", "sethologram", "delhologram"), new ArrayList<>());
+                        List.of("addhologram", "sethologram", "delhologram", "packinfo"), new ArrayList<>());
             }
 
             if (sender.hasPermission("extraction.admin")

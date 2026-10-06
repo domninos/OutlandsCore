@@ -33,7 +33,8 @@ public final class UpgradeConfirmGUI {
 
         UpgradeConfirmHolder holder = new UpgradeConfirmHolder(player.getUniqueId(), slot, nextTier);
         Inventory inventory = plugin.getChatRenderer().createInventory(
-                holder, config.getUpgradeConfirmSize(), config.getUpgradeConfirmTitle());
+                holder, config.getUpgradeConfirmSize(),
+                plugin.getPackManager().titleWithTexture(config.getUpgradeConfirmTitle(), "upgrade-confirm"));
 
         fillFiller(plugin, inventory);
 

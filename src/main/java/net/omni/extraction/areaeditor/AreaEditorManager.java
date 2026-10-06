@@ -108,7 +108,8 @@ public class AreaEditorManager {
         int size = sizeFor(session);
 
         Inventory inventory = plugin.getChatRenderer().createInventory(
-                new AreaEditorHolder(), size, config.getAreaEditorTitle());
+                new AreaEditorHolder(), size,
+                plugin.getPackManager().titleWithTexture(config.getAreaEditorTitle(), "area-editor"));
 
         fillTop(inventory, config);
 
