@@ -21,6 +21,7 @@ import java.util.Random;
  *   <li>{@code provider:id} external item (mmoitems/nexo/itemedit)</li>
  *   <li>{@code TOKENS}, {@code TIME}, {@code UPGRADE}</li>
  *   <li>{@code KEY:<keyId>}</li>
+ *   <li>{@code EVENT:<itemId>}</li>
  *   <li>{@code CHARM:<id>} / {@code ARTIFACT:<id>}</li>
  * </ul>
  */
@@ -46,6 +47,22 @@ public class LootResolver {
             ItemStack key = buildKeyItem(type.substring(4));
             if (key != null)
                 result.add(key);
+            return result;
+        }
+
+        if (upper.startsWith("EVENT:")) {
+            String itemId = type.substring(6);
+            Map<String, Object> def = plugin.getConfigUtil().getEventItemDefinitions().get(itemId);
+
+            if (def == null) {
+                plugin.getLogger().warning("Unknown event item '" + itemId
+                        + "' — define it under 'event-items:' in config.yml.");
+                return result;
+            }
+
+            ItemStack item = LootItemUtil.createEventItem(itemId, def);
+            item.setAmount(Math.max(1, amount));
+            result.add(item);
             return result;
         }
 

@@ -186,6 +186,51 @@ public class LootItemUtil {
         return item;
     }
 
+    public static ItemStack createEventItem(String eventItemId, Map<String, Object> def) {
+        String materialName = def.get("material") != null ? String.valueOf(def.get("material")) : "PAPER";
+        String displayName = def.get("display-name") != null ? String.valueOf(def.get("display-name")) : eventItemId;
+
+        Material material = Material.matchMaterial(materialName);
+
+        if (material == null)
+            material = Material.PAPER;
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            meta.customName(MiniMessage.miniMessage().deserialize(displayName.replace("%item%", eventItemId)));
+
+            Object loreObj = def.get("lore");
+
+            if (loreObj instanceof List<?> list) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (Object line : list) {
+                    if (line == null) continue;
+
+                    loreLines.add(MiniMessage.miniMessage()
+                            .deserialize(String.valueOf(line).replace("%item%", eventItemId)));
+                }
+
+                meta.lore(loreLines);
+            } else if (loreObj != null) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (String line : String.valueOf(loreObj).split("\n"))
+                    loreLines.add(MiniMessage.miniMessage().deserialize(line.replace("%item%", eventItemId)));
+
+                meta.lore(loreLines);
+                loreLines.clear();
+            }
+
+            item.setItemMeta(meta);
+        }
+
+        item.setAmount(1);
+        return item;
+    }
+
     public static boolean isKeyItem(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return false;
         if (KEY_IS_KEY == null) return false;

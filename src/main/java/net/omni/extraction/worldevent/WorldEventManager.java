@@ -5,6 +5,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.area.Area;
 import net.omni.extraction.area.AreaMobFactory;
 import net.omni.extraction.area.AreaSpawnDefinition;
 import net.omni.extraction.config.ExtractionConfig;
@@ -12,18 +13,26 @@ import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.worldevent.WorldEvent.EventSpawnLocation;
+import net.omni.extraction.worldevent.WorldEvent.WaveType;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.Chest;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Vector;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -44,6 +53,17 @@ import java.util.stream.Collectors;
  */
 public class WorldEventManager {
 
+    /** A temporary meteor-crater harvest chest: the owning instance + its rolled loot. */
+    private static class HarvestChest {
+        final EventInstance instance;
+        final List<ItemStack> items;
+
+        HarvestChest(EventInstance instance, List<ItemStack> items) {
+            this.instance = instance;
+            this.items = items;
+        }
+    }
+
     public enum EventStartResult {
         STARTED, DISABLED, ALREADY_ACTIVE, NO_SPAWNS, NOT_FOUND
     }
@@ -55,6 +75,7 @@ public class WorldEventManager {
     private final Map<String, EventInstance> active;
     private final Map<String, Long> cooldowns;
     private final Map<UUID, EventInstance> mobInstances;
+    private final Map<Location, HarvestChest> harvestChests;
     private final Set<UUID> compassPlayers;
     private final Random random;
 
@@ -84,6 +105,7 @@ public class WorldEventManager {
         this.active = new HashMap<>();
         this.cooldowns = new HashMap<>();
         this.mobInstances = new HashMap<>();
+        this.harvestChests = new HashMap<>();
         this.compassPlayers = new HashSet<>();
         this.random = new Random();
         loadData();
@@ -162,7 +184,18 @@ public class WorldEventManager {
         for (EventInstance instance : new ArrayList<>(active.values()))
             endEvent(instance, false);
 
+        clearHarvestChests();
         resetCompass();
+    }
+
+    private void clearHarvestChests() {
+        for (Location location : new ArrayList<>(harvestChests.keySet())) {
+            Block block = location.getBlock();
+            if (block != null && block.getType() == Material.CHEST)
+                block.setType(Material.AIR);
+        }
+
+        harvestChests.clear();
     }
 
     private void tryStartEvent() {
@@ -194,6 +227,9 @@ public class WorldEventManager {
             if (!event.isEnabled() || event.getWeight() <= 0)
                 continue;
 
+            if (event.isAreaTriggered())
+                continue;
+
             if (active.containsKey(event.getId()))
                 continue;
 
@@ -204,6 +240,10 @@ public class WorldEventManager {
             eligible.add(event);
         }
 
+        return pickWeightedAmong(eligible);
+    }
+
+    private WorldEvent pickWeightedAmong(List<WorldEvent> eligible) {
         if (eligible.isEmpty())
             return null;
 
@@ -233,7 +273,7 @@ public class WorldEventManager {
         if (!force && !enabled)
             return EventStartResult.DISABLED;
 
-        EventInstance instance = spawnEvent(event);
+        EventInstance instance = spawnEvent(event, null);
         if (instance == null)
             return EventStartResult.NO_SPAWNS;
 
@@ -241,6 +281,82 @@ public class WorldEventManager {
         announceStart(instance);
         updateCompass();
         return EventStartResult.STARTED;
+    }
+
+    /**
+     * Starts an area-triggered event at a specific area (origin = its center).
+     * Used by the random-area trigger; admin force starts still route through
+     * {@link #startEvent}.
+     */
+    private EventStartResult startAtArea(String id, Area area) {
+        WorldEvent event = events.get(id.toLowerCase(Locale.ROOT));
+        if (event == null)
+            return EventStartResult.NOT_FOUND;
+
+        if (active.containsKey(event.getId()))
+            return EventStartResult.ALREADY_ACTIVE;
+
+        if (!event.isEnabled() || !event.isAreaTriggered())
+            return EventStartResult.DISABLED;
+
+        Location origin = area == null ? null : area.getCenter();
+        EventInstance instance = spawnEvent(event, origin);
+        if (instance == null)
+            return EventStartResult.NO_SPAWNS;
+
+        active.put(event.getId(), instance);
+        announceStart(instance);
+        updateCompass();
+        return EventStartResult.STARTED;
+    }
+
+    /**
+     * Runs when a player enters an area: rolls the weighted chance and, if an
+     * area-triggered event wins, starts it at the entered area. Skips areas
+     * that are mid-clear / on cooldown / respawning (the next entry re-rolls).
+     */
+    public void tryTriggerOnAreaEntry(Area area) {
+        if (!enabled || area == null)
+            return;
+
+        if (!area.isReady())
+            return;
+
+        if (active.size() >= maxConcurrent)
+            return;
+
+        long now = System.currentTimeMillis();
+
+        if (lastEventEnd > 0 && now - lastEventEnd < minGapSeconds * 1000)
+            return;
+
+        List<WorldEvent> eligible = new ArrayList<>();
+
+        for (WorldEvent event : events.values()) {
+            if (!event.isAreaTriggered() || !event.isEnabled() || event.getWeight() <= 0)
+                continue;
+
+            if (active.containsKey(event.getId()))
+                continue;
+
+            Long cooldown = cooldowns.get(event.getId());
+            if (cooldown != null && now < cooldown)
+                continue;
+
+            eligible.add(event);
+        }
+
+        if (eligible.isEmpty())
+            return;
+
+        if (random.nextDouble() >= chancePerCheck)
+            return;
+
+        WorldEvent event = pickWeightedAmong(eligible);
+        if (event == null)
+            return;
+
+        startAtArea(event.getId(), area);
     }
 
     public boolean stopEvent(String id) {
@@ -261,49 +377,122 @@ public class WorldEventManager {
         return count;
     }
 
-    private EventInstance spawnEvent(WorldEvent event) {
-        Location origin = pickOrigin(event);
+    private EventInstance spawnEvent(WorldEvent event, Location origin) {
+        if (origin == null)
+            origin = pickOrigin(event);
+
         if (origin == null)
             return null;
 
         EventInstance instance = new EventInstance(event, origin,
                 (long) event.getDurationSeconds() * 1000);
 
-        double multiplier = 1.0 + (event.getLevel() - 1) * Math.max(0, difficultyStep);
+        double difficulty = 1.0 + (event.getLevel() - 1) * Math.max(0, difficultyStep);
         boolean any = false;
 
-        for (EventSpawn spawn : event.getMobs())
-            any |= spawnGroup(instance, spawn, false, origin, multiplier);
+        if (event.isWavesEnabled()) {
+            if (event.getWaveType() == WaveType.FINITE) {
+                any = spawnWave(instance, 1);
+            } else {
+                for (EventSpawn spawn : event.getBosses())
+                    any |= spawnGroup(instance, spawn, true, origin, difficulty, 0, 0);
 
-        for (EventSpawn spawn : event.getBosses())
-            any |= spawnGroup(instance, spawn, true, origin, multiplier);
+                if (event.getBosses().isEmpty())
+                    for (EventSpawn spawn : event.getMobs())
+                        any |= spawnGroup(instance, spawn, false, origin, difficulty, 0, 0);
+
+                if (event.getReinforceMobs().isEmpty())
+                    plugin.getLogger().warning("Timed event '" + event.getId()
+                            + "' has no reinforce-mobs — escalation is disabled.");
+            }
+        } else {
+            for (EventSpawn spawn : event.getMobs())
+                any |= spawnGroup(instance, spawn, false, origin, difficulty, 0, 0);
+
+            for (EventSpawn spawn : event.getBosses())
+                any |= spawnGroup(instance, spawn, true, origin, difficulty, 0, 0);
+        }
 
         if (!any)
             return null;
 
-        instance.setTotalMobs(instance.getMobs().size());
-
-        if (instance.getTotalMobs() > 0 && (bossBarEnabled && event.isBossBarEnabled()))
+        if (bossBarEnabled && event.isBossBarEnabled())
             setupBossBar(instance);
+
+        if (event.isTerrainEnabled())
+            applyCrater(instance);
 
         return instance;
     }
 
+    /** Spawns one finite wave (escalated by its level/count gains) and its boss wave when reached. */
+    private boolean spawnWave(EventInstance instance, int wave) {
+        WorldEvent event = instance.getEvent();
+
+        int levelGain = event.getWaveLevelGain() * (wave - 1);
+        int countGain = event.getWaveCountGain() * (wave - 1);
+        double difficulty = 1.0 + (event.getLevel() - 1) * Math.max(0, difficultyStep);
+
+        boolean any = false;
+
+        for (EventSpawn spawn : event.getMobs())
+            any |= spawnGroup(instance, spawn, false, instance.getOrigin(), difficulty, levelGain, countGain);
+
+        if (wave >= event.getBossWave())
+            for (EventSpawn spawn : event.getBosses())
+                any |= spawnGroup(instance, spawn, true, instance.getOrigin(), difficulty, levelGain, countGain);
+
+        if (wave >= event.getWaveCount())
+            instance.setReachedFinalWave(true);
+
+        return any;
+    }
+
+    private void spawnNextFiniteWave(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+        int wave = instance.nextWave();
+
+        spawnWave(instance, wave);
+        announceWave(instance, wave);
+    }
+
+    /** Timed escalation: spawns a reinforcement wave whose strength scales with the wave number. */
+    private void spawnReinforcement(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+        int wave = instance.nextWave();
+
+        int levelGain = event.getWaveLevelGain() * (wave - 1);
+        int countGain = event.getWaveCountGain() * (wave - 1);
+        double difficulty = 1.0 + (event.getLevel() - 1) * Math.max(0, difficultyStep);
+        boolean any = false;
+
+        for (EventSpawn spawn : event.getReinforceMobs().isEmpty() ? event.getMobs() : event.getReinforceMobs())
+            any |= spawnGroup(instance, spawn, false, instance.getOrigin(), difficulty, levelGain, countGain);
+
+        instance.setReinforcementsSpawned(wave - 1);
+
+        if (any)
+            announceWave(instance, wave);
+    }
+
     private boolean spawnGroup(EventInstance instance, EventSpawn spawn, boolean boss,
-                               Location origin, double multiplier) {
+                               Location origin, double difficulty, int levelGain, int countGain) {
         WorldEvent event = instance.getEvent();
         int level = spawn.getLevel() > 0 ? spawn.getLevel() : event.getLevel();
+        level += levelGain;
+
+        int count = Math.max(1, spawn.getCount() + countGain);
 
         AreaSpawnDefinition definition = plugin.getMobResolver().resolve(
-                spawn.getMobId(), spawn.getCount(), boss, level, 0);
+                spawn.getMobId(), count, boss, Math.max(1, level), 0);
         if (definition == null)
             return false;
 
-        if (multiplier > 0) {
+        if (difficulty > 0) {
             if (definition.getHealth() > 0)
-                definition.setHealth(definition.getHealth() * multiplier);
+                definition.setHealth(definition.getHealth() * difficulty);
             if (definition.getDamage() > 0)
-                definition.setDamage(definition.getDamage() * multiplier);
+                definition.setDamage(definition.getDamage() * difficulty);
         }
 
         if (spawn.getName() != null && !spawn.getName().isBlank())
@@ -316,20 +505,291 @@ public class WorldEventManager {
             drops = definition.getDrops();
 
         boolean any = false;
+        int spawned = 0;
 
-        for (int i = 0; i < spawn.getCount(); i++) {
+        for (int i = 0; i < count; i++) {
             Location location = offsetOrigin(origin);
             Entity entity = mobFactory.spawn(definition, location);
             if (entity == null)
                 continue;
 
             any = true;
+            spawned++;
             UUID uuid = entity.getUniqueId();
             instance.track(uuid, drops, boss);
             mobInstances.put(uuid, instance);
         }
 
+        instance.addTotal(spawned);
         return any;
+    }
+
+    // ---- Crater terrain (Meteor Crash) ----
+
+    /** Carves a nether-like bowl crater around the event origin and records every original block. */
+    private void applyCrater(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+        Location origin = instance.getOrigin();
+        World world = origin.getWorld();
+        if (world == null)
+            return;
+
+        int radius = event.getTerrainRadius();
+        int depth = event.getTerrainDepth();
+        int cx = origin.getBlockX();
+        int cz = origin.getBlockZ();
+
+        List<EventInstance.SavedBlock> saved = instance.getCraterBlocks();
+        saved.clear();
+
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                double dist = Math.hypot(dx, dz);
+                if (dist > radius + 0.5)
+                    continue;
+
+                int surfaceY = findSurfaceY(world, cx + dx, origin.getBlockY(), cz + dz);
+                if (surfaceY == Integer.MIN_VALUE)
+                    continue;
+
+                int bowlDepth = Math.max(0, (int) Math.floor(depth * (1.0 - dist / (radius + 1.0))));
+
+                if (bowlDepth == 0) {
+                    Block top = world.getBlockAt(cx + dx, surfaceY, cz + dz);
+                    if (!top.getType().isAir() && !isProtectedCraterBlock(top.getType())) {
+                        saved.add(new EventInstance.SavedBlock(
+                                top.getX(), top.getY(), top.getZ(), top.getBlockData().clone()));
+                        top.setType(pickWeightedMaterial(event.getTerrainEdge()));
+                    }
+                    continue;
+                }
+
+                for (int dY = 0; dY <= bowlDepth; dY++) {
+                    Block block = world.getBlockAt(cx + dx, surfaceY - dY, cz + dz);
+                    if (block.getType().isAir() || isProtectedCraterBlock(block.getType()))
+                        continue;
+
+                    saved.add(new EventInstance.SavedBlock(
+                            block.getX(), block.getY(), block.getZ(), block.getBlockData().clone()));
+                    block.setType(Material.AIR);
+                }
+
+                int floorY = surfaceY - bowlDepth;
+                Block floor = world.getBlockAt(cx + dx, floorY, cz + dz);
+                if (floor.getType().isAir()) {
+                    Block below = world.getBlockAt(cx + dx, floorY - 1, cz + dz);
+                    if (below.getType().isAir())
+                        continue;
+
+                    Material material;
+                    if (dist <= radius * 0.35)
+                        material = Material.MAGMA_BLOCK;
+                    else if (dist <= radius * 0.75)
+                        material = pickWeightedMaterial(event.getTerrainFloor());
+                    else
+                        material = pickWeightedMaterial(event.getTerrainEdge());
+
+                    floor.setType(material);
+                }
+            }
+        }
+
+        instance.setCraterCenter(origin);
+        instance.setCraterActive(!saved.isEmpty());
+
+        if (event.isImpactEffect())
+            impactEffect(origin);
+    }
+
+    /** Replays the recorded blocks, pushing players out of the crater first, and drops the crater state. */
+    private void restoreCrater(EventInstance instance) {
+        if (!instance.isCraterActive())
+            return;
+
+        WorldEvent event = instance.getEvent();
+        Location center = instance.getCraterCenter();
+        World world = center == null ? null : center.getWorld();
+        List<EventInstance.SavedBlock> blocks = instance.getCraterBlocks();
+
+        if (world == null || blocks.isEmpty()) {
+            instance.clearCrater();
+            return;
+        }
+
+        if (event.isPushPlayers())
+            pushPlayersOut(center, event);
+
+        for (EventInstance.SavedBlock saved : blocks)
+            world.getBlockAt(saved.x(), saved.y(), saved.z()).setBlockData(saved.data(), false);
+
+        if (event.isPushPlayers()) {
+            try {
+                Bukkit.getScheduler().runTaskLater(plugin, () -> pushPlayersOut(center, event), 2L);
+            } catch (IllegalStateException ignored) {
+                // plugin is disabling — no re-push; terrain is already restored
+            }
+        }
+
+        if (event.isRestoreEffect())
+            restoreEffect(center);
+
+        plugin.sendConsole("<green>[World Event] " + event.getDisplayName()
+                + ": crater regenerated (" + blocks.size() + " blocks restored).</green>");
+
+        instance.clearCrater();
+    }
+
+    /** Pushes every player standing in the crater disc up and away from the center. */
+    private void pushPlayersOut(Location center, WorldEvent event) {
+        World world = center.getWorld();
+        if (world == null)
+            return;
+
+        double radius = event.getTerrainRadius() + 0.5;
+        int minY = center.getBlockY() - event.getTerrainDepth() - 2;
+        int maxY = center.getBlockY() + 4;
+        double strength = event.getPushStrength();
+        double up = event.getPushUp();
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getWorld() != world)
+                continue;
+
+            Location loc = player.getLocation();
+            if (loc.getBlockY() < minY || loc.getBlockY() > maxY)
+                continue;
+
+            double dx = loc.getX() - center.getX();
+            double dz = loc.getZ() - center.getZ();
+            if (dx * dx + dz * dz > radius * radius)
+                continue;
+
+            pushPlayer(player, dx, dz, strength, up);
+        }
+    }
+
+    private void pushPlayer(Player player, double dx, double dz, double strength, double up) {
+        Vector away;
+        if (dx * dx + dz * dz < 0.01)
+            away = new Vector(random.nextDouble() - 0.5, 0, random.nextDouble() - 0.5);
+        else
+            away = new Vector(dx, 0, dz);
+
+        away.normalize().multiply(strength);
+        away.setY(up);
+        player.setVelocity(away);
+        player.setFallDistance(0);
+    }
+
+    private int findSurfaceY(World world, int x, int startY, int z) {
+        for (int y = startY + 2; y >= world.getMinHeight(); y--) {
+            if (!world.getBlockAt(x, y, z).getType().isAir())
+                return y;
+        }
+
+        return Integer.MIN_VALUE;
+    }
+
+    private boolean isProtectedCraterBlock(Material material) {
+        return switch (material) {
+            case BEDROCK, BARRIER, CHEST, TRAPPED_CHEST, ENDER_CHEST, SPAWNER, LIGHT -> true;
+            default -> false;
+        };
+    }
+
+    private Material pickWeightedMaterial(List<WorldEvent.TerrainBlock> choices) {
+        if (choices == null || choices.isEmpty())
+            return Material.BLACKSTONE;
+
+        int total = choices.stream().mapToInt(WorldEvent.TerrainBlock::weight).sum();
+        int roll = random.nextInt(Math.max(1, total));
+
+        for (WorldEvent.TerrainBlock choice : choices) {
+            roll -= choice.weight();
+            if (roll < 0)
+                return choice.material();
+        }
+
+        return choices.getLast().material();
+    }
+
+    /** Big impact burst (camera flash, lava/ash/embers, explosions + crunch) at the crash site. */
+    private void impactEffect(Location origin) {
+        World world = origin.getWorld();
+        if (world == null)
+            return;
+
+        Location center = origin.clone().add(0, 1, 0);
+        world.spawnParticle(Particle.EXPLOSION_EMITTER, center, 1);
+        world.spawnParticle(Particle.EXPLOSION, center, 16, 1.5, 1, 1.5, 0.05);
+        world.spawnParticle(Particle.FLASH, center, 1);
+        world.spawnParticle(Particle.LAVA, center, 50, 2.5, 0.5, 2.5, 0.05);
+        world.spawnParticle(Particle.FLAME, center, 40, 1.5, 1, 1.5, 0.03);
+        world.spawnParticle(Particle.ASH, center, 80, 2.0, 0.5, 2.0, 0.03);
+
+        Sound boom = decodeSound("entity_generic_explode");
+        if (boom != null)
+            world.playSound(origin, boom, 3.0f, 0.7f);
+
+        Sound crunch = decodeSound("block_basalt_break");
+        if (crunch != null)
+            world.playSound(origin, crunch, 2.0f, 0.6f);
+
+        Sound crack = decodeSound("block_stone_break");
+        if (crack != null)
+            world.playSound(origin, crack, 2.0f, 0.5f);
+    }
+
+    /** Rising embers + occasional crackle from the crater while it exists. */
+    private void ambientCraterEffect(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+        Location center = instance.getCraterCenter();
+        World world = center == null ? null : center.getWorld();
+        if (world == null)
+            return;
+
+        int radius = event.getTerrainRadius();
+        double cx = center.getX();
+        double cz = center.getZ();
+        double y = center.getY() + 0.4;
+
+        Particle[] embers = new Particle[]{
+                Particle.LAVA, Particle.FLAME, Particle.CAMPFIRE_COSY_SMOKE};
+
+        for (int i = 0; i < 3; i++) {
+            double ox = (random.nextDouble() - 0.5) * radius * 1.4;
+            double oz = (random.nextDouble() - 0.5) * radius * 1.4;
+            world.spawnParticle(embers[random.nextInt(embers.length)],
+                    new Location(world, cx + ox, y, cz + oz), 1, 0.1, 0.2, 0.1, 0.02);
+        }
+
+        if (random.nextInt(20) == 0) {
+            Sound crackle = random.nextBoolean()
+                    ? decodeSound("block_fire_ambient")
+                    : decodeSound("block_basalt_break");
+            if (crackle != null)
+                world.playSound(center, crackle, 0.4f, 0.8f);
+        }
+    }
+
+    /** Short re-materialise burst once the crater floors are restored. */
+    private void restoreEffect(Location center) {
+        World world = center.getWorld();
+        if (world == null)
+            return;
+
+        Location spot = center.clone().add(0, 1, 0);
+        world.spawnParticle(Particle.EXPLOSION, spot, 1);
+        world.spawnParticle(Particle.LARGE_SMOKE, spot, 30, 2.0, 1.0, 2.0, 0.03);
+        world.spawnParticle(Particle.END_ROD, spot, 40, 2.0, 1.0, 2.0, 0.05);
+
+        Sound place = decodeSound("block_stone_place");
+        if (place != null)
+            world.playSound(center, place, 2.0f, 0.8f);
+
+        Sound rumble = decodeSound("entity_generic_explode");
+        if (rumble != null)
+            world.playSound(center, rumble, 2.0f, 0.5f);
     }
 
     private Location pickOrigin(WorldEvent event) {
@@ -381,13 +841,33 @@ public class WorldEventManager {
         if (!event.getStartMessage().isBlank())
             broadcastAll(event.getStartMessage(), event, instance);
 
-        showTitle(event, Bukkit.getOnlinePlayers());
+        showTitle(instance, event.getTitleTitle(), event.getTitleSubtitle());
         playSound(event, event.getStartSound());
         updateWaypoint(instance);
 
         String location = locationText(instance);
         plugin.sendConsole("<yellow>[World Event] " + event.getDisplayName()
                 + " started at " + location + ".</yellow>");
+    }
+
+    private void announceWave(EventInstance instance, int wave) {
+        WorldEvent event = instance.getEvent();
+
+        if (!event.getWaveMessage().isBlank())
+            broadcastAll(event.getWaveMessage(), event, instance);
+
+        if (event.isWavesEnabled() && event.getWaveType() == WaveType.TIMED) {
+            String location = locationText(instance);
+            plugin.sendConsole("<gold>[World Event] " + event.getDisplayName()
+                    + " reinforcement wave " + wave + "/" + instance.getWavesTotal()
+                    + " at " + location + ".</gold>");
+        } else {
+            plugin.sendConsole("<gold>[World Event] " + event.getDisplayName()
+                    + " wave " + wave + "/" + instance.getWavesTotal() + ".</gold>");
+        }
+
+        showTitle(instance, event.getTitleWave(), "");
+        playSound(event, event.getWaveSound());
     }
 
     private void endEvent(EventInstance instance, boolean success) {
@@ -426,9 +906,10 @@ public class WorldEventManager {
         if (!event.getEndMessage().isBlank())
             broadcastAll(event.getEndMessage(), event, instance);
 
-        showTitle(event, Bukkit.getOnlinePlayers());
+        showTitle(instance, event.getTitleTitle(), event.getTitleSubtitle());
         playSound(event, event.getEndSound());
         updateCompass();
+        restoreCrater(instance);
     }
 
     private void grantCompletionLoot(EventInstance instance) {
@@ -461,6 +942,124 @@ public class WorldEventManager {
                 if (leftover != null)
                     player.getWorld().dropItemNaturally(player.getLocation(), leftover);
         }
+    }
+
+    /** Spawns the temporary harvest (crater) chests, each rolled from the event's loot table. */
+    private void spawnHarvestChests(EventInstance instance) {
+        if (instance.isHarvestChestsSpawned())
+            return;
+
+        instance.setHarvestChestsSpawned(true);
+
+        WorldEvent event = instance.getEvent();
+        int count = event.getHarvestChests();
+        if (count <= 0)
+            return;
+
+        LootTable table = table(event.getLootTable());
+        if (table == null)
+            return;
+
+        int spawned = 0;
+
+        for (int i = 0; i < count; i++) {
+            Location spot = placeHarvestChest(instance.getOrigin());
+            if (spot == null)
+                continue;
+
+            Block block = spot.getBlock();
+            block.setType(Material.CHEST);
+
+            Chest chest = (Chest) block.getState();
+            Inventory inventory = chest.getInventory();
+
+            for (ItemStack item : buildHarvestContent(table, event.getLevel()))
+                inventory.addItem(item);
+
+            harvestChests.put(block.getLocation(), new HarvestChest(instance,
+                    new ArrayList<>(Arrays.asList(inventory.getContents()))));
+            spawned++;
+        }
+
+        if (spawned > 0)
+            plugin.sendConsole("<green>[World Event] " + event.getDisplayName()
+                    + ": spawned " + spawned + " harvest chest(s).</green>");
+    }
+
+    private List<ItemStack> buildHarvestContent(LootTable table, int level) {
+        List<ItemStack> items = new ArrayList<>();
+
+        int rolls = table.getItemsPerChest() > 0 ? table.getItemsPerChest() : 3;
+
+        for (int i = 0; i < rolls; i++) {
+            LootEntry entry = table.roll(random, level);
+            if (entry == null)
+                continue;
+
+            items.addAll(plugin.getLootResolver().resolveDropItems(entry.getType(), entry.getAmount()));
+        }
+
+        return plugin.getLootResolver().mergeStacks(items);
+    }
+
+    /** Finds a surface block near the origin and returns where a chest would sit (null when none found). */
+    private Location placeHarvestChest(Location origin) {
+        World world = origin.getWorld();
+        if (world == null)
+            return null;
+
+        double dx = (random.nextDouble() - 0.5) * Math.max(2, spawnRadius * 0.8);
+        double dz = (random.nextDouble() - 0.5) * Math.max(2, spawnRadius * 0.8);
+
+        int x = origin.getBlockX() + (int) dx;
+        int z = origin.getBlockZ() + (int) dz;
+
+        for (int y = Math.min(world.getMaxHeight() - 2, origin.getBlockY());
+             y > Math.max(world.getMinHeight(), origin.getBlockY() - 20); y--) {
+            Block below = world.getBlockAt(x, y, z);
+            Block above = world.getBlockAt(x, y + 1, z);
+
+            if (!below.getType().isAir() && above.getType().isAir())
+                return new Location(world, x + 0.5, y + 1, z + 0.5);
+        }
+
+        return null;
+    }
+
+    /**
+     * Attempts to claim a harvest chest for the player: grants the rolled loot,
+     * breaks the block and unregisters it. Returns false when the block is not
+     * a harvest chest.
+     */
+    public boolean claimHarvestChest(Player player, Block block) {
+        if (player == null || block == null)
+            return false;
+
+        HarvestChest chest = harvestChests.remove(block.getLocation());
+        if (chest == null)
+            return false;
+
+        block.setType(Material.AIR);
+
+        for (ItemStack item : chest.items) {
+            if (item == null || item.getType().isAir())
+                continue;
+
+            Map<Integer, ItemStack> leftovers = player.getInventory().addItem(item.clone());
+            for (ItemStack leftover : leftovers.values())
+                if (leftover != null)
+                    block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0.5, 0.5), leftover);
+        }
+
+        boolean anyLeft = harvestChests.values().stream().anyMatch(c -> c.instance == chest.instance);
+        if (!anyLeft)
+            restoreCrater(chest.instance);
+
+        return true;
+    }
+
+    public boolean isHarvestChest(Block block) {
+        return block != null && harvestChests.containsKey(block.getLocation());
     }
 
     /**
@@ -523,8 +1122,22 @@ public class WorldEventManager {
         updateBossBar(instance);
         updateWaypoint(instance);
 
-        if (instance.getMobs().isEmpty())
-            endEvent(instance, true);
+        WorldEvent event = instance.getEvent();
+
+        if (event.isWavesEnabled() && event.getWaveType() == WaveType.TIMED) {
+            if (instance.getBosses().isEmpty()) {
+                spawnHarvestChests(instance);
+                endEvent(instance, true);
+            }
+            return;
+        }
+
+        if (instance.isReachedFinalWave() || !event.isWavesEnabled()) {
+            if (instance.getMobs().isEmpty()) {
+                spawnHarvestChests(instance);
+                endEvent(instance, true);
+            }
+        }
     }
 
     public EventInstance getMobInstance(UUID uuid) {
@@ -532,7 +1145,30 @@ public class WorldEventManager {
     }
 
     private void tick() {
+        long now = System.currentTimeMillis();
+
         for (EventInstance instance : new ArrayList<>(active.values())) {
+            WorldEvent event = instance.getEvent();
+
+            if (instance.isExpired()) {
+                endEvent(instance, false);
+                continue;
+            }
+
+            if (event.isWavesEnabled()) {
+                long interval = (long) event.getWaveIntervalSeconds() * 1000;
+
+                if (event.getWaveType() == WaveType.FINITE
+                        && !instance.isReachedFinalWave()
+                        && now - instance.getLastWaveTime() >= interval) {
+                    spawnNextFiniteWave(instance);
+                } else if (event.getWaveType() == WaveType.TIMED
+                        && instance.getReinforcementsSpawned() < event.getMaxReinforcements()
+                        && now - instance.getLastWaveTime() >= interval) {
+                    spawnReinforcement(instance);
+                }
+            }
+
             for (UUID uuid : instance.getMobs()) {
                 Entity entity = Bukkit.getEntity(uuid);
                 if (entity == null || !entity.isValid()) {
@@ -544,10 +1180,8 @@ public class WorldEventManager {
             if (!active.containsValue(instance))
                 continue;
 
-            if (instance.isExpired()) {
-                endEvent(instance, false);
-                continue;
-            }
+            if (event.isTerrainEnabled() && event.isAmbientEffect() && instance.isCraterActive())
+                ambientCraterEffect(instance);
 
             updateBossBar(instance);
             updateWaypoint(instance);
@@ -569,11 +1203,7 @@ public class WorldEventManager {
         bossBar.progress(Math.clamp(progress, 0f, 1f));
 
         String title = event.getBossBarTitle() == null ? "" : event.getBossBarTitle();
-        bossBar.name(MiniMessage.miniMessage().deserialize(
-                title.replace("%event%", event.getDisplayName())
-                        .replace("%location%", locationText(instance))
-                        .replace("%remaining%", String.valueOf(remaining))
-                        .replace("%total%", String.valueOf(total))));
+        bossBar.name(MiniMessage.miniMessage().deserialize(fill(title, event, instance)));
     }
 
     private void updateWaypoint(EventInstance instance) {
@@ -696,22 +1326,22 @@ public class WorldEventManager {
             plugin.sendMessage(player, line);
     }
 
-    private void showTitle(WorldEvent event, Iterable<? extends Player> players) {
-        if (event.getTitleTitle().isBlank())
+    private void showTitle(EventInstance instance, String titleTemplate, String subtitleTemplate) {
+        if (titleTemplate == null || titleTemplate.isBlank())
             return;
+
+        WorldEvent event = instance.getEvent();
 
         Title.Times times = Title.Times.times(
                 Duration.ofMillis(50L * Math.max(0, event.getTitleFadeIn())),
                 Duration.ofMillis(50L * Math.max(0, event.getTitleStay())),
                 Duration.ofMillis(50L * Math.max(0, event.getTitleFadeOut())));
 
-        Component title = MiniMessage.miniMessage().deserialize(
-                event.getTitleTitle().replace("%event%", event.getDisplayName()));
-        Component subtitle = event.getTitleSubtitle().isBlank() ? Component.empty()
-                : MiniMessage.miniMessage().deserialize(
-                        event.getTitleSubtitle().replace("%event%", event.getDisplayName()));
+        Component title = MiniMessage.miniMessage().deserialize(fill(titleTemplate, event, instance));
+        Component subtitle = subtitleTemplate == null || subtitleTemplate.isBlank() ? Component.empty()
+                : MiniMessage.miniMessage().deserialize(fill(subtitleTemplate, event, instance));
 
-        for (Player player : players)
+        for (Player player : Bukkit.getOnlinePlayers())
             player.showTitle(Title.title(title, subtitle, times));
     }
 
@@ -746,7 +1376,9 @@ public class WorldEventManager {
         return message.replace("%event%", event.getDisplayName())
                 .replace("%location%", locationText(instance))
                 .replace("%remaining%", String.valueOf(instance.getMobs().size()))
-                .replace("%total%", String.valueOf(instance.getTotalMobs()));
+                .replace("%total%", String.valueOf(instance.getTotalMobs()))
+                .replace("%wave%", String.valueOf(instance.getCurrentWave()))
+                .replace("%waves%", String.valueOf(instance.getWavesTotal()));
     }
 
     private String locationText(EventInstance instance) {

@@ -3,6 +3,7 @@ package net.omni.extraction.worldevent;
 import net.kyori.adventure.bossbar.BossBar;
 import net.omni.extraction.mobs.MobDrop;
 import org.bukkit.Location;
+import org.bukkit.block.data.BlockData;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,6 +20,10 @@ import java.util.UUID;
  */
 public class EventInstance {
 
+    /** One original block captured before the event carved it into a crater. */
+    public record SavedBlock(int x, int y, int z, BlockData data) {
+    }
+
     private final WorldEvent event;
     private final Location origin;
     private final Set<UUID> mobs;
@@ -29,6 +34,17 @@ public class EventInstance {
     private int totalMobs;
     private BossBar bossBar;
 
+    private int currentWave;
+    private int wavesTotal;
+    private long lastWaveTime;
+    private int reinforcementsSpawned;
+    private boolean reachedFinalWave;
+    private boolean harvestChestsSpawned;
+
+    private boolean craterActive;
+    private Location craterCenter;
+    private final List<SavedBlock> craterBlocks;
+
     public EventInstance(WorldEvent event, Location origin, long durationMillis) {
         this.event = event;
         this.origin = origin;
@@ -37,6 +53,19 @@ public class EventInstance {
         this.mobDrops = new HashMap<>();
         this.startTime = System.currentTimeMillis();
         this.endTime = this.startTime + durationMillis;
+        this.currentWave = 1;
+        this.craterBlocks = new ArrayList<>();
+        this.craterActive = false;
+
+        if (event.isWavesEnabled()) {
+            this.wavesTotal = event.getWaveType() == WorldEvent.WaveType.FINITE
+                    ? Math.max(1, event.getWaveCount())
+                    : Math.max(1, event.getMaxReinforcements() + 1);
+        } else {
+            this.wavesTotal = 1;
+        }
+
+        this.lastWaveTime = this.startTime;
     }
 
     public WorldEvent getEvent() {
@@ -87,12 +116,85 @@ public class EventInstance {
         this.totalMobs = totalMobs;
     }
 
+    public void addTotal(int count) {
+        this.totalMobs += Math.max(0, count);
+    }
+
+    public int getCurrentWave() {
+        return currentWave;
+    }
+
+    public int getWavesTotal() {
+        return wavesTotal;
+    }
+
+    public long getLastWaveTime() {
+        return lastWaveTime;
+    }
+
+    public int getReinforcementsSpawned() {
+        return reinforcementsSpawned;
+    }
+
+    public void setReinforcementsSpawned(int reinforcementsSpawned) {
+        this.reinforcementsSpawned = reinforcementsSpawned;
+    }
+
+    /** Advances to the next wave, stamping the wave clock, and returns it. */
+    public int nextWave() {
+        currentWave++;
+        lastWaveTime = System.currentTimeMillis();
+        return currentWave;
+    }
+
+    public boolean isReachedFinalWave() {
+        return reachedFinalWave;
+    }
+
+    public void setReachedFinalWave(boolean reachedFinalWave) {
+        this.reachedFinalWave = reachedFinalWave;
+    }
+
+    public boolean isHarvestChestsSpawned() {
+        return harvestChestsSpawned;
+    }
+
+    public void setHarvestChestsSpawned(boolean harvestChestsSpawned) {
+        this.harvestChestsSpawned = harvestChestsSpawned;
+    }
+
     public BossBar getBossBar() {
         return bossBar;
     }
 
     public void setBossBar(BossBar bossBar) {
         this.bossBar = bossBar;
+    }
+
+    public boolean isCraterActive() {
+        return craterActive;
+    }
+
+    public void setCraterActive(boolean craterActive) {
+        this.craterActive = craterActive;
+    }
+
+    public Location getCraterCenter() {
+        return craterCenter;
+    }
+
+    public void setCraterCenter(Location craterCenter) {
+        this.craterCenter = craterCenter;
+    }
+
+    public List<SavedBlock> getCraterBlocks() {
+        return craterBlocks;
+    }
+
+    public void clearCrater() {
+        craterBlocks.clear();
+        craterCenter = null;
+        craterActive = false;
     }
 
     public boolean isExpired() {

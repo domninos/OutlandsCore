@@ -65,3 +65,88 @@ Easy:
     - type: "mmoitems:SWORD:FLAME_BLADE"
       amount: 1
       weight: 1
+
+# Meteor Crash — rewards for fighting the guardians and harvesting the crater.
+# EVENT:<id> items resolve from the config.yml event-items: section.
+# provider: prefixed entries are placeholders for your external item packs.
+meteor_crash:
+  items-per-chest: 4
+  icon: NETHER_STAR
+  display-name: "<aqua>Meteor Crash</aqua>"
+  hologram:
+    - "<aqua><bold>Meteor Crater</bold></aqua>"
+    - "<gray>Right-click to harvest</gray>"
+  entries:
+    - type: "EVENT:meteor_fragment"
+      amount: 1
+      weight: 20
+    - type: "EVENT:meteor_rock"
+      amount: 2
+      weight: 16
+    - type: TOKENS
+      amount: 4
+      weight: 14
+    - type: UPGRADE
+      amount: 1
+      weight: 10
+    - type: TIME
+      amount: 1
+      weight: 10
+    - type: DIAMOND
+      amount: 2
+      weight: 6
+    - type: NETHERITE_INGOT
+      amount: 1
+      weight: 3
+    - type: AMETHYST_SHARD
+      amount: 6
+      weight: 8
+    - type: COPPER_INGOT
+      amount: 12
+      weight: 10
+    - type: "mmoitems:...:meteor_core"
+      amount: 1
+      weight: 4
+    - type: "nexo:...:meteor_cosmetics"
+      amount: 1
+      weight: 2
+    - type: "mmoitems:...:meteor_armor"
+      amount: 1
+      weight: 2
+
+# Horde — rewards for surviving all waves and the final boss.
+horde:
+  items-per-chest: 4
+  icon: IRON_SWORD
+  display-name: "<red>Horde</red>"
+  hologram:
+    - "<red><bold>Horde Spoils</bold></red>"
+    - "<gray>Open the chest below</gray>"
+  entries:
+    - type: "KEY:rusted_key"
+      amount: 1
+      weight: 10
+    - type: "KEY:golden_key"
+      amount: 1
+      weight: 3
+    - type: TOKENS
+      amount: 5
+      weight: 15
+    - type: UPGRADE
+      amount: 1
+      weight: 12
+    - type: TIME
+      amount: 1
+      weight: 9
+    - type: DIAMOND
+      amount: 1
+      weight: 8
+    - type: EMERALD
+      amount: 6
+      weight: 10
+    - type: "EVENT:meteor_fragment"
+      amount: 1
+      weight: 2
+    - type: "mmoitems:...:horde_trophy"
+      amount: 1
+      weight: 3

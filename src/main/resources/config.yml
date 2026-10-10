@@ -306,6 +306,23 @@ keys:
     lore:
       - "<gray>Opens a secure Extraction chest."
 
+# Event item definitions
+# Built-in unique items used by world events. Loot-table/mob-drop entries of
+# type "EVENT:<id>" resolve through this section (like keys). %item% in
+# display-name/lore is replaced with the id.
+event-items:
+  meteor_fragment:
+    material: NETHER_STAR
+    display-name: "<aqua><bold>Meteor Fragment</bold></aqua>"
+    lore:
+      - "<dark_aqua>A scorched shard from the fallen"
+      - "<dark_aqua>meteor — a prized crafting material."
+  meteor_rock:
+    material: BLACKSTONE
+    display-name: "<gray>Meteor Rock</gray>"
+    lore:
+      - "<dark_gray>A charred lump of the crater floor."
+
 # Upgrade GUI (/upgrade)
 # Shows the player's current armor and lets them drop an upgrade token onto a piece.
 upgrade-gui:

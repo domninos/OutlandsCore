@@ -66,6 +66,8 @@ public final class ConfigKeys {
 
     public static final String KEYS = "keys";
 
+    public static final String EVENT_ITEMS = "event-items";
+
     public static final String UPGRADE_GUI = "upgrade-gui";
     public static final String UPGRADE_GUI_TITLE = "upgrade-gui.title";
     public static final String UPGRADE_GUI_ROWS = "upgrade-gui.rows";

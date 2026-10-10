@@ -433,7 +433,8 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
     (kill/boss) still fire as before.
   - **Loot/Mob resolvers** (`loot/LootResolver.java`, `mobs/MobResolver.java`): shared single-source helpers
     extracted from `AreaClearManager`/`AreaManager`. `LootResolver.resolveDropItems(type, amount)` covers
-    `MATERIAL`/`TOKENS`/`TIME`/`UPGRADE`/`provider:id`/`KEY:<id>` and `mergeStacks(List<ItemStack>)`;
+    `MATERIAL`/`TOKENS`/`TIME`/`UPGRADE`/`provider:id`/`KEY:<id>`/`EVENT:<id>`/`CHARM:`/`ARTIFACT:` and
+    `mergeStacks(List<ItemStack>)`;
     `MobResolver.resolve(mobId,count,boss,level,respawnSeconds)` resolves mobs.yml template → vanilla `EntityType` →
     MythicMobs id (defense/drops/equipment copied; boss = max armor/helmet) plus `isKnownMobId`/template helpers.
     Constructed in `ExtractionPlugin` after `mobTemplateManager.load()`, injected into `AreaManager` (ctor
@@ -444,20 +445,56 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
     completion-rolls, compass, waypoint-hologram, boss-bar) + per-event definitions. `WorldEvent` parses one event
     (`weight` 0 = never auto-chosen, cooldown/duration-seconds, level, loot-table, spawn-locations [empty = spawn
     near a random online in-World player], mobs/bosses `{mob,count,level,name,drops}`, broadcast warning/start/end,
-    title, sounds [Sound name + volume/pitch], boss-bar color/style, waypoint-lines).
+    title, sounds [Sound name + volume/pitch], boss-bar color/style, waypoint-lines, `harvest-chests` N,
+    `reinforce-mobs` + a `waves:` block).
+    The **wave engine**: `waves.type` = `finite` (Horde: up to `count` time-driven
+    escalating waves, `boss-wave` spawns the `bosses`, `level-gain`/`count-gain` scale each wave, success = mobs
+    cleared AFTER the final wave starts) or `timed` (Meteor: `bosses` = initial elite guardians, `reinforce-mobs`
+    spawn every `interval-seconds` escalating with `level-gain`/`count-gain` up to `max`, success = guardians dead).
+    `EventInstance` tracks `currentWave`/`wavesTotal`/`lastWaveTime`/`reinforcementsSpawned`/`reachedFinalWave`;
+    `spawnGroup` takes level/count gains and `addTotal` keeps `%total%` cumulative. On success a timed/chest event
+    may **spawn harvest chests**: `spawnHarvestChests` places `harvest-chests` CHESTs near the origin filled from the
+    event loot table (`items-per-chest` rolls each), tracked in `harvestChests` (Location → holder) and claimed via
+    `WorldEventListener.onInteract` → `claimHarvestChest` (grants loot, breaks the block; not coupled to area-clear
+    chests; `clearHarvestChests()` runs on disable). New per-event `broadcast.wave`/`title.wave`/`sounds.wave` and
+    `%wave%`/`%waves%` placeholders (broadcast + boss-bar + waypoint). `EVENT:<id>` is a loot/mob-drop type
+    resolving through the new config.yml `event-items:` section (like `keys:`; `ConfigKeys.EVENT_ITEMS`,
+    `ConfigUtil.loadEventItemDefinitions`/`getEventItemDefinitions`, `LootItemUtil.createEventItem`).
     `WorldEventManager` (constructed in `ExtractionPlugin` after `lootTableManager`, getter `getWorldEventManager()`)
     auto-schedules via a weighted handler at `check-seconds`, spawns through the shared `AreaMobFactory` with the
     difficulty multiplier `1 + (level-1)*difficulty-step` on health/damage (event-boss drops = entry `drops` if set,
     else template drops), drives an Adventure boss bar, per-in-World-player compass targeting, and a DH waypoint
     (`HologramManager.updateWaypointHologram`, name `extraction_event_<id>`), and pays completion loot to every
     online **in-World** player on success (per-kill rolls during the event, bosses × boss-roll-multiplier).
-    `WorldEventListener` clears `EntityDeathEvent` drops/exp, rolls loot, `handleMobDeath` (tracked set empty =
-    success → `endEvent(instance, true)`), plus join/quit/world-change show/hide of boss bars + compass.
+    `WorldEventListener` clears `EntityDeathEvent` drops/exp, rolls loot, `handleMobDeath` (success gate is
+    gate-aware: timed → `bosses` empty, finite → `reachedFinalWave` && mobs empty; non-waves unchanged), plus
+    join/quit/world-change show/hide of boss bars + compass.
     Broadcasts/titles go to ALL online players; sounds/boss bar/compass/completion loot only to players inside
-    `settings.world-name`. Placeholders `%event%`/`%location%`/`%remaining%`/`%total%` (`%distance%` reserved).
+    `settings.world-name`. Placeholders `%event%`/`%location%`/`%remaining%`/`%total%`/`%wave%`/`%waves%`
+    (`%distance%` reserved).
     Stale/expired sessions `endEvent(instance,false)` (despawn mobs, hide bar, remove waypoint, cancel).
     `/extraction events status|list|start {id}|stop [id|all]` (perm `extraction.admin`) + help + tab completer
     wired; `shutdown()` on disable; `reload()` on `/extraction reload`.
+    Area-triggered events: per-event `trigger: area` (`WorldEvent.TriggerMode`, default `schedule`) — such events
+    are EXCLUDED from the global weighted picker and instead start wherever a player enters ANY area:
+    `WorldEventListener.onPlayerEnterArea` → `WorldEventManager.tryTriggerOnAreaEntry(area)` (gates: enabled,
+    `max-concurrent`, global `min-gap`, per-event cooldown, `area.isReady()`) → weighted pick among the
+    area-triggered events via the shared `chance-per-check` → `startAtArea` with origin = `area.getCenter()`
+    (no single-area binding; admin `/extraction events start` still forces the scheduled origin). Titles now
+    resolve through `fill()` (`showTitle(EventInstance,...)`), so `%wave%/%waves%` work in `title.wave`.
+    Meteor terrain (`WorldEvent.terrain:*`): `applyCrater` carves a nether bowl (radius/depth, weighted
+    `floor-blocks` MAGMA center → BLACKSTONE/BASALT/NETHERRACK ring, `edge-blocks` scorched rim; protected
+    blocks BEDROCK/BARRIER/CHEST/END/BARRIER/SPAWNER/LIGHT skipped) saving every original block into
+    `EventInstance.craterBlocks` (`SavedBlock` = x/y/z + `BlockData`); `impactEffect` (EXPLOSION_EMITTER/EXPLOSION/
+    FLASH/LAVA/FLAME/ASH burst + explosion/basalt/stone crash) fires at start, `ambientCraterEffect` (rising
+    LAVA/FLAME/CAMPFIRE smoke + occasional crackle) each tick while active, `restoreCrater` replays the blocks
+    with a `restoreEffect` burst and **pushes anyone inside the crater up/back** (`pushPlayersOut`:
+    horizontal-away × `push-strength` + `push-up`, fall-distance reset + a 2-tick re-push) before regenerating.
+    Regen triggers = last harvest chest of the instance claimed (in `claimHarvestChest`) or `endEvent`/`shutdown()`
+    safety net (so a failed/stopped event never leaves the world cratered; a hard server kill — no onDisable —
+    can still leave a permanent crater, noted limitation). Harvest chests cannot be broken
+    (`WorldEventListener.onBlockBreak` cancels). `particle constants note`: this 1.21.11 API uses `LARGE_SMOKE`
+    (not `SMOKE_LARGE`) and `EXPLOSION`/`EXPLOSION_EMITTER` (not `EXPLOSION_LARGE`/`EXPLOSION_HUGE`).
   - **`MobResolver` refactor detail**: resolve returns a complete `AreaSpawnDefinition`, so
     `AreaManager.resolveSpawns` works unchanged; `AreaClearManager.spawnGroup` still overwrites count/level from the
     spawn-entry after resolve. `AreaSpawnDefinition.count` (a template copy) is stale for per-spawn entries — read

@@ -17,20 +17,45 @@
 #
 # Per-event:
 #   enabled, display-name, weight (0 = never auto-chosen), cooldown-seconds,
-#   duration-seconds, level, loot-table
+#   duration-seconds, level, loot-table, harvest-chests (N temporary chests
+#   spawned at the origin when the event succeeds; right-click to claim)
+#   trigger: schedule (default, global timer) or area — area-triggered events
+#     are NOT on the global timer; entering ANY ready area rolls the weighted
+#     chance and starts the event at that area's center. weight still drives
+#     which area event wins the roll.
 #   spawn-locations: specific world anchors; when empty the event spawns near a
 #     random online player in the extraction world
 #   mobs / bosses: { mob, count, level (optional -> event level), name (optional, bosses),
 #     drops (optional, bosses) } — mob ids resolve from mobs.yml, a vanilla
 #     EntityType, or a MythicMobs id.
-#   broadcast: warning/start/end lines (%event% %location% %remaining% %total%)
-#   title: start/end title (%event%)
-#   sounds: start/end Sound names (e.g. entity_wither_spawn) + volume/pitch
-#   boss-bar: title (%event% %remaining% %total% %location%), color, style
-#   waypoint-lines: waypoint text (%event% %location% %remaining% %total%)
+#   reinforce-mobs: timed-only — dedicated escalation list for reinforcements
+#   waves:
+#     type: finite -> Horde: N time-driven escalating waves; the bosses list is
+#                     spawned on boss-wave; success = everything cleared after it.
+#         timed -> Meteor: the bosses list is the initial "guardian" wave;
+#                  reinforcements (reinforce-mobs) spawn every interval and grow
+#                  stronger; success = all guardians defeated.
+#     count, interval-seconds, level-gain, count-gain, boss-wave, max (timed)
+#   terrain: (meteor-crash visuals)
+#     enabled, radius, depth (bowl depth, fuller toward the center)
+#     floor-blocks: weighted nether/meteor floor materials (string or {type, weight})
+#     edge-blocks: scorched rim materials
+#     impact-effect: particle burst + explosion/crunch sound when the crater forms
+#     ambient-effect: rising embers + crackle while the crater exists
+#     restore-effect: burst + sound when the crater regenerates
+#     push-players: push players in the crater up & backwards when it regenerates
+#     push-strength, push-up
+#     The crater regenerates its original terrain when all harvest chests are
+#     looted, and as a safety net when the event ends or the plugin stops.
+#   broadcast: warning/start/wave/end lines (%event% %location% %remaining%
+#     %total% %wave% %waves%)
+#   title: title/subtitle/wave (%event% %wave% %waves%)
+#   sounds: start/wave/end Sound names (e.g. entity_wither_spawn) + volume/pitch
+#   boss-bar: title (>%event% %remaining%/%total% %wave%/%waves% %location%), color, style
+#   waypoint-lines: waypoint text (%event% %location% %remaining% %total% %wave% %waves%)
 #
 # Placeholders: %event% = display name, %location% = "world x y z",
-#               %remaining%/%total% = live mob counts.
+#               %remaining%/%total% = live mob counts, %wave%/%waves% = wave counter.
 
 settings:
   enabled: true
@@ -48,96 +73,150 @@ settings:
   boss-bar: true
 
 events:
-  zombie_wave:
+  meteor_crash:
     enabled: true
-    display-name: "Zombie Wave"
-    weight: 20
-    cooldown-seconds: 900
-    duration-seconds: 300
+    display-name: "Meteor Crash"
+    weight: 15
+    cooldown-seconds: 1500
+    duration-seconds: 420
+    level: 2
+    loot-table: "meteor_crash"
+    harvest-chests: 4
+    # Meteor terrain: carve a nether crater at the crash site; it regenerates
+    # when all harvest chests are looted (players inside are pushed up/back).
+    terrain:
+      enabled: true
+      radius: 6
+      depth: 3
+      floor-blocks:
+        - MAGMA_BLOCK
+        - { type: BLACKSTONE, weight: 3 }
+        - { type: BASALT, weight: 3 }
+        - { type: NETHERRACK, weight: 2 }
+      edge-blocks:
+        - BLACKSTONE
+        - BASALT
+      impact-effect: true
+      ambient-effect: true
+      restore-effect: true
+      push-players: true
+      push-strength: 1.6
+      push-up: 0.6
+    # Elite guardians guard the crater; reinforcements escalate over time.
+    bosses:
+      - mob: IRON_GOLEM
+        count: 3
+        name: "<yellow><bold>Meteor Guardian</bold></yellow>"
+        drops:
+          - type: "EVENT:meteor_fragment"
+            chance: 1.0
+            amount: 1
+          - type: TOKENS
+            chance: 1.0
+            amount: 4
+    reinforce-mobs:
+      - mob: ZOMBIFIED_PIGLIN
+        count: 3
+      - mob: BLAZE
+        count: 2
+      - mob: MAGMA_CUBE
+        count: 2
+    waves:
+      type: timed
+      interval-seconds: 20
+      level-gain: 1
+      count-gain: 1
+      max: 6
+    broadcast:
+      warning: "<yellow>A meteor tears across the sky above %location%!</yellow>"
+      start: "<red>%event% has begun at %location% — slay the guardians, then harvest the crater!</red>"
+      wave: "<gold>%event%: more creatures crawl out of the crater at %location%!</gold>"
+      end: "<green>%event% is over — the crater has cooled.</green>"
+    title:
+      title: "<red><bold>%event%</bold></red>"
+      subtitle: "<gray>Slay the guardians, then harvest the crater.</gray>"
+      wave: "<gold><bold>Reinforcements!</bold></gold>"
+      fade-in: 10
+      stay: 70
+      fade-out: 20
+    sounds:
+      start: entity_generic_explode
+      wave: entity_blaze_ambient
+      end: entity_generic_explode
+      volume: 1.0
+      pitch: 1.0
+    boss-bar:
+      enabled: true
+      title: "<red>%event%</red> <dark_gray>»</dark_gray> <white>%remaining%/%total%</white> <dark_gray>»</dark_gray> <gold>wave %wave%/%waves%</gold>"
+      color: RED
+      style: PROGRESS
+    waypoint-lines:
+      - "<yellow><bold>%event%</bold></yellow>"
+      - "<gold>Wave %wave%/%waves%</gold>"
+      - "<gray>%remaining%/%total% mobs</gray>"
+      - "<gray>%location%</gray>"
+
+  horde:
+    enabled: true
+    display-name: "Horde"
+    # Triggered by entering any ready area: the weighted roll picks the winner
+    # and the horde starts at that area's center (no single-area binding).
+    trigger: area
+    weight: 18
+    cooldown-seconds: 1200
+    duration-seconds: 420
     level: 1
-    loot-table: "Easy"
+    loot-table: "horde"
     mobs:
       - mob: ZOMBIE
-        count: 8
+        count: 6
       - mob: HUSK
-        count: 4
+        count: 3
+      - mob: SKELETON
+        count: 3
     bosses:
       - mob: ZOMBIE_VILLAGER
         count: 1
-        name: "<yellow><bold>Zombie Lord</bold></yellow>"
+        name: "<red><bold>Horde Warlord</bold></red>"
         drops:
-          - type: TOKENS
+          - type: "KEY:golden_key"
             chance: 1.0
-            amount: 5
-          - type: UPGRADE
-            chance: 0.25
             amount: 1
+          - type: UPGRADE
+            chance: 0.5
+            amount: 1
+    waves:
+      type: finite
+      count: 8
+      interval-seconds: 25
+      level-gain: 1
+      count-gain: 2
+      boss-wave: 8
     broadcast:
-      warning: "<yellow>[World Event] A horde approaches %location%...</yellow>"
-      start: "<red>[World Event] %event% has begun at %location%!</red>"
-      end: "<green>[World Event] %event% has ended.</green>"
+      warning: "<dark_red>A horde awakens near %location%!</dark_red>"
+      start: "<red>%event% has begun near %location% — survive %waves% waves!</red>"
+      wave: "<dark_red>Wave %wave%/%waves% is upon you!</dark_red>"
+      end: "<green>%event% has been cleared!</green>"
     title:
-      title: "<red><bold>%event%</bold></red>"
-      subtitle: "<gray>Defend %location%!</gray>"
+      title: "<dark_red><bold>%event%</bold></dark_red>"
+      subtitle: "<gray>Survive %waves% waves!</gray>"
+      wave: "<dark_red><bold>Wave %wave%/%waves%</bold></dark_red>"
       fade-in: 10
       stay: 70
       fade-out: 20
     sounds:
       start: entity_zombie_ambient
-      end: entity_zombie_death
+      wave: entity_zombie_ambient
+      end: entity_ravager_roar
       volume: 1.0
       pitch: 1.0
     boss-bar:
       enabled: true
-      title: "<red>%event%</red> <dark_gray>»</dark_gray> <white>%remaining%/%total% mobs</white>"
+      title: "<red>%event%</red> <dark_gray>»</dark_gray> <white>wave %wave%/%waves%</white> <dark_gray>»</dark_gray> <white>%remaining% mobs</white>"
       color: RED
       style: PROGRESS
     waypoint-lines:
-      - "<yellow><bold>%event%</bold></yellow>"
-      - "<white>%remaining%/%total% mobs</white>"
-      - "<gray>%location%</gray>"
-
-  wither_ritual:
-    enabled: true
-    display-name: "Wither Ritual"
-    weight: 5
-    cooldown-seconds: 1800
-    duration-seconds: 420
-    level: 2
-    loot-table: "Easy"
-    mobs:
-      - mob: WITHER_SKELETON
-        count: 6
-      - mob: SKELETON
-        count: 6
-    bosses:
-      - mob: WITHER
-        count: 1
-        drops:
-          - type: TOKENS
-            chance: 1.0
-            amount: 10
-    broadcast:
-      warning: "<dark_purple>[World Event] An ominous ritual begins somewhere...</dark_purple>"
-      start: "<dark_red>[World Event] %event% has begun at %location%!</dark_red>"
-      end: "<green>[World Event] %event% has ended.</green>"
-    title:
-      title: "<dark_red><bold>%event%</bold></dark_red>"
-      subtitle: "<gray>Slay the <white>Wither</white>!</gray>"
-      fade-in: 10
-      stay: 70
-      fade-out: 20
-    sounds:
-      start: entity_wither_spawn
-      end: entity_wither_death
-      volume: 1.0
-      pitch: 1.0
-    boss-bar:
-      enabled: true
-      title: "<dark_red>%event%</dark_red> <dark_gray>»</dark_gray> <white>%remaining%/%total% mobs</white>"
-      color: PURPLE
-      style: NOTCHED_6
-    waypoint-lines:
-      - "<dark_red><bold>%event%</bold></dark_red>"
-      - "<white>%remaining%/%total% mobs</white>"
+      - "<red><bold>%event%</bold></red>"
+      - "<gold>Wave %wave%/%waves%</gold>"
+      - "<gray>%remaining%/%total% mobs</gray>"
       - "<gray>%location%</gray>"

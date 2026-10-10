@@ -27,6 +27,7 @@ public class ConfigUtil {
     private final Map<String, Map<String, Object>> timeLootDefinitions;
     private final Map<String, Map<String, Object>> tokenLootDefinitions;
     private final Map<String, Map<String, Object>> keyDefinitions;
+    private final Map<String, Map<String, Object>> eventItemDefinitions;
     private final Map<String, Integer> defaultLoadoutTiers;
     private String worldName;
     private int timeLimitSeconds;
@@ -214,6 +215,7 @@ public class ConfigUtil {
         this.timeLootDefinitions = new HashMap<>();
         this.tokenLootDefinitions = new HashMap<>();
         this.keyDefinitions = new HashMap<>();
+        this.eventItemDefinitions = new HashMap<>();
         this.defaultLoadoutTiers = new HashMap<>();
         this.scoreboardLines = new ArrayList<>();
         this.hologramLines = new ArrayList<>();
@@ -294,6 +296,7 @@ public class ConfigUtil {
         loadTimeLootDefinitions(savedDefaults);
         loadTokenLootDefinitions(savedDefaults);
         loadKeyDefinitions(savedDefaults);
+        loadEventItemDefinitions(savedDefaults);
         loadUpgradeGui(savedDefaults);
         loadUpgradeConfirm(savedDefaults);
         loadLoadoutGui(savedDefaults);
@@ -492,6 +495,33 @@ public class ConfigUtil {
                         values.put(valueKey, defSection.get(valueKey));
 
                     keyDefinitions.put(key, values);
+                }
+            }
+        }
+    }
+
+    private void loadEventItemDefinitions(AtomicInteger savedDefaults) {
+        eventItemDefinitions.clear();
+
+        ConfigurationSection section = plugin.getConfig().getConfigurationSection(ConfigKeys.EVENT_ITEMS);
+
+        if (section == null || section.getKeys(false).isEmpty()) {
+            plugin.getConfig().set(ConfigKeys.EVENT_ITEMS, getDefaultEventItems());
+            savedDefaults.incrementAndGet();
+            section = plugin.getConfig().getConfigurationSection(ConfigKeys.EVENT_ITEMS);
+        }
+
+        if (section != null) {
+            for (String key : section.getKeys(false)) {
+                ConfigurationSection defSection = section.getConfigurationSection(key);
+
+                if (defSection != null) {
+                    Map<String, Object> values = new HashMap<>();
+
+                    for (String valueKey : defSection.getKeys(false))
+                        values.put(valueKey, defSection.get(valueKey));
+
+                    eventItemDefinitions.put(key, values);
                 }
             }
         }
@@ -1027,6 +1057,23 @@ public class ConfigUtil {
         return defs;
     }
 
+    private Map<String, Object> getDefaultEventItems() {
+        Map<String, Object> defs = new HashMap<>();
+
+        defs.put("meteor_fragment", Map.of(
+                "material", "NETHER_STAR",
+                "display-name", "<aqua><bold>Meteor Fragment</bold></aqua>",
+                "lore", List.of("<dark_aqua>A scorched shard from the fallen",
+                        "<dark_aqua>meteor — a prized crafting material.")
+        ));
+        defs.put("meteor_rock", Map.of(
+                "material", "BLACKSTONE",
+                "display-name", "<gray>Meteor Rock</gray>",
+                "lore", List.of("<dark_gray>A charred lump of the crater floor.")
+        ));
+        return defs;
+    }
+
     private List<String> getAndDefaultStringList(String path, List<String> defaultVal, AtomicInteger counter) {
         if (!plugin.getConfig().contains(path)) {
             plugin.getConfig().set(path, defaultVal);
@@ -1111,6 +1158,10 @@ public class ConfigUtil {
 
     public Map<String, Map<String, Object>> getKeyDefinitions() {
         return keyDefinitions;
+    }
+
+    public Map<String, Map<String, Object>> getEventItemDefinitions() {
+        return eventItemDefinitions;
     }
 
     public int getAreaAutoSaveSeconds() {

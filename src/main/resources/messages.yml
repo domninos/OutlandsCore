@@ -167,3 +167,4 @@ events:
   started: "<green>Started event <white>%event%</white>.</green>"
   stopped: "<gold>Stopped event <white>%event%</white>.</gold>"
   stopped-all: "<gold>Stopped <white>%count%</white> world event(s).</gold>"
+  harvest: "<green>You harvested the crater!</green>"

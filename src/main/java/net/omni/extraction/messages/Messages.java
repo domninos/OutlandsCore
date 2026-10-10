@@ -170,7 +170,8 @@ public enum Messages {
     EVENTS_NO_SPAWNS("events.no-spawns", "<red>Could not start <white>%event%</white> — no spawn location available.</red>"),
     EVENTS_STARTED("events.started", "<green>Started event <white>%event%</white>.</green>"),
     EVENTS_STOPPED("events.stopped", "<gold>Stopped event <white>%event%</white>.</gold>"),
-    EVENTS_STOPPED_ALL("events.stopped-all", "<gold>Stopped <white>%count%</white> world event(s).</gold>");
+    EVENTS_STOPPED_ALL("events.stopped-all", "<gold>Stopped <white>%count%</white> world event(s).</gold>"),
+    EVENTS_HARVEST("events.harvest", "<green>You harvested the crater!</green>");
 
     private final String path;
     private final Object defaultVal;
