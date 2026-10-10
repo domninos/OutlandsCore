@@ -16,6 +16,7 @@
 #                                    consumed when claiming a chest that was assigned it via
 #                                    /areas setchest {area} {index} key {keyId}). Definitions
 #                                    live in the config.yml keys: section.
+#   type: "EVENT:<id>"               World-event item (resolves via config.yml event-items)
 #
 # Weighted level scaling: entries can be restricted by the area's level (the
 # highest configured mob level of the area) with min-level/max-level. 0 (the
@@ -150,3 +151,83 @@ horde:
     - type: "mmoitems:...:horde_trophy"
       amount: 1
       weight: 3
+
+# Supply Convoy — rewards from intercepting the convoy and opening its crates.
+supply_convoy:
+  items-per-chest: 4
+  icon: TRIPWIRE_HOOK
+  display-name: "<gold>Supply Convoy</gold>"
+  hologram:
+    - "<gold><bold>Supply Cache</bold></gold>"
+    - "<gray>Right-click to open</gray>"
+  entries:
+    - type: "EVENT:supply_crate_key"
+      amount: 1
+      weight: 14
+    - type: TOKENS
+      amount: 6
+      weight: 14
+    - type: UPGRADE
+      amount: 1
+      weight: 12
+    - type: TIME
+      amount: 1
+      weight: 10
+    - type: DIAMOND
+      amount: 2
+      weight: 8
+    - type: EMERALD
+      amount: 8
+      weight: 10
+    - type: GOLD_INGOT
+      amount: 10
+      weight: 10
+    - type: IRON_INGOT
+      amount: 14
+      weight: 10
+    - type: "mmoitems:...:convoy_gearmix"
+      amount: 1
+      weight: 4
+    - type: "nexo:...:convoy_gadget"
+      amount: 1
+      weight: 2
+
+# Toxic Storm — high-value rewards for risking the contaminated zones.
+toxic_storm:
+  items-per-chest: 3
+  icon: CHORUS_FRUIT
+  display-name: "<green>Toxic Storm</green>"
+  hologram:
+    - "<green><bold>Storm Cache</bold></green>"
+    - "<gray>Right-click to open</gray>"
+  entries:
+    - type: "EVENT:hazmat_fragment"
+      amount: 1
+      weight: 14
+    - type: TOKENS
+      amount: 6
+      weight: 14
+    - type: UPGRADE
+      amount: 1
+      weight: 12
+    - type: TIME
+      amount: 1
+      weight: 10
+    - type: EMERALD
+      amount: 10
+      weight: 10
+    - type: GLOWSTONE_DUST
+      amount: 12
+      weight: 8
+    - type: AMETHYST_SHARD
+      amount: 8
+      weight: 8
+    - type: NETHERITE_SCRAP
+      amount: 1
+      weight: 3
+    - type: "mmoitems:...:storm_brew"
+      amount: 1
+      weight: 4
+    - type: "nexo:...:storm_cosmetic"
+      amount: 1
+      weight: 2

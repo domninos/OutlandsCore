@@ -24,9 +24,12 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
@@ -387,6 +390,9 @@ public class WorldEventManager {
         EventInstance instance = new EventInstance(event, origin,
                 (long) event.getDurationSeconds() * 1000);
 
+        if (event.isStorm())
+            initStormZones(instance);
+
         double difficulty = 1.0 + (event.getLevel() - 1) * Math.max(0, difficultyStep);
         boolean any = false;
 
@@ -395,11 +401,11 @@ public class WorldEventManager {
                 any = spawnWave(instance, 1);
             } else {
                 for (EventSpawn spawn : event.getBosses())
-                    any |= spawnGroup(instance, spawn, true, origin, difficulty, 0, 0);
+                    any |= spawnGroup(instance, spawn, true, spawnAnchor(instance), difficulty, 0, 0);
 
                 if (event.getBosses().isEmpty())
                     for (EventSpawn spawn : event.getMobs())
-                        any |= spawnGroup(instance, spawn, false, origin, difficulty, 0, 0);
+                        any |= spawnGroup(instance, spawn, false, spawnAnchor(instance), difficulty, 0, 0);
 
                 if (event.getReinforceMobs().isEmpty())
                     plugin.getLogger().warning("Timed event '" + event.getId()
@@ -412,6 +418,9 @@ public class WorldEventManager {
             for (EventSpawn spawn : event.getBosses())
                 any |= spawnGroup(instance, spawn, true, origin, difficulty, 0, 0);
         }
+
+        if (event.isConvoy())
+            any |= startConvoyRoute(instance);
 
         if (!any)
             return null;
@@ -436,11 +445,11 @@ public class WorldEventManager {
         boolean any = false;
 
         for (EventSpawn spawn : event.getMobs())
-            any |= spawnGroup(instance, spawn, false, instance.getOrigin(), difficulty, levelGain, countGain);
+            any |= spawnGroup(instance, spawn, false, spawnAnchor(instance), difficulty, levelGain, countGain);
 
         if (wave >= event.getBossWave())
             for (EventSpawn spawn : event.getBosses())
-                any |= spawnGroup(instance, spawn, true, instance.getOrigin(), difficulty, levelGain, countGain);
+                any |= spawnGroup(instance, spawn, true, spawnAnchor(instance), difficulty, levelGain, countGain);
 
         if (wave >= event.getWaveCount())
             instance.setReachedFinalWave(true);
@@ -467,7 +476,7 @@ public class WorldEventManager {
         boolean any = false;
 
         for (EventSpawn spawn : event.getReinforceMobs().isEmpty() ? event.getMobs() : event.getReinforceMobs())
-            any |= spawnGroup(instance, spawn, false, instance.getOrigin(), difficulty, levelGain, countGain);
+            any |= spawnGroup(instance, spawn, false, spawnAnchor(instance), difficulty, levelGain, countGain);
 
         instance.setReinforcementsSpawned(wave - 1);
 
@@ -498,6 +507,23 @@ public class WorldEventManager {
         if (spawn.getName() != null && !spawn.getName().isBlank())
             definition.setDisplayName(spawn.getName());
 
+        if (event.isStorm()) {
+            double mutate = event.getStorm().mutateMultiplier();
+            if (mutate > 1.0) {
+                if (definition.getHealth() > 0)
+                    definition.setHealth(definition.getHealth() * mutate);
+                if (definition.getDamage() > 0)
+                    definition.setDamage(definition.getDamage() * mutate);
+            }
+
+            String prefix = event.getStorm().mutatePrefix();
+            if (prefix != null && !prefix.isBlank()) {
+                String current = definition.getDisplayName();
+                definition.setDisplayName(prefix + (current == null || current.isBlank()
+                        ? definition.getType() : current));
+            }
+        }
+
         List<MobDrop> drops;
         if (boss)
             drops = spawn.getDrops().isEmpty() ? definition.getDrops() : spawn.getDrops();
@@ -516,12 +542,424 @@ public class WorldEventManager {
             any = true;
             spawned++;
             UUID uuid = entity.getUniqueId();
+
+            if (event.isStorm())
+                entity.setGlowing(true);
+
             instance.track(uuid, drops, boss);
             mobInstances.put(uuid, instance);
         }
 
         instance.addTotal(spawned);
         return any;
+    }
+
+    // ---- Supply Convoy ----
+
+    /**
+     * The origin anchor for a new spawn group: a random storm zone when this
+     * is a storm, else the event origin.
+     */
+    private Location spawnAnchor(EventInstance instance) {
+        if (instance.getEvent().isStorm()) {
+            List<Location> zones = instance.getStormZones();
+            if (!zones.isEmpty())
+                return zones.get(random.nextInt(zones.size()));
+        }
+
+        return instance.getOrigin();
+    }
+
+    /**
+     * Builds the convoy's route (a sampled straight line from the origin to the
+     * map's extraction spawn), spawns the carrier and registers it as a boss.
+     */
+    private boolean startConvoyRoute(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+        WorldEvent.ConvoyConfig cfg = event.getConvoy();
+        Location origin = instance.getOrigin();
+        World world = origin.getWorld();
+        if (world == null)
+            return false;
+
+        Location dest = plugin.getConfigUtil().getSpawnLocation();
+        if (dest == null || dest.getWorld() == null)
+            dest = world.getSpawnLocation();
+
+        Vector dir = dest.toVector().subtract(origin.toVector());
+        double dist = dir.length();
+        if (dist < 1.0)
+            return false;
+
+        dir.normalize();
+
+        double step = Math.max(1, cfg.stepBlocks());
+        List<Location> points = instance.getConvoyPoints();
+        points.add(origin.clone());
+
+        if (world.getEnvironment() == World.Environment.NETHER) {
+            // Nether ceiling/caves make surface snapping unreliable — use a straight line.
+            for (double d = step; d < dist; d += step)
+                points.add(origin.clone().add(dir.clone().multiply(d)));
+        } else {
+            for (double d = step; d < dist; d += step)
+                points.add(groundSnap(origin.clone().add(dir.clone().multiply(d))));
+        }
+
+        points.add(dest.clone());
+        instance.setConvoyRouteLength(dist);
+        instance.setLastConvoyDist(Double.MAX_VALUE);
+
+        Entity carrier = spawnCarrier(event, origin);
+        if (carrier == null)
+            return false;
+
+        instance.setConvoyLeader(carrier.getUniqueId());
+        instance.track(carrier.getUniqueId(), new ArrayList<>(), true);
+        mobInstances.put(carrier.getUniqueId(), instance);
+        instance.addTotal(1);
+        instance.setTrackLocation(origin);
+        return true;
+    }
+
+    /** Spawns one named, glowing, persistent carrier Mob at the given point. */
+    private Entity spawnCarrier(WorldEvent event, Location at) {
+        WorldEvent.ConvoyConfig cfg = event.getConvoy();
+        AreaSpawnDefinition definition = plugin.getMobResolver().resolve(
+                cfg.carrier(), 1, true, Math.max(1, event.getLevel()), 0);
+        if (definition == null) {
+            plugin.getLogger().warning("Convoy carrier '" + cfg.carrier()
+                    + "' does not resolve to any mob — the convoy cannot start.");
+            return null;
+        }
+
+        double difficulty = 1.0 + (event.getLevel() - 1) * Math.max(0, difficultyStep);
+        if (difficulty > 0) {
+            if (definition.getHealth() > 0)
+                definition.setHealth(definition.getHealth() * difficulty);
+            if (definition.getDamage() > 0)
+                definition.setDamage(definition.getDamage() * difficulty);
+        }
+
+        definition.setDisplayName(cfg.carrierName());
+
+        Entity entity = mobFactory.spawn(definition, at);
+        if (entity == null)
+            return null;
+
+        entity.setGlowing(true);
+        entity.setPersistent(true);
+
+        if (entity instanceof Mob mob) {
+            mob.setRemoveWhenFarAway(false);
+            mob.setAware(true);
+        } else {
+            plugin.getLogger().warning("Convoy carrier '" + cfg.carrier()
+                    + "' is not a Mob — movement will not work.");
+        }
+
+        return entity;
+    }
+
+    /** Re-spawns the carrier at the current route point after it vanished (chunk unload, etc.). */
+    private void respawnConvoyLeader(EventInstance instance) {
+        List<Location> points = instance.getConvoyPoints();
+        Location spot = points.isEmpty() ? instance.getOrigin()
+                : points.get(Math.min(Math.max(instance.getConvoyStep(), 0), points.size() - 1));
+
+        Entity carrier = spawnCarrier(instance.getEvent(), spot);
+        if (carrier == null) {
+            endEvent(instance, false);
+            return;
+        }
+
+        instance.setConvoyLeader(carrier.getUniqueId());
+        instance.track(carrier.getUniqueId(), new ArrayList<>(), true);
+        mobInstances.put(carrier.getUniqueId(), instance);
+        instance.addTotal(1);
+        instance.setTrackLocation(spot);
+    }
+
+    /** Drops despawned escorts (they count as casualties) and resurrects a vanished carrier. */
+    private void handleConvoyVanished(EventInstance instance) {
+        UUID leaderId = instance.getConvoyLeader();
+        boolean carrierGone = leaderId == null;
+
+        for (UUID uuid : new ArrayList<>(instance.getMobs())) {
+            Entity entity = Bukkit.getEntity(uuid);
+            if (entity != null && entity.isValid())
+                continue;
+
+            if (uuid.equals(leaderId)) {
+                carrierGone = true;
+                continue;
+            }
+
+            instance.getMobs().remove(uuid);
+            instance.getBosses().remove(uuid);
+            instance.getMobDrops().remove(uuid);
+            mobInstances.remove(uuid);
+        }
+
+        if (carrierGone)
+            respawnConvoyLeader(instance);
+    }
+
+    /**
+     * Every tick of a convoy: keeps the carrier walking toward the current
+     * route point (with a stuck-timeout snap), advances points, keeps escorts
+     * close, tracks progress, and fails the event when the route is finished
+     * (the convoy has escaped).
+     */
+    private void updateConvoy(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+        WorldEvent.ConvoyConfig cfg = event.getConvoy();
+        Entity leader = instance.getConvoyLeader() == null ? null : Bukkit.getEntity(instance.getConvoyLeader());
+
+        if (!(leader instanceof Mob mob)) {
+            respawnConvoyLeader(instance);
+            return;
+        }
+
+        List<Location> points = instance.getConvoyPoints();
+        if (points.isEmpty())
+            return;
+
+        int step = Math.min(Math.max(instance.getConvoyStep(), 0), points.size() - 1);
+        Location target = points.get(step);
+        double distToTarget = leader.getLocation().distance(target);
+
+        if (instance.getLastConvoyDist() - distToTarget >= 0.5) {
+            instance.setConvoyStuckSince(-1);
+        } else if (instance.getConvoyStuckSince() == -1) {
+            instance.setConvoyStuckSince(System.currentTimeMillis());
+        } else if (System.currentTimeMillis() - instance.getConvoyStuckSince() >= cfg.stuckSeconds() * 1000L) {
+            leader.teleport(target.clone());
+            instance.setConvoyStuckSince(-1);
+            instance.setLastConvoyDist(Double.MAX_VALUE);
+        }
+
+        instance.setLastConvoyDist(distToTarget);
+
+        boolean finalPoint = step >= points.size() - 1;
+        double reach = finalPoint && cfg.escapeRadius() > 0 ? cfg.escapeRadius() : cfg.checkpointRadius();
+
+        if (distToTarget <= reach) {
+            if (!finalPoint) {
+                instance.setConvoyStep(step + 1);
+                instance.setLastConvoyDist(Double.MAX_VALUE);
+                instance.setConvoyStuckSince(-1);
+            } else {
+                endEvent(instance, false);
+                return;
+            }
+        }
+
+        int currentStep = Math.min(Math.max(instance.getConvoyStep(), 0), points.size() - 1);
+        mob.getPathfinder().moveTo(points.get(currentStep),
+                Math.max(0.05, Math.min(1.0, cfg.speed())));
+
+        double remaining = leader.getLocation().distance(points.getLast());
+        instance.setConvoyProgress(Math.clamp(
+                1.0 - remaining / Math.max(1.0, instance.getConvoyRouteLength()), 0.0, 1.0));
+
+        int followRange = cfg.followRange();
+        if (followRange > 0) {
+            for (UUID uuid : instance.getMobs()) {
+                Entity escort = Bukkit.getEntity(uuid);
+                if (escort == null || !escort.isValid())
+                    continue;
+
+                if (escort.getLocation().distance(leader.getLocation()) > followRange) {
+                    Location spot = leader.getLocation().clone().add(
+                            random.nextInt(followRange + 1) - followRange / 2.0, 0,
+                            random.nextInt(followRange + 1) - followRange / 2.0);
+                    escort.teleport(groundSnap(spot));
+                }
+            }
+        }
+
+        instance.setTrackLocation(leader.getLocation());
+    }
+
+    // ---- Toxic Storm ----
+
+    /** Places N minimum-separated zone centers for a storm (from spawn-locations or random players). */
+    private void initStormZones(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+        WorldEvent.StormConfig cfg = event.getStorm();
+        World world = instance.getOrigin().getWorld();
+
+        int wanted = Math.min(Math.max(1, cfg.zones()), 12);
+        List<Location> result = new ArrayList<>();
+        int attempts = 0;
+
+        while (result.size() < wanted && attempts++ < wanted * 30) {
+            Location point = pickStormPoint(event, world);
+            if (point == null)
+                break;
+
+            boolean tooClose = result.stream().anyMatch(z -> z.distance(point) < cfg.radius() * 2);
+            if (!tooClose)
+                result.add(point);
+        }
+
+        if (result.isEmpty())
+            return;
+
+        instance.getStormZones().addAll(result);
+        instance.setTrackLocation(result.get(0));
+    }
+
+    private Location pickStormPoint(WorldEvent event, World world) {
+        for (EventSpawnLocation point : event.getSpawnLocations()) {
+            World w = Bukkit.getWorld(point.world());
+            if (w == null)
+                continue;
+
+            return new Location(w, point.x() + 0.5, point.y(), point.z() + 0.5);
+        }
+
+        List<Player> candidates = Bukkit.getOnlinePlayers().stream()
+                .filter(player -> player.getWorld() != null && (world == null || player.getWorld() == world))
+                .collect(Collectors.toList());
+
+        if (!candidates.isEmpty())
+            return candidates.get(random.nextInt(candidates.size())).getLocation().clone();
+
+        if (world == null)
+            return null;
+
+        return world.getSpawnLocation().clone().add(random.nextInt(81) - 40, 0, random.nextInt(81) - 40);
+    }
+
+    /** Per-tick storm behavior: drift, zone visuals, and poison/darkness/damage to players inside. */
+    private void applyStorm(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+        WorldEvent.StormConfig cfg = event.getStorm();
+        World world = instance.getOrigin().getWorld();
+        if (world == null)
+            return;
+
+        long now = System.currentTimeMillis();
+        List<Location> zones = instance.getStormZones();
+        if (zones.isEmpty())
+            return;
+
+        if (instance.getLastZoneDrift() == 0) {
+            instance.setLastZoneDrift(now);
+        } else if (now - instance.getLastZoneDrift() >= cfg.driftIntervalSeconds() * 1000L) {
+            for (Location zone : zones)
+                zone.add((random.nextDouble() * 2 - 1) * cfg.driftRadius(), 0,
+                        (random.nextDouble() * 2 - 1) * cfg.driftRadius());
+
+            instance.setTrackLocation(zones.get(0));
+            instance.setLastZoneDrift(now);
+        }
+
+        for (Location zone : zones) {
+            int ring = Math.min(12, Math.max(4, cfg.radius()));
+
+            for (int i = 0; i < ring; i++) {
+                double angle = i * 2 * Math.PI / ring;
+                Location p = zone.clone().add(Math.cos(angle) * cfg.radius(), 0.4, Math.sin(angle) * cfg.radius());
+                world.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, p, 1, 0, 0, 0, 0.01);
+            }
+
+            world.spawnParticle(Particle.ASH, zone.clone().add(0, 0.6, 0),
+                    Math.max(3, cfg.radius() / 2), cfg.radius() * 0.5, 0.3, cfg.radius() * 0.5, 0.02);
+        }
+
+        double dps = cfg.damagePerSecond();
+        boolean anyPoison = cfg.poisonLevel() > 0;
+        boolean anyDarkness = cfg.darknessLevel() > 0;
+        Map<UUID, Set<PotionEffectType>> tracked = instance.getStormEffects();
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!isInWorld(player))
+                continue;
+
+            Location playerLoc = player.getLocation();
+            boolean inside = false;
+
+            for (Location zone : zones) {
+                if (zone.getWorld() != playerLoc.getWorld())
+                    continue;
+
+                if (zone.distance(playerLoc) <= cfg.radius()) {
+                    inside = true;
+                    break;
+                }
+            }
+
+            if (!inside) {
+                releaseStormEffects(player, tracked);
+                continue;
+            }
+
+            Set<PotionEffectType> applied = tracked.computeIfAbsent(
+                    player.getUniqueId(), key -> new HashSet<>());
+
+            if (dps > 0)
+                player.damage(dps);
+
+            if (anyPoison) {
+                player.addPotionEffect(new PotionEffect(PotionEffectType.POISON,
+                        cfg.poisonSeconds() * 20, cfg.poisonLevel() - 1, true, true, true));
+                applied.add(PotionEffectType.POISON);
+            }
+
+            if (anyDarkness) {
+                player.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS,
+                        cfg.darknessSeconds() * 20, cfg.darknessLevel() - 1, true, true, true));
+                applied.add(PotionEffectType.DARKNESS);
+            }
+
+            if (cfg.blindness()) {
+                player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS,
+                        cfg.darknessSeconds() * 20, 0, true, true, true));
+                applied.add(PotionEffectType.BLINDNESS);
+            }
+        }
+    }
+
+    /** Removes every storm-applied potion effect from a player once they leave the zones. */
+    private void releaseStormEffects(Player player, Map<UUID, Set<PotionEffectType>> tracked) {
+        Set<PotionEffectType> types = tracked.remove(player.getUniqueId());
+        if (types == null)
+            return;
+
+        for (PotionEffectType type : types)
+            player.removePotionEffect(type);
+    }
+
+    /** Cleanup hook for endEvent: clears every storm-applied effect of the event's tracked players. */
+    private void clearStormEffects(EventInstance instance) {
+        Map<UUID, Set<PotionEffectType>> tracked = instance.getStormEffects();
+
+        for (Map.Entry<UUID, Set<PotionEffectType>> entry : new ArrayList<>(tracked.entrySet())) {
+            Player player = Bukkit.getPlayer(entry.getKey());
+            if (player == null)
+                continue;
+
+            for (PotionEffectType type : entry.getValue())
+                player.removePotionEffect(type);
+        }
+
+        tracked.clear();
+    }
+
+    /** Snaps a location down to the first solid block below it (used to drop escorts on terrain). */
+    private Location groundSnap(Location location) {
+        World world = location.getWorld();
+        if (world == null)
+            return location;
+
+        int y = findSurfaceY(world, location.getBlockX(), location.getBlockY() + 2, location.getBlockZ());
+        if (y == Integer.MIN_VALUE)
+            return location;
+
+        return new Location(world, location.getX(), y + 1, location.getZ());
     }
 
     // ---- Crater terrain (Meteor Crash) ----
@@ -877,6 +1315,8 @@ public class WorldEventManager {
         WorldEvent event = instance.getEvent();
         active.remove(event.getId());
 
+        clearStormEffects(instance);
+
         for (UUID uuid : new ArrayList<>(instance.getMobs())) {
             Entity entity = Bukkit.getEntity(uuid);
             if (entity != null && entity.isValid())
@@ -946,6 +1386,10 @@ public class WorldEventManager {
 
     /** Spawns the temporary harvest (crater) chests, each rolled from the event's loot table. */
     private void spawnHarvestChests(EventInstance instance) {
+        spawnHarvestChests(instance, instance.getOrigin());
+    }
+
+    private void spawnHarvestChests(EventInstance instance, Location anchor) {
         if (instance.isHarvestChestsSpawned())
             return;
 
@@ -963,7 +1407,7 @@ public class WorldEventManager {
         int spawned = 0;
 
         for (int i = 0; i < count; i++) {
-            Location spot = placeHarvestChest(instance.getOrigin());
+            Location spot = placeHarvestChest(anchor);
             if (spot == null)
                 continue;
 
@@ -1124,6 +1568,18 @@ public class WorldEventManager {
 
         WorldEvent event = instance.getEvent();
 
+        if (event.isConvoy()) {
+            UUID leader = instance.getConvoyLeader();
+            Entity leaderEntity = leader == null ? null : Bukkit.getEntity(leader);
+            boolean leaderDead = leaderEntity == null || !leaderEntity.isValid();
+
+            if (leaderDead && instance.getMobs().isEmpty()) {
+                spawnHarvestChests(instance, instance.getTrackLocation());
+                endEvent(instance, true);
+            }
+            return;
+        }
+
         if (event.isWavesEnabled() && event.getWaveType() == WaveType.TIMED) {
             if (instance.getBosses().isEmpty()) {
                 spawnHarvestChests(instance);
@@ -1169,16 +1625,27 @@ public class WorldEventManager {
                 }
             }
 
-            for (UUID uuid : instance.getMobs()) {
-                Entity entity = Bukkit.getEntity(uuid);
-                if (entity == null || !entity.isValid()) {
-                    endEvent(instance, false);
-                    break;
+            if (event.isConvoy()) {
+                handleConvoyVanished(instance);
+                updateConvoy(instance);
+            } else {
+                for (UUID uuid : instance.getMobs()) {
+                    Entity entity = Bukkit.getEntity(uuid);
+                    if (entity == null || !entity.isValid()) {
+                        endEvent(instance, false);
+                        break;
+                    }
                 }
             }
 
             if (!active.containsValue(instance))
                 continue;
+
+            if (event.isStorm()) {
+                applyStorm(instance);
+                if (!active.containsValue(instance))
+                    continue;
+            }
 
             if (event.isTerrainEnabled() && event.isAmbientEffect() && instance.isCraterActive())
                 ambientCraterEffect(instance);
@@ -1226,7 +1693,7 @@ public class WorldEventManager {
             lines.add(plugin.getHologramManager().toDh(fill(line, event, instance)));
         }
 
-        plugin.getHologramManager().updateWaypointHologram(event.getId(), instance.getOrigin(), lines);
+        plugin.getHologramManager().updateWaypointHologram(event.getId(), instance.getTrackLocation(), lines);
     }
 
     private void updateCompass() {
@@ -1244,7 +1711,7 @@ public class WorldEventManager {
             if (!isInWorld(player))
                 continue;
 
-            player.setCompassTarget(instance.getOrigin());
+            player.setCompassTarget(instance.getTrackLocation());
             compassPlayers.add(player.getUniqueId());
         }
     }
@@ -1302,7 +1769,7 @@ public class WorldEventManager {
             return;
         }
 
-        player.setCompassTarget(active.values().iterator().next().getOrigin());
+        player.setCompassTarget(active.values().iterator().next().getTrackLocation());
         compassPlayers.add(player.getUniqueId());
     }
 
@@ -1373,12 +1840,16 @@ public class WorldEventManager {
     }
 
     private String fill(String message, WorldEvent event, EventInstance instance) {
+        int progress = (int) Math.round(Math.clamp(instance.getConvoyProgress(), 0.0, 1.0) * 100);
+
         return message.replace("%event%", event.getDisplayName())
                 .replace("%location%", locationText(instance))
                 .replace("%remaining%", String.valueOf(instance.getMobs().size()))
                 .replace("%total%", String.valueOf(instance.getTotalMobs()))
                 .replace("%wave%", String.valueOf(instance.getCurrentWave()))
-                .replace("%waves%", String.valueOf(instance.getWavesTotal()));
+                .replace("%waves%", String.valueOf(instance.getWavesTotal()))
+                .replace("%progress%", String.valueOf(progress))
+                .replace("%zones%", String.valueOf(instance.getStormZones().size()));
     }
 
     private String locationText(EventInstance instance) {

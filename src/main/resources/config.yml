@@ -322,6 +322,18 @@ event-items:
     display-name: "<gray>Meteor Rock</gray>"
     lore:
       - "<dark_gray>A charred lump of the crater floor."
+  supply_crate_key:
+    material: TRIPWIRE_HOOK
+    display-name: "<gold>Crate Key</gold>"
+    lore:
+      - "<gray>A heavy key stamped with the"
+      - "<gray>emblem of the supply convoy."
+  hazmat_fragment:
+    material: CHORUS_FRUIT
+    display-name: "<green><bold>Hazmat Fragment</bold></green>"
+    lore:
+      - "<dark_green>A glowing toxin-neutralizing"
+      - "<dark_green>shard harvested from the storm."
 
 # Upgrade GUI (/upgrade)
 # Shows the player's current armor and lets them drop an upgrade token onto a piece.

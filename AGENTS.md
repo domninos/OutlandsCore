@@ -495,6 +495,41 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
     can still leave a permanent crater, noted limitation). Harvest chests cannot be broken
     (`WorldEventListener.onBlockBreak` cancels). `particle constants note`: this 1.21.11 API uses `LARGE_SMOKE`
     (not `SMOKE_LARGE`) and `EXPLOSION`/`EXPLOSION_EMITTER` (not `EXPLOSION_LARGE`/`EXPLOSION_HUGE`).
+  - **Supply Convoy** (`WorldEvent.convoy:*`): a defended convoy walks a sampled straight-line route from the
+    event origin toward the map's extraction spawn (`getConfigUtil().getSpawnLocation()`, fallback world spawn —
+    zero per-map setup; nether straight-line otherwise). Route points (`EventInstance.convoyPoints`) are sampled
+    every `step-blocks` along the origin→dest vector and **ground-snapped** (`groundSnap` via `findSurfaceY`) for
+    intermediate points so the convoy hugs terrain. The carrier (`carrier` mob id, configured `carrier-name`,
+    glow/persistent, `setRemoveWhenFarAway(false)`/`setAware(true)`, warning if not a `Mob`) is tracked as a
+    boss (`instance.track(uuid, new ArrayList<>(), true)` + `addTotal(1)` + `mobInstances`). `startConvoyRoute`
+    builds the points and spawns it; `updateConvoy` per tick: `getPathfinder().moveTo(currentPoint, speed)`
+    (**1.21.11 renamed `pathfindTo` → `moveTo(Location, double)`**), checkpoint advance at `checkpoint-radius`,
+    `stuck-seconds` without ≥0.5-block progress → teleport-snap to the waypoint, escort follow-back teleports
+    (any escort > `follow-range` from the carrier) via `groundSnap`, and `convoyProgress` = 1 − remaining/route
+    length. The final waypoint is the extraction spawn with a looser **`escape-radius`** threshold — reaching it
+    ends the event as an ESCAPE (`endEvent(false)`), while success (carrier dead AND escorts cleared, checked in
+    `handleMobDeath`'s convoy gate) spawns harvest chests at the **kill site** (`spawnHarvestChests(instance,
+    instance.getTrackLocation())`). `handleConvoyVanished` drops despawned escorts as casualties and resurrects a
+    vanished carrier at the current waypoint (`respawnConvoyLeader` → new `addTotal(1)` so `%remaining%` can still
+    hit 0); `tick()` bypasses the generic stale-session fail for convoys (deaths are the win condition).
+  - **Toxic Storm** (`WorldEvent.storm:*`): N drifting contamination zones (cap 12) initialized in `spawnEvent` →
+    `initStormZones` (min-center separation = `radius`×2; `pickStormPoint` = spawn-locations first, else a random
+    online in-World player, else world spawn ±40). `applyStorm` per tick (`applyStorm` after the convoy/storm
+    branch): drift every `drift-interval-seconds` by ±`drift-radius`, smoke ring (`CAMPFIRE_COSY_SMOKE`) + `ASH`
+    particles, then per in-World player inside a zone: `player.damage(damage-per-second)`, POISON/DARKNESS/
+    BLINDNESS `PotionEffect`s (levels from config) recorded in `EventInstance.stormEffects` (removed via
+    `releaseStormEffects` on exit and `clearStormEffects` in `endEvent`). Storm mob spawns (`spawnAnchor` picks a
+    zone center for TIMED/initial/reinforcement groups) get health/damage × `mutate-multiplier`, the `mutate-prefix`
+    MiniMessage name prefix, and **glowing** while the storm runs. Storms are TIMED-gated (guardians in `bosses`
+    must die to spawn harvest chests — always include `bosses` or the first kill ends it, documented in events.yml).
+  - **Convoy/storm shared glue**: `EventInstance.trackLocation` (defaults to origin) drives the waypoint +
+    compass (chest → run/craft); `fill()` gained `%progress%` (0-100) + `%zones%` (active zone count). New events.yml
+    keys: `convoy:{carrier, carrier-name, speed, step-blocks, checkpoint-radius, stuck-seconds, follow-range,
+    escape-radius}` and `storm:{zones, radius, drift-interval-seconds, drift-radius, damage-per-second,
+    poison-level, poison-seconds, darkness-level, darkness-seconds, blindness, mutate-multiplier, mutate-prefix}`.
+    Samples (`supply_convoy`, `toxic_storm`) + `supply_crate_key`/`hazmat_fragment` event-items + the two loot
+    tables (`supply_convoy`, `toxic_storm`) ship in resources. Convoy/storm state is memory-only (same restart
+    caveat as craters: a hard kill mid-event loses it).
   - **`MobResolver` refactor detail**: resolve returns a complete `AreaSpawnDefinition`, so
     `AreaManager.resolveSpawns` works unchanged; `AreaClearManager.spawnGroup` still overwrites count/level from the
     spawn-entry after resolve. `AreaSpawnDefinition.count` (a template copy) is stale for per-spawn entries — read

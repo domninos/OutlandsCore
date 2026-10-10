@@ -4,6 +4,7 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.omni.extraction.mobs.MobDrop;
 import org.bukkit.Location;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.potion.PotionEffectType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,6 +46,20 @@ public class EventInstance {
     private Location craterCenter;
     private final List<SavedBlock> craterBlocks;
 
+    private Location trackLocation;
+
+    private final List<Location> convoyPoints;
+    private int convoyStep;
+    private UUID convoyLeader;
+    private double convoyRouteLength;
+    private double convoyProgress;
+    private double lastConvoyDist;
+    private long convoyStuckSince;
+
+    private final List<Location> stormZones;
+    private long lastZoneDrift;
+    private final Map<UUID, Set<PotionEffectType>> stormEffects;
+
     public EventInstance(WorldEvent event, Location origin, long durationMillis) {
         this.event = event;
         this.origin = origin;
@@ -56,6 +71,14 @@ public class EventInstance {
         this.currentWave = 1;
         this.craterBlocks = new ArrayList<>();
         this.craterActive = false;
+        this.convoyPoints = new ArrayList<>();
+        this.convoyProgress = 0.0;
+        this.convoyRouteLength = 0.0;
+        this.lastConvoyDist = Double.MAX_VALUE;
+        this.convoyStuckSince = -1;
+        this.stormZones = new ArrayList<>();
+        this.lastZoneDrift = 0;
+        this.stormEffects = new HashMap<>();
 
         if (event.isWavesEnabled()) {
             this.wavesTotal = event.getWaveType() == WorldEvent.WaveType.FINITE
@@ -199,5 +222,87 @@ public class EventInstance {
 
     public boolean isExpired() {
         return System.currentTimeMillis() >= endTime;
+    }
+
+    // ---- shared track location (what compass / waypoint hologram follow) ----
+
+    public Location getTrackLocation() {
+        return trackLocation != null ? trackLocation : origin;
+    }
+
+    public void setTrackLocation(Location trackLocation) {
+        this.trackLocation = trackLocation;
+    }
+
+    // ---- convoy state ----
+
+    public List<Location> getConvoyPoints() {
+        return convoyPoints;
+    }
+
+    public int getConvoyStep() {
+        return convoyStep;
+    }
+
+    public void setConvoyStep(int convoyStep) {
+        this.convoyStep = convoyStep;
+    }
+
+    public UUID getConvoyLeader() {
+        return convoyLeader;
+    }
+
+    public void setConvoyLeader(UUID convoyLeader) {
+        this.convoyLeader = convoyLeader;
+    }
+
+    public double getConvoyProgress() {
+        return convoyProgress;
+    }
+
+    public void setConvoyProgress(double convoyProgress) {
+        this.convoyProgress = convoyProgress;
+    }
+
+    public double getConvoyRouteLength() {
+        return convoyRouteLength;
+    }
+
+    public void setConvoyRouteLength(double convoyRouteLength) {
+        this.convoyRouteLength = convoyRouteLength;
+    }
+
+    public double getLastConvoyDist() {
+        return lastConvoyDist;
+    }
+
+    public void setLastConvoyDist(double lastConvoyDist) {
+        this.lastConvoyDist = lastConvoyDist;
+    }
+
+    public long getConvoyStuckSince() {
+        return convoyStuckSince;
+    }
+
+    public void setConvoyStuckSince(long convoyStuckSince) {
+        this.convoyStuckSince = convoyStuckSince;
+    }
+
+    // ---- storm state ----
+
+    public List<Location> getStormZones() {
+        return stormZones;
+    }
+
+    public long getLastZoneDrift() {
+        return lastZoneDrift;
+    }
+
+    public void setLastZoneDrift(long lastZoneDrift) {
+        this.lastZoneDrift = lastZoneDrift;
+    }
+
+    public Map<UUID, Set<PotionEffectType>> getStormEffects() {
+        return stormEffects;
     }
 }

@@ -31,6 +31,21 @@ public class WorldEvent {
     public record TerrainBlock(Material material, int weight) {
     }
 
+    /** Supply Convoy movement/escort tuning. Absent section = not a convoy. */
+    public record ConvoyConfig(String carrier, String carrierName, double speed, int stepBlocks,
+                               int checkpointRadius, int stuckSeconds, int followRange, int escapeRadius) {
+        public boolean active() {
+            return carrier != null && !carrier.isBlank();
+        }
+    }
+
+    /** Toxic Storm zone/effect tuning. Absent section = not a storm. */
+    public record StormConfig(int zones, int radius, int driftIntervalSeconds, int driftRadius,
+                              double damagePerSecond, int poisonLevel, int poisonSeconds,
+                              int darknessLevel, int darknessSeconds, boolean blindness,
+                              double mutateMultiplier, String mutatePrefix) {
+    }
+
     private static final List<TerrainBlock> DEFAULT_FLOOR = List.of(
             new TerrainBlock(Material.MAGMA_BLOCK, 1),
             new TerrainBlock(Material.BLACKSTONE, 1),
@@ -102,6 +117,9 @@ public class WorldEvent {
     private final double pushStrength;
     private final double pushUp;
 
+    private final ConvoyConfig convoy;
+    private final StormConfig storm;
+
     public WorldEvent(String id, boolean enabled, String displayName, int weight,
                       int cooldownSeconds, int durationSeconds, int level, String lootTable,
                       List<EventSpawnLocation> spawnLocations, List<EventSpawn> mobs, List<EventSpawn> bosses,
@@ -117,7 +135,8 @@ public class WorldEvent {
                       boolean terrainEnabled, int terrainRadius, int terrainDepth,
                       List<TerrainBlock> terrainFloor, List<TerrainBlock> terrainEdge,
                       boolean impactEffect, boolean ambientEffect, boolean restoreEffect,
-                      boolean pushPlayers, double pushStrength, double pushUp) {
+                      boolean pushPlayers, double pushStrength, double pushUp,
+                      ConvoyConfig convoy, StormConfig storm) {
         this.id = id;
         this.enabled = enabled;
         this.displayName = displayName;
@@ -171,6 +190,8 @@ public class WorldEvent {
         this.pushPlayers = pushPlayers;
         this.pushStrength = Math.max(0, pushStrength);
         this.pushUp = Math.max(0, pushUp);
+        this.convoy = convoy;
+        this.storm = storm;
     }
 
     public static WorldEvent load(ExtractionPlugin plugin, String id, ConfigurationSection section) {
@@ -274,6 +295,38 @@ public class WorldEvent {
         double pushStrength = terrain == null ? 1.6 : Math.max(0, terrain.getDouble("push-strength", 1.6));
         double pushUp = terrain == null ? 0.6 : Math.max(0, terrain.getDouble("push-up", 0.6));
 
+        ConvoyConfig convoy = null;
+        ConfigurationSection convoySection = section.getConfigurationSection("convoy");
+        if (convoySection != null) {
+            convoy = new ConvoyConfig(
+                    convoySection.getString("carrier", "MULE"),
+                    convoySection.getString("carrier-name", "Supply Convoy"),
+                    convoySection.getDouble("speed", 0.3),
+                    Math.max(1, convoySection.getInt("step-blocks", 8)),
+                    Math.max(1, convoySection.getInt("checkpoint-radius", 3)),
+                    Math.max(1, convoySection.getInt("stuck-seconds", 10)),
+                    Math.max(0, convoySection.getInt("follow-range", 6)),
+                    Math.max(0, convoySection.getInt("escape-radius", 5)));
+        }
+
+        StormConfig storm = null;
+        ConfigurationSection stormSection = section.getConfigurationSection("storm");
+        if (stormSection != null) {
+            storm = new StormConfig(
+                    Math.max(1, stormSection.getInt("zones", 3)),
+                    Math.max(1, stormSection.getInt("radius", 12)),
+                    Math.max(1, stormSection.getInt("drift-interval-seconds", 45)),
+                    Math.max(1, stormSection.getInt("drift-radius", 25)),
+                    Math.max(0, stormSection.getDouble("damage-per-second", 2.0)),
+                    Math.max(0, stormSection.getInt("poison-level", 1)),
+                    Math.max(1, stormSection.getInt("poison-seconds", 6)),
+                    Math.max(0, stormSection.getInt("darkness-level", 0)),
+                    Math.max(1, stormSection.getInt("darkness-seconds", 6)),
+                    stormSection.getBoolean("blindness", false),
+                    Math.max(1, stormSection.getDouble("mutate-multiplier", 2.0)),
+                    stormSection.getString("mutate-prefix", "<dark_green>Mutated "));
+        }
+
         return new WorldEvent(id.toLowerCase(Locale.ROOT), enabled, displayName, weight,
                 cooldownSeconds, durationSeconds, level, lootTable,
                 spawnLocations, mobs, bosses, reinforceMobs,
@@ -285,7 +338,8 @@ public class WorldEvent {
                 bossBarEnabled, bossBarTitle, bossBarColor, bossBarOverlay, waypointLines,
                 trigger,
                 terrainEnabled, terrainRadius, terrainDepth, terrainFloor, terrainEdge,
-                impactEffect, ambientEffect, restoreEffect, pushPlayers, pushStrength, pushUp);
+                impactEffect, ambientEffect, restoreEffect, pushPlayers, pushStrength, pushUp,
+                convoy, storm);
     }
 
     private static TriggerMode parseTrigger(String name) {
@@ -606,6 +660,26 @@ public class WorldEvent {
 
     public double getPushUp() {
         return pushUp;
+    }
+
+    /** The convoy tuning, or null when this event is not a Supply Convoy. */
+    public ConvoyConfig getConvoy() {
+        return convoy;
+    }
+
+    /** True when this event is a moving supply convoy. */
+    public boolean isConvoy() {
+        return convoy != null && convoy.active();
+    }
+
+    /** The storm tuning, or null when this event is not a Toxic Storm. */
+    public StormConfig getStorm() {
+        return storm;
+    }
+
+    /** True when this event is a toxic-storm with contaminated zones. */
+    public boolean isStorm() {
+        return storm != null;
     }
 
     /**

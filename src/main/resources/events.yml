@@ -47,15 +47,45 @@
 #     push-strength, push-up
 #     The crater regenerates its original terrain when all harvest chests are
 #     looted, and as a safety net when the event ends or the plugin stops.
+#   convoy: (supply-convoy events) the convoy spawns at the origin and walks a
+#     sampled straight-line route toward the map's extraction spawn (settings
+#     spawn, found via server.properties level-name). Interception succeeds only
+#     when the carrier AND all escorts are dead — then harvest-chests spawn at
+#     the kill site.
+#       carrier: mob id (mobs.yml / vanilla / MythicMobs) driven as the boss
+#       carrier-name: display name given to the carrier (MiniMessage)
+#       speed: pathfinding speed 0.05-1.0
+#       step-blocks: blocks between route waypoints (larger = straighter, rougher)
+#       checkpoint-radius: distance to a waypoint before the next is targeted
+#       stuck-seconds: no progress this long -> caravan is teleported to its waypoint
+#       follow-range: escorts this far from the carrier get teleported back
+#       escape-radius: carrier within this many blocks of the final waypoint
+#                      (extraction spawn) counts as escaped -> event ends
+#   storm: (toxic-storm events) drifting contaminated zones.
+#       zones: how many drifting zones (capped at 12)
+#       radius: zone radius in blocks
+#       drift-interval-seconds: how often each zone wanders
+#       drift-radius: max blocks a zone shifts per drift
+#       damage-per-second: raw damage each tick while inside (0 = none)
+#       poison-level / poison-seconds: poison applied while inside
+#       darkness-level / darkness-seconds: darkness applied while inside
+#       blindness: also apply blindness while inside
+#       mutate-multiplier: health/damage multiplier + glowing for event mobs
+#                          spawned in the zones
+#       mutate-prefix: name prefix added to mutated mobs (MiniMessage)
+#     Storm events are timed-style: use the bosses list as the initial guardian
+#     wave — TIMED success (guardians dead) spawns the harvest chests, so always
+#     include bosses or the first mob kill ends the storm.
 #   broadcast: warning/start/wave/end lines (%event% %location% %remaining%
-#     %total% %wave% %waves%)
+#     %total% %wave% %waves% %progress% %zones%)
 #   title: title/subtitle/wave (%event% %wave% %waves%)
 #   sounds: start/wave/end Sound names (e.g. entity_wither_spawn) + volume/pitch
 #   boss-bar: title (>%event% %remaining%/%total% %wave%/%waves% %location%), color, style
-#   waypoint-lines: waypoint text (%event% %location% %remaining% %total% %wave% %waves%)
+#   waypoint-lines: waypoint text (%event% %location% %remaining% %total% %wave% %waves% %progress% %zones%)
 #
 # Placeholders: %event% = display name, %location% = "world x y z",
-#               %remaining%/%total% = live mob counts, %wave%/%waves% = wave counter.
+#               %remaining%/%total% = live mob counts, %wave%/%waves% = wave counter,
+#               %progress% = convoy travel progress (0-100), %zones% = active storm zones.
 
 settings:
   enabled: true
@@ -218,5 +248,136 @@ events:
     waypoint-lines:
       - "<red><bold>%event%</bold></red>"
       - "<gold>Wave %wave%/%waves%</gold>"
+      - "<gray>%remaining%/%total% mobs</gray>"
+      - "<gray>%location%</gray>"
+
+  supply_convoy:
+    enabled: true
+    display-name: "Supply Convoy"
+    weight: 12
+    cooldown-seconds: 1500
+    duration-seconds: 600
+    level: 2
+    loot-table: "supply_convoy"
+    harvest-chests: 3
+    # The convoy marches a straight line toward the map's extraction spawn;
+    # kill the carrier AND every escort before it escapes to loot the crates.
+    convoy:
+      carrier: "MULE"
+      carrier-name: "<gold><bold>Supply Convoy</bold></gold>"
+      speed: 0.3
+      step-blocks: 8
+      checkpoint-radius: 3
+      stuck-seconds: 10
+      follow-range: 12
+      escape-radius: 5
+    mobs:
+      - mob: PILLAGER
+        count: 3
+      - mob: VINDICATOR
+        count: 2
+    broadcast:
+      warning: "<yellow>A heavily guarded supply convoy is moving toward the extraction point!</yellow>"
+      start: "<gold>%event% is coming from %location% — stop it before it escapes!</gold>"
+      wave: "<gold>%event%: %remaining% escort(s) still guard the carrier!</gold>"
+      end: "<green>%event% was intercepted — claim the supply crates!</green>"
+    title:
+      title: "<gold><bold>%event%</bold></gold>"
+      subtitle: "<gray>Stop the convoy before it reaches the extraction point.</gray>"
+      wave: "<gold><bold>Escorts closing in!</bold></gold>"
+      fade-in: 10
+      stay: 70
+      fade-out: 20
+    sounds:
+      start: entity_evoker_ambient
+      wave: entity_pillager_ambient
+      end: entity_chorus_flower_grow
+      volume: 1.0
+      pitch: 1.0
+    boss-bar:
+      enabled: true
+      title: "<gold>%event%</gold> <dark_gray>»</dark_gray> <white>%remaining% guards</white> <dark_gray>»</dark_gray> <aqua>%progress%% en route</aqua>"
+      color: GOLD
+      style: PROGRESS
+    waypoint-lines:
+      - "<gold><bold>%event%</bold></gold>"
+      - "<aqua>%progress%% en route</aqua>"
+      - "<gray>%remaining%/%total% guards</gray>"
+      - "<gray>%location%</gray>"
+
+  toxic_storm:
+    enabled: true
+    display-name: "Toxic Storm"
+    weight: 10
+    cooldown-seconds: 1500
+    duration-seconds: 420
+    level: 2
+    loot-table: "toxic_storm"
+    harvest-chests: 3
+    # Drifting contamination zones. Survive the guardians to claim the loot;
+    # mutated mobs spawn inside the zones and scale with the waves config.
+    storm:
+      zones: 3
+      radius: 12
+      drift-interval-seconds: 45
+      drift-radius: 25
+      damage-per-second: 2.0
+      poison-level: 1
+      poison-seconds: 6
+      darkness-level: 0
+      darkness-seconds: 6
+      blindness: true
+      mutate-multiplier: 2.0
+      mutate-prefix: "<dark_green>Mutated </dark_green>"
+    # Guardians are the TIMED win gate — without them the storm ends on the
+    # first kill. They spawn inside the storm zones.
+    bosses:
+      - mob: STRAY
+        count: 3
+        name: "<dark_green><bold>Toxic Guardian</bold></dark_green>"
+        drops:
+          - type: "EVENT:hazmat_fragment"
+            chance: 1.0
+            amount: 1
+          - type: TOKENS
+            chance: 1.0
+            amount: 4
+    reinforce-mobs:
+      - mob: ZOMBIE
+        count: 3
+      - mob: SPIDER
+        count: 2
+    waves:
+      type: timed
+      interval-seconds: 20
+      level-gain: 1
+      count-gain: 1
+      max: 6
+    broadcast:
+      warning: "<dark_green>A toxic storm sweeps in toward %location%!</dark_green>"
+      start: "<green>%event% has begun at %location% — stay out of the clouds, or risk them for loot!</green>"
+      wave: "<dark_green>%event%: mutated creatures emerge from the clouds!</dark_green>"
+      end: "<green>%event% has passed — %zones% contaminated zone(s) cleared.</green>"
+    title:
+      title: "<dark_green><bold>%event%</bold></dark_green>"
+      subtitle: "<gray>Keep clear of the clouds, or brave them for better loot.</gray>"
+      wave: "<dark_green><bold>Mutants!</bold></dark_green>"
+      fade-in: 10
+      stay: 70
+      fade-out: 20
+    sounds:
+      start: entity_wither_spawn
+      wave: entity_zombie_infect
+      end: weather_thunder
+      volume: 1.0
+      pitch: 0.8
+    boss-bar:
+      enabled: true
+      title: "<dark_green>%event%</dark_green> <dark_gray>»</dark_gray> <white>%remaining%/%total%</white> <dark_gray>»</dark_gray> <green>%zones% zones</green>"
+      color: GREEN
+      style: PROGRESS
+    waypoint-lines:
+      - "<dark_green><bold>%event%</bold></dark_green>"
+      - "<green>%zones% active zones</green>"
       - "<gray>%remaining%/%total% mobs</gray>"
       - "<gray>%location%</gray>"
