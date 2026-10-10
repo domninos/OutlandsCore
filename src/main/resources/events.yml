@@ -47,11 +47,16 @@
 #     push-strength, push-up
 #     The crater regenerates its original terrain when all harvest chests are
 #     looted, and as a safety net when the event ends or the plugin stops.
-#   convoy: (supply-convoy events) the convoy spawns at the origin and walks a
-#     sampled straight-line route toward the map's extraction spawn (settings
-#     spawn, found via server.properties level-name). Interception succeeds only
-#     when the carrier AND all escorts are dead — then harvest-chests spawn at
-#     the kill site.
+#   convoy: (supply-convoy events) the convoy spawns at its start anchor and
+#     walks a sampled straight-line route toward its end anchor. Anchors are
+#     OPTIONAL: unset start = event origin, unset end = the map's extraction
+#     spawn (settings spawn, found via server.properties level-name). Set them
+#     with /extraction events route {event} {start|end|clear|show|wand}. When
+#     both anchors are set the convoy ignores the global spawn selection.
+#     Interception succeeds only when the carrier AND all escorts are dead —
+#     then harvest-chests spawn at the kill site; reaching the end anchor
+#     (escape-radius) counts as an escape and ends the event.
+#       start / end: {world, x, y, z} optional anchors (null = default route)
 #       carrier: mob id (mobs.yml / vanilla / MythicMobs) driven as the boss
 #       carrier-name: display name given to the carrier (MiniMessage)
 #       speed: pathfinding speed 0.05-1.0
@@ -59,8 +64,21 @@
 #       checkpoint-radius: distance to a waypoint before the next is targeted
 #       stuck-seconds: no progress this long -> caravan is teleported to its waypoint
 #       follow-range: escorts this far from the carrier get teleported back
-#       escape-radius: carrier within this many blocks of the final waypoint
-#                      (extraction spawn) counts as escaped -> event ends
+#       escape-radius: carrier within this many blocks of the end anchor counts
+#                      as escaped -> event ends
+#       car: the visible "truck" as display entities locked to the carrier.
+#         Each part: { material, dx, dy, dz, yaw }
+#           material: block materials render as BlockDisplay, others as ItemDisplay
+#           dx/dy/dz: offset from the carrier's FEET (negative dy = wheels/crates)
+#           yaw: the part's rotation in degrees (0 = facing south, vanilla default)
+#         While any car is configured the driver mob is hidden (invisible +
+#         silent) and the parts are repositioned every tick so the whole truck
+#         rides the carrier as it turns. ~64 parts max (keep it snappy).
+#         Example: 3x3x2 truck around the driver's feet —
+#           - { material: STONE_BRICKS, dx: 0, dy: 1, dz: 0 }
+#           - { material: STONE_BRICKS, dx: 1, dy: 1, dz: 0 }
+#           - { material: OAK_PLANKS,   dx: 0, dy: 0, dz: 1 }
+#           - { material: BLACK_CONCRETE, dx: -0.5, dy: 0, dz: 0.5 }   # crate
 #   storm: (toxic-storm events) drifting contaminated zones.
 #       zones: how many drifting zones (capped at 12)
 #       radius: zone radius in blocks
@@ -86,6 +104,10 @@
 # Placeholders: %event% = display name, %location% = "world x y z",
 #               %remaining%/%total% = live mob counts, %wave%/%waves% = wave counter,
 #               %progress% = convoy travel progress (0-100), %zones% = active storm zones.
+#
+# Convoy anchors + the car are set per-event inside the event's convoy section
+# (see the supply_convoy sample below); the running route ("start"/"end" as
+# world coords) is edited live with /extraction events route...
 
 settings:
   enabled: true
@@ -260,8 +282,10 @@ events:
     level: 2
     loot-table: "supply_convoy"
     harvest-chests: 3
-    # The convoy marches a straight line toward the map's extraction spawn;
-    # kill the carrier AND every escort before it escapes to loot the crates.
+    # The convoy marches a straight line from its start anchor (unset = event
+    # origin) toward its end anchor (unset = the map's extraction spawn); kill
+    # the carrier AND every escort before it escapes to loot the crates. The
+    # anchors below are just examples — /extraction events route edits them live.
     convoy:
       carrier: "MULE"
       carrier-name: "<gold><bold>Supply Convoy</bold></gold>"
@@ -271,6 +295,28 @@ events:
       stuck-seconds: 10
       follow-range: 12
       escape-radius: 5
+      # Optional anchors (comment these out for the default route):
+      # start: { world: "outlands", x: 100, y: 64, z: 100 }
+      # end:   { world: "outlands", x: 0,   y: 64, z: 0 }
+      # Optional display-entity "truck" parts locked to the carrier (which is
+      # hidden while any part is configured). dx/dy/dz are offsets from the
+      # carrier's feet; yaw rotates the part (0 = facing south). Remove the
+      # whole car section to show the bare MULE again.
+      car:
+        - { material: STONE_BRICKS, dx: -0.5, dy: 1.2, dz: -0.5 }
+        - { material: STONE_BRICKS, dx: 0.5,  dy: 1.2, dz: -0.5 }
+        - { material: STONE_BRICKS, dx: -0.5, dy: 1.2, dz: 0.5 }
+        - { material: STONE_BRICKS, dx: 0.5,  dy: 1.2, dz: 0.5 }
+        - { material: SPRUCE_PLANKS, dx: 0,  dy: 1.5, dz: 1.5 }
+        - { material: SPRUCE_PLANKS, dx: 0,  dy: 1.5, dz: -1.5 }
+        - { material: SPRUCE_PLANKS, dx: -1.5, dy: 1.5, dz: 0 }
+        - { material: SPRUCE_PLANKS, dx: 1.5,  dy: 1.5, dz: 0 }
+        - { material: SPRUCE_PLANKS, dx: 0,   dy: 0.9, dz: 1.5 }
+        - { material: SPRUCE_PLANKS, dx: 0,   dy: 0.9, dz: -1.5 }
+        - { material: SPRUCE_PLANKS, dx: -1.5, dy: 0.9, dz: 0 }
+        - { material: SPRUCE_PLANKS, dx: 1.5,  dy: 0.9, dz: 0 }
+        - { material: BLACK_CONCRETE, dx: 0, dy: 1.2, dz: 0 }
+        - { material: BLACK_CONCRETE, dx: 0, dy: 1.8, dz: 0 }
     mobs:
       - mob: PILLAGER
         count: 3

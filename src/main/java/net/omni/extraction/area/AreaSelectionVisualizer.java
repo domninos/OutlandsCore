@@ -1,6 +1,7 @@
 package net.omni.extraction.area;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.worldevent.WorldEventManager;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -99,6 +100,7 @@ public class AreaSelectionVisualizer implements Listener {
                     if (bound != null)
                         drawChestMarker(player, bound);
                 }
+                case CONVOY -> drawConvoyMarker(player);
             }
         }
 
@@ -232,6 +234,23 @@ public class AreaSelectionVisualizer implements Listener {
 
         for (AreaChestLocation chest : area.resolveChestLocations())
             marker(player, chest.getLocation(), chestDust);
+    }
+
+    private void drawConvoyMarker(Player player) {
+        WorldEventManager manager = plugin.getWorldEventManager();
+        String eventId = manager.getWandEvent(player.getUniqueId());
+
+        if (eventId == null)
+            return;
+
+        Particle.DustOptions startDust = dust(plugin.getConfigUtil().getAreaOutlineColorMob());
+        Particle.DustOptions endDust = dust(plugin.getConfigUtil().getAreaOutlineColorBoss());
+
+        for (String point : new String[]{"start", "end"}) {
+            Location anchor = manager.getConvoyPoint(eventId, point);
+            if (anchor != null)
+                marker(player, anchor, point.equals("start") ? startDust : endDust);
+        }
     }
 
     private void marker(Player player, Location location, Particle.DustOptions dust) {

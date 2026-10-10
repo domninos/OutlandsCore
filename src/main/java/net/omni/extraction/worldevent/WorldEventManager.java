@@ -15,6 +15,7 @@ import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.worldevent.WorldEvent.EventSpawnLocation;
 import net.omni.extraction.worldevent.WorldEvent.WaveType;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -23,7 +24,10 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.BlockDisplay;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -79,6 +83,7 @@ public class WorldEventManager {
     private final Map<String, Long> cooldowns;
     private final Map<UUID, EventInstance> mobInstances;
     private final Map<Location, HarvestChest> harvestChests;
+    private final Map<UUID, String> convoyWands;
     private final Set<UUID> compassPlayers;
     private final Random random;
 
@@ -109,6 +114,7 @@ public class WorldEventManager {
         this.cooldowns = new HashMap<>();
         this.mobInstances = new HashMap<>();
         this.harvestChests = new HashMap<>();
+        this.convoyWands = new HashMap<>();
         this.compassPlayers = new HashSet<>();
         this.random = new Random();
         loadData();
@@ -384,6 +390,10 @@ public class WorldEventManager {
         if (origin == null)
             origin = pickOrigin(event);
 
+        Location convoyStart = convoyRouteStart(event);
+        if (convoyStart != null)
+            origin = convoyStart;
+
         if (origin == null)
             return null;
 
@@ -571,8 +581,10 @@ public class WorldEventManager {
     }
 
     /**
-     * Builds the convoy's route (a sampled straight line from the origin to the
-     * map's extraction spawn), spawns the carrier and registers it as a boss.
+     * Builds the convoy's route (a sampled straight line from its start anchor —
+     * or the event origin — toward its end anchor, else the map's extraction
+     * spawn), spawns the carrier + its display-entity car and registers the
+     * carrier as a boss.
      */
     private boolean startConvoyRoute(EventInstance instance) {
         WorldEvent event = instance.getEvent();
@@ -582,14 +594,16 @@ public class WorldEventManager {
         if (world == null)
             return false;
 
-        Location dest = plugin.getConfigUtil().getSpawnLocation();
-        if (dest == null || dest.getWorld() == null)
-            dest = world.getSpawnLocation();
+        Location dest = convoyRouteEnd(event, world);
 
         Vector dir = dest.toVector().subtract(origin.toVector());
         double dist = dir.length();
-        if (dist < 1.0)
+        if (dist < 1.0) {
+            plugin.getLogger().warning("Convoy '" + event.getId()
+                    + "' start and end anchors are too close (" + String.format("%.1f", dist)
+                    + " blocks) — the convoy cannot start. Use /extraction events route.");
             return false;
+        }
 
         dir.normalize();
 
@@ -619,6 +633,10 @@ public class WorldEventManager {
         mobInstances.put(carrier.getUniqueId(), instance);
         instance.addTotal(1);
         instance.setTrackLocation(origin);
+
+        if (!cfg.car().isEmpty())
+            spawnConvoyVisual(instance, carrier, origin);
+
         return true;
     }
 
@@ -656,6 +674,12 @@ public class WorldEventManager {
         } else {
             plugin.getLogger().warning("Convoy carrier '" + cfg.carrier()
                     + "' is not a Mob — movement will not work.");
+        }
+
+        // The display-entity "car" is the visible convoy — hide the driver mob.
+        if (!cfg.car().isEmpty() && entity instanceof Mob driver) {
+            driver.setInvisible(true);
+            driver.setSilent(true);
         }
 
         return entity;
@@ -779,7 +803,222 @@ public class WorldEventManager {
             }
         }
 
+        updateConvoyVisual(instance, leader);
         instance.setTrackLocation(leader.getLocation());
+    }
+
+    // ---- Convoy route anchors + car visual ----
+
+    /**
+     * Resolves the convoy's configured start anchor, or null when this event is
+     * not a convoy / has no start / the world isn't loaded. When set, it becomes
+     * the event origin (and thus where the convoy spawns).
+     */
+    private Location convoyRouteStart(WorldEvent event) {
+        if (!event.isConvoy())
+            return null;
+
+        WorldEvent.EventSpawnLocation anchor = event.getConvoy().start();
+        if (anchor == null)
+            return null;
+
+        World world = Bukkit.getWorld(anchor.world());
+        if (world == null)
+            return null;
+
+        return new Location(world, anchor.x() + 0.5, anchor.y(), anchor.z() + 0.5);
+    }
+
+    /** Resolves the convoy's end anchor, else the map's extraction spawn. */
+    private Location convoyRouteEnd(WorldEvent event, World fallbackWorld) {
+        WorldEvent.ConvoyConfig cfg = event.getConvoy();
+        if (cfg != null && cfg.end() != null) {
+            World world = Bukkit.getWorld(cfg.end().world());
+            if (world != null)
+                return new Location(world, cfg.end().x() + 0.5, cfg.end().y(), cfg.end().z() + 0.5);
+        }
+
+        Location spawn = plugin.getConfigUtil().getSpawnLocation();
+        if (spawn == null || spawn.getWorld() == null)
+            spawn = fallbackWorld.getSpawnLocation();
+
+        return spawn;
+    }
+
+    /** Spawns the display-entity "car" parts around the carrier (which is already hidden). */
+    private void spawnConvoyVisual(EventInstance instance, Entity carrier, Location base) {
+        List<WorldEvent.CarPart> car = instance.getEvent().getConvoy().car();
+
+        for (WorldEvent.CarPart part : car) {
+            Display display = spawnCarPart(base, part);
+            if (display != null)
+                instance.getConvoyDisplays().add(display.getUniqueId());
+        }
+    }
+
+    private Display spawnCarPart(Location base, WorldEvent.CarPart part) {
+        World world = base.getWorld();
+        if (world == null)
+            return null;
+
+        Location at = base.clone().add(part.dx(), part.dy(), part.dz());
+        at.setYaw(base.getYaw() + part.yaw());
+        at.setPitch(0);
+
+        if (part.material().isBlock()) {
+            return world.spawn(at, BlockDisplay.class, display -> {
+                display.setBlock(part.material().createBlockData());
+                display.setInvulnerable(true);
+                display.setTeleportDuration(2);
+            });
+        }
+
+        return world.spawn(at, ItemDisplay.class, display -> {
+            display.setItemStack(new ItemStack(part.material()));
+            display.setInvulnerable(true);
+            display.setTeleportDuration(2);
+        });
+    }
+
+    /** Repositions every car part so the whole convoy rides the (rotated) carrier. */
+    private void updateConvoyVisual(EventInstance instance, Entity leader) {
+        List<UUID> ids = instance.getConvoyDisplays();
+        if (ids.isEmpty())
+            return;
+
+        List<WorldEvent.CarPart> car = instance.getEvent().getConvoy().car();
+        if (car.isEmpty())
+            return;
+
+        Location base = leader.getLocation().clone();
+        double rad = Math.toRadians(base.getYaw());
+        double cos = Math.cos(rad);
+        double sin = Math.sin(rad);
+
+        for (int i = 0; i < ids.size() && i < car.size(); i++) {
+            Entity display = Bukkit.getEntity(ids.get(i));
+            if (display == null || !display.isValid())
+                continue;
+
+            WorldEvent.CarPart part = car.get(i);
+            double rx = part.dx() * cos - part.dz() * sin;
+            double rz = part.dx() * sin + part.dz() * cos;
+
+            Location at = base.clone().add(rx, part.dy(), rz);
+            at.setYaw(base.getYaw() + part.yaw());
+            at.setPitch(0);
+
+            display.teleport(at);
+        }
+    }
+
+    /** Removes every car part's display entity (end of event / shutdown). */
+    private void clearConvoyVisual(EventInstance instance) {
+        for (UUID uuid : instance.getConvoyDisplays()) {
+            Entity display = Bukkit.getEntity(uuid);
+            if (display != null)
+                display.remove();
+        }
+
+        instance.clearConvoyDisplays();
+    }
+
+    /**
+     * Sets a convoy's start/end anchor to the given location, persisting it into
+     * events.yml and applying it live (takes effect on the next run). Returns
+     * false when the event isn't a convoy or the point name is unknown.
+     */
+    public boolean setConvoyPoint(String id, String point, Location location) {
+        WorldEvent event = getEvent(id);
+        if (event == null || !event.isConvoy())
+            return false;
+
+        if (!point.equalsIgnoreCase("start") && !point.equalsIgnoreCase("end"))
+            return false;
+
+        String path = "events." + event.getId() + ".convoy." + point.toLowerCase(Locale.ROOT);
+        eventsConfig.set(path + ".world", location.getWorld() == null ? "" : location.getWorld().getName());
+        eventsConfig.set(path + ".x", location.getBlockX());
+        eventsConfig.set(path + ".y", location.getBlockY());
+        eventsConfig.set(path + ".z", location.getBlockZ());
+
+        WorldEvent.ConvoyConfig cfg = event.getConvoy();
+        EventSpawnLocation anchor = new EventSpawnLocation(
+                location.getWorld() == null ? "" : location.getWorld().getName(),
+                location.getBlockX(), location.getBlockY(), location.getBlockZ());
+        EventSpawnLocation start = point.equalsIgnoreCase("start") ? anchor : cfg.start();
+        EventSpawnLocation end = point.equalsIgnoreCase("end") ? anchor : cfg.end();
+
+        event.setRoute(start, end);
+
+        if (getActive(event.getId()) != null)
+            plugin.sendConsole("<yellow>[World Event] Convoy route for '" + event.getId()
+                    + "' changed mid-run — it applies to the next run.</yellow>");
+        return true;
+    }
+
+    /** Removes a convoy's start/end anchor (falls back to the default route). */
+    public boolean clearConvoyPoint(String id, String point) {
+        WorldEvent event = getEvent(id);
+        if (event == null || !event.isConvoy())
+            return false;
+
+        if (!point.equalsIgnoreCase("start") && !point.equalsIgnoreCase("end"))
+            return false;
+
+        String path = "events." + event.getId() + ".convoy." + point.toLowerCase(Locale.ROOT);
+        eventsConfig.set(path + ".world", null);
+        eventsConfig.set(path + ".x", null);
+        eventsConfig.set(path + ".y", null);
+        eventsConfig.set(path + ".z", null);
+
+        WorldEvent.ConvoyConfig cfg = event.getConvoy();
+        EventSpawnLocation start = point.equalsIgnoreCase("start") ? null : cfg.start();
+        EventSpawnLocation end = point.equalsIgnoreCase("end") ? null : cfg.end();
+
+        event.setRoute(start, end);
+        return true;
+    }
+
+    /** True when the event exists and has a convoy (i.e. it is a Supply Convoy). */
+    public boolean isConvoyEvent(String id) {
+        WorldEvent event = getEvent(id);
+        return event != null && event.isConvoy();
+    }
+
+    /** The convoy event id currently armed onto the player's wand, or null. */
+    public String getWandEvent(UUID playerId) {
+        return convoyWands.get(playerId);
+    }
+
+    /** Arms a convoy event onto the player's wand (CONVOY mode sets its anchors). */
+    public void setWandEvent(Player player, String eventId) {
+        if (!isConvoyEvent(eventId))
+            return;
+
+        convoyWands.put(player.getUniqueId(), eventId);
+    }
+
+    public void clearWandEvent(UUID playerId) {
+        convoyWands.remove(playerId);
+    }
+
+    /** The convoy's start or end anchor as a world location, or null when unset/unresolvable. */
+    public Location getConvoyPoint(String id, String point) {
+        WorldEvent event = getEvent(id);
+        if (event == null || !event.isConvoy())
+            return null;
+
+        WorldEvent.EventSpawnLocation anchor = point.equalsIgnoreCase("start")
+                ? event.getConvoy().start() : event.getConvoy().end();
+        if (anchor == null)
+            return null;
+
+        World world = Bukkit.getWorld(anchor.world());
+        if (world == null)
+            return null;
+
+        return new Location(world, anchor.x(), anchor.y(), anchor.z());
     }
 
     // ---- Toxic Storm ----
@@ -1160,7 +1399,7 @@ public class WorldEventManager {
         Location center = origin.clone().add(0, 1, 0);
         world.spawnParticle(Particle.EXPLOSION_EMITTER, center, 1);
         world.spawnParticle(Particle.EXPLOSION, center, 16, 1.5, 1, 1.5, 0.05);
-        world.spawnParticle(Particle.FLASH, center, 1);
+        world.spawnParticle(Particle.FLASH, center, 1, 0, 0, 0, 0, Color.WHITE);
         world.spawnParticle(Particle.LAVA, center, 50, 2.5, 0.5, 2.5, 0.05);
         world.spawnParticle(Particle.FLAME, center, 40, 1.5, 1, 1.5, 0.03);
         world.spawnParticle(Particle.ASH, center, 80, 2.0, 0.5, 2.0, 0.03);
@@ -1316,6 +1555,7 @@ public class WorldEventManager {
         active.remove(event.getId());
 
         clearStormEffects(instance);
+        clearConvoyVisual(instance);
 
         for (UUID uuid : new ArrayList<>(instance.getMobs())) {
             Entity entity = Bukkit.getEntity(uuid);

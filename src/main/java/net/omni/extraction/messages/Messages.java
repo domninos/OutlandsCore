@@ -171,7 +171,15 @@ public enum Messages {
     EVENTS_STARTED("events.started", "<green>Started event <white>%event%</white>.</green>"),
     EVENTS_STOPPED("events.stopped", "<gold>Stopped event <white>%event%</white>.</gold>"),
     EVENTS_STOPPED_ALL("events.stopped-all", "<gold>Stopped <white>%count%</white> world event(s).</gold>"),
-    EVENTS_HARVEST("events.harvest", "<green>You harvested the crater!</green>");
+    EVENTS_HARVEST("events.harvest", "<green>You harvested the crater!</green>"),
+    EVENTS_NOT_CONVOY("events.not-convoy", "<red>Event <white>%event%</white> is not a Supply Convoy — convoy routes only apply to them.</red>"),
+    EVENTS_ROUTE_SET("events.route-set", "<green>Convoy <white>%event%</white> <yellow>%point%</yellow> anchor set at <aqua>%location%</aqua>.</green>"),
+    EVENTS_ROUTE_CLEARED("events.route-cleared", "<gold>Convoy <white>%event%</white> route reset — it runs from its default start to the extraction spawn.</gold>"),
+    EVENTS_ROUTE_SHOW("events.route-show", "<green>Convoy <white>%event%</white> route: start <aqua>%start%</aqua> — end <aqua>%end%</aqua>.</green>"),
+    EVENTS_ROUTE_SHOW_EMPTY("events.route-show-empty", "<gray>Convoy <white>%event%</white> uses its default route (event origin → extraction spawn).</gray>"),
+    EVENTS_ROUTE_WAND_ARM("events.route-wand-arm", "<green>Wand armed for convoy <white>%event%</white>. Left-click = start anchor, right-click = end anchor.</green>"),
+    EVENTS_ROUTE_WAND_NONE("events.route-wand-none", "<red>Your wand is not armed for a convoy — run <white>/extraction events route {event} wand</white> first.</red>"),
+    EVENTS_ROUTE_NEEDS_PLAYER("events.route-needs-player", "<red>Only players can set convoy anchors.</red>");
 
     private final String path;
     private final Object defaultVal;

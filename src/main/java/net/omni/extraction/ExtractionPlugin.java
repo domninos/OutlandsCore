@@ -120,6 +120,9 @@ public final class ExtractionPlugin extends JavaPlugin {
      - add join / leave extraction messages
      - add sounds (configurable)
      -
+     - fix the basic events logic
+      - only try event if a player is in /extraction
+      - fix chances
      -
 
      */
@@ -136,9 +139,6 @@ public final class ExtractionPlugin extends JavaPlugin {
         No extraction rewards are granted.
      -
      -
-     - events
-     -
-     - pets
      - passive
      -
         Artifact of the Explorer

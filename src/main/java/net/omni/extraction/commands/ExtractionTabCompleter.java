@@ -2,6 +2,7 @@ package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.relics.RelicManager;
+import net.omni.extraction.worldevent.WorldEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -55,7 +56,7 @@ public class ExtractionTabCompleter implements TabCompleter {
 
             if (args[0].equalsIgnoreCase("events") && sender.hasPermission("extraction.admin")) {
                 return StringUtil.copyPartialMatches(args[1],
-                        List.of("status", "list", "start", "stop"), new ArrayList<>());
+                        List.of("status", "list", "start", "stop", "route"), new ArrayList<>());
             }
 
             if (sender.hasPermission("extraction.admin")
@@ -89,6 +90,25 @@ public class ExtractionTabCompleter implements TabCompleter {
                     .map(instance -> instance.getEvent().getId())
                     .toList());
             return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
+        }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("events")
+                && args[1].equalsIgnoreCase("route")
+                && sender.hasPermission("extraction.admin")) {
+            List<String> ids = plugin.getWorldEventManager().getEvents().values().stream()
+                    .filter(event -> event.isConvoy())
+                    .map(WorldEvent::getId)
+                    .toList();
+            return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
+        }
+
+        if (args.length == 4
+                && args[0].equalsIgnoreCase("events")
+                && args[1].equalsIgnoreCase("route")
+                && sender.hasPermission("extraction.admin")) {
+            return StringUtil.copyPartialMatches(args[3],
+                    List.of("start", "end", "clear", "show", "wand"), new ArrayList<>());
         }
 
         if (args.length == 3

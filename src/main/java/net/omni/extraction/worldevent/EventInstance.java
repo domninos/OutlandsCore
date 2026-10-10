@@ -55,6 +55,7 @@ public class EventInstance {
     private double convoyProgress;
     private double lastConvoyDist;
     private long convoyStuckSince;
+    private final List<UUID> convoyDisplays;
 
     private final List<Location> stormZones;
     private long lastZoneDrift;
@@ -72,6 +73,7 @@ public class EventInstance {
         this.craterBlocks = new ArrayList<>();
         this.craterActive = false;
         this.convoyPoints = new ArrayList<>();
+        this.convoyDisplays = new ArrayList<>();
         this.convoyProgress = 0.0;
         this.convoyRouteLength = 0.0;
         this.lastConvoyDist = Double.MAX_VALUE;
@@ -286,6 +288,15 @@ public class EventInstance {
 
     public void setConvoyStuckSince(long convoyStuckSince) {
         this.convoyStuckSince = convoyStuckSince;
+    }
+
+    /** UUIDs of the display entities that form the convoy's moving "car". */
+    public List<UUID> getConvoyDisplays() {
+        return convoyDisplays;
+    }
+
+    public void clearConvoyDisplays() {
+        convoyDisplays.clear();
     }
 
     // ---- storm state ----

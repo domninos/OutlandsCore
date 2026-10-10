@@ -530,6 +530,31 @@ Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<g
     Samples (`supply_convoy`, `toxic_storm`) + `supply_crate_key`/`hazmat_fragment` event-items + the two loot
     tables (`supply_convoy`, `toxic_storm`) ship in resources. Convoy/storm state is memory-only (same restart
     caveat as craters: a hard kill mid-event loses it).
+  - **Convoy routes + car visual**: optional `convoy.start`/`convoy.end` anchors (`{world,x,y,z}`,
+    `WorldEvent.parseLocationSection`, `ConvoyConfig.start/end`) are edited live via
+    `/extraction events route {event} {start|end|clear|show|wand}` (perm `extraction.admin`, tab-completed through
+    `ExtractionTabCompleter`, wired in `ExtractionCommand.handleRoute` → `WorldEventManager.setConvoyPoint`/
+    `clearConvoyPoint`/`getConvoyPoint` persist with `eventsConfig.set("events.<id>.convoy.start|end.*")` and
+    live-apply with `WorldEvent.setRoute` rebuilding the in-memory ConvoyConfig; mid-run changes warn "applies on the
+    next run"). The wand (`WandMode.CONVOY`, cycled like the others, lore added in `AreaManager.applyWandDisplay`)
+    sets anchors once armed via `… route {event} wand` (`WorldEventManager.convoyWands` UUID→eventId map +
+    `getWandEvent`/`setWandEvent`/`clearWandEvent`; `AreaWandListener.handleConvoy`: left-click = start, right-click
+    = end; sneak-right still cycles mode); `AreaSelectionVisualizer.drawConvoyMarker` shows pillars at both anchors.
+    `spawnEvent` overrides the origin with `convoyRouteStart(event)` (so `%location%` reads the start);
+    `startConvoyRoute` ends at `convoyRouteEnd` (configured `end` else `getConfigUtil().getSpawnLocation()` else world
+    spawn) and aborts with a clear warning when start/end are < 1 block apart. The **car** is a list of
+    `convoy.car: {material, dx, dy, dz, yaw}` parts (`WorldEvent.CarPart`): block materials spawn as
+    `BlockDisplay`, others as `ItemDisplay`, all `setInvulnerable(true)` + `setTeleportDuration(2)` once
+    (`spawnConvoyVisual`/`spawnCarPart`), repositioned every tick in `updateConvoy` (`updateConvoyVisual` rotates
+    dx/dz by the carrier's yaw); the driver `Mob` is `setInvisible(true)`+`setSilent(true)` while any part exists.
+    Cleanup via `clearConvoyVisual` in `endEvent` (covers `shutdown()`); `~64` part cap kept in mind — keep samples
+    small. The `supply_convoy` sample ships a small truck scaffold; comment that `car` out to show the bare MULE.
+    Messages `events.route-set/cleared/show/show-empty/wand-arm/wand-none/needs-player/not-convoy` in
+    `Messages.java`/`messages.yml` (kept in sync).
+  - **Particle crash fix (meteor_crash)**: `Particle.FLASH` REQUIRES `org.bukkit.Color` data —
+    `world.spawnParticle(Particle.FLASH, ...)` without it throws `IllegalArgumentException: missing required data
+    class org.bukkit.Color` and kills `/extraction events start meteor_crash`. `impactEffect` now passes
+    `Color.WHITE`. It was the only data-requiring particle in the codebase (DUST always passes `DustOptions`).
   - **`MobResolver` refactor detail**: resolve returns a complete `AreaSpawnDefinition`, so
     `AreaManager.resolveSpawns` works unchanged; `AreaClearManager.spawnGroup` still overwrites count/level from the
     spawn-entry after resolve. `AreaSpawnDefinition.count` (a template copy) is stale for per-spawn entries — read

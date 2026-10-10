@@ -517,11 +517,86 @@ public class ExtractionCommand implements CommandExecutor {
                             .replace("event", instance.getEvent().getDisplayName()));
                 }
             }
+            case "route" -> handleRoute(sender, args);
             default -> plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction events {status|list|start {event}|stop [event]}"));
+                    .replace("usage", "/extraction events {status|list|start {event}|stop [event]|route {event} {start|end|clear|show|wand}}"));
         }
 
         return true;
+    }
+
+    private void handleRoute(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            plugin.sendMessage(sender, Messages.USAGE
+                    .replace("usage", "/extraction events route {event} {start|end|clear|show|wand}"));
+            return;
+        }
+
+        WorldEventManager manager = plugin.getWorldEventManager();
+        String id = args[2];
+
+        if (!manager.isConvoyEvent(id)) {
+            plugin.sendMessage(sender, Messages.EVENTS_NOT_CONVOY.replace("event", id));
+            return;
+        }
+
+        WorldEvent event = manager.getEvent(id);
+        String action = args.length >= 4 ? args[3].toLowerCase() : "";
+
+        switch (action) {
+            case "start", "end" -> {
+                if (!(sender instanceof Player player)) {
+                    plugin.sendMessage(sender, Messages.EVENTS_ROUTE_NEEDS_PLAYER.toString());
+                    return;
+                }
+
+                Location location = player.getLocation();
+                manager.setConvoyPoint(id, action, location);
+
+                plugin.sendMessage(sender, Messages.EVENTS_ROUTE_SET
+                        .replace("event", event.getDisplayName())
+                        .replace("point", action)
+                        .replace("location", locString(location)));
+            }
+            case "clear" -> {
+                manager.clearConvoyPoint(id, "start");
+                manager.clearConvoyPoint(id, "end");
+                plugin.sendMessage(sender, Messages.EVENTS_ROUTE_CLEARED
+                        .replace("event", event.getDisplayName()));
+            }
+            case "show" -> {
+                Location start = manager.getConvoyPoint(id, "start");
+                Location end = manager.getConvoyPoint(id, "end");
+
+                if (start == null && end == null) {
+                    plugin.sendMessage(sender, Messages.EVENTS_ROUTE_SHOW_EMPTY
+                            .replace("event", event.getDisplayName()));
+                    return;
+                }
+
+                plugin.sendMessage(sender, Messages.EVENTS_ROUTE_SHOW
+                        .replace("event", event.getDisplayName())
+                        .replace("start", start == null ? "default" : locString(start))
+                        .replace("end", end == null ? "default" : locString(end)));
+            }
+            case "wand" -> {
+                if (!(sender instanceof Player player)) {
+                    plugin.sendMessage(sender, Messages.EVENTS_ROUTE_NEEDS_PLAYER.toString());
+                    return;
+                }
+
+                manager.setWandEvent(player, id);
+                plugin.sendMessage(sender, Messages.EVENTS_ROUTE_WAND_ARM
+                        .replace("event", event.getDisplayName()));
+            }
+            default -> plugin.sendMessage(sender, Messages.USAGE
+                    .replace("usage", "/extraction events route {event} {start|end|clear|show|wand}"));
+        }
+    }
+
+    private String locString(Location location) {
+        String world = location.getWorld() == null ? "?" : location.getWorld().getName();
+        return world + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ();
     }
 
     private void sendStartResult(CommandSender sender, EventStartResult result, WorldEvent event) {

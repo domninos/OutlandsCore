@@ -3,6 +3,7 @@ package net.omni.extraction.area;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.worldevent.WorldEventManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -61,7 +62,43 @@ public class AreaWandListener implements Listener {
             }
             case SPAWN -> handleSpawn(player, action, block, areaManager, item, sneaking, event);
             case CHEST -> handleChest(player, action, block, areaManager, item, sneaking, event);
+            case CONVOY -> handleConvoy(player, action, event);
         }
+    }
+
+    private void handleConvoy(Player player, Action action, PlayerInteractEvent event) {
+        boolean left = action == Action.LEFT_CLICK_BLOCK || action == Action.LEFT_CLICK_AIR;
+        boolean right = action == Action.RIGHT_CLICK_BLOCK || action == Action.RIGHT_CLICK_AIR;
+
+        if (!left && !right)
+            return;
+
+        event.setCancelled(true);
+
+        WorldEventManager manager = plugin.getWorldEventManager();
+        String eventId = manager.getWandEvent(player.getUniqueId());
+
+        if (eventId == null) {
+            plugin.sendMessage(player, Messages.EVENTS_ROUTE_WAND_NONE.toString());
+            return;
+        }
+
+        if (!manager.isConvoyEvent(eventId)) {
+            manager.clearWandEvent(player.getUniqueId());
+            plugin.sendMessage(player, Messages.EVENTS_ROUTE_WAND_NONE.toString());
+            return;
+        }
+
+        String point = left ? "start" : "end";
+        manager.setConvoyPoint(eventId, point, player.getLocation());
+
+        plugin.sendMessage(player, Messages.EVENTS_ROUTE_SET
+                .replace("event", manager.getEvent(eventId).getDisplayName())
+                .replace("point", point)
+                .replace("location", player.getWorld().getName() + " "
+                        + player.getLocation().getBlockX() + " "
+                        + player.getLocation().getBlockY() + " "
+                        + player.getLocation().getBlockZ()));
     }
 
     private void sendPos(Player player, Messages message, Location location) {

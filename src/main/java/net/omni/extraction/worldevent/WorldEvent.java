@@ -33,10 +33,21 @@ public class WorldEvent {
 
     /** Supply Convoy movement/escort tuning. Absent section = not a convoy. */
     public record ConvoyConfig(String carrier, String carrierName, double speed, int stepBlocks,
-                               int checkpointRadius, int stuckSeconds, int followRange, int escapeRadius) {
+                               int checkpointRadius, int stuckSeconds, int followRange, int escapeRadius,
+                               EventSpawnLocation start, EventSpawnLocation end, List<CarPart> car) {
         public boolean active() {
             return carrier != null && !carrier.isBlank();
         }
+    }
+
+    /**
+     * One building block of the convoy's display-entity "car". dx/dy/dz are the
+     * part's offset from the carrier's feet (negative dy = wheels/crates), yaw
+     * is the material's rotation in degrees (0 = facing south, the vanilla
+     * default). Block materials render as BlockDisplay, everything else as
+     * ItemDisplay.
+     */
+    public record CarPart(Material material, double dx, double dy, double dz, float yaw) {
     }
 
     /** Toxic Storm zone/effect tuning. Absent section = not a storm. */
@@ -117,7 +128,7 @@ public class WorldEvent {
     private final double pushStrength;
     private final double pushUp;
 
-    private final ConvoyConfig convoy;
+    private ConvoyConfig convoy;
     private final StormConfig storm;
 
     public WorldEvent(String id, boolean enabled, String displayName, int weight,
@@ -298,6 +309,20 @@ public class WorldEvent {
         ConvoyConfig convoy = null;
         ConfigurationSection convoySection = section.getConfigurationSection("convoy");
         if (convoySection != null) {
+            List<CarPart> car = new ArrayList<>();
+            for (Map<?, ?> map : convoySection.getMapList("car")) {
+                Object raw = map.get("material");
+                Material material = raw == null ? null : Material.matchMaterial(String.valueOf(raw));
+                if (material == null)
+                    continue;
+
+                double dx = map.get("dx") instanceof Number n ? n.doubleValue() : 0;
+                double dy = map.get("dy") instanceof Number n ? n.doubleValue() : 0;
+                double dz = map.get("dz") instanceof Number n ? n.doubleValue() : 0;
+                float yaw = map.get("yaw") instanceof Number n ? n.floatValue() : 0;
+                car.add(new CarPart(material, dx, dy, dz, yaw));
+            }
+
             convoy = new ConvoyConfig(
                     convoySection.getString("carrier", "MULE"),
                     convoySection.getString("carrier-name", "Supply Convoy"),
@@ -306,7 +331,10 @@ public class WorldEvent {
                     Math.max(1, convoySection.getInt("checkpoint-radius", 3)),
                     Math.max(1, convoySection.getInt("stuck-seconds", 10)),
                     Math.max(0, convoySection.getInt("follow-range", 6)),
-                    Math.max(0, convoySection.getInt("escape-radius", 5)));
+                    Math.max(0, convoySection.getInt("escape-radius", 5)),
+                    parseLocationSection(convoySection.getConfigurationSection("start")),
+                    parseLocationSection(convoySection.getConfigurationSection("end")),
+                    car);
         }
 
         StormConfig storm = null;
@@ -351,6 +379,18 @@ public class WorldEvent {
                 return mode;
 
         return TriggerMode.SCHEDULE;
+    }
+
+    /** Parses a {world, x, y, z} convoy route anchor, or null when missing/incomplete. */
+    private static EventSpawnLocation parseLocationSection(ConfigurationSection loc) {
+        if (loc == null)
+            return null;
+
+        String world = loc.getString("world", "");
+        if (world.isBlank())
+            return null;
+
+        return new EventSpawnLocation(world, loc.getInt("x", 0), loc.getInt("y", 64), loc.getInt("z", 0));
     }
 
     /** Parses a floor/edge block list; each entry is a Material name or a {type, weight} map. */
@@ -670,6 +710,21 @@ public class WorldEvent {
     /** True when this event is a moving supply convoy. */
     public boolean isConvoy() {
         return convoy != null && convoy.active();
+    }
+
+    /**
+     * Applies a new route (explicit start/end anchors) to a live event without
+     * a full reload. Null clears the anchor — the event then falls back to its
+     * default route (event origin -> extraction spawn).
+     */
+    public void setRoute(EventSpawnLocation start, EventSpawnLocation end) {
+        ConvoyConfig c = convoy;
+        if (c == null)
+            return;
+
+        convoy = new ConvoyConfig(c.carrier(), c.carrierName(), c.speed(), c.stepBlocks(),
+                c.checkpointRadius(), c.stuckSeconds(), c.followRange(), c.escapeRadius(),
+                start, end, c.car());
     }
 
     /** The storm tuning, or null when this event is not a Toxic Storm. */

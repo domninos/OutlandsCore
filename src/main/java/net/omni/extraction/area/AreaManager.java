@@ -581,6 +581,10 @@ public class AreaManager {
                 lore.add(mini.deserialize("<gray>Left-click a block: <gold>choose loot table</gold></gray>"));
                 lore.add(mini.deserialize("<gray>Shift + left-click: <yellow>clear chest</yellow></gray>"));
             }
+            case CONVOY -> {
+                lore.add(mini.deserialize("<gray>Left-click: <green>convoy start anchor</green></gray>"));
+                lore.add(mini.deserialize("<gray>Right-click: <yellow>convoy end anchor</yellow></gray>"));
+            }
         }
 
         lore.add(Component.empty());
