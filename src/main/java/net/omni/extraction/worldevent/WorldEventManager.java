@@ -1798,6 +1798,11 @@ public class WorldEventManager {
         if (instance == null)
             return;
 
+        UUID killed = entity.getUniqueId();
+        boolean big = instance.getEvent().isConvoy() && killed.equals(instance.getConvoyLeader())
+                || instance.getBosses().contains(killed);
+        spawnDeathEffect(entity, big);
+
         instance.getMobs().remove(entity.getUniqueId());
         instance.getBosses().remove(entity.getUniqueId());
         instance.getMobDrops().remove(entity.getUniqueId());
@@ -1838,6 +1843,36 @@ public class WorldEventManager {
 
     public EventInstance getMobInstance(UUID uuid) {
         return mobInstances.get(uuid);
+    }
+
+    /**
+     * Burst of particles + a sound where an event mob dies. Big = the convoy
+     * carrier or an event boss (meteor guardians): a proper explosion with
+     * smoke and a flash. Small = a puff for regular event mobs.
+     */
+    private void spawnDeathEffect(Entity entity, boolean big) {
+        Location loc = entity.getLocation().add(0, 0.5, 0);
+        World world = loc.getWorld();
+        if (world == null)
+            return;
+
+        if (big) {
+            world.spawnParticle(Particle.EXPLOSION_EMITTER, loc, 1);
+            world.spawnParticle(Particle.EXPLOSION, loc, 24, 1.2, 1.2, 1.2, 0.08);
+            world.spawnParticle(Particle.FLASH, loc, 1, 0, 0, 0, 0, Color.WHITE);
+            world.spawnParticle(Particle.LARGE_SMOKE, loc, 40, 1.5, 1.0, 1.5, 0.05);
+
+            Sound boom = decodeSound("entity_generic_explode");
+            if (boom != null)
+                world.playSound(loc, boom, 2.5f, 0.7f);
+        } else {
+            world.spawnParticle(Particle.LARGE_SMOKE, loc, 12, 0.6, 0.5, 0.6, 0.04);
+            world.spawnParticle(Particle.EXPLOSION, loc, 1);
+
+            Sound thud = decodeSound("entity_generic_explode");
+            if (thud != null)
+                world.playSound(loc, thud, 1.0f, 1.2f);
+        }
     }
 
     private void tick() {

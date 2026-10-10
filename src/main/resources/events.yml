@@ -303,20 +303,57 @@ events:
       # carrier's feet; yaw rotates the part (0 = facing south). Remove the
       # whole car section to show the bare MULE again.
       car:
-        - { material: STONE_BRICKS, dx: -0.5, dy: 1.2, dz: -0.5 }
-        - { material: STONE_BRICKS, dx: 0.5,  dy: 1.2, dz: -0.5 }
-        - { material: STONE_BRICKS, dx: -0.5, dy: 1.2, dz: 0.5 }
-        - { material: STONE_BRICKS, dx: 0.5,  dy: 1.2, dz: 0.5 }
-        - { material: SPRUCE_PLANKS, dx: 0,  dy: 1.5, dz: 1.5 }
-        - { material: SPRUCE_PLANKS, dx: 0,  dy: 1.5, dz: -1.5 }
-        - { material: SPRUCE_PLANKS, dx: -1.5, dy: 1.5, dz: 0 }
-        - { material: SPRUCE_PLANKS, dx: 1.5,  dy: 1.5, dz: 0 }
-        - { material: SPRUCE_PLANKS, dx: 0,   dy: 0.9, dz: 1.5 }
-        - { material: SPRUCE_PLANKS, dx: 0,   dy: 0.9, dz: -1.5 }
-        - { material: SPRUCE_PLANKS, dx: -1.5, dy: 0.9, dz: 0 }
-        - { material: SPRUCE_PLANKS, dx: 1.5,  dy: 0.9, dz: 0 }
-        - { material: BLACK_CONCRETE, dx: 0, dy: 1.2, dz: 0 }
-        - { material: BLACK_CONCRETE, dx: 0, dy: 1.8, dz: 0 }
+        # 4 wheels (body pokes past the 2-wide box)
+        - { material: BLACK_CONCRETE, dx: -0.85, dy: 0.35, dz: -1.0, yaw: 0 }
+        - { material: BLACK_CONCRETE, dx:  0.85, dy: 0.35, dz: -1.0, yaw: 0 }
+        - { material: BLACK_CONCRETE, dx: -0.85, dy: 0.35, dz:  1.0, yaw: 0 }
+        - { material: BLACK_CONCRETE, dx:  0.85, dy: 0.35, dz:  1.0, yaw: 0 }
+        # Lower body (solid white)
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 1.15, dz: -1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 1.15, dz: -1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 1.15, dz: -1.5 }
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 1.15, dz: -0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 1.15, dz: -0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 1.15, dz: -0.5 }
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 1.15, dz:  0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 1.15, dz:  0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 1.15, dz:  0.5 }
+        # Mid body — windshield on the front face
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 1.65, dz: -1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 1.65, dz: -1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 1.65, dz: -1.5 }
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 1.65, dz: -0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 1.65, dz: -0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 1.65, dz: -0.5 }
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 1.65, dz:  0.5 }
+        - { material: GLASS,          dx:  0.0, dy: 1.65, dz:  0.5 }   # windshield
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 1.65, dz:  0.5 }
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 1.65, dz:  1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 1.65, dz:  1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 1.65, dz:  1.5 }
+        # Upper body — side windows
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 2.15, dz: -1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 2.15, dz: -1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 2.15, dz: -1.5 }
+        - { material: GLASS,          dx: -0.5, dy: 2.15, dz: -0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 2.15, dz: -0.5 }
+        - { material: GLASS,          dx:  0.5, dy: 2.15, dz: -0.5 }
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 2.15, dz:  0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 2.15, dz:  0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 2.15, dz:  0.5 }
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 2.15, dz:  1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 2.15, dz:  1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 2.15, dz:  1.5 }
+        # Roof
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 2.65, dz: -1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 2.65, dz: -1.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 2.65, dz: -1.5 }
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 2.65, dz: -0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 2.65, dz: -0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 2.65, dz: -0.5 }
+        - { material: WHITE_CONCRETE, dx: -0.5, dy: 2.65, dz:  0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.0, dy: 2.65, dz:  0.5 }
+        - { material: WHITE_CONCRETE, dx:  0.5, dy: 2.65, dz:  0.5 }
     mobs:
       - mob: PILLAGER
         count: 3
