@@ -265,9 +265,9 @@ public class AreaCommand implements CommandExecutor {
         plugin.sendMessage(sender, Messages.AREA_LIST_HEADER.replace("count", String.valueOf(areas.size())));
 
         for (Area area : areas) {
-            plugin.sendMessage(sender, Messages.AREA_LIST_ENTRY
-                    .replace("area", area.getName())
-                    .replace("state", area.isReady() ? "READY" : area.getState().name()));
+            plugin.sendMessage(sender, Messages.AREA_LIST_ENTRY.replace(
+                    "area", area.getName(),
+                    "state", area.isReady() ? "READY" : area.getState().name()));
         }
 
         return true;
@@ -321,11 +321,11 @@ public class AreaCommand implements CommandExecutor {
 
             String type = spawn.getType() == null || spawn.getType().isBlank() ? "<red>unset</red>" : spawn.getType();
 
-            plugin.sendMessage(sender, Messages.AREA_INFO_SPAWN_ENTRY
-                    .replace("mob", spawn.getGroup())
-                    .replace("type", type)
-                    .replace("count", String.valueOf(spawn.getCount()))
-                    .replace("details", details.toString()));
+            plugin.sendMessage(sender, Messages.AREA_INFO_SPAWN_ENTRY.replace(
+                    "mob", spawn.getGroup(),
+                    "type", type,
+                    "count", String.valueOf(spawn.getCount()),
+                    "details", details.toString()));
         }
 
         return true;

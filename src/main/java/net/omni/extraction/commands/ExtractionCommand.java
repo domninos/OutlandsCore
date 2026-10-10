@@ -250,9 +250,9 @@ public class ExtractionCommand implements CommandExecutor {
         try {
             int amount = Integer.parseInt(args[2]);
             plugin.getTokenManager().setTokens(target.getUniqueId(), amount);
-            plugin.sendMessage(sender, Messages.ADMIN_SET_TOKENS
-                    .replace("player", target.getName())
-                    .replace("amount", String.valueOf(amount)));
+            plugin.sendMessage(sender, Messages.ADMIN_SET_TOKENS.replace(
+                    "player", target.getName(),
+                    "amount", String.valueOf(amount)));
         } catch (NumberFormatException e) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction settokens {player} {amount}"));
         }
@@ -280,9 +280,9 @@ public class ExtractionCommand implements CommandExecutor {
         try {
             int amount = Integer.parseInt(args[2]);
             plugin.getTokenManager().addTokens(target.getUniqueId(), amount);
-            plugin.sendMessage(sender, Messages.ADMIN_GIVE_TOKENS
-                    .replace("player", target.getName())
-                    .replace("amount", String.valueOf(amount)));
+            plugin.sendMessage(sender, Messages.ADMIN_GIVE_TOKENS.replace(
+                    "player", target.getName(),
+                    "amount", String.valueOf(amount)));
         } catch (NumberFormatException e) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction givetokens {player} {amount}"));
         }
@@ -319,9 +319,9 @@ public class ExtractionCommand implements CommandExecutor {
             if (!target.getInventory().addItem(tokenItem).isEmpty())
                 target.getWorld().dropItemNaturally(target.getLocation(), tokenItem);
 
-            plugin.sendMessage(sender, Messages.ADMIN_GIVE_UPGRADE
-                    .replace("player", target.getName())
-                    .replace("token", tokenKey));
+            plugin.sendMessage(sender, Messages.ADMIN_GIVE_UPGRADE.replace(
+                    "player", target.getName(),
+                    "token", tokenKey));
         }
 
         return true;
@@ -389,9 +389,9 @@ public class ExtractionCommand implements CommandExecutor {
 
         RelicDefinition def = plugin.getRelicManager().getDefinition(category, args[2]);
         if (def == null) {
-            plugin.sendMessage(sender, Messages.RELIC_NOT_FOUND
-                    .replace("kind", category)
-                    .replace("relic", args[2].toLowerCase()));
+            plugin.sendMessage(sender, Messages.RELIC_NOT_FOUND.replace(
+                    "kind", category,
+                    "relic", args[2].toLowerCase()));
             return true;
         }
 
@@ -406,20 +406,20 @@ public class ExtractionCommand implements CommandExecutor {
 
         if (action.equals("give")) {
             plugin.getRelicManager().grant(data, def);
-            plugin.sendMessage(sender, Messages.RELIC_GIVEN
-                    .replace("relic", relicName)
-                    .replace("player", target.getName()));
+            plugin.sendMessage(sender, Messages.RELIC_GIVEN.replace(
+                    "relic", relicName,
+                    "player", target.getName()));
         } else {
             if (!plugin.getRelicManager().revoke(data, def)) {
-                plugin.sendMessage(sender, Messages.RELIC_NOT_OWNED_BY
-                        .replace("relic", relicName)
-                        .replace("player", target.getName()));
+                plugin.sendMessage(sender, Messages.RELIC_NOT_OWNED_BY.replace(
+                        "relic", relicName,
+                        "player", target.getName()));
                 return true;
             }
 
-            plugin.sendMessage(sender, Messages.RELIC_REMOVED
-                    .replace("relic", relicName)
-                    .replace("player", target.getName()));
+            plugin.sendMessage(sender, Messages.RELIC_REMOVED.replace(
+                    "relic", relicName,
+                    "player", target.getName()));
 
             Player online = target.getPlayer();
             if (online != null)
@@ -465,9 +465,9 @@ public class ExtractionCommand implements CommandExecutor {
                                 : Messages.EVENTS_STATUS_READY.toString();
                     }
 
-                    plugin.sendMessage(sender, Messages.EVENTS_STATUS_ENTRY
-                            .replace("event", event.getDisplayName())
-                            .replace("state", state));
+                    plugin.sendMessage(sender, Messages.EVENTS_STATUS_ENTRY.replace(
+                            "event", event.getDisplayName(),
+                            "state", state));
                 }
 
                 if (manager.getEvents().isEmpty())
@@ -553,10 +553,10 @@ public class ExtractionCommand implements CommandExecutor {
                 Location location = player.getLocation();
                 manager.setConvoyPoint(id, action, location);
 
-                plugin.sendMessage(sender, Messages.EVENTS_ROUTE_SET
-                        .replace("event", event.getDisplayName())
-                        .replace("point", action)
-                        .replace("location", locString(location)));
+                plugin.sendMessage(sender, Messages.EVENTS_ROUTE_SET.replace(
+                        "event", event.getDisplayName(),
+                        "point", action,
+                        "location", locString(location)));
             }
             case "clear" -> {
                 manager.clearConvoyPoint(id, "start");
@@ -574,10 +574,10 @@ public class ExtractionCommand implements CommandExecutor {
                     return;
                 }
 
-                plugin.sendMessage(sender, Messages.EVENTS_ROUTE_SHOW
-                        .replace("event", event.getDisplayName())
-                        .replace("start", start == null ? "default" : locString(start))
-                        .replace("end", end == null ? "default" : locString(end)));
+                plugin.sendMessage(sender, Messages.EVENTS_ROUTE_SHOW.replace(
+                        "event", event.getDisplayName(),
+                        "start", start == null ? "default" : locString(start),
+                        "end", end == null ? "default" : locString(end)));
             }
             case "wand" -> {
                 if (!(sender instanceof Player player)) {

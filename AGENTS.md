@@ -28,6 +28,12 @@ Example: `/areas rename {old} {new}`, `/areas wand [name] [mode]`.
 
 Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<gray>`, `<white>`) — do not replace those.
 
+### Placeholder replacement
+Parse messages with `Messages#replace(...)` — varargs pairs of `key-without-percent` + value:
+`Messages.USAGE.replace("usage", "/areas rename {old} {new}")` or
+`Messages.AREA_LIST_ENTRY.replace("area", name, "state", state)`. **Never** `String#replace` for message
+placeholders — the method adds the `%...%` wrapping itself, keeping keys consistent with `messages.yml`.
+
 ### Integrations
 - Use direct plugin APIs only — do **not** introduce reflection.
 - Integration dependencies are `provided`; guard their use so a missing plugin does not crash the server.

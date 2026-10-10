@@ -92,10 +92,10 @@ public class AreaWandListener implements Listener {
         String point = left ? "start" : "end";
         manager.setConvoyPoint(eventId, point, player.getLocation());
 
-        plugin.sendMessage(player, Messages.EVENTS_ROUTE_SET
-                .replace("event", manager.getEvent(eventId).getDisplayName())
-                .replace("point", point)
-                .replace("location", player.getWorld().getName() + " "
+        plugin.sendMessage(player, Messages.EVENTS_ROUTE_SET.replace(
+                "event", manager.getEvent(eventId).getDisplayName(),
+                "point", point,
+                "location", player.getWorld().getName() + " "
                         + player.getLocation().getBlockX() + " "
                         + player.getLocation().getBlockY() + " "
                         + player.getLocation().getBlockZ()));
