@@ -90,8 +90,10 @@ public class ExtractionCommand implements CommandExecutor {
 
         boolean entered = plugin.getRunManager().enterRun(player);
 
-        if (entered)
+        if (entered) {
             plugin.getExtractionManager().addExtractionPlayer(player);
+            plugin.getWorldEventManager().attemptScheduledStart();
+        }
         return true;
     }
 

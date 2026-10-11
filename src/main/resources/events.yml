@@ -79,11 +79,14 @@
 #           - { material: STONE_BRICKS, dx: 1, dy: 1, dz: 0 }
 #           - { material: OAK_PLANKS,   dx: 0, dy: 0, dz: 1 }
 #           - { material: BLACK_CONCRETE, dx: -0.5, dy: 0, dz: 0.5 }   # crate
-#   storm: (toxic-storm events) drifting contaminated zones.
+#   storm: (toxic-storm events) drifting contaminated zones. A storm only
+#     runs bound to a READY extraction area: a random area is chosen at start,
+#     every zone is placed inside its bounds (drift is clamped to them), and
+#     the storm aborts if no area or no zone can be placed.
 #       zones: how many drifting zones (capped at 12)
 #       radius: zone radius in blocks
 #       drift-interval-seconds: how often each zone wanders
-#       drift-radius: max blocks a zone shifts per drift
+#       drift-radius: max blocks a zone shifts per drift (clamped to the area)
 #       damage-per-second: raw damage each tick while inside (0 = none)
 #       poison-level / poison-seconds: poison applied while inside
 #       darkness-level / darkness-seconds: darkness applied while inside
@@ -91,6 +94,12 @@
 #       mutate-multiplier: health/damage multiplier + glowing for event mobs
 #                          spawned in the zones
 #       mutate-prefix: name prefix added to mutated mobs (MiniMessage)
+#       contamination: contaminated ground painted under every zone (saved and
+#                      restored when the event ends / the last harvest chest is
+#                      claimed), like the meteor crater terrain
+#         enabled, depth (layers carved, thinner toward the rim)
+#         floor-blocks: weighted inner materials (string or {type, weight})
+#         edge-blocks: weighted rim materials
 #     Storm events are timed-style: use the bosses list as the initial guardian
 #     wave - TIMED success (guardians dead) spawns the harvest chests, so always
 #     include bosses or the first mob kill ends the storm.
@@ -434,8 +443,9 @@ events:
     level: 2
     loot-table: "toxic_storm"
     harvest-chests: 3
-    # Drifting contamination zones. Survive the guardians to claim the loot;
-    # mutated mobs spawn inside the zones and scale with the waves config.
+    # Drifting contamination zones. The storm binds to a random ready
+    # extraction area; survive the guardians to claim the loot. Mutated mobs
+    # spawn inside the zones and scale with the waves config.
     storm:
       zones: 3
       radius: 12
@@ -449,6 +459,18 @@ events:
       blindness: true
       mutate-multiplier: 2.0
       mutate-prefix: "<dark_green>Mutated </dark_green>"
+      # Contaminated ground painted under each zone (restored on event end).
+      contamination:
+        enabled: true
+        depth: 1
+        floor-blocks:
+          - { type: GREEN_CONCRETE, weight: 3 }
+          - { type: SLIME_BLOCK, weight: 2 }
+          - { type: LIME_TERRACOTTA, weight: 2 }
+          - { type: MOSS_BLOCK, weight: 2 }
+        edge-blocks:
+          - { type: GREEN_CONCRETE, weight: 2 }
+          - { type: SLIME_BLOCK, weight: 1 }
     # Guardians are the TIMED win gate — without them the storm ends on the
     # first kill. They spawn inside the storm zones.
     bosses:

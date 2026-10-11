@@ -169,6 +169,7 @@ events:
   stopped-all: "<gold>Stopped <white>%count%</white> world event(s).</gold>"
   harvest: "<green>You harvested the crater!</green>"
   not-convoy: "<red>Event <white>%event%</white> is not a Supply Convoy — convoy routes only apply to them.</red>"
+  convoy-protected: "<red>The convoy is shielded — <white>%remaining%</white> guard(s) must fall first!</red>"
   route-set: "<green>Convoy <white>%event%</white> <yellow>%point%</yellow> anchor set at <aqua>%location%</aqua>.</green>"
   route-cleared: "<gold>Convoy <white>%event%</white> route reset — it runs from its default start to the extraction spawn.</gold>"
   route-show: "<green>Convoy <white>%event%</white> route: start <aqua>%start%</aqua> — end <aqua>%end%</aqua>.</green>"

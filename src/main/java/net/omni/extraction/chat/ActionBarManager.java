@@ -70,6 +70,19 @@ public class ActionBarManager {
         overlays.put(uuid, new Overlay(text, expire));
     }
 
+    /**
+     * Flashes a transient action-bar message (rendered alongside the HUD by the
+     * repeating task) for the given number of ticks.
+     */
+    public void showMessage(Player player, String message, int ticks) {
+        if (player == null || message == null || message.isEmpty())
+            return;
+
+        long expire = System.currentTimeMillis() + Math.max(1, ticks) * 50L;
+        overlays.put(player.getUniqueId(), new Overlay(MessageUtil.parse(message), expire));
+        refresh(player);
+    }
+
     public void refreshAll() {
         if (!plugin.getConfigUtil().isActionbarEnabled()) return;
 

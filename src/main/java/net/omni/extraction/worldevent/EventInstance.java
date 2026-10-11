@@ -1,6 +1,7 @@
 package net.omni.extraction.worldevent;
 
 import net.kyori.adventure.bossbar.BossBar;
+import net.omni.extraction.area.Area;
 import net.omni.extraction.mobs.MobDrop;
 import org.bukkit.Location;
 import org.bukkit.block.data.BlockData;
@@ -65,6 +66,8 @@ public class EventInstance {
     private final List<Location> stormZones;
     private long lastZoneDrift;
     private final Map<UUID, Set<PotionEffectType>> stormEffects;
+    private Area boundArea;
+    private final List<SavedBlock> contaminationBlocks;
 
     private UUID roamLeader;
     private Location roamWaypoint;
@@ -101,6 +104,7 @@ public class EventInstance {
         this.stormZones = new ArrayList<>();
         this.lastZoneDrift = 0;
         this.stormEffects = new HashMap<>();
+        this.contaminationBlocks = new ArrayList<>();
 
         this.goblinMode = GoblinMode.FLEE;
         this.damageMultiplier = 1.0;
@@ -339,6 +343,20 @@ public class EventInstance {
 
     public Map<UUID, Set<PotionEffectType>> getStormEffects() {
         return stormEffects;
+    }
+
+    /** The extraction area this storm is confined to (null for non-storm events). */
+    public Area getBoundArea() {
+        return boundArea;
+    }
+
+    public void setBoundArea(Area boundArea) {
+        this.boundArea = boundArea;
+    }
+
+    /** Original blocks replaced by the storm contamination (restored on cleanup). */
+    public List<SavedBlock> getContaminationBlocks() {
+        return contaminationBlocks;
     }
 
     // ---- roaming encounter state (Mini Boss / Treasure Goblin) ----

@@ -448,7 +448,16 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   - **World Events** (`worldevent/*`, `events.yml`): random dynamic events in the extraction world. `events.yml`
     (an `ExtractionConfig`, default shipped as a resource) holds `settings` (enabled, max-concurrent, check-seconds,
     chance-per-check, min-gap-seconds, spawn-radius, difficulty-step, per-kill-rolls, boss-roll-multiplier,
-    completion-rolls, compass, waypoint-hologram, boss-bar) + per-event definitions. `WorldEvent` parses one event
+    completion-rolls, compass, waypoint-hologram, boss-bar) + per-event definitions. Config IO/parsing lives in
+    `worldevent/config/` (`WorldEventsConfig` = file IO + events map + settings, `WorldEventParser` = the parse
+    logic, `EventSettings` = a record of the 13 settings); `WorldEvent` is a pure data class (records
+    `ConvoyConfig`/`StormConfig`/`RoamConfig` + the `DEFAULT_*` terrain palettes). `WorldEventManager` is a thin
+    lifecycle/scheduler + public-API facade (registries: active, cooldowns, mob→instance, wand wielders, compass)
+    over `worldevent/service/` (`EventContext` = state hub + service locator, `EventSpawner`, `EventPresentation`,
+    `TerrainService`, `EventLootService`, `HarvestChestService`) and `worldevent/behavior/` (`ConvoyBehavior`,
+    `StormBehavior`, `RoamBehavior`, `WaveBehavior`) — behaviors/services reach shared state + each other via
+    `EventContext` accessors (`ctx.plugin()/config()/manager()/spawner()/presentation()/loot()/...`). Each
+    `WorldEvent` holds one event
     (`weight` 0 = never auto-chosen, cooldown/duration-seconds, level, loot-table, spawn-locations [empty = spawn
     near a random online in-World player], mobs/bosses `{mob,count,level,name,drops}`, broadcast warning/start/end,
     title, sounds [Sound name + volume/pitch], boss-bar color/style, waypoint-lines, `harvest-chests` N,

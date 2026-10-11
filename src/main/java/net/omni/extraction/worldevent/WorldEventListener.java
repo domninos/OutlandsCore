@@ -6,11 +6,15 @@ import net.omni.extraction.event.PlayerEnterAreaEvent;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -45,6 +49,39 @@ public class WorldEventListener implements Listener {
             event.getDrops().add(drop);
 
         manager.handleMobDeath(event.getEntity(), killer);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onEntityDamage(EntityDamageEvent event) {
+        WorldEventManager manager = plugin.getWorldEventManager();
+        if (manager == null || !manager.isConvoyCarrierProtected(event.getEntity()))
+            return;
+
+        event.setCancelled(true);
+
+        if (!(event instanceof EntityDamageByEntityEvent byEntity))
+            return;
+
+        Player attacker = resolveAttacker(byEntity.getDamager());
+        if (attacker == null)
+            return;
+
+        int remaining = manager.convoyGuardsRemaining(event.getEntity());
+        String message = Messages.EVENTS_CONVOY_PROTECTED.replace("remaining", String.valueOf(remaining));
+
+        plugin.sendMessage(attacker, message);
+        plugin.getActionBarManager().showMessage(attacker, message, 30);
+    }
+
+    /** Resolves the player behind a damager (a direct hit or a shot projectile). */
+    private Player resolveAttacker(Entity damager) {
+        if (damager instanceof Player player)
+            return player;
+
+        if (damager instanceof Projectile projectile && projectile.getShooter() instanceof Player player)
+            return player;
+
+        return null;
     }
 
     @EventHandler

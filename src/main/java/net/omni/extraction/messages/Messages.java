@@ -173,6 +173,7 @@ public enum Messages {
     EVENTS_STOPPED_ALL("events.stopped-all", "<gold>Stopped <white>%count%</white> world event(s).</gold>"),
     EVENTS_HARVEST("events.harvest", "<green>You harvested the crater!</green>"),
     EVENTS_NOT_CONVOY("events.not-convoy", "<red>Event <white>%event%</white> is not a Supply Convoy — convoy routes only apply to them.</red>"),
+    EVENTS_CONVOY_PROTECTED("events.convoy-protected", "<red>The convoy is shielded — <white>%remaining%</white> guard(s) must fall first!</red>"),
     EVENTS_ROUTE_SET("events.route-set", "<green>Convoy <white>%event%</white> <yellow>%point%</yellow> anchor set at <aqua>%location%</aqua>.</green>"),
     EVENTS_ROUTE_CLEARED("events.route-cleared", "<gold>Convoy <white>%event%</white> route reset — it runs from its default start to the extraction spawn.</gold>"),
     EVENTS_ROUTE_SHOW("events.route-show", "<green>Convoy <white>%event%</white> route: start <aqua>%start%</aqua> — end <aqua>%end%</aqua>.</green>"),
