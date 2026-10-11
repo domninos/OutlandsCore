@@ -13,12 +13,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Toxic Storm behavior: binds the event to a ready extraction area, initializes
@@ -32,7 +27,9 @@ public class StormBehavior {
         this.ctx = ctx;
     }
 
-    /** Picks a random ready extraction area to host a storm, or null when none fits. */
+    /**
+     * Picks a random ready extraction area to host a storm, or null when none fits.
+     */
     public Area pickStormArea(Location origin) {
         AreaManager areaManager = ctx.plugin().getAreaManager();
         if (areaManager == null)
@@ -96,7 +93,9 @@ public class StormBehavior {
         return true;
     }
 
-    /** Samples a ground-snapped point inside the area (inset by the zone radius). */
+    /**
+     * Samples a ground-snapped point inside the area (inset by the zone radius).
+     */
     private Location pickStormPoint(Area area, World world, int radius) {
         Location min = area.getMin();
         Location max = area.getMax();
@@ -130,29 +129,9 @@ public class StormBehavior {
         return new Location(world, x + 0.5, y + 1, z + 0.5);
     }
 
-    /** Keeps a drifting zone inside its contaminated area (inset by the zone radius). */
-    public void clampToArea(Location zone, Area area, int radius) {
-        if (zone == null || area == null)
-            return;
-
-        Location min = area.getMin();
-        Location max = area.getMax();
-        if (min == null || max == null)
-            return;
-
-        int minX = (int) Math.min(min.getX(), max.getX()) + radius;
-        int maxX = (int) Math.max(min.getX(), max.getX()) - radius;
-        int minZ = (int) Math.min(min.getZ(), max.getZ()) + radius;
-        int maxZ = (int) Math.max(min.getZ(), max.getZ()) - radius;
-
-        if (maxX >= minX)
-            zone.setX(Math.clamp(zone.getX(), minX + 0.5, maxX + 0.5));
-
-        if (maxZ >= minZ)
-            zone.setZ(Math.clamp(zone.getZ(), minZ + 0.5, maxZ + 0.5));
-    }
-
-    /** Per-tick storm behavior: drift, zone visuals, and poison/darkness/damage to players inside. */
+    /**
+     * Per-tick storm behavior: drift, zone visuals, and poison/darkness/damage to players inside.
+     */
     public void applyStorm(EventInstance instance) {
         WorldEvent event = instance.getEvent();
         WorldEvent.StormConfig cfg = event.getStorm();
@@ -244,7 +223,33 @@ public class StormBehavior {
         }
     }
 
-    /** Removes every storm-applied potion effect from a player once they leave the zones. */
+    /**
+     * Keeps a drifting zone inside its contaminated area (inset by the zone radius).
+     */
+    public void clampToArea(Location zone, Area area, int radius) {
+        if (zone == null || area == null)
+            return;
+
+        Location min = area.getMin();
+        Location max = area.getMax();
+        if (min == null || max == null)
+            return;
+
+        int minX = (int) Math.min(min.getX(), max.getX()) + radius;
+        int maxX = (int) Math.max(min.getX(), max.getX()) - radius;
+        int minZ = (int) Math.min(min.getZ(), max.getZ()) + radius;
+        int maxZ = (int) Math.max(min.getZ(), max.getZ()) - radius;
+
+        if (maxX >= minX)
+            zone.setX(Math.clamp(zone.getX(), minX + 0.5, maxX + 0.5));
+
+        if (maxZ >= minZ)
+            zone.setZ(Math.clamp(zone.getZ(), minZ + 0.5, maxZ + 0.5));
+    }
+
+    /**
+     * Removes every storm-applied potion effect from a player once they leave the zones.
+     */
     private void releaseStormEffects(Player player, Map<UUID, Set<PotionEffectType>> tracked) {
         Set<PotionEffectType> types = tracked.remove(player.getUniqueId());
         if (types == null)
@@ -254,7 +259,9 @@ public class StormBehavior {
             player.removePotionEffect(type);
     }
 
-    /** Cleanup hook for endEvent: clears every storm-applied effect of the event's tracked players. */
+    /**
+     * Cleanup hook for endEvent: clears every storm-applied effect of the event's tracked players.
+     */
     public void clearStormEffects(EventInstance instance) {
         Map<UUID, Set<PotionEffectType>> tracked = instance.getStormEffects();
 

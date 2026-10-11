@@ -4,6 +4,8 @@ import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
+import net.omni.extraction.worldevent.mutator.Mutator;
+import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -13,11 +15,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Owns the temporary harvest (crater/event) chests: spawning them, rolling
@@ -25,25 +23,15 @@ import java.util.Map;
  */
 public class HarvestChestService {
 
-    /** A temporary harvest chest: the owning instance + its rolled loot. */
-    private static class HarvestChest {
-        final EventInstance instance;
-        final List<ItemStack> items;
-
-        HarvestChest(EventInstance instance, List<ItemStack> items) {
-            this.instance = instance;
-            this.items = items;
-        }
-    }
-
     private final EventContext ctx;
     private final Map<Location, HarvestChest> harvestChests = new HashMap<>();
-
     public HarvestChestService(EventContext ctx) {
         this.ctx = ctx;
     }
 
-    /** Spawns the temporary harvest (crater) chests, each rolled from the event's loot table. */
+    /**
+     * Spawns the temporary harvest (crater) chests, each rolled from the event's loot table.
+     */
     public void spawnHarvestChests(EventInstance instance) {
         spawnHarvestChests(instance, instance.getOrigin());
     }
@@ -76,7 +64,8 @@ public class HarvestChestService {
             Chest chest = (Chest) block.getState();
             Inventory inventory = chest.getInventory();
 
-            for (ItemStack item : buildHarvestContent(table, event.getLevel()))
+            List<ItemStack> content = buildHarvestContent(table, event.getLevel(), instance);
+            for (ItemStack item : content)
                 inventory.addItem(item);
 
             harvestChests.put(block.getLocation(), new HarvestChest(instance,
@@ -89,23 +78,9 @@ public class HarvestChestService {
                     + ": spawned " + spawned + " harvest chest(s).</green>");
     }
 
-    private List<ItemStack> buildHarvestContent(LootTable table, int level) {
-        List<ItemStack> items = new ArrayList<>();
-
-        int rolls = table.getItemsPerChest() > 0 ? table.getItemsPerChest() : 3;
-
-        for (int i = 0; i < rolls; i++) {
-            LootEntry entry = table.roll(ctx.random(), level);
-            if (entry == null)
-                continue;
-
-            items.addAll(ctx.plugin().getLootResolver().resolveDropItems(entry.getType(), entry.getAmount()));
-        }
-
-        return ctx.plugin().getLootResolver().mergeStacks(items);
-    }
-
-    /** Finds a surface block near the origin and returns where a chest would sit (null when none found). */
+    /**
+     * Finds a surface block near the origin and returns where a chest would sit (null when none found).
+     */
     private Location placeHarvestChest(Location origin) {
         World world = origin.getWorld();
         if (world == null)
@@ -128,6 +103,29 @@ public class HarvestChestService {
         }
 
         return null;
+    }
+
+    private List<ItemStack> buildHarvestContent(LootTable table, int level, EventInstance instance) {
+        List<ItemStack> items = new ArrayList<>();
+
+        int rolls = table.getItemsPerChest() > 0 ? table.getItemsPerChest() : 3;
+        if (instance != null) {
+            Mutator dl = instance.getMutator(MutatorType.DOUBLE_LOOT);
+            if (dl != null && dl.lootMult() != 1.0) {
+                rolls = (int) Math.round(rolls * dl.lootMult());
+            }
+        }
+        if (rolls < 0) rolls = 0;
+
+        for (int i = 0; i < rolls; i++) {
+            LootEntry entry = table.roll(ctx.random(), level);
+            if (entry == null)
+                continue;
+
+            items.addAll(ctx.plugin().getLootResolver().resolveDropItems(entry.getType(), entry.getAmount()));
+        }
+
+        return ctx.plugin().getLootResolver().mergeStacks(items);
     }
 
     /**
@@ -166,7 +164,9 @@ public class HarvestChestService {
         return block != null && harvestChests.containsKey(block.getLocation());
     }
 
-    /** Removes every tracked harvest chest (shutdown safety net). */
+    /**
+     * Removes every tracked harvest chest (shutdown safety net).
+     */
     public void clearAll() {
         for (Location location : new ArrayList<>(harvestChests.keySet())) {
             Block block = location.getBlock();
@@ -175,5 +175,11 @@ public class HarvestChestService {
         }
 
         harvestChests.clear();
+    }
+
+    /**
+     * A temporary harvest chest: the owning instance + its rolled loot.
+     */
+    private record HarvestChest(EventInstance instance, List<ItemStack> items) {
     }
 }

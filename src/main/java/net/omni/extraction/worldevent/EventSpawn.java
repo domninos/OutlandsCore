@@ -10,14 +10,7 @@ import java.util.List;
  * optional per-spawn level (falls back to the event level), an optional custom
  * display name (bosses) and optional event-defined drops for bosses.
  */
-public class EventSpawn {
-
-    private final String mobId;
-    private final int count;
-    private final int level;
-    private final String name;
-    private final boolean baby;
-    private final List<MobDrop> drops;
+public record EventSpawn(String mobId, int count, int level, String name, boolean baby, List<MobDrop> drops) {
 
     public EventSpawn(String mobId, int count, int level, String name, boolean baby, List<MobDrop> drops) {
         this.mobId = mobId;
@@ -26,29 +19,5 @@ public class EventSpawn {
         this.name = name;
         this.baby = baby;
         this.drops = drops != null ? drops : new ArrayList<>();
-    }
-
-    public String getMobId() {
-        return mobId;
-    }
-
-    public int getCount() {
-        return count;
-    }
-
-    public int getLevel() {
-        return level;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public boolean isBaby() {
-        return baby;
-    }
-
-    public List<MobDrop> getDrops() {
-        return drops;
     }
 }

@@ -1,6 +1,8 @@
 package net.omni.extraction.worldevent;
 
 import net.kyori.adventure.bossbar.BossBar;
+import net.omni.extraction.worldevent.mutator.Mutator;
+import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Material;
 
 import java.util.List;
@@ -13,93 +15,22 @@ import java.util.List;
  */
 public class WorldEvent {
 
-    public enum WaveType {
-        FINITE, TIMED
-    }
-
-    /** How an event gets started: on the global timer, or wherever a player enters an area. */
-    public enum TriggerMode {
-        SCHEDULE, AREA
-    }
-
-    /** A weighted nether/meteor block choice for crater terrain. */
-    public record TerrainBlock(Material material, int weight) {
-    }
-
-    /** Supply Convoy movement/escort tuning. Absent section = not a convoy. */
-    public record ConvoyConfig(String carrier, String carrierName, double speed, int stepBlocks,
-                               int checkpointRadius, int stuckSeconds, int followRange, int escapeRadius,
-                               EventSpawnLocation start, EventSpawnLocation end, List<CarPart> car) {
-        public boolean active() {
-            return carrier != null && !carrier.isBlank();
-        }
-    }
-
-    /**
-     * One building block of the convoy's display-entity "car". dx/dy/dz are the
-     * part's offset from the carrier's feet (negative dy = wheels/crates), yaw
-     * is the material's rotation in degrees (0 = facing south, the vanilla
-     * default). Block materials render as BlockDisplay, everything else as
-     * ItemDisplay.
-     */
-    public record CarPart(Material material, double dx, double dy, double dz, float yaw) {
-    }
-
-    /** Toxic Storm zone/effect tuning. Absent section = not a storm. */
-    public record StormConfig(int zones, int radius, int driftIntervalSeconds, int driftRadius,
-                              double damagePerSecond, int poisonLevel, int poisonSeconds,
-                              int darknessLevel, int darknessSeconds, boolean blindness,
-                              double mutateMultiplier, String mutatePrefix,
-                              boolean contaminate, int contaminDepth,
-                              List<TerrainBlock> contaminFloor, List<TerrainBlock> contaminEdge) {
-    }
-
-    /** The kind of roaming encounter: a wandering Mini Boss or a fleeing Treasure Goblin. */
-    public enum RoamType {
-        MINIBOSS, GOBLIN
-    }
-
-    /** One hp-threshold trigger of a roaming Mini Boss: enrage multipliers + a minion summon. */
-    public record RoamPhase(double at, double damageMultiplier, double speedMultiplier,
-                            List<EventSpawn> minions, boolean burst) {
-    }
-
-    /** Mini Boss tuning: wander radius, aggro/chase ranges, a periodic area attack, phases. */
-    public record MinibossConfig(int wanderRadius, int aggroRange, int attackRadius,
-                                 int attackIntervalSeconds, double attackDamage, double speed,
-                                 List<RoamPhase> phases) {
-    }
-
-    /** Treasure Goblin tuning: flee range, teleport hops, loot dropped while running, fight-back. */
-    public record GoblinConfig(int fleeRange, int teleportIntervalSeconds, int teleportRange,
-                               int dropIntervalSeconds, double fightThreshold, int fightSeconds,
-                               double speed) {
-    }
-
-    /** A roaming encounter definition. The matching sub-config drives the per-tick behavior. */
-    public record RoamConfig(RoamType type, MinibossConfig miniboss, GoblinConfig goblin) {
-    }
-
     public static final List<TerrainBlock> DEFAULT_FLOOR = List.of(
             new TerrainBlock(Material.MAGMA_BLOCK, 1),
             new TerrainBlock(Material.BLACKSTONE, 1),
             new TerrainBlock(Material.BASALT, 1),
             new TerrainBlock(Material.NETHERRACK, 1));
-
     public static final List<TerrainBlock> DEFAULT_EDGE = List.of(
             new TerrainBlock(Material.BLACKSTONE, 1),
             new TerrainBlock(Material.BASALT, 1));
-
     public static final List<TerrainBlock> DEFAULT_CONTAMIN_FLOOR = List.of(
             new TerrainBlock(Material.GREEN_CONCRETE, 3),
             new TerrainBlock(Material.SLIME_BLOCK, 2),
             new TerrainBlock(Material.LIME_TERRACOTTA, 2),
             new TerrainBlock(Material.MOSS_BLOCK, 2));
-
     public static final List<TerrainBlock> DEFAULT_CONTAMIN_EDGE = List.of(
             new TerrainBlock(Material.GREEN_CONCRETE, 2),
             new TerrainBlock(Material.SLIME_BLOCK, 1));
-
     private final String id;
     private final boolean enabled;
     private final String displayName;
@@ -112,7 +43,6 @@ public class WorldEvent {
     private final List<EventSpawn> mobs;
     private final List<EventSpawn> bosses;
     private final List<EventSpawn> reinforceMobs;
-
     private final boolean wavesEnabled;
     private final WaveType waveType;
     private final int waveCount;
@@ -122,14 +52,12 @@ public class WorldEvent {
     private final int bossWave;
     private final int maxReinforcements;
     private final int harvestChests;
-
     private final String warningMessage;
     private final String startMessage;
     private final String endMessage;
     private final String waveMessage;
     private final String phaseMessage;
     private final String escapeMessage;
-
     private final String titleTitle;
     private final String titleSubtitle;
     private final String titleWave;
@@ -138,7 +66,6 @@ public class WorldEvent {
     private final int titleFadeIn;
     private final int titleStay;
     private final int titleFadeOut;
-
     private final String startSound;
     private final String endSound;
     private final String waveSound;
@@ -146,15 +73,12 @@ public class WorldEvent {
     private final String escapeSound;
     private final float soundVolume;
     private final float soundPitch;
-
     private final boolean bossBarEnabled;
     private final String bossBarTitle;
     private final BossBar.Color bossBarColor;
     private final BossBar.Overlay bossBarOverlay;
     private final List<String> waypointLines;
-
     private final TriggerMode trigger;
-
     private final boolean terrainEnabled;
     private final int terrainRadius;
     private final int terrainDepth;
@@ -166,11 +90,11 @@ public class WorldEvent {
     private final boolean pushPlayers;
     private final double pushStrength;
     private final double pushUp;
-
-    private ConvoyConfig convoy;
     private final StormConfig storm;
     private final RoamConfig roam;
-
+    private final List<Mutator> mutators;
+    private final int mutatorsMaxSelected;
+    private ConvoyConfig convoy;
     public WorldEvent(String id, boolean enabled, String displayName, int weight,
                       int cooldownSeconds, int durationSeconds, int level, String lootTable,
                       List<EventSpawnLocation> spawnLocations, List<EventSpawn> mobs, List<EventSpawn> bosses,
@@ -190,7 +114,8 @@ public class WorldEvent {
                       List<TerrainBlock> terrainFloor, List<TerrainBlock> terrainEdge,
                       boolean impactEffect, boolean ambientEffect, boolean restoreEffect,
                       boolean pushPlayers, double pushStrength, double pushUp,
-                      ConvoyConfig convoy, StormConfig storm, RoamConfig roam) {
+                      ConvoyConfig convoy, StormConfig storm, RoamConfig roam,
+                      List<Mutator> mutators, int mutatorsMaxSelected) {
         this.id = id;
         this.enabled = enabled;
         this.displayName = displayName;
@@ -253,6 +178,8 @@ public class WorldEvent {
         this.convoy = convoy;
         this.storm = storm;
         this.roam = roam;
+        this.mutators = mutators == null ? List.of() : List.copyOf(mutators);
+        this.mutatorsMaxSelected = Math.max(0, mutatorsMaxSelected);
     }
 
     public String getId() {
@@ -447,7 +374,9 @@ public class WorldEvent {
         return trigger;
     }
 
-    /** True when this event starts wherever a player enters an area (not the global scheduler). */
+    /**
+     * True when this event starts wherever a player enters an area (not the global scheduler).
+     */
     public boolean isAreaTriggered() {
         return trigger == TriggerMode.AREA;
     }
@@ -496,12 +425,16 @@ public class WorldEvent {
         return pushUp;
     }
 
-    /** The convoy tuning, or null when this event is not a Supply Convoy. */
+    /**
+     * The convoy tuning, or null when this event is not a Supply Convoy.
+     */
     public ConvoyConfig getConvoy() {
         return convoy;
     }
 
-    /** True when this event is a moving supply convoy. */
+    /**
+     * True when this event is a moving supply convoy.
+     */
     public boolean isConvoy() {
         return convoy != null && convoy.active();
     }
@@ -521,29 +454,137 @@ public class WorldEvent {
                 start, end, c.car());
     }
 
-    /** The storm tuning, or null when this event is not a Toxic Storm. */
+    /**
+     * The storm tuning, or null when this event is not a Toxic Storm.
+     */
     public StormConfig getStorm() {
         return storm;
     }
 
-    /** True when this event is a toxic-storm with contaminated zones. */
+    /**
+     * True when this event is a toxic-storm with contaminated zones.
+     */
     public boolean isStorm() {
         return storm != null;
     }
 
-    /** The roaming tuning, or null when this event is not a recurring roamer. */
+    /**
+     * The roaming tuning, or null when this event is not a recurring roamer.
+     */
     public RoamConfig getRoam() {
         return roam;
     }
 
-    /** True when this event is a Mini Boss / Treasure Goblin roaming encounter. */
+    /**
+     * True when this event is a Mini Boss / Treasure Goblin roaming encounter.
+     */
     public boolean isRoam() {
         return roam != null;
     }
 
-    /** The roam kind (MINIBOSS/GOBLIN), or null for regular events. */
+    public List<Mutator> getMutators() {
+        return mutators;
+    }
+
+    public int getMutatorsMaxSelected() {
+        return mutatorsMaxSelected;
+    }
+
+    public boolean isNightfallActive(EventInstance instance) {
+        if (instance == null) return false;
+        return instance.hasMutator(MutatorType.NIGHTFALL);
+    }
+
+    /**
+     * The roam kind (MINIBOSS/GOBLIN), or null for regular events.
+     */
     public RoamType getRoamType() {
         return roam == null ? null : roam.type();
+    }
+
+    public enum WaveType {
+        FINITE, TIMED
+    }
+
+    /**
+     * How an event gets started: on the global timer, or wherever a player enters an area.
+     */
+    public enum TriggerMode {
+        SCHEDULE, AREA
+    }
+
+    /**
+     * The kind of roaming encounter: a wandering Mini Boss or a fleeing Treasure Goblin.
+     */
+    public enum RoamType {
+        MINIBOSS, GOBLIN
+    }
+
+    /**
+     * A weighted nether/meteor block choice for crater terrain.
+     */
+    public record TerrainBlock(Material material, int weight) {
+    }
+
+    /**
+     * Supply Convoy movement/escort tuning. Absent section = not a convoy.
+     */
+    public record ConvoyConfig(String carrier, String carrierName, double speed, int stepBlocks,
+                               int checkpointRadius, int stuckSeconds, int followRange, int escapeRadius,
+                               EventSpawnLocation start, EventSpawnLocation end, List<CarPart> car) {
+        public boolean active() {
+            return carrier != null && !carrier.isBlank();
+        }
+    }
+
+    /**
+     * One building block of the convoy's display-entity "car". dx/dy/dz are the
+     * part's offset from the carrier's feet (negative dy = wheels/crates), yaw
+     * is the material's rotation in degrees (0 = facing south, the vanilla
+     * default). Block materials render as BlockDisplay, everything else as
+     * ItemDisplay.
+     */
+    public record CarPart(Material material, double dx, double dy, double dz, float yaw) {
+    }
+
+    /**
+     * Toxic Storm zone/effect tuning. Absent section = not a storm.
+     */
+    public record StormConfig(int zones, int radius, int driftIntervalSeconds, int driftRadius,
+                              double damagePerSecond, int poisonLevel, int poisonSeconds,
+                              int darknessLevel, int darknessSeconds, boolean blindness,
+                              double mutateMultiplier, String mutatePrefix,
+                              boolean contaminate, int contaminDepth,
+                              List<TerrainBlock> contaminFloor, List<TerrainBlock> contaminEdge) {
+    }
+
+    /**
+     * One hp-threshold trigger of a roaming Mini Boss: enrage multipliers + a minion summon.
+     */
+    public record RoamPhase(double at, double damageMultiplier, double speedMultiplier,
+                            List<EventSpawn> minions, boolean burst) {
+    }
+
+    /**
+     * Mini Boss tuning: wander radius, aggro/chase ranges, a periodic area attack, phases.
+     */
+    public record MinibossConfig(int wanderRadius, int aggroRange, int attackRadius,
+                                 int attackIntervalSeconds, double attackDamage, double speed,
+                                 List<RoamPhase> phases) {
+    }
+
+    /**
+     * Treasure Goblin tuning: flee range, teleport hops, loot dropped while running, fight-back.
+     */
+    public record GoblinConfig(int fleeRange, int teleportIntervalSeconds, int teleportRange,
+                               int dropIntervalSeconds, double fightThreshold, int fightSeconds,
+                               double speed) {
+    }
+
+    /**
+     * A roaming encounter definition. The matching sub-config drives the per-tick behavior.
+     */
+    public record RoamConfig(RoamType type, MinibossConfig miniboss, GoblinConfig goblin) {
     }
 
     /**

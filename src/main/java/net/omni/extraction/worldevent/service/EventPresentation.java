@@ -7,12 +7,7 @@ import net.kyori.adventure.title.Title;
 import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
 import net.omni.extraction.worldevent.WorldEvent.WaveType;
-import org.bukkit.Bukkit;
-import org.bukkit.Color;
-import org.bukkit.Location;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
@@ -45,6 +40,12 @@ public class EventPresentation {
         for (Player player : Bukkit.getOnlinePlayers())
             if (isInWorld(player))
                 player.showBossBar(bossBar);
+    }
+
+    public boolean isInWorld(Player player) {
+        String worldName = ctx.plugin().getConfigUtil().getWorldName();
+        return worldName != null && !worldName.isBlank()
+                && worldName.equalsIgnoreCase(player.getWorld().getName());
     }
 
     public void announceStart(EventInstance instance) {
@@ -99,6 +100,57 @@ public class EventPresentation {
 
         String title = event.getBossBarTitle() == null ? "" : event.getBossBarTitle();
         bossBar.name(MiniMessage.miniMessage().deserialize(fill(title, event, instance)));
+    }
+
+    public String fill(String message, WorldEvent event, EventInstance instance) {
+        int progress = (int) Math.round(Math.clamp(instance.getConvoyProgress(), 0.0, 1.0) * 100);
+
+        return message.replace("%event%", event.getDisplayName())
+                .replace("%location%", locationText(instance))
+                .replace("%remaining%", String.valueOf(instance.getMobs().size()))
+                .replace("%total%", String.valueOf(instance.getTotalMobs()))
+                .replace("%wave%", String.valueOf(instance.getCurrentWave()))
+                .replace("%waves%", String.valueOf(instance.getWavesTotal()))
+                .replace("%progress%", String.valueOf(progress))
+                .replace("%zones%", String.valueOf(instance.getStormZones().size()))
+                .replace("%health%", healthText(instance))
+                .replace("%mode%", roamMode(instance));
+    }
+
+    public String locationText(EventInstance instance) {
+        Location origin = instance.getOrigin();
+        if (origin.getWorld() == null)
+            return "x:" + origin.getBlockX() + " y:" + origin.getBlockY() + " z:" + origin.getBlockZ();
+
+        return origin.getWorld().getName() + " x:" + origin.getBlockX()
+                + " y:" + origin.getBlockY() + " z:" + origin.getBlockZ();
+    }
+
+    public String healthText(EventInstance instance) {
+        UUID id = instance.getRoamLeader();
+        Entity entity = id == null ? null : Bukkit.getEntity(id);
+
+        if (!(entity instanceof LivingEntity living))
+            return "0";
+
+        double max = maxHealth(living);
+        int percent = max <= 0 ? 0 : (int) Math.round(Math.clamp(living.getHealth() / max, 0.0, 1.0) * 100);
+        return String.valueOf(percent);
+    }
+
+    public String roamMode(EventInstance instance) {
+        if (!instance.getEvent().isRoam())
+            return "";
+
+        if (instance.getEvent().getRoamType() == WorldEvent.RoamType.GOBLIN)
+            return instance.getGoblinMode() == EventInstance.GoblinMode.FIGHT ? "Fighting" : "Fleeing";
+
+        return instance.getDamageMultiplier() > 1.0 ? "Enraged" : "Roaming";
+    }
+
+    public double maxHealth(LivingEntity living) {
+        AttributeInstance attribute = living.getAttribute(Attribute.MAX_HEALTH);
+        return attribute == null ? living.getHealth() : attribute.getValue();
     }
 
     public void updateWaypoint(EventInstance instance) {
@@ -177,18 +229,6 @@ public class EventPresentation {
         updateCompassFor(player);
     }
 
-    public void hideBossBarsFor(Player player) {
-        if (player == null)
-            return;
-
-        for (EventInstance instance : ctx.active().values()) {
-            if (instance.getBossBar() != null)
-                player.hideBossBar(instance.getBossBar());
-        }
-
-        ctx.compassPlayers().remove(player.getUniqueId());
-    }
-
     public void updateCompassFor(Player player) {
         if (player == null || !isInWorld(player))
             return;
@@ -204,6 +244,18 @@ public class EventPresentation {
 
         player.setCompassTarget(ctx.active().values().iterator().next().getTrackLocation());
         ctx.compassPlayers().add(player.getUniqueId());
+    }
+
+    public void hideBossBarsFor(Player player) {
+        if (player == null)
+            return;
+
+        for (EventInstance instance : ctx.active().values()) {
+            if (instance.getBossBar() != null)
+                player.hideBossBar(instance.getBossBar());
+        }
+
+        ctx.compassPlayers().remove(player.getUniqueId());
     }
 
     public void broadcastAll(String message, WorldEvent event, EventInstance instance) {
@@ -250,74 +302,6 @@ public class EventPresentation {
         }
     }
 
-    public Sound decodeSound(String name) {
-        String key = name.toUpperCase(Locale.ROOT).replace('.', '_');
-
-        try {
-            return Sound.valueOf(key.replace(" ", "_"));
-        } catch (IllegalArgumentException e) {
-            ctx.plugin().getLogger().warning("Unknown event sound '" + name + "'.");
-            return null;
-        }
-    }
-
-    public String fill(String message, WorldEvent event, EventInstance instance) {
-        int progress = (int) Math.round(Math.clamp(instance.getConvoyProgress(), 0.0, 1.0) * 100);
-
-        return message.replace("%event%", event.getDisplayName())
-                .replace("%location%", locationText(instance))
-                .replace("%remaining%", String.valueOf(instance.getMobs().size()))
-                .replace("%total%", String.valueOf(instance.getTotalMobs()))
-                .replace("%wave%", String.valueOf(instance.getCurrentWave()))
-                .replace("%waves%", String.valueOf(instance.getWavesTotal()))
-                .replace("%progress%", String.valueOf(progress))
-                .replace("%zones%", String.valueOf(instance.getStormZones().size()))
-                .replace("%health%", healthText(instance))
-                .replace("%mode%", roamMode(instance));
-    }
-
-    public String locationText(EventInstance instance) {
-        Location origin = instance.getOrigin();
-        if (origin.getWorld() == null)
-            return "x:" + origin.getBlockX() + " y:" + origin.getBlockY() + " z:" + origin.getBlockZ();
-
-        return origin.getWorld().getName() + " x:" + origin.getBlockX()
-                + " y:" + origin.getBlockY() + " z:" + origin.getBlockZ();
-    }
-
-    public boolean isInWorld(Player player) {
-        String worldName = ctx.plugin().getConfigUtil().getWorldName();
-        return worldName != null && !worldName.isBlank()
-                && worldName.equalsIgnoreCase(player.getWorld().getName());
-    }
-
-    public String healthText(EventInstance instance) {
-        UUID id = instance.getRoamLeader();
-        Entity entity = id == null ? null : Bukkit.getEntity(id);
-
-        if (!(entity instanceof LivingEntity living))
-            return "0";
-
-        double max = maxHealth(living);
-        int percent = max <= 0 ? 0 : (int) Math.round(Math.clamp(living.getHealth() / max, 0.0, 1.0) * 100);
-        return String.valueOf(percent);
-    }
-
-    public String roamMode(EventInstance instance) {
-        if (!instance.getEvent().isRoam())
-            return "";
-
-        if (instance.getEvent().getRoamType() == WorldEvent.RoamType.GOBLIN)
-            return instance.getGoblinMode() == EventInstance.GoblinMode.FIGHT ? "Fighting" : "Fleeing";
-
-        return instance.getDamageMultiplier() > 1.0 ? "Enraged" : "Roaming";
-    }
-
-    public double maxHealth(LivingEntity living) {
-        AttributeInstance attribute = living.getAttribute(Attribute.MAX_HEALTH);
-        return attribute == null ? living.getHealth() : attribute.getValue();
-    }
-
     /**
      * Burst of particles + a sound where an event mob dies. Big = the convoy
      * carrier or an event boss (meteor guardians): a proper explosion with
@@ -345,6 +329,17 @@ public class EventPresentation {
             Sound thud = decodeSound("entity_generic_explode");
             if (thud != null)
                 world.playSound(loc, thud, 1.0f, 1.2f);
+        }
+    }
+
+    public Sound decodeSound(String name) {
+        String key = name.toUpperCase(Locale.ROOT).replace('.', '_');
+
+        try {
+            return Sound.valueOf(key.replace(" ", "_"));
+        } catch (IllegalArgumentException e) {
+            ctx.plugin().getLogger().warning("Unknown event sound '" + name + "'.");
+            return null;
         }
     }
 }

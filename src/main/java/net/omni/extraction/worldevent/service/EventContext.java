@@ -36,16 +36,16 @@ public class EventContext {
     private final Map<UUID, String> convoyWands;
     private final Set<UUID> compassPlayers;
 
-    private EventPresentation presentation;
-    private EventSpawner spawner;
-    private TerrainService terrain;
-    private HarvestChestService harvest;
-    private EventLootService loot;
+    private final EventPresentation presentation;
+    private final EventSpawner spawner;
+    private final TerrainService terrain;
+    private final HarvestChestService harvest;
+    private final EventLootService loot;
 
-    private ConvoyBehavior convoy;
-    private StormBehavior storm;
-    private RoamBehavior roam;
-    private WaveBehavior waves;
+    private final ConvoyBehavior convoy;
+    private final StormBehavior storm;
+    private final RoamBehavior roam;
+    private final WaveBehavior waves;
 
     public EventContext(ExtractionPlugin plugin, WorldEventsConfig config, WorldEventManager manager,
                         Map<String, EventInstance> active, Map<String, Long> cooldowns,

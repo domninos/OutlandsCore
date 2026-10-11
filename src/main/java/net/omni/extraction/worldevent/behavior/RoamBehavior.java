@@ -6,11 +6,7 @@ import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.EventSpawn;
 import net.omni.extraction.worldevent.WorldEvent;
 import net.omni.extraction.worldevent.service.EventContext;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
@@ -59,7 +55,7 @@ public class RoamBehavior {
         Location origin = instance.getOrigin();
 
         AreaSpawnDefinition definition = ctx.plugin().getMobResolver().resolve(
-                spawn.getMobId(), 1, true, Math.max(1, spawn.getLevel() > 0 ? spawn.getLevel() : event.getLevel()), 0);
+                spawn.mobId(), 1, true, Math.max(1, spawn.level() > 0 ? spawn.level() : event.getLevel()), 0);
         if (definition == null)
             return false;
 
@@ -71,12 +67,12 @@ public class RoamBehavior {
                 definition.setDamage(definition.getDamage() * difficulty);
         }
 
-        if (spawn.getName() != null && !spawn.getName().isBlank())
-            definition.setDisplayName(spawn.getName());
+        if (spawn.name() != null && !spawn.name().isBlank())
+            definition.setDisplayName(spawn.name());
 
-        definition.setBaby(spawn.isBaby());
+        definition.setBaby(spawn.baby());
 
-        List<MobDrop> drops = spawn.getDrops().isEmpty() ? definition.getDrops() : spawn.getDrops();
+        List<MobDrop> drops = spawn.drops().isEmpty() ? definition.getDrops() : spawn.drops();
 
         Entity entity = ctx.mobFactory().spawn(definition, origin);
         if (entity == null)
@@ -116,7 +112,9 @@ public class RoamBehavior {
         return true;
     }
 
-    /** Every tick of a roam event: chase/flee movement, attacks, phases and goblin loot. */
+    /**
+     * Every tick of a roam event: chase/flee movement, attacks, phases and goblin loot.
+     */
     public void updateRoam(EventInstance instance) {
         WorldEvent event = instance.getEvent();
         UUID leaderId = instance.getRoamLeader();
@@ -135,48 +133,9 @@ public class RoamBehavior {
             updateMiniboss(instance, leader);
     }
 
-    /** Mini Boss behavior: wander/chase, periodic area attack, and hp-threshold phases. */
-    private void updateMiniboss(EventInstance instance, Entity leader) {
-        WorldEvent event = instance.getEvent();
-        WorldEvent.MinibossConfig cfg = event.getRoam().miniboss();
-        long now = System.currentTimeMillis();
-
-        if (!(leader instanceof Mob mob))
-            return;
-
-        if (leader instanceof LivingEntity living) {
-            double max = ctx.presentation().maxHealth(living);
-            double ratio = max <= 0 ? 1.0 : living.getHealth() / max;
-
-            List<WorldEvent.RoamPhase> phases = cfg.phases();
-            while (instance.getNextMinibossPhase() < phases.size()
-                    && ratio <= phases.get(instance.getNextMinibossPhase()).at()) {
-                triggerMinibossPhase(instance, phases.get(instance.getNextMinibossPhase()));
-                instance.setNextMinibossPhase(instance.getNextMinibossPhase() + 1);
-            }
-        }
-
-        Player target = nearestPlayer(leader.getLocation(), cfg.aggroRange());
-
-        if (target != null
-                && leader.getLocation().distance(target.getLocation()) <= cfg.attackRadius()
-                && now - instance.getLastAreaAttack() >= cfg.attackIntervalSeconds() * 1000L) {
-            areaAttack(leader, cfg.attackRadius(), cfg.attackDamage() * instance.getDamageMultiplier());
-            instance.setLastAreaAttack(now);
-        }
-
-        if (now >= instance.getNextRoamMove() || instance.getRoamWaypoint() == null) {
-            Location destination = target != null && target.getWorld() == leader.getWorld()
-                    ? target.getLocation()
-                    : randomWaypoint(instance.getOrigin(), cfg.wanderRadius());
-            instance.setRoamWaypoint(destination);
-            instance.setNextRoamMove(now + (target != null ? 1500L : 4000L));
-        }
-
-        mob.getPathfinder().moveTo(instance.getRoamWaypoint(), moveSpeed(cfg.speed(), instance));
-    }
-
-    /** Treasure Goblin behavior: flee, teleport-hop, drop loot; briefly fight back when hurt. */
+    /**
+     * Treasure Goblin behavior: flee, teleport-hop, drop loot; briefly fight back when hurt.
+     */
     private void updateGoblin(EventInstance instance, Entity leader) {
         WorldEvent event = instance.getEvent();
         WorldEvent.GoblinConfig cfg = event.getRoam().goblin();
@@ -241,7 +200,91 @@ public class RoamBehavior {
         }
     }
 
-    /** Fires one Mini Boss phase: enrage attributes, minion summon, burst + broadcast. */
+    /**
+     * Mini Boss behavior: wander/chase, periodic area attack, and hp-threshold phases.
+     */
+    private void updateMiniboss(EventInstance instance, Entity leader) {
+        WorldEvent event = instance.getEvent();
+        WorldEvent.MinibossConfig cfg = event.getRoam().miniboss();
+        long now = System.currentTimeMillis();
+
+        if (!(leader instanceof Mob mob))
+            return;
+
+        if (leader instanceof LivingEntity living) {
+            double max = ctx.presentation().maxHealth(living);
+            double ratio = max <= 0 ? 1.0 : living.getHealth() / max;
+
+            List<WorldEvent.RoamPhase> phases = cfg.phases();
+            while (instance.getNextMinibossPhase() < phases.size()
+                    && ratio <= phases.get(instance.getNextMinibossPhase()).at()) {
+                triggerMinibossPhase(instance, phases.get(instance.getNextMinibossPhase()));
+                instance.setNextMinibossPhase(instance.getNextMinibossPhase() + 1);
+            }
+        }
+
+        Player target = nearestPlayer(leader.getLocation(), cfg.aggroRange());
+
+        if (target != null
+                && leader.getLocation().distance(target.getLocation()) <= cfg.attackRadius()
+                && now - instance.getLastAreaAttack() >= cfg.attackIntervalSeconds() * 1000L) {
+            areaAttack(leader, cfg.attackRadius(), cfg.attackDamage() * instance.getDamageMultiplier());
+            instance.setLastAreaAttack(now);
+        }
+
+        if (now >= instance.getNextRoamMove() || instance.getRoamWaypoint() == null) {
+            Location destination = target != null && target.getWorld() == leader.getWorld()
+                    ? target.getLocation()
+                    : randomWaypoint(instance.getOrigin(), cfg.wanderRadius());
+            instance.setRoamWaypoint(destination);
+            instance.setNextRoamMove(now + (target != null ? 1500L : 4000L));
+        }
+
+        mob.getPathfinder().moveTo(instance.getRoamWaypoint(), moveSpeed(cfg.speed(), instance));
+    }
+
+    private Player nearestPlayer(Location from, double range) {
+        World world = from.getWorld();
+        if (world == null)
+            return null;
+
+        Player best = null;
+        double bestDistance = Math.max(0, range);
+
+        for (Player player : world.getPlayers()) {
+            double distance = player.getLocation().distance(from);
+            if (distance <= bestDistance) {
+                bestDistance = distance;
+                best = player;
+            }
+        }
+
+        return best;
+    }
+
+    private float moveSpeed(double base, EventInstance instance) {
+        return (float) Math.clamp(base * instance.getSpeedMultiplier(), 0.05, 1.0);
+    }
+
+    private Location randomWaypoint(Location origin, int radius) {
+        int r = Math.max(1, radius);
+        Location spot = origin.clone().add(
+                ctx.random().nextInt(r * 2 + 1) - r, 0,
+                ctx.random().nextInt(r * 2 + 1) - r);
+        return ctx.spawner().groundSnap(spot);
+    }
+
+    private void spawnFleeTrail(Location at) {
+        World world = at.getWorld();
+        if (world == null)
+            return;
+
+        world.spawnParticle(Particle.HAPPY_VILLAGER, at.clone().add(0, 0.4, 0), 4, 0.25, 0.25, 0.25, 0.0);
+    }
+
+    /**
+     * Fires one Mini Boss phase: enrage attributes, minion summon, burst + broadcast.
+     */
     private void triggerMinibossPhase(EventInstance instance, WorldEvent.RoamPhase phase) {
         WorldEvent event = instance.getEvent();
         Entity leader = Bukkit.getEntity(instance.getRoamLeader());
@@ -308,44 +351,5 @@ public class RoamBehavior {
                         speedMultiplier - 1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
             }
         }
-    }
-
-    private Player nearestPlayer(Location from, double range) {
-        World world = from.getWorld();
-        if (world == null)
-            return null;
-
-        Player best = null;
-        double bestDistance = Math.max(0, range);
-
-        for (Player player : world.getPlayers()) {
-            double distance = player.getLocation().distance(from);
-            if (distance <= bestDistance) {
-                bestDistance = distance;
-                best = player;
-            }
-        }
-
-        return best;
-    }
-
-    private Location randomWaypoint(Location origin, int radius) {
-        int r = Math.max(1, radius);
-        Location spot = origin.clone().add(
-                ctx.random().nextInt(r * 2 + 1) - r, 0,
-                ctx.random().nextInt(r * 2 + 1) - r);
-        return ctx.spawner().groundSnap(spot);
-    }
-
-    private void spawnFleeTrail(Location at) {
-        World world = at.getWorld();
-        if (world == null)
-            return;
-
-        world.spawnParticle(Particle.HAPPY_VILLAGER, at.clone().add(0, 0.4, 0), 4, 0.25, 0.25, 0.25, 0.0);
-    }
-
-    private float moveSpeed(double base, EventInstance instance) {
-        return (float) Math.clamp(base * instance.getSpeedMultiplier(), 0.05, 1.0);
     }
 }

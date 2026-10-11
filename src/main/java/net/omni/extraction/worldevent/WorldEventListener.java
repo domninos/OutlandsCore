@@ -4,6 +4,8 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.event.PlayerEnterAreaEvent;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.worldevent.mutator.Mutator;
+import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
@@ -16,6 +18,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -48,29 +51,48 @@ public class WorldEventListener implements Listener {
         for (ItemStack drop : manager.rollLootForMob(uuid))
             event.getDrops().add(drop);
 
+        // Explosive deaths
+        WorldEventManager mgr = plugin.getWorldEventManager();
+        EventInstance inst = mgr.getMobInstance(uuid);
+        if (inst != null) {
+            Mutator exp = inst.getMutator(MutatorType.EXPLOSIVE_DEATHS);
+            if (exp != null) {
+                org.bukkit.Location loc = event.getEntity().getLocation();
+                loc.getWorld().createExplosion(loc, exp.expPower(), exp.expFire(), exp.expBlockDamage());
+            }
+        }
+
         manager.handleMobDeath(event.getEntity(), killer);
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
         WorldEventManager manager = plugin.getWorldEventManager();
-        if (manager == null || !manager.isConvoyCarrierProtected(event.getEntity()))
-            return;
-
-        event.setCancelled(true);
-
-        if (!(event instanceof EntityDamageByEntityEvent byEntity))
-            return;
-
-        Player attacker = resolveAttacker(byEntity.getDamager());
-        if (attacker == null)
-            return;
-
-        int remaining = manager.convoyGuardsRemaining(event.getEntity());
-        String message = Messages.EVENTS_CONVOY_PROTECTED.replace("remaining", String.valueOf(remaining));
-
-        plugin.sendMessage(attacker, message);
-        plugin.getActionBarManager().showMessage(attacker, message, 30);
+        if (manager != null) {
+            if (manager.isConvoyCarrierProtected(event.getEntity())) {
+                event.setCancelled(true);
+                if (event instanceof EntityDamageByEntityEvent byEntity) {
+                    Player attacker = resolveAttacker(byEntity.getDamager());
+                    if (attacker != null) {
+                        int remaining = manager.convoyGuardsRemaining(event.getEntity());
+                        String message = Messages.EVENTS_CONVOY_PROTECTED.replace("remaining", String.valueOf(remaining));
+                        plugin.sendMessage(attacker, message);
+                        plugin.getActionBarManager().showMessage(attacker, message, 30);
+                    }
+                }
+                return;
+            }
+            // track participation
+            if (event instanceof EntityDamageByEntityEvent byEntity) {
+                EventInstance inst = manager.getMobInstance(event.getEntity().getUniqueId());
+                if (inst != null && event.getDamage() > 0) {
+                    Player attacker = resolveAttacker(byEntity.getDamager());
+                    if (attacker != null) {
+                        inst.addDamage(attacker.getUniqueId(), event.getDamage());
+                    }
+                }
+            }
+        }
     }
 
     /** Resolves the player behind a damager (a direct hit or a shot projectile). */
@@ -151,6 +173,35 @@ public class WorldEventListener implements Listener {
 
         if (manager.claimHarvestChest(player, block))
             plugin.sendMessage(player, Messages.EVENTS_HARVEST.toString());
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onEntityRegainHealth(EntityRegainHealthEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+        WorldEventManager manager = plugin.getWorldEventManager();
+        if (manager == null) {
+            return;
+        }
+        boolean hasNoRegen = false;
+        for (EventInstance inst : manager.getActiveEvents()) {
+            Mutator nr = inst.getMutator(MutatorType.NO_REGENERATION);
+            if (nr != null && nr.disableRegen()) {
+                hasNoRegen = true;
+                break;
+            }
+        }
+        if (!hasNoRegen) {
+            return;
+        }
+        String worldName = plugin.getConfigUtil().getWorldName();
+        if (worldName == null || player.getWorld() == null || !worldName.equalsIgnoreCase(player.getWorld().getName())) {
+            return;
+        }
+        if (event.getRegainReason() == EntityRegainHealthEvent.RegainReason.SATIATED) {
+            event.setCancelled(true);
+        }
     }
 
     public void register() {

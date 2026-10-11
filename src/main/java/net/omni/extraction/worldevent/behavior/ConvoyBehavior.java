@@ -8,18 +8,12 @@ import net.omni.extraction.worldevent.service.EventContext;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.entity.BlockDisplay;
-import org.bukkit.entity.Display;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.ItemDisplay;
-import org.bukkit.entity.Mob;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -94,7 +88,27 @@ public class ConvoyBehavior {
         return true;
     }
 
-    /** Spawns one named, glowing, persistent carrier Mob at the given point. */
+    /**
+     * Resolves the convoy's end anchor, else the map's extraction spawn.
+     */
+    public Location convoyRouteEnd(WorldEvent event, World fallbackWorld) {
+        WorldEvent.ConvoyConfig cfg = event.getConvoy();
+        if (cfg != null && cfg.end() != null) {
+            World world = Bukkit.getWorld(cfg.end().world());
+            if (world != null)
+                return new Location(world, cfg.end().x() + 0.5, cfg.end().y(), cfg.end().z() + 0.5);
+        }
+
+        Location spawn = ctx.plugin().getConfigUtil().getSpawnLocation();
+        if (spawn == null || spawn.getWorld() == null)
+            spawn = fallbackWorld.getSpawnLocation();
+
+        return spawn;
+    }
+
+    /**
+     * Spawns one named, glowing, persistent carrier Mob at the given point.
+     */
     public Entity spawnCarrier(WorldEvent event, Location at) {
         WorldEvent.ConvoyConfig cfg = event.getConvoy();
         AreaSpawnDefinition definition = ctx.plugin().getMobResolver().resolve(
@@ -139,26 +153,46 @@ public class ConvoyBehavior {
         return entity;
     }
 
-    /** Re-spawns the carrier at the current route point after it vanished (chunk unload, etc.). */
-    public void respawnConvoyLeader(EventInstance instance) {
-        List<Location> points = instance.getConvoyPoints();
-        Location spot = points.isEmpty() ? instance.getOrigin()
-                : points.get(Math.min(Math.max(instance.getConvoyStep(), 0), points.size() - 1));
+    /**
+     * Spawns the display-entity "car" parts around the carrier (which is already hidden).
+     */
+    public void spawnConvoyVisual(EventInstance instance, Location base) {
+        List<WorldEvent.CarPart> car = instance.getEvent().getConvoy().car();
 
-        Entity carrier = spawnCarrier(instance.getEvent(), spot);
-        if (carrier == null) {
-            ctx.manager().endEvent(instance, false);
-            return;
+        for (WorldEvent.CarPart part : car) {
+            Display display = spawnCarPart(base, part);
+            if (display != null)
+                instance.getConvoyDisplays().add(display.getUniqueId());
         }
-
-        instance.setConvoyLeader(carrier.getUniqueId());
-        instance.track(carrier.getUniqueId(), new ArrayList<>(), true);
-        ctx.mobInstances().put(carrier.getUniqueId(), instance);
-        instance.addTotal(1);
-        instance.setTrackLocation(spot);
     }
 
-    /** Drops despawned escorts (they count as casualties) and resurrects a vanished carrier. */
+    private Display spawnCarPart(Location base, WorldEvent.CarPart part) {
+        World world = base.getWorld();
+        if (world == null)
+            return null;
+
+        Location at = base.clone().add(part.dx(), part.dy(), part.dz());
+        at.setYaw(base.getYaw() + part.yaw());
+        at.setPitch(0);
+
+        if (part.material().isBlock()) {
+            return world.spawn(at, BlockDisplay.class, display -> {
+                display.setBlock(part.material().createBlockData());
+                display.setInvulnerable(true);
+                display.setTeleportDuration(2);
+            });
+        }
+
+        return world.spawn(at, ItemDisplay.class, display -> {
+            display.setItemStack(new ItemStack(part.material()));
+            display.setInvulnerable(true);
+            display.setTeleportDuration(2);
+        });
+    }
+
+    /**
+     * Drops despawned escorts (they count as casualties) and resurrects a vanished carrier.
+     */
     public void handleConvoyVanished(EventInstance instance) {
         UUID leaderId = instance.getConvoyLeader();
         boolean carrierGone = leaderId == null;
@@ -181,6 +215,27 @@ public class ConvoyBehavior {
 
         if (carrierGone)
             respawnConvoyLeader(instance);
+    }
+
+    /**
+     * Re-spawns the carrier at the current route point after it vanished (chunk unload, etc.).
+     */
+    public void respawnConvoyLeader(EventInstance instance) {
+        List<Location> points = instance.getConvoyPoints();
+        Location spot = points.isEmpty() ? instance.getOrigin()
+                : points.get(Math.min(Math.max(instance.getConvoyStep(), 0), points.size() - 1));
+
+        Entity carrier = spawnCarrier(instance.getEvent(), spot);
+        if (carrier == null) {
+            ctx.manager().endEvent(instance, false);
+            return;
+        }
+
+        instance.setConvoyLeader(carrier.getUniqueId());
+        instance.track(carrier.getUniqueId(), new ArrayList<>(), true);
+        ctx.mobInstances().put(carrier.getUniqueId(), instance);
+        instance.addTotal(1);
+        instance.setTrackLocation(spot);
     }
 
     /**
@@ -262,77 +317,8 @@ public class ConvoyBehavior {
     }
 
     /**
-     * Resolves the convoy's configured start anchor, or null when this event is
-     * not a convoy / has no start / the world isn't loaded. When set, it becomes
-     * the event origin (and thus where the convoy spawns).
+     * Repositions every car part so the whole convoy rides the (rotated) carrier.
      */
-    public Location convoyRouteStart(WorldEvent event) {
-        if (!event.isConvoy())
-            return null;
-
-        EventSpawnLocation anchor = event.getConvoy().start();
-        if (anchor == null)
-            return null;
-
-        World world = Bukkit.getWorld(anchor.world());
-        if (world == null)
-            return null;
-
-        return new Location(world, anchor.x() + 0.5, anchor.y(), anchor.z() + 0.5);
-    }
-
-    /** Resolves the convoy's end anchor, else the map's extraction spawn. */
-    public Location convoyRouteEnd(WorldEvent event, World fallbackWorld) {
-        WorldEvent.ConvoyConfig cfg = event.getConvoy();
-        if (cfg != null && cfg.end() != null) {
-            World world = Bukkit.getWorld(cfg.end().world());
-            if (world != null)
-                return new Location(world, cfg.end().x() + 0.5, cfg.end().y(), cfg.end().z() + 0.5);
-        }
-
-        Location spawn = ctx.plugin().getConfigUtil().getSpawnLocation();
-        if (spawn == null || spawn.getWorld() == null)
-            spawn = fallbackWorld.getSpawnLocation();
-
-        return spawn;
-    }
-
-    /** Spawns the display-entity "car" parts around the carrier (which is already hidden). */
-    public void spawnConvoyVisual(EventInstance instance, Location base) {
-        List<WorldEvent.CarPart> car = instance.getEvent().getConvoy().car();
-
-        for (WorldEvent.CarPart part : car) {
-            Display display = spawnCarPart(base, part);
-            if (display != null)
-                instance.getConvoyDisplays().add(display.getUniqueId());
-        }
-    }
-
-    private Display spawnCarPart(Location base, WorldEvent.CarPart part) {
-        World world = base.getWorld();
-        if (world == null)
-            return null;
-
-        Location at = base.clone().add(part.dx(), part.dy(), part.dz());
-        at.setYaw(base.getYaw() + part.yaw());
-        at.setPitch(0);
-
-        if (part.material().isBlock()) {
-            return world.spawn(at, BlockDisplay.class, display -> {
-                display.setBlock(part.material().createBlockData());
-                display.setInvulnerable(true);
-                display.setTeleportDuration(2);
-            });
-        }
-
-        return world.spawn(at, ItemDisplay.class, display -> {
-            display.setItemStack(new ItemStack(part.material()));
-            display.setInvulnerable(true);
-            display.setTeleportDuration(2);
-        });
-    }
-
-    /** Repositions every car part so the whole convoy rides the (rotated) carrier. */
     private void updateConvoyVisual(EventInstance instance, Entity leader) {
         List<UUID> ids = instance.getConvoyDisplays();
         if (ids.isEmpty())
@@ -364,7 +350,29 @@ public class ConvoyBehavior {
         }
     }
 
-    /** Removes every car part's display entity (end of event / shutdown). */
+    /**
+     * Resolves the convoy's configured start anchor, or null when this event is
+     * not a convoy / has no start / the world isn't loaded. When set, it becomes
+     * the event origin (and thus where the convoy spawns).
+     */
+    public Location convoyRouteStart(WorldEvent event) {
+        if (!event.isConvoy())
+            return null;
+
+        EventSpawnLocation anchor = event.getConvoy().start();
+        if (anchor == null)
+            return null;
+
+        World world = Bukkit.getWorld(anchor.world());
+        if (world == null)
+            return null;
+
+        return new Location(world, anchor.x() + 0.5, anchor.y(), anchor.z() + 0.5);
+    }
+
+    /**
+     * Removes every car part's display entity (end of event / shutdown).
+     */
     public void clearConvoyVisual(EventInstance instance) {
         for (UUID uuid : instance.getConvoyDisplays()) {
             Entity display = Bukkit.getEntity(uuid);
@@ -405,7 +413,9 @@ public class ConvoyBehavior {
         return true;
     }
 
-    /** Removes a convoy's start/end anchor (falls back to the default route). */
+    /**
+     * Removes a convoy's start/end anchor (falls back to the default route).
+     */
     public boolean clearConvoyPoint(String id, String point) {
         WorldEvent event = ctx.config().getEvent(id);
         if (event == null || !event.isConvoy())
@@ -424,12 +434,6 @@ public class ConvoyBehavior {
         return true;
     }
 
-    /** True when the event exists and has a convoy (i.e. it is a Supply Convoy). */
-    public boolean isConvoyEvent(String id) {
-        WorldEvent event = ctx.config().getEvent(id);
-        return event != null && event.isConvoy();
-    }
-
     /**
      * The id of the first configured convoy event, used as the wand's default
      * target so CONVOY mode works without arming via a command. Null when the
@@ -444,12 +448,16 @@ public class ConvoyBehavior {
         return null;
     }
 
-    /** The convoy event id currently armed onto the player's wand, or null. */
+    /**
+     * The convoy event id currently armed onto the player's wand, or null.
+     */
     public String getWandEvent(UUID playerId) {
         return ctx.convoyWands().get(playerId);
     }
 
-    /** Arms a convoy event onto the player's wand (CONVOY mode sets its anchors). */
+    /**
+     * Arms a convoy event onto the player's wand (CONVOY mode sets its anchors).
+     */
     public void setWandEvent(Player player, String eventId) {
         if (!isConvoyEvent(eventId))
             return;
@@ -457,11 +465,21 @@ public class ConvoyBehavior {
         ctx.convoyWands().put(player.getUniqueId(), eventId);
     }
 
+    /**
+     * True when the event exists and has a convoy (i.e. it is a Supply Convoy).
+     */
+    public boolean isConvoyEvent(String id) {
+        WorldEvent event = ctx.config().getEvent(id);
+        return event != null && event.isConvoy();
+    }
+
     public void clearWandEvent(UUID playerId) {
         ctx.convoyWands().remove(playerId);
     }
 
-    /** The convoy's start or end anchor as a world location, or null when unset/unresolvable. */
+    /**
+     * The convoy's start or end anchor as a world location, or null when unset/unresolvable.
+     */
     public Location getConvoyPoint(String id, String point) {
         WorldEvent event = ctx.config().getEvent(id);
         if (event == null || !event.isConvoy())

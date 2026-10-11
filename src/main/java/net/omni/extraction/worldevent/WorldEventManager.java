@@ -2,25 +2,23 @@ package net.omni.extraction.worldevent;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
+import net.omni.extraction.area.AreaSpawnEntry;
 import net.omni.extraction.worldevent.config.EventSettings;
 import net.omni.extraction.worldevent.config.WorldEventsConfig;
+import net.omni.extraction.worldevent.mutator.Mutator;
+import net.omni.extraction.worldevent.mutator.MutatorCondition;
+import net.omni.extraction.worldevent.mutator.MutatorType;
 import net.omni.extraction.worldevent.service.EventContext;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * The world-event system's lifecycle + facade. Owns the scheduler, the live
@@ -30,10 +28,6 @@ import java.util.UUID;
  */
 public class WorldEventManager {
 
-    public enum EventStartResult {
-        STARTED, DISABLED, ALREADY_ACTIVE, NO_SPAWNS, NOT_FOUND
-    }
-
     private final ExtractionPlugin plugin;
     private final WorldEventsConfig config;
     private final EventContext ctx;
@@ -42,14 +36,12 @@ public class WorldEventManager {
     private final Map<UUID, EventInstance> mobInstances;
     private final Map<UUID, String> convoyWands;
     private final Set<UUID> compassPlayers;
-
     private boolean enabled;
     private int maxConcurrent;
     private long checkSeconds;
     private double chancePerCheck;
     private long minGapSeconds;
     private long lastEventEnd;
-
     private BukkitTask checkTask;
     private BukkitTask tickTask;
 
@@ -66,12 +58,6 @@ public class WorldEventManager {
         readSettings();
     }
 
-    public void reload() {
-        config.reload();
-        readSettings();
-        start();
-    }
-
     private void readSettings() {
         EventSettings s = config.settings();
         this.enabled = s.enabled();
@@ -79,6 +65,12 @@ public class WorldEventManager {
         this.checkSeconds = s.checkSeconds();
         this.chancePerCheck = s.chancePerCheck();
         this.minGapSeconds = s.minGapSeconds();
+    }
+
+    public void reload() {
+        config.reload();
+        readSettings();
+        start();
     }
 
     public void start() {
@@ -104,18 +96,6 @@ public class WorldEventManager {
         }
     }
 
-    public void shutdown() {
-        stop();
-
-        for (EventInstance instance : new ArrayList<>(active.values()))
-            endEvent(instance, false);
-
-        ctx.harvest().clearAll();
-        ctx.presentation().resetCompass();
-    }
-
-    // ---- scheduling / starting ----
-
     private void tryStartEvent() {
         if (!enabled)
             return;
@@ -138,13 +118,63 @@ public class WorldEventManager {
         startEvent(event.getId(), false);
     }
 
-    /**
-     * Rolls the weighted event picker outside the periodic timer (used when a
-     * player enters extraction via /extraction). Respects every scheduler gate:
-     * enabled, max-concurrent, global min-gap, chance-per-check and cooldowns.
-     */
-    public void attemptScheduledStart() {
-        tryStartEvent();
+    private void tick() {
+        long now = System.currentTimeMillis();
+
+        for (EventInstance instance : new ArrayList<>(active.values())) {
+            WorldEvent event = instance.getEvent();
+
+            if (instance.isExpired()) {
+                endEvent(instance, false);
+                continue;
+            }
+
+            if (event.isWavesEnabled()) {
+                long interval = (long) event.getWaveIntervalSeconds() * 1000;
+
+                if (event.getWaveType() == WorldEvent.WaveType.FINITE
+                        && !instance.isReachedFinalWave()
+                        && now - instance.getLastWaveTime() >= interval) {
+                    ctx.waves().spawnNextFiniteWave(instance);
+                } else if (event.getWaveType() == WorldEvent.WaveType.TIMED
+                        && instance.getReinforcementsSpawned() < event.getMaxReinforcements()
+                        && now - instance.getLastWaveTime() >= interval) {
+                    ctx.waves().spawnReinforcement(instance);
+                }
+            }
+
+            if (event.isConvoy()) {
+                ctx.convoy().handleConvoyVanished(instance);
+                ctx.convoy().updateConvoy(instance);
+            } else if (event.isRoam()) {
+                ctx.roam().updateRoam(instance);
+            } else {
+                for (UUID uuid : instance.getMobs()) {
+                    Entity entity = Bukkit.getEntity(uuid);
+                    if (entity == null || !entity.isValid()) {
+                        endEvent(instance, false);
+                        break;
+                    }
+                }
+            }
+
+            if (!active.containsValue(instance))
+                continue;
+
+            if (event.isStorm()) {
+                ctx.storm().applyStorm(instance);
+                if (!active.containsValue(instance))
+                    continue;
+            }
+
+            if (event.isTerrainEnabled() && event.isAmbientEffect() && instance.isCraterActive())
+                ctx.terrain().ambientCraterEffect(instance);
+
+            ctx.presentation().updateBossBar(instance);
+            ctx.presentation().updateWaypoint(instance);
+        }
+
+        ctx.presentation().updateCompass();
     }
 
     private WorldEvent pickWeighted(long now) {
@@ -168,22 +198,6 @@ public class WorldEventManager {
         }
 
         return pickWeightedAmong(eligible);
-    }
-
-    private WorldEvent pickWeightedAmong(List<WorldEvent> eligible) {
-        if (eligible.isEmpty())
-            return null;
-
-        int total = eligible.stream().mapToInt(WorldEvent::getWeight).sum();
-        int roll = ctx.random().nextInt(Math.max(1, total));
-
-        for (WorldEvent event : eligible) {
-            roll -= event.getWeight();
-            if (roll < 0)
-                return event;
-        }
-
-        return eligible.getLast();
     }
 
     public EventStartResult startEvent(String id, boolean force) {
@@ -210,98 +224,94 @@ public class WorldEventManager {
         return EventStartResult.STARTED;
     }
 
-    /**
-     * Starts an area-triggered event at a specific area (origin = its center).
-     * Used by the random-area trigger; admin force starts still route through
-     * {@link #startEvent}.
-     */
-    private EventStartResult startAtArea(String id, Area area) {
-        WorldEvent event = config.getEvent(id);
-        if (event == null)
-            return EventStartResult.NOT_FOUND;
+    // ---- scheduling / starting ----
 
-        if (active.containsKey(event.getId()))
-            return EventStartResult.ALREADY_ACTIVE;
-
-        if (!event.isEnabled() || !event.isAreaTriggered())
-            return EventStartResult.DISABLED;
-
-        Location origin = area == null ? null : area.getCenter();
-        EventInstance instance = spawnEvent(event, origin);
+    public void endEvent(EventInstance instance, boolean success) {
         if (instance == null)
-            return EventStartResult.NO_SPAWNS;
-
-        active.put(event.getId(), instance);
-        ctx.presentation().announceStart(instance);
-        ctx.presentation().updateCompass();
-        return EventStartResult.STARTED;
-    }
-
-    /**
-     * Runs when a player enters an area: rolls the weighted chance and, if an
-     * area-triggered event wins, starts it at the entered area. Skips areas
-     * that are mid-clear / on cooldown / respawning (the next entry re-rolls).
-     */
-    public void tryTriggerOnAreaEntry(Area area) {
-        if (!enabled || area == null)
             return;
 
-        if (!area.isReady())
-            return;
+        WorldEvent event = instance.getEvent();
 
-        if (active.size() >= maxConcurrent)
-            return;
+        if (instance.isCraterActive())
+            ctx.terrain().restoreCrater(instance);
 
-        long now = System.currentTimeMillis();
-
-        if (lastEventEnd > 0 && now - lastEventEnd < minGapSeconds * 1000)
-            return;
-
-        List<WorldEvent> eligible = new ArrayList<>();
-
-        for (WorldEvent event : config.getEvents().values()) {
-            if (!event.isAreaTriggered() || !event.isEnabled() || event.getWeight() <= 0)
-                continue;
-
-            if (active.containsKey(event.getId()))
-                continue;
-
-            Long cooldown = cooldowns.get(event.getId());
-            if (cooldown != null && now < cooldown)
-                continue;
-
-            eligible.add(event);
+        if (instance.hasMutator(MutatorType.NIGHTFALL)) {
+            Mutator nf = instance.getMutator(MutatorType.NIGHTFALL);
+            if (nf != null && nf.nightRestoreOnEnd() && instance.getOriginalWorldTime() >= 0 && instance.getOrigin() != null) {
+                org.bukkit.World w = instance.getOrigin().getWorld();
+                if (w != null) {
+                    w.setTime(instance.getOriginalWorldTime());
+                }
+            }
         }
 
+        active.remove(event.getId());
+
+        ctx.storm().clearStormEffects(instance);
+        ctx.convoy().clearConvoyVisual(instance);
+        ctx.harvest().clearAll();
+        // roam cleanup handled by context if needed
+
+        for (UUID uuid : new ArrayList<>(instance.getMobs())) {
+            Entity entity = Bukkit.getEntity(uuid);
+            if (entity != null && entity.isValid())
+                entity.remove();
+
+            mobInstances.remove(uuid);
+        }
+
+        instance.getMobs().clear();
+        mobInstances.entrySet().removeIf(entry -> entry.getValue() == instance);
+
+        if (instance.getBossBar() != null) {
+            for (Player player : Bukkit.getOnlinePlayers())
+                player.hideBossBar(instance.getBossBar());
+        }
+
+        plugin.getHologramManager().removeWaypointHologram(event.getId());
+
+        long now = System.currentTimeMillis();
+        if (event.getCooldownSeconds() > 0)
+            cooldowns.put(event.getId(), now + (long) event.getCooldownSeconds() * 1000);
+        lastEventEnd = now;
+
+        if (success)
+            ctx.loot().grantCompletionLoot(instance);
+
+        boolean escaped = !success && event.isRoam();
+
+        if (escaped) {
+            if (!event.getEscapeMessage().isBlank())
+                ctx.presentation().broadcastAll(event.getEscapeMessage(), event, instance);
+        } else if (!event.getEndMessage().isBlank()) {
+            ctx.presentation().broadcastAll(event.getEndMessage(), event, instance);
+        }
+
+        if (escaped && !event.getTitleEscape().isBlank())
+            ctx.presentation().showTitle(instance, event.getTitleEscape(), "");
+        else
+            ctx.presentation().showTitle(instance, event.getTitleTitle(), event.getTitleSubtitle());
+
+        ctx.presentation().playSound(event, escaped && !event.getEscapeSound().isBlank()
+                ? event.getEscapeSound() : event.getEndSound());
+        ctx.presentation().updateCompass();
+        ctx.terrain().restoreTerrain(instance);
+    }
+
+    private WorldEvent pickWeightedAmong(List<WorldEvent> eligible) {
         if (eligible.isEmpty())
-            return;
+            return null;
 
-        if (ctx.random().nextDouble() >= chancePerCheck)
-            return;
+        int total = eligible.stream().mapToInt(WorldEvent::getWeight).sum();
+        int roll = ctx.random().nextInt(Math.max(1, total));
 
-        WorldEvent event = pickWeightedAmong(eligible);
-        if (event == null)
-            return;
+        for (WorldEvent event : eligible) {
+            roll -= event.getWeight();
+            if (roll < 0)
+                return event;
+        }
 
-        startAtArea(event.getId(), area);
-    }
-
-    public boolean stopEvent(String id) {
-        EventInstance instance = active.get(id.toLowerCase(Locale.ROOT));
-        if (instance == null)
-            return false;
-
-        endEvent(instance, false);
-        return true;
-    }
-
-    public int stopAll() {
-        int count = active.size();
-
-        for (EventInstance instance : new ArrayList<>(active.values()))
-            endEvent(instance, false);
-
-        return count;
+        return eligible.getLast();
     }
 
     private EventInstance spawnEvent(WorldEvent event, Location origin) {
@@ -332,6 +342,20 @@ public class WorldEventManager {
         EventInstance instance = new EventInstance(event, origin,
                 (long) event.getDurationSeconds() * 1000);
         instance.setBoundArea(stormArea);
+
+        // Apply mutators
+        List<Mutator> selectedMutators = selectMutators(event, instance, origin);
+        instance.applyMutators(selectedMutators);
+        if (!selectedMutators.isEmpty() && event.isNightfallActive(instance)) {
+            World w = origin.getWorld();
+            if (w != null) {
+                instance.setOriginalWorldTime(w.getTime());
+                Mutator nf = instance.getMutator(MutatorType.NIGHTFALL);
+                if (nf != null) {
+                    w.setTime(nf.nightForceTime());
+                }
+            }
+        }
 
         if (event.isStorm()) {
             if (!ctx.storm().initStormZones(instance)) {
@@ -390,62 +414,228 @@ public class WorldEventManager {
         return instance;
     }
 
-    // ---- ending ----
+    private List<Mutator> selectMutators(WorldEvent event, EventInstance instance, Location origin) {
+        List<Mutator> eligible = new ArrayList<>();
+        for (Mutator m : event.getMutators()) {
+            if (!m.enabled()) {
+                continue;
+            }
+            if (passesConditions(m, instance, origin)) {
+                eligible.add(m);
+            }
+        }
+        if (eligible.isEmpty()) {
+            return List.of();
+        }
+        int maxSelected = event.getMutatorsMaxSelected();
+        if (maxSelected <= 0) {
+            return new ArrayList<>(eligible);
+        }
+        List<Mutator> selected = new ArrayList<>();
+        List<Mutator> pool = new ArrayList<>(eligible);
+        while (selected.size() < maxSelected && !pool.isEmpty()) {
+            int total = pool.stream().mapToInt(Mutator::weight).sum();
+            if (total <= 0) {
+                break;
+            }
+            int roll = ctx.random().nextInt(total);
+            for (int i = 0; i < pool.size(); i++) {
+                Mutator pm = pool.get(i);
+                roll -= pm.weight();
+                if (roll < 0) {
+                    selected.add(pm);
+                    pool.remove(i);
+                    break;
+                }
+            }
+        }
+        return selected;
+    }
 
-    public void endEvent(EventInstance instance, boolean success) {
-        if (instance == null)
+    private boolean passesConditions(Mutator m, EventInstance instance, Location origin) {
+        MutatorCondition c = m.condition();
+        if (c == MutatorCondition.EMPTY) {
+            return true;
+        }
+        World world = origin != null ? origin.getWorld() : null;
+        String worldName = plugin.getConfigUtil().getWorldName();
+        if (world == null && worldName != null && !worldName.isEmpty()) {
+            world = Bukkit.getWorld(worldName);
+        }
+        if (world != null) {
+            if (c.playerCountMin() >= 0 || c.playerCountMax() >= 0) {
+                int count = world.getPlayers().size();
+                if (c.playerCountMin() >= 0 && count < c.playerCountMin()) {
+                    return false;
+                }
+                if (c.playerCountMax() >= 0 && count > c.playerCountMax()) {
+                    return false;
+                }
+            }
+            if (c.timeOfDayMin() >= 0 || c.timeOfDayMax() >= 0) {
+                long time = world.getTime();
+                if (c.timeOfDayMin() >= 0 && c.timeOfDayMax() >= 0 && c.timeOfDayMin() <= c.timeOfDayMax()) {
+                    if (time < c.timeOfDayMin() || time > c.timeOfDayMax()) {
+                        return false;
+                    }
+                } else if (c.timeOfDayMin() >= 0 && time < c.timeOfDayMin()) {
+                    return false;
+                } else if (c.timeOfDayMax() >= 0 && time > c.timeOfDayMax()) {
+                    return false;
+                }
+            }
+        }
+        if (c.participationMin() >= 0 || c.participationMax() >= 0) {
+            double total = instance.getTotalDamage();
+            if (c.participationMin() >= 0 && total < c.participationMin()) {
+                return false;
+            }
+            if (c.participationMax() >= 0 && total > c.participationMax()) {
+                return false;
+            }
+        }
+        if (c.areaLevelMin() >= 0 || c.areaLevelMax() >= 0 && origin != null) {
+            try {
+                int level = 0;
+                try {
+                    Area a = plugin.getAreaManager().getAreaAt(origin);
+                    if (a != null) {
+                        int max = 1;
+                        for (AreaSpawnEntry e : a.getSpawnEntries()) {
+                            if (e.getLevel() > max) max = e.getLevel();
+                        }
+                        level = max;
+                    } else {
+                        level = 0;
+                    }
+                } catch (Exception e) {
+                    level = 0;
+                }
+                if (c.areaLevelMin() >= 0 && level < c.areaLevelMin()) {
+                    return false;
+                }
+                if (c.areaLevelMax() >= 0 && level > c.areaLevelMax()) {
+                    return false;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return true;
+    }
+
+    public void shutdown() {
+        stop();
+
+        for (EventInstance instance : new ArrayList<>(active.values()))
+            endEvent(instance, false);
+
+        ctx.harvest().clearAll();
+        ctx.presentation().resetCompass();
+    }
+
+    /**
+     * Rolls the weighted event picker outside the periodic timer (used when a
+     * player enters extraction via /extraction). Respects every scheduler gate:
+     * enabled, max-concurrent, global min-gap, chance-per-check and cooldowns.
+     */
+    public void attemptScheduledStart() {
+        tryStartEvent();
+    }
+
+    /**
+     * Runs when a player enters an area: rolls the weighted chance and, if an
+     * area-triggered event wins, starts it at the entered area. Skips areas
+     * that are mid-clear / on cooldown / respawning (the next entry re-rolls).
+     */
+    public void tryTriggerOnAreaEntry(Area area) {
+        if (!enabled || area == null)
             return;
 
-        WorldEvent event = instance.getEvent();
-        active.remove(event.getId());
+        if (!area.isReady())
+            return;
 
-        ctx.storm().clearStormEffects(instance);
-        ctx.convoy().clearConvoyVisual(instance);
-
-        for (UUID uuid : new ArrayList<>(instance.getMobs())) {
-            Entity entity = Bukkit.getEntity(uuid);
-            if (entity != null && entity.isValid())
-                entity.remove();
-
-            mobInstances.remove(uuid);
-        }
-
-        instance.getMobs().clear();
-        mobInstances.entrySet().removeIf(entry -> entry.getValue() == instance);
-
-        if (instance.getBossBar() != null) {
-            for (Player player : Bukkit.getOnlinePlayers())
-                player.hideBossBar(instance.getBossBar());
-        }
-
-        plugin.getHologramManager().removeWaypointHologram(event.getId());
+        if (active.size() >= maxConcurrent)
+            return;
 
         long now = System.currentTimeMillis();
-        if (event.getCooldownSeconds() > 0)
-            cooldowns.put(event.getId(), now + (long) event.getCooldownSeconds() * 1000);
-        lastEventEnd = now;
 
-        if (success)
-            ctx.loot().grantCompletionLoot(instance);
+        if (lastEventEnd > 0 && now - lastEventEnd < minGapSeconds * 1000)
+            return;
 
-        boolean escaped = !success && event.isRoam();
+        List<WorldEvent> eligible = new ArrayList<>();
 
-        if (escaped) {
-            if (!event.getEscapeMessage().isBlank())
-                ctx.presentation().broadcastAll(event.getEscapeMessage(), event, instance);
-        } else if (!event.getEndMessage().isBlank()) {
-            ctx.presentation().broadcastAll(event.getEndMessage(), event, instance);
+        for (WorldEvent event : config.getEvents().values()) {
+            if (!event.isAreaTriggered() || !event.isEnabled() || event.getWeight() <= 0)
+                continue;
+
+            if (active.containsKey(event.getId()))
+                continue;
+
+            Long cooldown = cooldowns.get(event.getId());
+            if (cooldown != null && now < cooldown)
+                continue;
+
+            eligible.add(event);
         }
 
-        if (escaped && !event.getTitleEscape().isBlank())
-            ctx.presentation().showTitle(instance, event.getTitleEscape(), "");
-        else
-            ctx.presentation().showTitle(instance, event.getTitleTitle(), event.getTitleSubtitle());
+        if (eligible.isEmpty())
+            return;
 
-        ctx.presentation().playSound(event, escaped && !event.getEscapeSound().isBlank()
-                ? event.getEscapeSound() : event.getEndSound());
+        if (ctx.random().nextDouble() >= chancePerCheck)
+            return;
+
+        WorldEvent event = pickWeightedAmong(eligible);
+        if (event == null)
+            return;
+
+        startAtArea(event.getId(), area);
+    }
+
+    /**
+     * Starts an area-triggered event at a specific area (origin = its center).
+     * Used by the random-area trigger; admin force starts still route through
+     * {@link #startEvent}.
+     */
+    private EventStartResult startAtArea(String id, Area area) {
+        WorldEvent event = config.getEvent(id);
+        if (event == null)
+            return EventStartResult.NOT_FOUND;
+
+        if (active.containsKey(event.getId()))
+            return EventStartResult.ALREADY_ACTIVE;
+
+        if (!event.isEnabled() || !event.isAreaTriggered())
+            return EventStartResult.DISABLED;
+
+        Location origin = area == null ? null : area.getCenter();
+        EventInstance instance = spawnEvent(event, origin);
+        if (instance == null)
+            return EventStartResult.NO_SPAWNS;
+
+        active.put(event.getId(), instance);
+        ctx.presentation().announceStart(instance);
         ctx.presentation().updateCompass();
-        ctx.terrain().restoreTerrain(instance);
+        return EventStartResult.STARTED;
+    }
+
+    public boolean stopEvent(String id) {
+        EventInstance instance = active.get(id.toLowerCase(Locale.ROOT));
+        if (instance == null)
+            return false;
+
+        endEvent(instance, false);
+        return true;
+    }
+
+    // ---- ending ----
+
+    public int stopAll() {
+        int count = active.size();
+
+        for (EventInstance instance : new ArrayList<>(active.values()))
+            endEvent(instance, false);
+
+        return count;
     }
 
     // ---- combat / loot delegation ----
@@ -582,70 +772,11 @@ public class WorldEventManager {
 
     // ---- tick ----
 
-    private void tick() {
-        long now = System.currentTimeMillis();
-
-        for (EventInstance instance : new ArrayList<>(active.values())) {
-            WorldEvent event = instance.getEvent();
-
-            if (instance.isExpired()) {
-                endEvent(instance, false);
-                continue;
-            }
-
-            if (event.isWavesEnabled()) {
-                long interval = (long) event.getWaveIntervalSeconds() * 1000;
-
-                if (event.getWaveType() == WorldEvent.WaveType.FINITE
-                        && !instance.isReachedFinalWave()
-                        && now - instance.getLastWaveTime() >= interval) {
-                    ctx.waves().spawnNextFiniteWave(instance);
-                } else if (event.getWaveType() == WorldEvent.WaveType.TIMED
-                        && instance.getReinforcementsSpawned() < event.getMaxReinforcements()
-                        && now - instance.getLastWaveTime() >= interval) {
-                    ctx.waves().spawnReinforcement(instance);
-                }
-            }
-
-            if (event.isConvoy()) {
-                ctx.convoy().handleConvoyVanished(instance);
-                ctx.convoy().updateConvoy(instance);
-            } else if (event.isRoam()) {
-                ctx.roam().updateRoam(instance);
-            } else {
-                for (UUID uuid : instance.getMobs()) {
-                    Entity entity = Bukkit.getEntity(uuid);
-                    if (entity == null || !entity.isValid()) {
-                        endEvent(instance, false);
-                        break;
-                    }
-                }
-            }
-
-            if (!active.containsValue(instance))
-                continue;
-
-            if (event.isStorm()) {
-                ctx.storm().applyStorm(instance);
-                if (!active.containsValue(instance))
-                    continue;
-            }
-
-            if (event.isTerrainEnabled() && event.isAmbientEffect() && instance.isCraterActive())
-                ctx.terrain().ambientCraterEffect(instance);
-
-            ctx.presentation().updateBossBar(instance);
-            ctx.presentation().updateWaypoint(instance);
-        }
-
-        ctx.presentation().updateCompass();
-    }
-
-    // ---- accessors ----
-
     public Map<String, WorldEvent> getEvents() {
         return config.getEvents();
     }
+
+    // ---- accessors ----
 
     public WorldEvent getEvent(String id) {
         return config.getEvent(id);
@@ -679,5 +810,9 @@ public class WorldEventManager {
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public enum EventStartResult {
+        STARTED, DISABLED, ALREADY_ACTIVE, NO_SPAWNS, NOT_FOUND
     }
 }

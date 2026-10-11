@@ -6,13 +6,14 @@ import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.EventSpawn;
 import net.omni.extraction.worldevent.WorldEvent;
 import net.omni.extraction.worldevent.WorldEvent.EventSpawnLocation;
+import net.omni.extraction.worldevent.mutator.Mutator;
+import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -29,52 +30,83 @@ public class EventSpawner {
         this.ctx = ctx;
     }
 
-    /** Spawns one configured mob group (with difficulty + storm-mutation scaling) at {@code origin}. */
+    /**
+     * Spawns one configured mob group (with difficulty + storm-mutation scaling) at {@code origin}.
+     */
     public boolean spawnGroup(EventInstance instance, EventSpawn spawn, boolean boss,
                               Location origin, double difficulty, int levelGain, int countGain) {
         WorldEvent event = instance.getEvent();
-        int level = spawn.getLevel() > 0 ? spawn.getLevel() : event.getLevel();
+        int level = spawn.level() > 0 ? spawn.level() : event.getLevel();
         level += levelGain;
 
-        int count = Math.max(1, spawn.getCount() + countGain);
+        int count = Math.max(1, spawn.count() + countGain);
+
+        // Apply elite count multiplier
+        Mutator eliteMut = instance.getMutator(MutatorType.ELITE_ENEMIES);
+        if (eliteMut != null && eliteMut.countMult() != 1.0) {
+            count = (int) Math.round(count * eliteMut.countMult());
+            if (count < 1) count = 1;
+        }
 
         AreaSpawnDefinition definition = ctx.plugin().getMobResolver().resolve(
-                spawn.getMobId(), count, boss, Math.max(1, level), 0);
+                spawn.mobId(), count, boss, Math.max(1, level), 0);
         if (definition == null)
             return false;
 
-        if (difficulty > 0) {
-            if (definition.getHealth() > 0)
-                definition.setHealth(definition.getHealth() * difficulty);
-            if (definition.getDamage() > 0)
-                definition.setDamage(definition.getDamage() * difficulty);
+        double difficultyScale = difficulty > 0 ? difficulty : 1.0;
+        double stormMutate = 1.0;
+        if (event.isStorm()) {
+            stormMutate = event.getStorm().mutateMultiplier();
+        }
+        double eliteHealth = 1.0, eliteDamage = 1.0, eliteArmor = 0.0, eliteSpeed = 1.0;
+        boolean eliteGlow = false;
+        String elitePrefix = null;
+        if (eliteMut != null) {
+            eliteHealth = eliteMut.healthMult();
+            eliteDamage = eliteMut.damageMult();
+            eliteArmor = eliteMut.armorBonus();
+            eliteSpeed = eliteMut.speedMult();
+            eliteGlow = eliteMut.glow();
+            elitePrefix = eliteMut.namePrefix();
         }
 
-        if (spawn.getName() != null && !spawn.getName().isBlank())
-            definition.setDisplayName(spawn.getName());
+        if (difficultyScale > 0 || stormMutate > 0 || eliteHealth != 1.0) {
+            if (definition.getHealth() > 0) {
+                double h = definition.getHealth() * difficultyScale * stormMutate * eliteHealth;
+                if (h < 1) h = 1;
+                definition.setHealth(h);
+            }
+        }
+        if (difficultyScale > 0 || stormMutate > 0 || eliteDamage != 1.0) {
+            if (definition.getDamage() > 0) {
+                double d = definition.getDamage() * difficultyScale * stormMutate * eliteDamage;
+                if (d < 0) d = 0;
+                definition.setDamage(d);
+            }
+        }
 
-        definition.setBaby(spawn.isBaby());
+        if (spawn.name() != null && !spawn.name().isBlank())
+            definition.setDisplayName(spawn.name());
+        else if (definition.getDisplayName() == null)
+            definition.setDisplayName(definition.getType());
+
+        definition.setBaby(spawn.baby());
 
         if (event.isStorm()) {
-            double mutate = event.getStorm().mutateMultiplier();
-            if (mutate > 1.0) {
-                if (definition.getHealth() > 0)
-                    definition.setHealth(definition.getHealth() * mutate);
-                if (definition.getDamage() > 0)
-                    definition.setDamage(definition.getDamage() * mutate);
-            }
-
             String prefix = event.getStorm().mutatePrefix();
             if (prefix != null && !prefix.isBlank()) {
                 String current = definition.getDisplayName();
-                definition.setDisplayName(prefix + (current == null || current.isBlank()
-                        ? definition.getType() : current));
+                definition.setDisplayName(prefix + (current == null || current.isBlank() ? definition.getType() : current));
             }
+        }
+        if (elitePrefix != null && !elitePrefix.isBlank()) {
+            String current = definition.getDisplayName();
+            definition.setDisplayName(elitePrefix + (current == null || current.isBlank() ? definition.getType() : current));
         }
 
         List<MobDrop> drops;
         if (boss)
-            drops = spawn.getDrops().isEmpty() ? definition.getDrops() : spawn.getDrops();
+            drops = spawn.drops().isEmpty() ? definition.getDrops() : spawn.drops();
         else
             drops = definition.getDrops();
 
@@ -91,7 +123,7 @@ public class EventSpawner {
             spawned++;
             UUID uuid = entity.getUniqueId();
 
-            if (event.isStorm())
+            if (event.isStorm() || eliteGlow)
                 entity.setGlowing(true);
 
             instance.track(uuid, drops, boss);
@@ -100,6 +132,12 @@ public class EventSpawner {
 
         instance.addTotal(spawned);
         return any;
+    }
+
+    public Location offsetOrigin(Location origin) {
+        double angle = ctx.random().nextDouble() * Math.PI * 2;
+        double radius = ctx.random().nextDouble() * ctx.settings().spawnRadius();
+        return origin.clone().add(Math.cos(angle) * radius, 1.0, Math.sin(angle) * radius);
     }
 
     /**
@@ -140,13 +178,9 @@ public class EventSpawner {
         return candidates.get(ctx.random().nextInt(candidates.size())).getLocation().add(0, 2, 0);
     }
 
-    public Location offsetOrigin(Location origin) {
-        double angle = ctx.random().nextDouble() * Math.PI * 2;
-        double radius = ctx.random().nextDouble() * ctx.settings().spawnRadius();
-        return origin.clone().add(Math.cos(angle) * radius, 1.0, Math.sin(angle) * radius);
-    }
-
-    /** Snaps a location down to the first solid block below it (used to drop escorts on terrain). */
+    /**
+     * Snaps a location down to the first solid block below it (used to drop escorts on terrain).
+     */
     public Location groundSnap(Location location) {
         World world = location.getWorld();
         if (world == null)

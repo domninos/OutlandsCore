@@ -2,13 +2,7 @@ package net.omni.extraction.worldevent.service;
 
 import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
-import org.bukkit.Bukkit;
-import org.bukkit.Color;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
@@ -29,7 +23,9 @@ public class TerrainService {
 
     // ---- Crater terrain (Meteor Crash) ----
 
-    /** Carves a nether-like bowl crater around the event origin and records every original block. */
+    /**
+     * Carves a nether-like bowl crater around the event origin and records every original block.
+     */
     public void applyCrater(EventInstance instance) {
         WorldEvent event = instance.getEvent();
         Location origin = instance.getOrigin();
@@ -104,86 +100,6 @@ public class TerrainService {
             impactEffect(origin);
     }
 
-    /** Replays the recorded blocks, pushing players out of the crater first, and drops the crater state. */
-    public void restoreCrater(EventInstance instance) {
-        if (!instance.isCraterActive())
-            return;
-
-        WorldEvent event = instance.getEvent();
-        Location center = instance.getCraterCenter();
-        World world = center == null ? null : center.getWorld();
-        List<EventInstance.SavedBlock> blocks = instance.getCraterBlocks();
-
-        if (world == null || blocks.isEmpty()) {
-            instance.clearCrater();
-            return;
-        }
-
-        if (event.isPushPlayers())
-            pushPlayersOut(center, event);
-
-        for (EventInstance.SavedBlock saved : blocks)
-            world.getBlockAt(saved.x(), saved.y(), saved.z()).setBlockData(saved.data(), false);
-
-        if (event.isPushPlayers()) {
-            try {
-                Bukkit.getScheduler().runTaskLater(ctx.plugin(), () -> pushPlayersOut(center, event), 2L);
-            } catch (IllegalStateException ignored) {
-                // plugin is disabling — no re-push; terrain is already restored
-            }
-        }
-
-        if (event.isRestoreEffect())
-            restoreEffect(center);
-
-        ctx.plugin().sendConsole("<green>[World Event] " + event.getDisplayName()
-                + ": crater regenerated (" + blocks.size() + " blocks restored).</green>");
-
-        instance.clearCrater();
-    }
-
-    /** Pushes every player standing in the crater disc up and away from the center. */
-    private void pushPlayersOut(Location center, WorldEvent event) {
-        World world = center.getWorld();
-        if (world == null)
-            return;
-
-        double radius = event.getTerrainRadius() + 0.5;
-        int minY = center.getBlockY() - event.getTerrainDepth() - 2;
-        int maxY = center.getBlockY() + 4;
-        double strength = event.getPushStrength();
-        double up = event.getPushUp();
-
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.getWorld() != world)
-                continue;
-
-            Location loc = player.getLocation();
-            if (loc.getBlockY() < minY || loc.getBlockY() > maxY)
-                continue;
-
-            double dx = loc.getX() - center.getX();
-            double dz = loc.getZ() - center.getZ();
-            if (dx * dx + dz * dz > radius * radius)
-                continue;
-
-            pushPlayer(player, dx, dz, strength, up);
-        }
-    }
-
-    private void pushPlayer(Player player, double dx, double dz, double strength, double up) {
-        Vector away;
-        if (dx * dx + dz * dz < 0.01)
-            away = new Vector(ctx.random().nextDouble() - 0.5, 0, ctx.random().nextDouble() - 0.5);
-        else
-            away = new Vector(dx, 0, dz);
-
-        away.normalize().multiply(strength);
-        away.setY(up);
-        player.setVelocity(away);
-        player.setFallDistance(0);
-    }
-
     public boolean isProtectedCraterBlock(Material material) {
         return switch (material) {
             case BEDROCK, BARRIER, CHEST, TRAPPED_CHEST, ENDER_CHEST, SPAWNER, LIGHT -> true;
@@ -207,7 +123,9 @@ public class TerrainService {
         return choices.getLast().material();
     }
 
-    /** Big impact burst (camera flash, lava/ash/embers, explosions + crunch) at the crash site. */
+    /**
+     * Big impact burst (camera flash, lava/ash/embers, explosions + crunch) at the crash site.
+     */
     private void impactEffect(Location origin) {
         World world = origin.getWorld();
         if (world == null)
@@ -234,7 +152,9 @@ public class TerrainService {
             world.playSound(origin, crack, 2.0f, 0.5f);
     }
 
-    /** Rising embers + occasional crackle from the crater while it exists. */
+    /**
+     * Rising embers + occasional crackle from the crater while it exists.
+     */
     public void ambientCraterEffect(EventInstance instance) {
         WorldEvent event = instance.getEvent();
         Location center = instance.getCraterCenter();
@@ -266,29 +186,9 @@ public class TerrainService {
         }
     }
 
-    /** Short re-materialise burst once the crater floors are restored. */
-    private void restoreEffect(Location center) {
-        World world = center.getWorld();
-        if (world == null)
-            return;
-
-        Location spot = center.clone().add(0, 1, 0);
-        world.spawnParticle(Particle.EXPLOSION, spot, 1);
-        world.spawnParticle(Particle.LARGE_SMOKE, spot, 30, 2.0, 1.0, 2.0, 0.03);
-        world.spawnParticle(Particle.END_ROD, spot, 40, 2.0, 1.0, 2.0, 0.05);
-
-        Sound place = ctx.presentation().decodeSound("block_stone_place");
-        if (place != null)
-            world.playSound(center, place, 2.0f, 0.8f);
-
-        Sound rumble = ctx.presentation().decodeSound("entity_generic_explode");
-        if (rumble != null)
-            world.playSound(center, rumble, 2.0f, 0.5f);
-    }
-
-    // ---- Toxic Storm contamination ----
-
-    /** Paints a contaminated ground patch under every storm zone (saved for restore). */
+    /**
+     * Paints a contaminated ground patch under every storm zone (saved for restore).
+     */
     public void applyContamination(EventInstance instance) {
         WorldEvent.StormConfig cfg = instance.getEvent().getStorm();
         if (cfg == null)
@@ -335,7 +235,57 @@ public class TerrainService {
         }
     }
 
-    /** Restores every block changed by {@link #applyContamination(EventInstance)}. */
+    /**
+     * Restores all terrain an event changed (meteor crater + storm contamination).
+     */
+    public void restoreTerrain(EventInstance instance) {
+        restoreCrater(instance);
+        restoreContamination(instance);
+    }
+
+    /**
+     * Replays the recorded blocks, pushing players out of the crater first, and drops the crater state.
+     */
+    public void restoreCrater(EventInstance instance) {
+        if (!instance.isCraterActive())
+            return;
+
+        WorldEvent event = instance.getEvent();
+        Location center = instance.getCraterCenter();
+        World world = center == null ? null : center.getWorld();
+        List<EventInstance.SavedBlock> blocks = instance.getCraterBlocks();
+
+        if (world == null || blocks.isEmpty()) {
+            instance.clearCrater();
+            return;
+        }
+
+        if (event.isPushPlayers())
+            pushPlayersOut(center, event);
+
+        for (EventInstance.SavedBlock saved : blocks)
+            world.getBlockAt(saved.x(), saved.y(), saved.z()).setBlockData(saved.data(), false);
+
+        if (event.isPushPlayers()) {
+            try {
+                Bukkit.getScheduler().runTaskLater(ctx.plugin(), () -> pushPlayersOut(center, event), 2L);
+            } catch (IllegalStateException ignored) {
+                // plugin is disabling — no re-push; terrain is already restored
+            }
+        }
+
+        if (event.isRestoreEffect())
+            restoreEffect(center);
+
+        ctx.plugin().sendConsole("<green>[World Event] " + event.getDisplayName()
+                + ": crater regenerated (" + blocks.size() + " blocks restored).</green>");
+
+        instance.clearCrater();
+    }
+
+    /**
+     * Restores every block changed by {@link #applyContamination(EventInstance)}.
+     */
     public void restoreContamination(EventInstance instance) {
         List<EventInstance.SavedBlock> blocks = instance.getContaminationBlocks();
         if (blocks.isEmpty())
@@ -350,9 +300,71 @@ public class TerrainService {
         blocks.clear();
     }
 
-    /** Restores all terrain an event changed (meteor crater + storm contamination). */
-    public void restoreTerrain(EventInstance instance) {
-        restoreCrater(instance);
-        restoreContamination(instance);
+    // ---- Toxic Storm contamination ----
+
+    /**
+     * Pushes every player standing in the crater disc up and away from the center.
+     */
+    private void pushPlayersOut(Location center, WorldEvent event) {
+        World world = center.getWorld();
+        if (world == null)
+            return;
+
+        double radius = event.getTerrainRadius() + 0.5;
+        int minY = center.getBlockY() - event.getTerrainDepth() - 2;
+        int maxY = center.getBlockY() + 4;
+        double strength = event.getPushStrength();
+        double up = event.getPushUp();
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getWorld() != world)
+                continue;
+
+            Location loc = player.getLocation();
+            if (loc.getBlockY() < minY || loc.getBlockY() > maxY)
+                continue;
+
+            double dx = loc.getX() - center.getX();
+            double dz = loc.getZ() - center.getZ();
+            if (dx * dx + dz * dz > radius * radius)
+                continue;
+
+            pushPlayer(player, dx, dz, strength, up);
+        }
+    }
+
+    /**
+     * Short re-materialise burst once the crater floors are restored.
+     */
+    private void restoreEffect(Location center) {
+        World world = center.getWorld();
+        if (world == null)
+            return;
+
+        Location spot = center.clone().add(0, 1, 0);
+        world.spawnParticle(Particle.EXPLOSION, spot, 1);
+        world.spawnParticle(Particle.LARGE_SMOKE, spot, 30, 2.0, 1.0, 2.0, 0.03);
+        world.spawnParticle(Particle.END_ROD, spot, 40, 2.0, 1.0, 2.0, 0.05);
+
+        Sound place = ctx.presentation().decodeSound("block_stone_place");
+        if (place != null)
+            world.playSound(center, place, 2.0f, 0.8f);
+
+        Sound rumble = ctx.presentation().decodeSound("entity_generic_explode");
+        if (rumble != null)
+            world.playSound(center, rumble, 2.0f, 0.5f);
+    }
+
+    private void pushPlayer(Player player, double dx, double dz, double strength, double up) {
+        Vector away;
+        if (dx * dx + dz * dz < 0.01)
+            away = new Vector(ctx.random().nextDouble() - 0.5, 0, ctx.random().nextDouble() - 0.5);
+        else
+            away = new Vector(dx, 0, dz);
+
+        away.normalize().multiply(strength);
+        away.setY(up);
+        player.setVelocity(away);
+        player.setFallDistance(0);
     }
 }

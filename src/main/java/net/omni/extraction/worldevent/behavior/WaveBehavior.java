@@ -16,7 +16,15 @@ public class WaveBehavior {
         this.ctx = ctx;
     }
 
-    /** Spawns one finite wave (escalated by its level/count gains) and its boss wave when reached. */
+    public void spawnNextFiniteWave(EventInstance instance) {
+        int wave = instance.nextWave();
+        spawnWave(instance, wave);
+        ctx.presentation().announceWave(instance, wave);
+    }
+
+    /**
+     * Spawns one finite wave (escalated by its level/count gains) and its boss wave when reached.
+     */
     public boolean spawnWave(EventInstance instance, int wave) {
         WorldEvent event = instance.getEvent();
 
@@ -41,13 +49,9 @@ public class WaveBehavior {
         return any;
     }
 
-    public void spawnNextFiniteWave(EventInstance instance) {
-        int wave = instance.nextWave();
-        spawnWave(instance, wave);
-        ctx.presentation().announceWave(instance, wave);
-    }
-
-    /** Timed escalation: spawns a reinforcement wave whose strength scales with the wave number. */
+    /**
+     * Timed escalation: spawns a reinforcement wave whose strength scales with the wave number.
+     */
     public void spawnReinforcement(EventInstance instance) {
         WorldEvent event = instance.getEvent();
         int wave = instance.nextWave();

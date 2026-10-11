@@ -5,6 +5,8 @@ import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
+import net.omni.extraction.worldevent.mutator.Mutator;
+import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -58,6 +60,12 @@ public class EventLootService {
         if (boss)
             rolls *= ctx.settings().bossRollMultiplier();
 
+        Mutator dl = instance.getMutator(MutatorType.DOUBLE_LOOT);
+        if (dl != null && dl.lootMult() != 1.0) {
+            rolls = (int) Math.round(rolls * dl.lootMult());
+        }
+        if (rolls < 0) rolls = 0;
+
         LootTable table = table(event.getLootTable());
 
         if (table != null && rolls > 0) {
@@ -88,6 +96,10 @@ public class EventLootService {
         WorldEvent event = instance.getEvent();
         LootTable table = table(event.getLootTable());
         int completionRolls = ctx.settings().completionRolls();
+        Mutator dl = instance.getMutator(MutatorType.DOUBLE_LOOT);
+        if (dl != null && dl.lootMult() != 1.0) {
+            completionRolls = (int) Math.round(completionRolls * dl.lootMult());
+        }
         if (table == null || completionRolls <= 0)
             return;
 

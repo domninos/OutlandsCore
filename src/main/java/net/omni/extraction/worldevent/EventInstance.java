@@ -3,17 +3,13 @@ package net.omni.extraction.worldevent;
 import net.kyori.adventure.bossbar.BossBar;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.mobs.MobDrop;
+import net.omni.extraction.worldevent.mutator.Mutator;
+import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Location;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.potion.PotionEffectType;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * The live state of one running world event: the origin, every spawned mob
@@ -22,15 +18,6 @@ import java.util.UUID;
  */
 public class EventInstance {
 
-    /** One original block captured before the event carved it into a crater. */
-    public record SavedBlock(int x, int y, int z, BlockData data) {
-    }
-
-    /** The Treasure Goblin's tiny behavior state machine. */
-    public enum GoblinMode {
-        FLEE, FIGHT
-    }
-
     private final WorldEvent event;
     private final Location origin;
     private final Set<UUID> mobs;
@@ -38,37 +25,33 @@ public class EventInstance {
     private final Map<UUID, List<MobDrop>> mobDrops;
     private final long startTime;
     private final long endTime;
+    private final List<SavedBlock> craterBlocks;
+    private final List<Location> convoyPoints;
+    private final List<UUID> convoyDisplays;
+    private final List<Location> stormZones;
+    private final Map<UUID, Set<PotionEffectType>> stormEffects;
+    private final List<SavedBlock> contaminationBlocks;
+    private final List<Mutator> activeMutators = new ArrayList<>();
+    private final Map<UUID, Double> damageDealt = new HashMap<>();
     private int totalMobs;
     private BossBar bossBar;
-
     private int currentWave;
-    private int wavesTotal;
+    private final int wavesTotal;
     private long lastWaveTime;
     private int reinforcementsSpawned;
     private boolean reachedFinalWave;
     private boolean harvestChestsSpawned;
-
     private boolean craterActive;
     private Location craterCenter;
-    private final List<SavedBlock> craterBlocks;
-
     private Location trackLocation;
-
-    private final List<Location> convoyPoints;
     private int convoyStep;
     private UUID convoyLeader;
     private double convoyRouteLength;
     private double convoyProgress;
     private double lastConvoyDist;
     private long convoyStuckSince;
-    private final List<UUID> convoyDisplays;
-
-    private final List<Location> stormZones;
     private long lastZoneDrift;
-    private final Map<UUID, Set<PotionEffectType>> stormEffects;
     private Area boundArea;
-    private final List<SavedBlock> contaminationBlocks;
-
     private UUID roamLeader;
     private Location roamWaypoint;
     private long nextRoamMove;
@@ -83,7 +66,7 @@ public class EventInstance {
     private long goblinFightUntil;
     private long nextGoblinTeleport;
     private long nextGoblinDrop;
-
+    private long originalWorldTime = -1;
     public EventInstance(WorldEvent event, Location origin, long durationMillis) {
         this.event = event;
         this.origin = origin;
@@ -193,7 +176,9 @@ public class EventInstance {
         this.reinforcementsSpawned = reinforcementsSpawned;
     }
 
-    /** Advances to the next wave, stamping the wave clock, and returns it. */
+    /**
+     * Advances to the next wave, stamping the wave clock, and returns it.
+     */
     public int nextWave() {
         currentWave++;
         lastWaveTime = System.currentTimeMillis();
@@ -214,6 +199,68 @@ public class EventInstance {
 
     public void setHarvestChestsSpawned(boolean harvestChestsSpawned) {
         this.harvestChestsSpawned = harvestChestsSpawned;
+    }
+
+    public List<Mutator> getActiveMutators() {
+        return activeMutators;
+    }
+
+    public void applyMutators(List<Mutator> selected) {
+        activeMutators.clear();
+        if (selected != null) {
+            activeMutators.addAll(selected);
+        }
+    }
+
+    public boolean hasMutator(MutatorType type) {
+        if (type == null) {
+            return false;
+        }
+        for (Mutator m : activeMutators) {
+            if (m.type() == type) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public Mutator getMutator(MutatorType type) {
+        if (type == null) {
+            return null;
+        }
+        for (Mutator m : activeMutators) {
+            if (m.type() == type) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    public void addDamage(UUID player, double dmg) {
+        if (player == null || dmg <= 0) {
+            return;
+        }
+        damageDealt.put(player, damageDealt.getOrDefault(player, 0.0) + dmg);
+    }
+
+    public double getTotalDamage() {
+        double total = 0.0;
+        for (double v : damageDealt.values()) {
+            total += v;
+        }
+        return total;
+    }
+
+    public Map<UUID, Double> getDamageDealt() {
+        return damageDealt;
+    }
+
+    public long getOriginalWorldTime() {
+        return originalWorldTime;
+    }
+
+    public void setOriginalWorldTime(long originalWorldTime) {
+        this.originalWorldTime = originalWorldTime;
     }
 
     public BossBar getBossBar() {
@@ -254,8 +301,6 @@ public class EventInstance {
         return System.currentTimeMillis() >= endTime;
     }
 
-    // ---- shared track location (what compass / waypoint hologram follow) ----
-
     public Location getTrackLocation() {
         return trackLocation != null ? trackLocation : origin;
     }
@@ -264,7 +309,7 @@ public class EventInstance {
         this.trackLocation = trackLocation;
     }
 
-    // ---- convoy state ----
+    // ---- shared track location (what compass / waypoint hologram follow) ----
 
     public List<Location> getConvoyPoints() {
         return convoyPoints;
@@ -273,6 +318,8 @@ public class EventInstance {
     public int getConvoyStep() {
         return convoyStep;
     }
+
+    // ---- convoy state ----
 
     public void setConvoyStep(int convoyStep) {
         this.convoyStep = convoyStep;
@@ -318,7 +365,9 @@ public class EventInstance {
         this.convoyStuckSince = convoyStuckSince;
     }
 
-    /** UUIDs of the display entities that form the convoy's moving "car". */
+    /**
+     * UUIDs of the display entities that form the convoy's moving "car".
+     */
     public List<UUID> getConvoyDisplays() {
         return convoyDisplays;
     }
@@ -326,8 +375,6 @@ public class EventInstance {
     public void clearConvoyDisplays() {
         convoyDisplays.clear();
     }
-
-    // ---- storm state ----
 
     public List<Location> getStormZones() {
         return stormZones;
@@ -337,6 +384,8 @@ public class EventInstance {
         return lastZoneDrift;
     }
 
+    // ---- storm state ----
+
     public void setLastZoneDrift(long lastZoneDrift) {
         this.lastZoneDrift = lastZoneDrift;
     }
@@ -345,7 +394,9 @@ public class EventInstance {
         return stormEffects;
     }
 
-    /** The extraction area this storm is confined to (null for non-storm events). */
+    /**
+     * The extraction area this storm is confined to (null for non-storm events).
+     */
     public Area getBoundArea() {
         return boundArea;
     }
@@ -354,12 +405,12 @@ public class EventInstance {
         this.boundArea = boundArea;
     }
 
-    /** Original blocks replaced by the storm contamination (restored on cleanup). */
+    /**
+     * Original blocks replaced by the storm contamination (restored on cleanup).
+     */
     public List<SavedBlock> getContaminationBlocks() {
         return contaminationBlocks;
     }
-
-    // ---- roaming encounter state (Mini Boss / Treasure Goblin) ----
 
     public UUID getRoamLeader() {
         return roamLeader;
@@ -368,6 +419,8 @@ public class EventInstance {
     public void setRoamLeader(UUID roamLeader) {
         this.roamLeader = roamLeader;
     }
+
+    // ---- roaming encounter state (Mini Boss / Treasure Goblin) ----
 
     public Location getRoamWaypoint() {
         return roamWaypoint;
@@ -463,5 +516,18 @@ public class EventInstance {
 
     public void setNextGoblinDrop(long nextGoblinDrop) {
         this.nextGoblinDrop = nextGoblinDrop;
+    }
+
+    /**
+     * The Treasure Goblin's tiny behavior state machine.
+     */
+    public enum GoblinMode {
+        FLEE, FIGHT
+    }
+
+    /**
+     * One original block captured before the event carved it into a crater.
+     */
+    public record SavedBlock(int x, int y, int z, BlockData data) {
     }
 }

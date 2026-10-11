@@ -17,6 +17,9 @@ import net.omni.extraction.worldevent.WorldEvent.StormConfig;
 import net.omni.extraction.worldevent.WorldEvent.TerrainBlock;
 import net.omni.extraction.worldevent.WorldEvent.TriggerMode;
 import net.omni.extraction.worldevent.WorldEvent.WaveType;
+import net.omni.extraction.worldevent.mutator.Mutator;
+import net.omni.extraction.worldevent.mutator.MutatorCondition;
+import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 
@@ -205,6 +208,9 @@ public final class WorldEventParser {
 
         RoamConfig roam = parseRoam(plugin, section);
 
+        List<Mutator> mutators = parseMutators(section);
+        int mutatorsMaxSelected = section.getInt("mutators-max-selected", 1);
+
         return new WorldEvent(id.toLowerCase(Locale.ROOT), enabled, displayName, weight,
                 cooldownSeconds, durationSeconds, level, lootTable,
                 spawnLocations, mobs, bosses, reinforceMobs,
@@ -217,7 +223,8 @@ public final class WorldEventParser {
                 trigger,
                 terrainEnabled, terrainRadius, terrainDepth, terrainFloor, terrainEdge,
                 impactEffect, ambientEffect, restoreEffect, pushPlayers, pushStrength, pushUp,
-                convoy, storm, roam);
+                convoy, storm, roam,
+                mutators, mutatorsMaxSelected);
     }
 
     /**
@@ -423,5 +430,129 @@ public final class WorldEventParser {
                 return overlay;
 
         return fallback;
+    }
+
+    private static List<Mutator> parseMutators(ConfigurationSection section) {
+        List<Mutator> mutators = new ArrayList<>();
+        if (section == null) {
+            return mutators;
+        }
+
+        ConfigurationSection mutatorsSection = section.getConfigurationSection("mutators");
+        if (mutatorsSection == null) {
+            return mutators;
+        }
+
+        List<Map<?, ?>> list = section.getMapList("mutators");
+        for (Map<?, ?> map : list) {
+            String typeStr = map.get("type") != null ? String.valueOf(map.get("type")) : null;
+            MutatorType type = MutatorType.fromString(typeStr);
+            if (type == null) {
+                continue;
+            }
+
+            boolean enabled = map.get("enabled") == null || Boolean.parseBoolean(String.valueOf(map.get("enabled")));
+            int weight = map.get("weight") instanceof Number n ? n.intValue() : 1;
+
+            MutatorCondition condition = parseMutatorCondition(map.get("conditions"));
+
+            ConfigurationSection params = null;
+            if (map.get("params") instanceof Map<?, ?> pm) {
+                // can't convert easily, skip - but we'll parse from map
+            }
+
+            Mutator.Builder builder = new Mutator.Builder()
+                    .type(type)
+                    .enabled(enabled)
+                    .weight(weight)
+                    .condition(condition);
+
+            Object paramsObj = map.get("params");
+            if (paramsObj instanceof Map<?, ?> paramsMap) {
+                switch (type) {
+                    case ELITE_ENEMIES -> {
+                        builder.healthMult(getDouble(paramsMap, "health-multiplier", 2.0));
+                        builder.damageMult(getDouble(paramsMap, "damage-multiplier", 1.5));
+                        builder.countMult(getDouble(paramsMap, "count-multiplier", 1.0));
+                        builder.armorBonus(getDouble(paramsMap, "armor-bonus", 0.0));
+                        builder.speedMult(getDouble(paramsMap, "speed-multiplier", 1.0));
+                        builder.glow(getBoolean(paramsMap, "glow", false));
+                        if (paramsMap.get("name-prefix") != null) {
+                            builder.namePrefix(String.valueOf(paramsMap.get("name-prefix")));
+                        }
+                    }
+                    case DOUBLE_LOOT -> builder.lootMult(getDouble(paramsMap, "multiplier", 2.0));
+                    case EXPLOSIVE_DEATHS -> {
+                        builder.expPower((float) getDouble(paramsMap, "power", 2.0));
+                        builder.expBlockDamage(getBoolean(paramsMap, "block-damage", false));
+                        builder.expFire(getBoolean(paramsMap, "fire", false));
+                        builder.expRadius(getDouble(paramsMap, "radius", 3.0));
+                    }
+                    case NO_REGENERATION -> {
+                        builder.disableRegen(getBoolean(paramsMap, "disable-natural-regen", true));
+                        builder.lockSaturation(getBoolean(paramsMap, "lock-saturation", true));
+                    }
+                    case NIGHTFALL -> {
+                        builder.nightForceTime(getLong(paramsMap, "force-time", 13000L));
+                        builder.nightLockTime(getBoolean(paramsMap, "lock-time", false));
+                        builder.nightRestoreOnEnd(getBoolean(paramsMap, "restore-on-end", true));
+                    }
+                }
+            }
+
+            mutators.add(builder.build());
+        }
+
+        return mutators;
+    }
+
+    private static MutatorCondition parseMutatorCondition(Object raw) {
+        if (!(raw instanceof Map<?, ?> map)) {
+            return MutatorCondition.EMPTY;
+        }
+
+        int pcMin = -1, pcMax = -1;
+        double partMin = -1, partMax = -1;
+        int alMin = -1, alMax = -1;
+        long todMin = -1, todMax = -1;
+
+        if (map.get("player-count") instanceof Map<?, ?> m) {
+            pcMin = getInt(m, "min", -1);
+            pcMax = getInt(m, "max", -1);
+        }
+        if (map.get("participation") instanceof Map<?, ?> m) {
+            partMin = getDouble(m, "min", -1);
+            partMax = getDouble(m, "max", -1);
+        }
+        if (map.get("area-level") instanceof Map<?, ?> m) {
+            alMin = getInt(m, "min", -1);
+            alMax = getInt(m, "max", -1);
+        }
+        if (map.get("time-of-day") instanceof Map<?, ?> m) {
+            todMin = getLong(m, "min", -1);
+            todMax = getLong(m, "max", -1);
+        }
+
+        return new MutatorCondition(pcMin, pcMax, partMin, partMax, alMin, alMax, todMin, todMax);
+    }
+
+    private static int getInt(Map<?, ?> map, String key, int def) {
+        Object v = map.get(key);
+        return v instanceof Number n ? n.intValue() : def;
+    }
+
+    private static double getDouble(Map<?, ?> map, String key, double def) {
+        Object v = map.get(key);
+        return v instanceof Number n ? n.doubleValue() : def;
+    }
+
+    private static long getLong(Map<?, ?> map, String key, long def) {
+        Object v = map.get(key);
+        return v instanceof Number n ? n.longValue() : def;
+    }
+
+    private static boolean getBoolean(Map<?, ?> map, String key, boolean def) {
+        Object v = map.get(key);
+        return v == null ? def : Boolean.parseBoolean(String.valueOf(v));
     }
 }
