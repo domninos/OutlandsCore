@@ -13,7 +13,7 @@ import java.util.*;
 public class MobTemplateManager {
 
     public static final List<String> FIELDS = List.of(
-            "type", "mythic", "display-name", "health", "damage", "level", "count", "boss", "respawn",
+            "type", "mythic", "display-name", "health", "damage", "level", "count", "boss", "baby", "respawn",
             "equipment.helmet", "equipment.chestplate", "equipment.leggings", "equipment.boots",
             "equipment.mainhand", "equipment.offhand", "drops");
 
@@ -50,6 +50,7 @@ public class MobTemplateManager {
             template.setLevel(mob.getInt("level", 1));
             template.setCount(mob.getInt("count", 1));
             template.setBoss(mob.getBoolean("boss", false));
+            template.setBaby(mob.getBoolean("baby", false));
             template.setRespawnSeconds(mob.getInt("respawn-seconds", 0));
 
             ConfigurationSection equipment = mob.getConfigurationSection("equipment");
@@ -131,6 +132,7 @@ public class MobTemplateManager {
             config.set(base + "level", template.getLevel());
             config.set(base + "count", template.getCount());
             config.set(base + "boss", template.isBoss());
+            config.set(base + "baby", template.isBaby());
             config.set(base + "respawn-seconds", template.getRespawnSeconds());
 
             for (Map.Entry<String, String> entry : template.getEquipment().entrySet())
@@ -244,6 +246,11 @@ public class MobTemplateManager {
                     Boolean parsed = parseBoolean(value);
                     if (parsed == null) return false;
                     template.setBoss(parsed);
+                }
+                case "baby" -> {
+                    Boolean parsed = parseBoolean(value);
+                    if (parsed == null) return false;
+                    template.setBaby(parsed);
                 }
                 case "respawn", "respawn-seconds" -> {
                     int parsed = Integer.parseInt(value);

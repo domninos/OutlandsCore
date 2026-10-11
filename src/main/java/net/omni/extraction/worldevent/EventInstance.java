@@ -25,6 +25,11 @@ public class EventInstance {
     public record SavedBlock(int x, int y, int z, BlockData data) {
     }
 
+    /** The Treasure Goblin's tiny behavior state machine. */
+    public enum GoblinMode {
+        FLEE, FIGHT
+    }
+
     private final WorldEvent event;
     private final Location origin;
     private final Set<UUID> mobs;
@@ -61,6 +66,21 @@ public class EventInstance {
     private long lastZoneDrift;
     private final Map<UUID, Set<PotionEffectType>> stormEffects;
 
+    private UUID roamLeader;
+    private Location roamWaypoint;
+    private long nextRoamMove;
+    private long lastAreaAttack;
+    private int nextMinibossPhase;
+    private double damageMultiplier;
+    private double speedMultiplier;
+
+    private GoblinMode goblinMode;
+    private double goblinLastHp;
+    private double goblinDamageTaken;
+    private long goblinFightUntil;
+    private long nextGoblinTeleport;
+    private long nextGoblinDrop;
+
     public EventInstance(WorldEvent event, Location origin, long durationMillis) {
         this.event = event;
         this.origin = origin;
@@ -81,6 +101,10 @@ public class EventInstance {
         this.stormZones = new ArrayList<>();
         this.lastZoneDrift = 0;
         this.stormEffects = new HashMap<>();
+
+        this.goblinMode = GoblinMode.FLEE;
+        this.damageMultiplier = 1.0;
+        this.speedMultiplier = 1.0;
 
         if (event.isWavesEnabled()) {
             this.wavesTotal = event.getWaveType() == WorldEvent.WaveType.FINITE
@@ -315,5 +339,111 @@ public class EventInstance {
 
     public Map<UUID, Set<PotionEffectType>> getStormEffects() {
         return stormEffects;
+    }
+
+    // ---- roaming encounter state (Mini Boss / Treasure Goblin) ----
+
+    public UUID getRoamLeader() {
+        return roamLeader;
+    }
+
+    public void setRoamLeader(UUID roamLeader) {
+        this.roamLeader = roamLeader;
+    }
+
+    public Location getRoamWaypoint() {
+        return roamWaypoint;
+    }
+
+    public void setRoamWaypoint(Location roamWaypoint) {
+        this.roamWaypoint = roamWaypoint;
+    }
+
+    public long getNextRoamMove() {
+        return nextRoamMove;
+    }
+
+    public void setNextRoamMove(long nextRoamMove) {
+        this.nextRoamMove = nextRoamMove;
+    }
+
+    public long getLastAreaAttack() {
+        return lastAreaAttack;
+    }
+
+    public void setLastAreaAttack(long lastAreaAttack) {
+        this.lastAreaAttack = lastAreaAttack;
+    }
+
+    public int getNextMinibossPhase() {
+        return nextMinibossPhase;
+    }
+
+    public void setNextMinibossPhase(int nextMinibossPhase) {
+        this.nextMinibossPhase = nextMinibossPhase;
+    }
+
+    public double getDamageMultiplier() {
+        return damageMultiplier;
+    }
+
+    public void setDamageMultiplier(double damageMultiplier) {
+        this.damageMultiplier = damageMultiplier;
+    }
+
+    public double getSpeedMultiplier() {
+        return speedMultiplier;
+    }
+
+    public void setSpeedMultiplier(double speedMultiplier) {
+        this.speedMultiplier = speedMultiplier;
+    }
+
+    public GoblinMode getGoblinMode() {
+        return goblinMode;
+    }
+
+    public void setGoblinMode(GoblinMode goblinMode) {
+        this.goblinMode = goblinMode;
+    }
+
+    public double getGoblinLastHp() {
+        return goblinLastHp;
+    }
+
+    public void setGoblinLastHp(double goblinLastHp) {
+        this.goblinLastHp = goblinLastHp;
+    }
+
+    public double getGoblinDamageTaken() {
+        return goblinDamageTaken;
+    }
+
+    public void setGoblinDamageTaken(double goblinDamageTaken) {
+        this.goblinDamageTaken = goblinDamageTaken;
+    }
+
+    public long getGoblinFightUntil() {
+        return goblinFightUntil;
+    }
+
+    public void setGoblinFightUntil(long goblinFightUntil) {
+        this.goblinFightUntil = goblinFightUntil;
+    }
+
+    public long getNextGoblinTeleport() {
+        return nextGoblinTeleport;
+    }
+
+    public void setNextGoblinTeleport(long nextGoblinTeleport) {
+        this.nextGoblinTeleport = nextGoblinTeleport;
+    }
+
+    public long getNextGoblinDrop() {
+        return nextGoblinDrop;
+    }
+
+    public void setNextGoblinDrop(long nextGoblinDrop) {
+        this.nextGoblinDrop = nextGoblinDrop;
     }
 }

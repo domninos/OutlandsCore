@@ -12,6 +12,7 @@
 #   level            MythicMobs level (optional)
 #   count            how many to spawn (default 1)
 #   boss             true = spawn from an area's boss spawn points, false = mob points
+#   baby             true = spawn as a baby (vanilla Ageable mobs only; optional)
 #   respawn-seconds  per-mob respawn override (optional)
 #   equipment        slot -> material (helmet, chestplate, leggings, boots, mainhand, offhand; "sword" = mainhand)
 #   drops            list of drop entries (optional). Each entry:

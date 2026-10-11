@@ -334,6 +334,18 @@ event-items:
     lore:
       - "<dark_green>A glowing toxin-neutralizing"
       - "<dark_green>shard harvested from the storm."
+  boss_trophy:
+    material: TOTEM_OF_UNDYING
+    display-name: "<dark_red><bold>Boss Trophy</bold></dark_red>"
+    lore:
+      - "<red>Torn from the corpse of a roaming"
+      - "<red>Mini Boss — proof of the kill."
+  treasure_map:
+    material: FILLED_MAP
+    display-name: "<gold><bold>Treasure Map</bold></gold>"
+    lore:
+      - "<yellow>A weathered map dropped by the"
+      - "<yellow>Treasure Goblin. X marks the spot."
 
 # Upgrade GUI (/upgrade)
 # Shows the player's current armor and lets them drop an upgrade token onto a piece.

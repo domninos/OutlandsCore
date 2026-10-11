@@ -21,6 +21,9 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.configuration.ConfigurationSection;
@@ -28,6 +31,7 @@ import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -74,6 +78,10 @@ public class WorldEventManager {
     public enum EventStartResult {
         STARTED, DISABLED, ALREADY_ACTIVE, NO_SPAWNS, NOT_FOUND
     }
+
+    private static final UUID ROAM_DAMAGE_MODIFIER = UUID.nameUUIDFromBytes("extraction.roam.damage".getBytes());
+    private static final UUID ROAM_SPEED_MODIFIER = UUID.nameUUIDFromBytes("extraction.roam.speed".getBytes());
+    private static final float FLEE_SPEED = 1.0f;
 
     private final ExtractionPlugin plugin;
     private final ExtractionConfig eventsConfig;
@@ -406,7 +414,9 @@ public class WorldEventManager {
         double difficulty = 1.0 + (event.getLevel() - 1) * Math.max(0, difficultyStep);
         boolean any = false;
 
-        if (event.isWavesEnabled()) {
+        if (event.isRoam()) {
+            any = spawnRoamer(instance);
+        } else if (event.isWavesEnabled()) {
             if (event.getWaveType() == WaveType.FINITE) {
                 any = spawnWave(instance, 1);
             } else {
@@ -516,6 +526,8 @@ public class WorldEventManager {
 
         if (spawn.getName() != null && !spawn.getName().isBlank())
             definition.setDisplayName(spawn.getName());
+
+        definition.setBaby(spawn.isBaby());
 
         if (event.isStorm()) {
             double mutate = event.getStorm().mutateMultiplier();
@@ -1019,6 +1031,379 @@ public class WorldEventManager {
             return null;
 
         return new Location(world, anchor.x(), anchor.y(), anchor.z());
+    }
+
+    // ---- Roaming encounters (Mini Boss / Treasure Goblin) ----
+
+    /**
+     * Spawns the single roaming leader for a roam event (boss-tracked so it
+     * drops the event's boss loot) and initializes the roam state.
+     */
+    private boolean spawnRoamer(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+        WorldEvent.RoamConfig cfg = event.getRoam();
+        if (cfg == null)
+            return false;
+
+        List<EventSpawn> pool = !event.getBosses().isEmpty() ? event.getBosses() : event.getMobs();
+        if (pool.isEmpty()) {
+            plugin.getLogger().warning("Roam event '" + event.getId() + "' has no mob or boss entry to spawn.");
+            return false;
+        }
+
+        EventSpawn spawn = pool.get(0);
+        Location origin = instance.getOrigin();
+
+        AreaSpawnDefinition definition = plugin.getMobResolver().resolve(
+                spawn.getMobId(), 1, true, Math.max(1, spawn.getLevel() > 0 ? spawn.getLevel() : event.getLevel()), 0);
+        if (definition == null)
+            return false;
+
+        double difficulty = difficultyFor(event);
+        if (difficulty > 0) {
+            if (definition.getHealth() > 0)
+                definition.setHealth(definition.getHealth() * difficulty);
+            if (definition.getDamage() > 0)
+                definition.setDamage(definition.getDamage() * difficulty);
+        }
+
+        if (spawn.getName() != null && !spawn.getName().isBlank())
+            definition.setDisplayName(spawn.getName());
+
+        definition.setBaby(spawn.isBaby());
+
+        List<MobDrop> drops = spawn.getDrops().isEmpty() ? definition.getDrops() : spawn.getDrops();
+
+        Entity entity = mobFactory.spawn(definition, origin);
+        if (entity == null)
+            return false;
+
+        entity.setGlowing(true);
+        entity.setPersistent(true);
+        if (entity instanceof Mob mob) {
+            mob.setRemoveWhenFarAway(false);
+            mob.setAware(true);
+        } else {
+            plugin.getLogger().warning("Roam event '" + event.getId()
+                    + "' spawned a non-Mob leader — movement will not work.");
+        }
+
+        UUID uuid = entity.getUniqueId();
+        instance.setRoamLeader(uuid);
+        instance.setRoamWaypoint(origin.clone());
+        instance.setNextRoamMove(0);
+        instance.setLastAreaAttack(0);
+        instance.setNextMinibossPhase(0);
+        instance.setDamageMultiplier(1.0);
+        instance.setSpeedMultiplier(1.0);
+        instance.track(uuid, drops, true);
+        mobInstances.put(uuid, instance);
+        instance.addTotal(1);
+        instance.setTrackLocation(origin);
+
+        if (cfg.type() == WorldEvent.RoamType.GOBLIN) {
+            instance.setGoblinMode(EventInstance.GoblinMode.FLEE);
+            instance.setGoblinDamageTaken(0);
+            instance.setGoblinFightUntil(0);
+            if (entity instanceof LivingEntity living)
+                instance.setGoblinLastHp(living.getHealth());
+        }
+
+        return true;
+    }
+
+    /** Every tick of a roam event: chase/flee movement, attacks, phases and goblin loot. */
+    private void updateRoam(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+        UUID leaderId = instance.getRoamLeader();
+        Entity leader = leaderId == null ? null : Bukkit.getEntity(leaderId);
+
+        if (leader == null || !leader.isValid()) {
+            endEvent(instance, false);
+            return;
+        }
+
+        instance.setTrackLocation(leader.getLocation());
+
+        if (event.getRoamType() == WorldEvent.RoamType.GOBLIN)
+            updateGoblin(instance, leader);
+        else
+            updateMiniboss(instance, leader);
+    }
+
+    /** Mini Boss behavior: wander/chase, periodic area attack, and hp-threshold phases. */
+    private void updateMiniboss(EventInstance instance, Entity leader) {
+        WorldEvent event = instance.getEvent();
+        WorldEvent.MinibossConfig cfg = event.getRoam().miniboss();
+        long now = System.currentTimeMillis();
+
+        if (!(leader instanceof Mob mob))
+            return;
+
+        if (leader instanceof LivingEntity living) {
+            double max = maxHealth(living);
+            double ratio = max <= 0 ? 1.0 : living.getHealth() / max;
+
+            List<WorldEvent.RoamPhase> phases = cfg.phases();
+            while (instance.getNextMinibossPhase() < phases.size()
+                    && ratio <= phases.get(instance.getNextMinibossPhase()).at()) {
+                triggerMinibossPhase(instance, phases.get(instance.getNextMinibossPhase()));
+                instance.setNextMinibossPhase(instance.getNextMinibossPhase() + 1);
+            }
+        }
+
+        Player target = nearestPlayer(leader.getLocation(), cfg.aggroRange());
+
+        if (target != null
+                && leader.getLocation().distance(target.getLocation()) <= cfg.attackRadius()
+                && now - instance.getLastAreaAttack() >= cfg.attackIntervalSeconds() * 1000L) {
+            areaAttack(leader, cfg.attackRadius(), cfg.attackDamage() * instance.getDamageMultiplier());
+            instance.setLastAreaAttack(now);
+        }
+
+        if (now >= instance.getNextRoamMove() || instance.getRoamWaypoint() == null) {
+            Location destination = target != null && target.getWorld() == leader.getWorld()
+                    ? target.getLocation()
+                    : randomWaypoint(instance.getOrigin(), cfg.wanderRadius());
+            instance.setRoamWaypoint(destination);
+            instance.setNextRoamMove(now + (target != null ? 1500L : 4000L));
+        }
+
+        mob.getPathfinder().moveTo(instance.getRoamWaypoint(), moveSpeed(cfg.speed(), instance));
+    }
+
+    /** Treasure Goblin behavior: flee, teleport-hop, drop loot; briefly fight back when hurt. */
+    private void updateGoblin(EventInstance instance, Entity leader) {
+        WorldEvent event = instance.getEvent();
+        WorldEvent.GoblinConfig cfg = event.getRoam().goblin();
+        long now = System.currentTimeMillis();
+
+        if (!(leader instanceof Mob mob))
+            return;
+
+        if (leader instanceof LivingEntity living) {
+            double delta = instance.getGoblinLastHp() - living.getHealth();
+            if (delta > 0)
+                instance.setGoblinDamageTaken(instance.getGoblinDamageTaken() + delta);
+            instance.setGoblinLastHp(living.getHealth());
+        }
+
+        if (instance.getGoblinMode() == EventInstance.GoblinMode.FLEE
+                && instance.getGoblinDamageTaken() >= cfg.fightThreshold()) {
+            instance.setGoblinMode(EventInstance.GoblinMode.FIGHT);
+            instance.setGoblinFightUntil(now + cfg.fightSeconds() * 1000L);
+        } else if (instance.getGoblinMode() == EventInstance.GoblinMode.FIGHT
+                && now >= instance.getGoblinFightUntil()) {
+            instance.setGoblinMode(EventInstance.GoblinMode.FLEE);
+            instance.setGoblinDamageTaken(0);
+        }
+
+        if (instance.getGoblinMode() == EventInstance.GoblinMode.FIGHT) {
+            Player target = nearestPlayer(leader.getLocation(), cfg.fleeRange() * 3);
+            if (target != null)
+                mob.getPathfinder().moveTo(target.getLocation(), moveSpeed(cfg.speed(), instance));
+            return;
+        }
+
+        Player threat = nearestPlayer(leader.getLocation(), cfg.fleeRange());
+        if (threat != null) {
+            Vector away = leader.getLocation().toVector().subtract(threat.getLocation().toVector());
+            away.setY(0);
+            if (away.lengthSquared() < 1.0e-4)
+                away = new Vector(random.nextDouble() - 0.5, 0, random.nextDouble() - 0.5);
+            instance.setRoamWaypoint(groundSnap(
+                    leader.getLocation().clone().add(away.normalize().multiply(cfg.fleeRange()))));
+        } else if (instance.getRoamWaypoint() == null || now >= instance.getNextRoamMove()) {
+            instance.setRoamWaypoint(randomWaypoint(instance.getOrigin(), cfg.fleeRange()));
+            instance.setNextRoamMove(now + 4000L);
+        }
+
+        if (instance.getRoamWaypoint() != null)
+            mob.getPathfinder().moveTo(instance.getRoamWaypoint(), FLEE_SPEED);
+
+        spawnFleeTrail(leader.getLocation());
+
+        if (now >= instance.getNextGoblinTeleport()) {
+            Location hop = randomWaypoint(leader.getLocation(), cfg.teleportRange());
+            spawnDeathEffect(leader, false);
+            leader.teleport(hop);
+            spawnDeathEffect(leader, false);
+            instance.setNextGoblinTeleport(now + cfg.teleportIntervalSeconds() * 1000L);
+        }
+
+        if (now >= instance.getNextGoblinDrop()) {
+            dropLootWhileFleeing(instance, leader.getLocation());
+            instance.setNextGoblinDrop(now + cfg.dropIntervalSeconds() * 1000L);
+        }
+    }
+
+    /** Fires one Mini Boss phase: enrage attributes, minion summon, burst + broadcast. */
+    private void triggerMinibossPhase(EventInstance instance, WorldEvent.RoamPhase phase) {
+        WorldEvent event = instance.getEvent();
+        Entity leader = Bukkit.getEntity(instance.getRoamLeader());
+
+        instance.setDamageMultiplier(Math.max(instance.getDamageMultiplier(), phase.damageMultiplier()));
+        instance.setSpeedMultiplier(Math.max(instance.getSpeedMultiplier(), phase.speedMultiplier()));
+
+        if (leader instanceof LivingEntity living)
+            applyEnrage(living, phase.damageMultiplier(), phase.speedMultiplier());
+
+        if (!phase.minions().isEmpty()) {
+            Location at = leader == null ? instance.getOrigin() : leader.getLocation();
+            for (EventSpawn minion : phase.minions())
+                spawnGroup(instance, minion, false, at, difficultyFor(event), 0, 0);
+        }
+
+        if (phase.burst() && leader != null)
+            spawnDeathEffect(leader, false);
+
+        if (!event.getPhaseMessage().isBlank())
+            broadcastAll(event.getPhaseMessage(), event, instance);
+        if (!event.getTitlePhase().isBlank())
+            showTitle(instance, event.getTitlePhase(), "");
+        if (!event.getPhaseSound().isBlank())
+            playSound(event, event.getPhaseSound());
+    }
+
+    /** Drops part of the event's loot table at the goblin's feet as it flees. */
+    private void dropLootWhileFleeing(EventInstance instance, Location at) {
+        WorldEvent event = instance.getEvent();
+        World world = at.getWorld();
+        if (world == null)
+            return;
+
+        LootTable table = table(event.getLootTable());
+        if (table == null)
+            return;
+
+        List<ItemStack> items = new ArrayList<>();
+
+        for (int i = 0; i < Math.max(1, perKillRolls); i++) {
+            LootEntry entry = table.roll(random, event.getLevel());
+            if (entry == null)
+                continue;
+
+            items.addAll(plugin.getLootResolver().resolveDropItems(entry.getType(), entry.getAmount()));
+        }
+
+        if (items.isEmpty())
+            return;
+
+        for (ItemStack item : plugin.getLootResolver().mergeStacks(items))
+            world.dropItemNaturally(at, item);
+
+        world.spawnParticle(Particle.HAPPY_VILLAGER, at.clone().add(0, 1, 0), 12, 0.4, 0.4, 0.4, 0.0);
+    }
+
+    private void areaAttack(Entity attacker, double radius, double damage) {
+        if (damage <= 0)
+            return;
+
+        Location center = attacker.getLocation();
+        World world = center.getWorld();
+        if (world == null)
+            return;
+
+        world.spawnParticle(Particle.EXPLOSION, center, 4, radius * 0.4, 0.3, radius * 0.4, 0.0);
+        world.spawnParticle(Particle.LARGE_SMOKE, center, 24, radius * 0.5, 0.3, radius * 0.5, 0.02);
+
+        Sound boom = decodeSound("entity_generic_explode");
+        if (boom != null)
+            world.playSound(center, boom, 1.2f, 1.0f);
+
+        for (Player player : world.getPlayers())
+            if (player.getLocation().distance(center) <= radius)
+                player.damage(damage, attacker);
+    }
+
+    private void applyEnrage(LivingEntity living, double damageMultiplier, double speedMultiplier) {
+        if (damageMultiplier > 1.0) {
+            AttributeInstance damage = living.getAttribute(Attribute.ATTACK_DAMAGE);
+            if (damage != null) {
+                damage.removeModifier(ROAM_DAMAGE_MODIFIER);
+                damage.addModifier(new AttributeModifier(ROAM_DAMAGE_MODIFIER, "extraction_roam_damage",
+                        damageMultiplier - 1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
+            }
+        }
+
+        if (speedMultiplier > 1.0) {
+            AttributeInstance speed = living.getAttribute(Attribute.MOVEMENT_SPEED);
+            if (speed != null) {
+                speed.removeModifier(ROAM_SPEED_MODIFIER);
+                speed.addModifier(new AttributeModifier(ROAM_SPEED_MODIFIER, "extraction_roam_speed",
+                        speedMultiplier - 1.0, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
+            }
+        }
+    }
+
+    private Player nearestPlayer(Location from, double range) {
+        World world = from.getWorld();
+        if (world == null)
+            return null;
+
+        Player best = null;
+        double bestDistance = Math.max(0, range);
+
+        for (Player player : world.getPlayers()) {
+            double distance = player.getLocation().distance(from);
+            if (distance <= bestDistance) {
+                bestDistance = distance;
+                best = player;
+            }
+        }
+
+        return best;
+    }
+
+    private Location randomWaypoint(Location origin, int radius) {
+        int r = Math.max(1, radius);
+        Location spot = origin.clone().add(
+                random.nextInt(r * 2 + 1) - r, 0,
+                random.nextInt(r * 2 + 1) - r);
+        return groundSnap(spot);
+    }
+
+    private void spawnFleeTrail(Location at) {
+        World world = at.getWorld();
+        if (world == null)
+            return;
+
+        world.spawnParticle(Particle.HAPPY_VILLAGER, at.clone().add(0, 0.4, 0), 4, 0.25, 0.25, 0.25, 0.0);
+    }
+
+    private float moveSpeed(double base, EventInstance instance) {
+        return (float) Math.clamp(base * instance.getSpeedMultiplier(), 0.05, 1.0);
+    }
+
+    private double difficultyFor(WorldEvent event) {
+        return 1.0 + (event.getLevel() - 1) * Math.max(0, difficultyStep);
+    }
+
+    private double maxHealth(LivingEntity living) {
+        AttributeInstance attribute = living.getAttribute(Attribute.MAX_HEALTH);
+        return attribute == null ? living.getHealth() : attribute.getValue();
+    }
+
+    private String healthText(EventInstance instance) {
+        UUID id = instance.getRoamLeader();
+        Entity entity = id == null ? null : Bukkit.getEntity(id);
+
+        if (!(entity instanceof LivingEntity living))
+            return "0";
+
+        double max = maxHealth(living);
+        int percent = max <= 0 ? 0 : (int) Math.round(Math.clamp(living.getHealth() / max, 0.0, 1.0) * 100);
+        return String.valueOf(percent);
+    }
+
+    private String roamMode(EventInstance instance) {
+        if (!instance.getEvent().isRoam())
+            return "";
+
+        if (instance.getEvent().getRoamType() == WorldEvent.RoamType.GOBLIN)
+            return instance.getGoblinMode() == EventInstance.GoblinMode.FIGHT ? "Fighting" : "Fleeing";
+
+        return instance.getDamageMultiplier() > 1.0 ? "Enraged" : "Roaming";
     }
 
     // ---- Toxic Storm ----
@@ -1583,11 +1968,22 @@ public class WorldEventManager {
         if (success)
             grantCompletionLoot(instance);
 
-        if (!event.getEndMessage().isBlank())
-            broadcastAll(event.getEndMessage(), event, instance);
+        boolean escaped = !success && event.isRoam();
 
-        showTitle(instance, event.getTitleTitle(), event.getTitleSubtitle());
-        playSound(event, event.getEndSound());
+        if (escaped) {
+            if (!event.getEscapeMessage().isBlank())
+                broadcastAll(event.getEscapeMessage(), event, instance);
+        } else if (!event.getEndMessage().isBlank()) {
+            broadcastAll(event.getEndMessage(), event, instance);
+        }
+
+        if (escaped && !event.getTitleEscape().isBlank())
+            showTitle(instance, event.getTitleEscape(), "");
+        else
+            showTitle(instance, event.getTitleTitle(), event.getTitleSubtitle());
+
+        playSound(event, escaped && !event.getEscapeSound().isBlank()
+                ? event.getEscapeSound() : event.getEndSound());
         updateCompass();
         restoreCrater(instance);
     }
@@ -1799,7 +2195,8 @@ public class WorldEventManager {
             return;
 
         UUID killed = entity.getUniqueId();
-        boolean big = instance.getEvent().isConvoy() && killed.equals(instance.getConvoyLeader())
+        boolean big = (instance.getEvent().isConvoy() && killed.equals(instance.getConvoyLeader()))
+                || (instance.getEvent().isRoam() && killed.equals(instance.getRoamLeader()))
                 || instance.getBosses().contains(killed);
         spawnDeathEffect(entity, big);
 
@@ -1812,6 +2209,12 @@ public class WorldEventManager {
         updateWaypoint(instance);
 
         WorldEvent event = instance.getEvent();
+
+        if (event.isRoam()) {
+            if (instance.getBosses().isEmpty())
+                endEvent(instance, true);
+            return;
+        }
 
         if (event.isConvoy()) {
             UUID leader = instance.getConvoyLeader();
@@ -1903,6 +2306,8 @@ public class WorldEventManager {
             if (event.isConvoy()) {
                 handleConvoyVanished(instance);
                 updateConvoy(instance);
+            } else if (event.isRoam()) {
+                updateRoam(instance);
             } else {
                 for (UUID uuid : instance.getMobs()) {
                     Entity entity = Bukkit.getEntity(uuid);
@@ -1953,6 +2358,11 @@ public class WorldEventManager {
             return;
 
         WorldEvent event = instance.getEvent();
+
+        // Roaming encounters are hunted by sight/compass — never a following hologram.
+        if (event.isRoam())
+            return;
+
         if (event.getWaypointLines().isEmpty())
             return;
 
@@ -2124,7 +2534,9 @@ public class WorldEventManager {
                 .replace("%wave%", String.valueOf(instance.getCurrentWave()))
                 .replace("%waves%", String.valueOf(instance.getWavesTotal()))
                 .replace("%progress%", String.valueOf(progress))
-                .replace("%zones%", String.valueOf(instance.getStormZones().size()));
+                .replace("%zones%", String.valueOf(instance.getStormZones().size()))
+                .replace("%health%", healthText(instance))
+                .replace("%mode%", roamMode(instance));
     }
 
     private String locationText(EventInstance instance) {

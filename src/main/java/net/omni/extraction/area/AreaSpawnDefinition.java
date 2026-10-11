@@ -20,6 +20,7 @@ public class AreaSpawnDefinition {
     private double health;
     private double damage;
     private boolean boss;
+    private boolean baby;
     private int respawnSeconds;
     private Map<String, String> equipment;
     private List<MobDrop> drops;
@@ -34,6 +35,7 @@ public class AreaSpawnDefinition {
         this.health = 0;
         this.damage = 0;
         this.boss = false;
+        this.baby = false;
         this.respawnSeconds = 0;
         this.equipment = new HashMap<>();
         this.drops = new ArrayList<>();
@@ -113,6 +115,14 @@ public class AreaSpawnDefinition {
 
     public void setBoss(boolean boss) {
         this.boss = boss;
+    }
+
+    public boolean isBaby() {
+        return baby;
+    }
+
+    public void setBaby(boolean baby) {
+        this.baby = baby;
     }
 
     public int getRespawnSeconds() {

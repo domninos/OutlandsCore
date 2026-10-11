@@ -9,6 +9,7 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -38,6 +39,7 @@ public class AreaMobFactory {
         applyHealth(entity, definition.getHealth());
         applyDamage(entity, definition.getDamage());
         applyEquipment(entity, definition.getEquipment());
+        applyBaby(entity, definition.isBaby());
 
         return entity;
     }
@@ -111,6 +113,12 @@ public class AreaMobFactory {
 
             entityEquipment.setItem(slot, new ItemStack(material));
         }
+    }
+
+    private void applyBaby(Entity entity, boolean baby) {
+        if (!baby || !(entity instanceof Ageable ageable)) return;
+
+        ageable.setBaby();
     }
 
     private EntityType parseEntityType(String name) {

@@ -16,6 +16,7 @@ public class MobTemplate {
     private int level;
     private int count;
     private boolean boss;
+    private boolean baby;
     private int respawnSeconds;
     private Map<String, String> equipment;
     private List<MobDrop> drops;
@@ -30,6 +31,7 @@ public class MobTemplate {
         this.level = 1;
         this.count = 1;
         this.boss = false;
+        this.baby = false;
         this.respawnSeconds = 0;
         this.equipment = new HashMap<>();
         this.drops = new ArrayList<>();
@@ -101,6 +103,14 @@ public class MobTemplate {
 
     public void setBoss(boolean boss) {
         this.boss = boss;
+    }
+
+    public boolean isBaby() {
+        return baby;
+    }
+
+    public void setBaby(boolean baby) {
+        this.baby = baby;
     }
 
     public int getRespawnSeconds() {

@@ -7,6 +7,7 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -57,6 +58,32 @@ public class WorldEvent {
                               double mutateMultiplier, String mutatePrefix) {
     }
 
+    /** The kind of roaming encounter: a wandering Mini Boss or a fleeing Treasure Goblin. */
+    public enum RoamType {
+        MINIBOSS, GOBLIN
+    }
+
+    /** One hp-threshold trigger of a roaming Mini Boss: enrage multipliers + a minion summon. */
+    public record RoamPhase(double at, double damageMultiplier, double speedMultiplier,
+                            List<EventSpawn> minions, boolean burst) {
+    }
+
+    /** Mini Boss tuning: wander radius, aggro/chase ranges, a periodic area attack, phases. */
+    public record MinibossConfig(int wanderRadius, int aggroRange, int attackRadius,
+                                 int attackIntervalSeconds, double attackDamage, double speed,
+                                 List<RoamPhase> phases) {
+    }
+
+    /** Treasure Goblin tuning: flee range, teleport hops, loot dropped while running, fight-back. */
+    public record GoblinConfig(int fleeRange, int teleportIntervalSeconds, int teleportRange,
+                               int dropIntervalSeconds, double fightThreshold, int fightSeconds,
+                               double speed) {
+    }
+
+    /** A roaming encounter definition. The matching sub-config drives the per-tick behavior. */
+    public record RoamConfig(RoamType type, MinibossConfig miniboss, GoblinConfig goblin) {
+    }
+
     private static final List<TerrainBlock> DEFAULT_FLOOR = List.of(
             new TerrainBlock(Material.MAGMA_BLOCK, 1),
             new TerrainBlock(Material.BLACKSTONE, 1),
@@ -94,10 +121,14 @@ public class WorldEvent {
     private final String startMessage;
     private final String endMessage;
     private final String waveMessage;
+    private final String phaseMessage;
+    private final String escapeMessage;
 
     private final String titleTitle;
     private final String titleSubtitle;
     private final String titleWave;
+    private final String titlePhase;
+    private final String titleEscape;
     private final int titleFadeIn;
     private final int titleStay;
     private final int titleFadeOut;
@@ -105,6 +136,8 @@ public class WorldEvent {
     private final String startSound;
     private final String endSound;
     private final String waveSound;
+    private final String phaseSound;
+    private final String escapeSound;
     private final float soundVolume;
     private final float soundPitch;
 
@@ -130,6 +163,7 @@ public class WorldEvent {
 
     private ConvoyConfig convoy;
     private final StormConfig storm;
+    private final RoamConfig roam;
 
     public WorldEvent(String id, boolean enabled, String displayName, int weight,
                       int cooldownSeconds, int durationSeconds, int level, String lootTable,
@@ -138,8 +172,11 @@ public class WorldEvent {
                       boolean wavesEnabled, WaveType waveType, int waveCount, int waveIntervalSeconds,
                       int waveLevelGain, int waveCountGain, int bossWave, int maxReinforcements, int harvestChests,
                       String warningMessage, String startMessage, String endMessage, String waveMessage,
-                      String titleTitle, String titleSubtitle, String titleWave, int titleFadeIn, int titleStay, int titleFadeOut,
-                      String startSound, String endSound, String waveSound, float soundVolume, float soundPitch,
+                      String phaseMessage, String escapeMessage,
+                      String titleTitle, String titleSubtitle, String titleWave, String titlePhase, String titleEscape,
+                      int titleFadeIn, int titleStay, int titleFadeOut,
+                      String startSound, String endSound, String waveSound, String phaseSound, String escapeSound,
+                      float soundVolume, float soundPitch,
                       boolean bossBarEnabled, String bossBarTitle, BossBar.Color bossBarColor,
                       BossBar.Overlay bossBarOverlay, List<String> waypointLines,
                       TriggerMode trigger,
@@ -147,7 +184,7 @@ public class WorldEvent {
                       List<TerrainBlock> terrainFloor, List<TerrainBlock> terrainEdge,
                       boolean impactEffect, boolean ambientEffect, boolean restoreEffect,
                       boolean pushPlayers, double pushStrength, double pushUp,
-                      ConvoyConfig convoy, StormConfig storm) {
+                      ConvoyConfig convoy, StormConfig storm, RoamConfig roam) {
         this.id = id;
         this.enabled = enabled;
         this.displayName = displayName;
@@ -173,15 +210,21 @@ public class WorldEvent {
         this.startMessage = startMessage;
         this.endMessage = endMessage;
         this.waveMessage = waveMessage;
+        this.phaseMessage = phaseMessage == null ? "" : phaseMessage;
+        this.escapeMessage = escapeMessage == null ? "" : escapeMessage;
         this.titleTitle = titleTitle;
         this.titleSubtitle = titleSubtitle;
         this.titleWave = titleWave;
+        this.titlePhase = titlePhase == null ? "" : titlePhase;
+        this.titleEscape = titleEscape == null ? "" : titleEscape;
         this.titleFadeIn = titleFadeIn;
         this.titleStay = titleStay;
         this.titleFadeOut = titleFadeOut;
         this.startSound = startSound;
         this.endSound = endSound;
         this.waveSound = waveSound;
+        this.phaseSound = phaseSound == null ? "" : phaseSound;
+        this.escapeSound = escapeSound == null ? "" : escapeSound;
         this.soundVolume = soundVolume;
         this.soundPitch = soundPitch;
         this.bossBarEnabled = bossBarEnabled;
@@ -203,6 +246,7 @@ public class WorldEvent {
         this.pushUp = Math.max(0, pushUp);
         this.convoy = convoy;
         this.storm = storm;
+        this.roam = roam;
     }
 
     public static WorldEvent load(ExtractionPlugin plugin, String id, ConfigurationSection section) {
@@ -264,11 +308,15 @@ public class WorldEvent {
         String startMessage = broadcast == null ? "" : broadcast.getString("start", "");
         String endMessage = broadcast == null ? "" : broadcast.getString("end", "");
         String waveMessage = broadcast == null ? "" : broadcast.getString("wave", "");
+        String phaseMessage = broadcast == null ? "" : broadcast.getString("phase", "");
+        String escapeMessage = broadcast == null ? "" : broadcast.getString("escape", "");
 
         ConfigurationSection title = section.getConfigurationSection("title");
         String titleTitle = title == null ? "" : title.getString("title", "");
         String titleSubtitle = title == null ? "" : title.getString("subtitle", "");
         String titleWave = title == null ? "" : title.getString("wave", "");
+        String titlePhase = title == null ? "" : title.getString("phase", "");
+        String titleEscape = title == null ? "" : title.getString("escape", "");
         int titleFadeIn = title == null ? 10 : title.getInt("fade-in", 10);
         int titleStay = title == null ? 70 : title.getInt("stay", 70);
         int titleFadeOut = title == null ? 20 : title.getInt("fade-out", 20);
@@ -277,6 +325,8 @@ public class WorldEvent {
         String startSound = sounds == null ? "" : sounds.getString("start", "");
         String endSound = sounds == null ? "" : sounds.getString("end", "");
         String waveSound = sounds == null ? "" : sounds.getString("wave", "");
+        String phaseSound = sounds == null ? "" : sounds.getString("phase", "");
+        String escapeSound = sounds == null ? "" : sounds.getString("escape", "");
         double volume = sounds == null ? 1.0 : sounds.getDouble("volume", 1.0);
         double pitch = sounds == null ? 1.0 : sounds.getDouble("pitch", 1.0);
 
@@ -355,19 +405,111 @@ public class WorldEvent {
                     stormSection.getString("mutate-prefix", "<dark_green>Mutated "));
         }
 
+        RoamConfig roam = parseRoam(plugin, section);
+
         return new WorldEvent(id.toLowerCase(Locale.ROOT), enabled, displayName, weight,
                 cooldownSeconds, durationSeconds, level, lootTable,
                 spawnLocations, mobs, bosses, reinforceMobs,
                 wavesEnabled, waveType, waveCount, waveIntervalSeconds, waveLevelGain, waveCountGain,
                 bossWave, maxReinforcements, harvestChests,
-                warningMessage, startMessage, endMessage, waveMessage,
-                titleTitle, titleSubtitle, titleWave, titleFadeIn, titleStay, titleFadeOut,
-                startSound, endSound, waveSound, (float) volume, (float) pitch,
+                warningMessage, startMessage, endMessage, waveMessage, phaseMessage, escapeMessage,
+                titleTitle, titleSubtitle, titleWave, titlePhase, titleEscape, titleFadeIn, titleStay, titleFadeOut,
+                startSound, endSound, waveSound, phaseSound, escapeSound, (float) volume, (float) pitch,
                 bossBarEnabled, bossBarTitle, bossBarColor, bossBarOverlay, waypointLines,
                 trigger,
                 terrainEnabled, terrainRadius, terrainDepth, terrainFloor, terrainEdge,
                 impactEffect, ambientEffect, restoreEffect, pushPlayers, pushStrength, pushUp,
-                convoy, storm);
+                convoy, storm, roam);
+    }
+
+    /**
+     * Parses the {@code roam:} section. Requires an explicit {@code type}
+     * (miniboss/goblin) AND its matching sub-section — otherwise the event is a
+     * regular (non-roaming) event.
+     */
+    private static RoamConfig parseRoam(ExtractionPlugin plugin, ConfigurationSection section) {
+        ConfigurationSection roam = section.getConfigurationSection("roam");
+        if (roam == null)
+            return null;
+
+        RoamType type = parseRoamType(roam.getString("type"));
+        if (type == null) {
+            plugin.getLogger().warning("Event '" + section.getName()
+                    + "' has a roam section without a valid type (miniboss/goblin).");
+            return null;
+        }
+
+        if (type == RoamType.MINIBOSS) {
+            ConfigurationSection mb = roam.getConfigurationSection("miniboss");
+            if (mb == null) {
+                plugin.getLogger().warning("Roam event '" + section.getName()
+                        + "' is a miniboss with no miniboss: section.");
+                return null;
+            }
+
+            List<RoamPhase> phases = new ArrayList<>();
+
+            for (Map<?, ?> map : mb.getMapList("phases")) {
+                double at = map.get("at") instanceof Number n ? Math.clamp(n.doubleValue(), 0.0, 1.0) : 0.5;
+                double damageMultiplier = map.get("damage-multiplier") instanceof Number n
+                        ? Math.max(1.0, n.doubleValue()) : 1.0;
+                double speedMultiplier = map.get("speed-multiplier") instanceof Number n
+                        ? Math.max(1.0, n.doubleValue()) : 1.0;
+                boolean burst = !map.containsKey("burst")
+                        || Boolean.parseBoolean(String.valueOf(map.get("burst")));
+
+                List<EventSpawn> minions = new ArrayList<>();
+                if (map.get("minions") instanceof List<?> minionList) {
+                    for (Object minionObj : minionList)
+                        if (minionObj instanceof Map<?, ?> minionMap)
+                            minions.add(parseSpawn(plugin, minionMap));
+                }
+
+                phases.add(new RoamPhase(at, damageMultiplier, speedMultiplier, minions, burst));
+            }
+
+            phases.sort(Comparator.comparingDouble(RoamPhase::at).reversed());
+
+            MinibossConfig miniboss = new MinibossConfig(
+                    Math.max(1, mb.getInt("wander-radius", 24)),
+                    Math.max(1, mb.getInt("aggro-range", 16)),
+                    Math.max(1, mb.getInt("attack-radius", 3)),
+                    Math.max(1, mb.getInt("attack-interval-seconds", 8)),
+                    Math.max(0, mb.getDouble("attack-damage", 6.0)),
+                    Math.max(0.05, Math.min(1.0, mb.getDouble("speed", 0.3))),
+                    phases);
+
+            return new RoamConfig(type, miniboss, null);
+        }
+
+        ConfigurationSection gb = roam.getConfigurationSection("goblin");
+        if (gb == null) {
+            plugin.getLogger().warning("Roam event '" + section.getName()
+                    + "' is a goblin with no goblin: section.");
+            return null;
+        }
+
+        GoblinConfig goblin = new GoblinConfig(
+                Math.max(1, gb.getInt("flee-range", 12)),
+                Math.max(1, gb.getInt("teleport-interval-seconds", 10)),
+                Math.max(4, gb.getInt("teleport-range", 24)),
+                Math.max(1, gb.getInt("drop-interval-seconds", 8)),
+                Math.max(1, gb.getDouble("fight-threshold", 8.0)),
+                Math.max(1, gb.getInt("fight-seconds", 6)),
+                Math.max(0.05, Math.min(1.0, gb.getDouble("speed", 0.4))));
+
+        return new RoamConfig(type, null, goblin);
+    }
+
+    private static RoamType parseRoamType(String name) {
+        if (name == null)
+            return null;
+
+        for (RoamType type : RoamType.values())
+            if (type.name().equalsIgnoreCase(name))
+                return type;
+
+        return null;
     }
 
     private static TriggerMode parseTrigger(String name) {
@@ -437,6 +579,7 @@ public class WorldEvent {
         int count = map.get("count") instanceof Number c ? Math.max(1, c.intValue()) : 1;
         int level = map.get("level") instanceof Number l ? l.intValue() : 0;
         String name = map.get("name") != null ? String.valueOf(map.get("name")) : null;
+        boolean baby = Boolean.parseBoolean(String.valueOf(map.get("baby")));
 
         List<MobDrop> drops = new ArrayList<>();
 
@@ -460,7 +603,7 @@ public class WorldEvent {
         if (!plugin.getMobResolver().isKnownMobId(mobId))
             plugin.getLogger().warning("Event references unknown mob '" + mobId + "'.");
 
-        return new EventSpawn(mobId, count, Math.max(0, level), name, drops);
+        return new EventSpawn(mobId, count, Math.max(0, level), name, baby, drops);
     }
 
     private static BossBar.Color parseColor(String name, BossBar.Color fallback) {
@@ -573,12 +716,36 @@ public class WorldEvent {
         return waveMessage;
     }
 
+    public String getPhaseMessage() {
+        return phaseMessage;
+    }
+
+    public String getEscapeMessage() {
+        return escapeMessage;
+    }
+
     public String getTitleWave() {
         return titleWave;
     }
 
+    public String getTitlePhase() {
+        return titlePhase;
+    }
+
+    public String getTitleEscape() {
+        return titleEscape;
+    }
+
     public String getWaveSound() {
         return waveSound;
+    }
+
+    public String getPhaseSound() {
+        return phaseSound;
+    }
+
+    public String getEscapeSound() {
+        return escapeSound;
     }
 
     public String getWarningMessage() {
@@ -735,6 +902,21 @@ public class WorldEvent {
     /** True when this event is a toxic-storm with contaminated zones. */
     public boolean isStorm() {
         return storm != null;
+    }
+
+    /** The roaming tuning, or null when this event is not a recurring roamer. */
+    public RoamConfig getRoam() {
+        return roam;
+    }
+
+    /** True when this event is a Mini Boss / Treasure Goblin roaming encounter. */
+    public boolean isRoam() {
+        return roam != null;
+    }
+
+    /** The roam kind (MINIBOSS/GOBLIN), or null for regular events. */
+    public RoamType getRoamType() {
+        return roam == null ? null : roam.type();
     }
 
     /**

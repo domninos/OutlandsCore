@@ -92,18 +92,55 @@
 #                          spawned in the zones
 #       mutate-prefix: name prefix added to mutated mobs (MiniMessage)
 #     Storm events are timed-style: use the bosses list as the initial guardian
-#     wave — TIMED success (guardians dead) spawns the harvest chests, so always
+#     wave - TIMED success (guardians dead) spawns the harvest chests, so always
 #     include bosses or the first mob kill ends the storm.
-#   broadcast: warning/start/wave/end lines (%event% %location% %remaining%
-#     %total% %wave% %waves% %progress% %zones%)
-#   title: title/subtitle/wave (%event% %wave% %waves%)
-#   sounds: start/wave/end Sound names (e.g. entity_wither_spawn) + volume/pitch
-#   boss-bar: title (>%event% %remaining%/%total% %wave%/%waves% %location%), color, style
-#   waypoint-lines: waypoint text (%event% %location% %remaining% %total% %wave% %waves% %progress% %zones%)
+#   roam: (mini-boss / treasure-goblin events) a single roaming leader that
+#     wanders the map instead of guarding a fixed point. Set type to
+#     "miniboss" or "goblin" and the matching sub-section. The leader spawns
+#     from the FIRST entry of bosses (else mobs) with count 1 (glowing,
+#     persistent, boss-tracked so it drops boss loot). The leader's mob id
+#     resolves as a mobs.yml template, a vanilla EntityType, OR a MythicMobs
+#     id; an optional baby: true makes vanilla Ageable leaders (e.g. baby
+#     zombie) a baby (ignored for MythicMobs). A roam event SUCCEEDS when the
+#     leader dies; if duration-seconds runs out first (goblin escape) it ends
+#     as a failure and uses the broadcast/title/sounds escape lines. Roam
+#     events have NO waypoint hologram (the compass still points at the leader).
+#       type: miniboss | goblin
+#       miniboss: (when type = miniboss)
+#         wander-radius: how far it roams from the origin while idle
+#         aggro-range: detects players within this many blocks
+#         attack-radius: periodic AoE hit radius (blocks)
+#         attack-interval-seconds: seconds between AoE hits
+#         attack-damage: raw AoE damage per hit
+#         speed: pathfinding speed 0.05-1.0
+#         phases: hp-threshold enrage steps, ordered high->low by at (0-1 = hp
+#           fraction). Each: { at, damage-multiplier, speed-multiplier,
+#           burst (particle puff), minions: [ {mob, count, level, ..} ] }
+#       goblin: (when type = goblin)
+#         flee-range: runs this far from the nearest player
+#         teleport-interval-seconds: seconds between escape blinks
+#         teleport-range: max blink distance
+#         drop-interval-seconds: drops loot-table rolls while it runs
+#         fight-threshold: damage taken that flips it to fighting
+#         fight-seconds: how long it fights before fleeing again
+#         speed: pathfinding speed 0.05-1.0 (fight mode; fleeing always uses 1.0
+#           and leaves a golden HAPPY_VILLAGER trail)
+#   bosses/mobs entries also accept: baby (vanilla Ageable only)
+#   broadcast: warning/start/wave/phase/escape/end lines (%event% %location%
+#     %remaining% %total% %wave% %waves% %progress% %zones% %health% %mode%)
+#   title: title/subtitle/wave/phase/escape (%event% %wave% %waves%)
+#   sounds: start/wave/phase/escape/end Sound names (e.g. entity_wither_spawn)
+#     + volume/pitch
+#   boss-bar: title (>%event% %remaining%/%total% %wave%/%waves% %location%),
+#     color, style
+#   waypoint-lines: waypoint text (%event% %location% %remaining% %total% %wave%
+#     %waves% %progress% %zones% %health% %mode%)
 #
 # Placeholders: %event% = display name, %location% = "world x y z",
 #               %remaining%/%total% = live mob counts, %wave%/%waves% = wave counter,
-#               %progress% = convoy travel progress (0-100), %zones% = active storm zones.
+#               %progress% = convoy travel progress (0-100), %zones% = active storm zones,
+#               %health% = roaming leader hp (0-100), %mode% = goblin Fleeing/Fighting
+#               (or miniboss Roaming/Enraged).
 #
 # Convoy anchors + the car are set per-event inside the event's convoy section
 # (see the supply_convoy sample below); the running route ("start"/"end" as
@@ -464,3 +501,146 @@ events:
       - "<green>%zones% active zones</green>"
       - "<gray>%remaining%/%total% mobs</gray>"
       - "<gray>%location%</gray>"
+
+  roaming_boss:
+    enabled: true
+    display-name: "Mini Boss"
+    weight: 8
+    cooldown-seconds: 1500
+    duration-seconds: 600
+    level: 2
+    loot-table: "supply_convoy"
+    # A single wandering Mini Boss. The FIRST bosses entry is the leader (count
+    # is always 1); it roams the map, hits nearby players, and enrages + summons
+    # minions as its health drops. The leader's mob id resolves as a mobs.yml
+    # template, a vanilla EntityType, OR a MythicMobs id - set mob to e.g.
+    # "MyCustomBoss" to use a MythicMob (the name/drops here still apply).
+    roam:
+      type: miniboss
+      miniboss:
+        wander-radius: 28
+        aggro-range: 16
+        attack-radius: 3
+        attack-interval-seconds: 8
+        attack-damage: 7.0
+        speed: 0.28
+        phases:
+          - at: 0.5
+            damage-multiplier: 1.5
+            speed-multiplier: 1.2
+            burst: true
+            minions:
+              - mob: ZOMBIE
+                count: 3
+          - at: 0.25
+            damage-multiplier: 2.0
+            speed-multiplier: 1.4
+            burst: true
+            minions:
+              - mob: SKELETON
+                count: 3
+    bosses:
+      - mob: RAVAGER
+        count: 1
+        name: "<dark_red><bold>Mini Boss</bold></dark_red>"
+        drops:
+          - type: "EVENT:boss_trophy"
+            chance: 1.0
+            amount: 1
+          - type: UPGRADE
+            chance: 1.0
+            amount: 1
+          - type: TOKENS
+            chance: 1.0
+            amount: 8
+    broadcast:
+      warning: "<dark_red>A powerful Mini Boss is roaming %location%!</dark_red>"
+      start: "<red>%event% prowls near %location% — track it down for its trophy!</red>"
+      phase: "<dark_red>%event% is enraged! (%health%% health)</dark_red>"
+      end: "<green>%event% has been slain — it dropped its trophy.</green>"
+      escape: "<gray>%event% slipped away into the wastes.</gray>"
+    title:
+      title: "<dark_red><bold>%event%</bold></dark_red>"
+      subtitle: "<gray>A roaming champion stalks the wastes.</gray>"
+      phase: "<dark_red><bold>ENRAGED!</bold></dark_red>"
+      fade-in: 10
+      stay: 70
+      fade-out: 20
+    sounds:
+      start: entity_wither_spawn
+      phase: entity_ender_dragon_growl
+      end: entity_ender_dragon_death
+      volume: 1.0
+      pitch: 0.8
+    boss-bar:
+      enabled: true
+      title: "<dark_red>%event%</dark_red> <dark_gray>»</dark_gray> <white>%health%% HP</white> <dark_gray>»</dark_gray> <yellow>%mode%</yellow>"
+      color: RED
+      style: PROGRESS
+
+  treasure_goblin:
+    enabled: true
+    display-name: "Treasure Goblin"
+    weight: 6
+    cooldown-seconds: 1200
+    duration-seconds: 180
+    level: 1
+    loot-table: "toxic_storm"
+    # A fleeing Treasure Goblin (a baby zombie by default): it runs - at full
+    # speed (1.0) and trailing golden sparkles - from players, blinks away and
+    # scatters loot as it goes. Corner it (damage past fight-threshold) and it
+    # turns to fight briefly before bolting again. Catch it before
+    # duration-seconds or it escapes with the rest of the treasure.
+    # mob resolves as a mobs.yml template, a vanilla EntityType, OR a MythicMobs
+    # id; baby only applies to vanilla Ageable mobs (ignored for MythicMobs).
+    roam:
+      type: goblin
+      goblin:
+        flee-range: 14
+        teleport-interval-seconds: 9
+        teleport-range: 24
+        drop-interval-seconds: 7
+        fight-threshold: 10.0
+        fight-seconds: 6
+        speed: 0.42
+    bosses:
+      - mob: ZOMBIE
+        count: 1
+        baby: true
+        name: "<gold><bold>Treasure Goblin</bold></gold>"
+        drops:
+          - type: "EVENT:treasure_map"
+            chance: 1.0
+            amount: 1
+          - type: "KEY:golden_key"
+            chance: 1.0
+            amount: 1
+          - type: TOKENS
+            chance: 1.0
+            amount: 12
+    broadcast:
+      warning: "<gold>A sneaky Treasure Goblin has been spotted near %location%!</gold>"
+      start: "<gold>%event% is on the run at %location% — chase it down!</gold>"
+      phase: "<yellow>%event% turns to fight!</yellow>"
+      end: "<green>%event% was caught — the treasure is yours!</green>"
+      escape: "<red>%event% escaped with its loot!</red>"
+    title:
+      title: "<gold><bold>%event%</bold></gold>"
+      subtitle: "<gray>Catch it before it escapes with the treasure.</gray>"
+      phase: "<yellow><bold>Cornered!</bold></yellow>"
+      escape: "<red><bold>Escaped!</bold></red>"
+      fade-in: 10
+      stay: 60
+      fade-out: 20
+    sounds:
+      start: entity_allay_item_take
+      phase: entity_piglin_angry
+      escape: entity_enderman_teleport
+      end: entity_player_levelup
+      volume: 1.0
+      pitch: 1.2
+    boss-bar:
+      enabled: true
+      title: "<gold>%event%</gold> <dark_gray>»</dark_gray> <white>%health%% HP</white> <dark_gray>»</dark_gray> <yellow>%mode%</yellow>"
+      color: YELLOW
+      style: PROGRESS

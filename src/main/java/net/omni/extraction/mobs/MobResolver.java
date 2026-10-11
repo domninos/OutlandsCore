@@ -45,6 +45,7 @@ public class MobResolver {
             definition.setDrops(template.getDrops());
             definition.setCount(count);
             definition.setBoss(boss);
+            definition.setBaby(template.isBaby());
             definition.setLevel(level);
             definition.setRespawnSeconds(respawnSeconds);
         } else if (parseSpawnType(mobId) != null) {

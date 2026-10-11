@@ -16,13 +16,15 @@ public class EventSpawn {
     private final int count;
     private final int level;
     private final String name;
+    private final boolean baby;
     private final List<MobDrop> drops;
 
-    public EventSpawn(String mobId, int count, int level, String name, List<MobDrop> drops) {
+    public EventSpawn(String mobId, int count, int level, String name, boolean baby, List<MobDrop> drops) {
         this.mobId = mobId;
         this.count = count;
         this.level = level;
         this.name = name;
+        this.baby = baby;
         this.drops = drops != null ? drops : new ArrayList<>();
     }
 
@@ -40,6 +42,10 @@ public class EventSpawn {
 
     public String getName() {
         return name;
+    }
+
+    public boolean isBaby() {
+        return baby;
     }
 
     public List<MobDrop> getDrops() {
