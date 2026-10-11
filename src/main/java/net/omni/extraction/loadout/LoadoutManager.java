@@ -8,22 +8,70 @@ import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.upgrade.UpgradeManager;
 import net.omni.extraction.upgrade.UpgradeTier;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.PotionMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
+
+import java.util.List;
 
 public class LoadoutManager {
 
     private final ExtractionPlugin plugin;
     private final UpgradeManager upgradeManager;
+    private static NamespacedKey compassKey;
 
     public LoadoutManager(ExtractionPlugin plugin, UpgradeManager upgradeManager) {
         this.plugin = plugin;
         this.upgradeManager = upgradeManager;
+        compassKey = new NamespacedKey(plugin, "is_loadout_compass");
+    }
+
+    /**
+     * Builds the default off-hand compass item, or null when disabled/unavailable.
+     * It is a normal loadout item (movable/savable) and is tagged so it can be
+     * made undroppable while the player is in a run.
+     */
+    public ItemStack buildCompassItem() {
+        if (plugin.getConfigUtil() == null || !plugin.getConfigUtil().isLoadoutCompassEnabled())
+            return null;
+
+        Material material = Material.matchMaterial(plugin.getConfigUtil().getLoadoutCompassMaterial());
+
+        if (material == null)
+            material = Material.COMPASS;
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta == null)
+            return item;
+
+        String name = plugin.getConfigUtil().getLoadoutCompassName();
+        if (name != null && !name.isEmpty())
+            plugin.getChatRenderer().setDisplayName(meta, name);
+
+        List<String> lore = plugin.getConfigUtil().getLoadoutCompassLore();
+        if (lore != null && !lore.isEmpty())
+            plugin.getChatRenderer().setLore(meta, lore);
+
+        if (compassKey != null)
+            meta.getPersistentDataContainer().set(compassKey, PersistentDataType.BYTE, (byte) 1);
+
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public static boolean isLoadoutCompass(ItemStack item) {
+        return item != null && compassKey != null && item.getItemMeta() != null
+                && item.getItemMeta().getPersistentDataContainer().has(compassKey, PersistentDataType.BYTE);
     }
 
     /**
@@ -77,6 +125,13 @@ public class LoadoutManager {
             return safeItem(data.getItemAt(cell));
 
         LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, cell);
+
+        if (slot == LoadoutSlot.OFFHAND) {
+            ItemStack compass = buildCompassItem();
+
+            if (compass != null)
+                return compass;
+        }
 
         // Managed charm/artifact slots at their DEFAULT state auto-grant the
         // equipped relic; once the player drags/moves it, their arrangement wins.

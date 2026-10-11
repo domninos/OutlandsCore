@@ -213,6 +213,17 @@ loadout:
     artifact: 0
     pet: 0
 
+  # Default off-hand compass. Shows in the loadout GUI's off-hand cell until the
+  # player edits that cell; it is a normal, movable/savable loadout item and is
+  # undroppable while the player is in a run. Set enabled: false to disable.
+  compass:
+    enabled: true
+    material: COMPASS
+    name: "<white>Extraction Compass</white>"
+    lore:
+      - "<gray>Points toward an active event</gray>"
+      - "<gray>or the extraction spawn.</gray>"
+
 # Upgrade Token definitions
 # These are physical loot items found during runs.
 # upgrade-tier = the 1-based loadout tier index of the item this token grants

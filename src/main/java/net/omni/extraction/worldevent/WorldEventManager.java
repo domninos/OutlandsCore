@@ -546,6 +546,10 @@ public class WorldEventManager {
         return ctx.convoy().isConvoyEvent(id);
     }
 
+    public String getDefaultConvoyEventId() {
+        return ctx.convoy().getDefaultConvoyEventId();
+    }
+
     public String getWandEvent(UUID playerId) {
         return ctx.convoy().getWandEvent(playerId);
     }

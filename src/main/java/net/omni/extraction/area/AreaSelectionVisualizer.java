@@ -241,6 +241,9 @@ public class AreaSelectionVisualizer implements Listener {
         String eventId = manager.getWandEvent(player.getUniqueId());
 
         if (eventId == null)
+            eventId = manager.getDefaultConvoyEventId();
+
+        if (eventId == null)
             return;
 
         Particle.DustOptions startDust = dust(plugin.getConfigUtil().getAreaOutlineColorMob());

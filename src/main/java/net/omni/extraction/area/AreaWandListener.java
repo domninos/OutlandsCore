@@ -78,6 +78,9 @@ public class AreaWandListener implements Listener {
         WorldEventManager manager = plugin.getWorldEventManager();
         String eventId = manager.getWandEvent(player.getUniqueId());
 
+        if (eventId == null)
+            eventId = manager.getDefaultConvoyEventId();
+
         if (eventId == null) {
             plugin.sendMessage(player, Messages.EVENTS_ROUTE_WAND_NONE.toString());
             return;

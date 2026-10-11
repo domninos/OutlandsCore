@@ -107,8 +107,15 @@ public class LoadoutGUI {
                         if (tier != null)
                             item = plugin.getLoadoutManager().buildTierItem(tier);
                     } else if (slot.isPlaceholderSlot()) {
-                        item = createDropPlaceholder(plugin, slot);
-                        pane = true;
+                        ItemStack compass = slot == LoadoutSlot.OFFHAND
+                                ? plugin.getLoadoutManager().buildCompassItem() : null;
+
+                        if (compass != null) {
+                            item = compass;
+                        } else {
+                            item = createDropPlaceholder(plugin, slot);
+                            pane = true;
+                        }
                     }
                 }
             }

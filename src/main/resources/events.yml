@@ -252,7 +252,6 @@ events:
       - "<yellow><bold>%event%</bold></yellow>"
       - "<gold>Wave %wave%/%waves%</gold>"
       - "<gray>%remaining%/%total% mobs</gray>"
-      - "<gray>%location%</gray>"
 
   horde:
     enabled: true
@@ -317,7 +316,6 @@ events:
       - "<red><bold>%event%</bold></red>"
       - "<gold>Wave %wave%/%waves%</gold>"
       - "<gray>%remaining%/%total% mobs</gray>"
-      - "<gray>%location%</gray>"
 
   supply_convoy:
     enabled: true
@@ -432,7 +430,6 @@ events:
       - "<gold><bold>%event%</bold></gold>"
       - "<aqua>%progress%% en route</aqua>"
       - "<gray>%remaining%/%total% guards</gray>"
-      - "<gray>%location%</gray>"
 
   toxic_storm:
     enabled: true
@@ -522,7 +519,6 @@ events:
       - "<dark_green><bold>%event%</bold></dark_green>"
       - "<green>%zones% active zones</green>"
       - "<gray>%remaining%/%total% mobs</gray>"
-      - "<gray>%location%</gray>"
 
   roaming_boss:
     enabled: true

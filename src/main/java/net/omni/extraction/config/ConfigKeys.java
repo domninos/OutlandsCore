@@ -58,6 +58,12 @@ public final class ConfigKeys {
     public static final String LOADOUT_ARTIFACT = "loadout.artifact.tiers";
     public static final String LOADOUT_PET = "loadout.pet.tiers";
 
+    public static final String LOADOUT_COMPASS = "loadout.compass";
+    public static final String LOADOUT_COMPASS_ENABLED = "loadout.compass.enabled";
+    public static final String LOADOUT_COMPASS_MATERIAL = "loadout.compass.material";
+    public static final String LOADOUT_COMPASS_NAME = "loadout.compass.name";
+    public static final String LOADOUT_COMPASS_LORE = "loadout.compass.lore";
+
     public static final String UPGRADE_TOKENS = "upgrade-tokens";
 
     public static final String TIME_LOOT = "time-loot";

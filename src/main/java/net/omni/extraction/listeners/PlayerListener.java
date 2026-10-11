@@ -10,6 +10,7 @@ import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
+import net.omni.extraction.loadout.LoadoutManager;
 import net.omni.extraction.loadout.LoadoutSlot;
 import net.omni.extraction.loot.LootItemUtil;
 import net.omni.extraction.messages.Messages;
@@ -795,6 +796,11 @@ public class PlayerListener implements Listener {
             if (UpgradeTokenUtil.isUpgradeToken(dropped)) {
                 event.setCancelled(true);
                 plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", "your loadout"));
+            }
+
+            if (LoadoutManager.isLoadoutCompass(dropped)) {
+                event.setCancelled(true);
+                plugin.sendMessage(player, Messages.LOADOUT_COMPASS_UNDROPPABLE.toString());
             }
         }
     }

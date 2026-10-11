@@ -173,6 +173,10 @@ public class ConfigUtil {
     private int loadoutGuiOffhandSlot;
     private String loadoutGuiFillerMaterial;
     private String loadoutGuiFillerName;
+    private boolean loadoutCompassEnabled;
+    private String loadoutCompassMaterial;
+    private String loadoutCompassName;
+    private List<String> loadoutCompassLore;
 
     private int autoSaveSeconds;
 
@@ -611,6 +615,18 @@ public class ConfigUtil {
         this.loadoutGuiFillerMaterial = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_MATERIAL,
                 "GRAY_STAINED_GLASS_PANE", savedDefaults);
         this.loadoutGuiFillerName = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_NAME, " ", savedDefaults);
+        loadLoadoutCompass(savedDefaults);
+    }
+
+    private void loadLoadoutCompass(AtomicInteger savedDefaults) {
+        this.loadoutCompassEnabled = getAndDefaultBoolean(ConfigKeys.LOADOUT_COMPASS_ENABLED, true, savedDefaults);
+        this.loadoutCompassMaterial = getAndDefaultString(ConfigKeys.LOADOUT_COMPASS_MATERIAL,
+                "COMPASS", savedDefaults);
+        this.loadoutCompassName = getAndDefaultString(ConfigKeys.LOADOUT_COMPASS_NAME,
+                "<white>Extraction Compass</white>", savedDefaults);
+        this.loadoutCompassLore = getAndDefaultStringList(ConfigKeys.LOADOUT_COMPASS_LORE,
+                List.of("<gray>Points toward an active event</gray>", "<gray>or the extraction spawn.</gray>"),
+                savedDefaults);
     }
 
     private void loadSpawn() {
@@ -1560,6 +1576,22 @@ public class ConfigUtil {
 
     public String getLoadoutGuiFillerName() {
         return loadoutGuiFillerName;
+    }
+
+    public boolean isLoadoutCompassEnabled() {
+        return loadoutCompassEnabled;
+    }
+
+    public String getLoadoutCompassMaterial() {
+        return loadoutCompassMaterial;
+    }
+
+    public String getLoadoutCompassName() {
+        return loadoutCompassName;
+    }
+
+    public List<String> getLoadoutCompassLore() {
+        return loadoutCompassLore;
     }
 
     public int getAutoSaveSeconds() {

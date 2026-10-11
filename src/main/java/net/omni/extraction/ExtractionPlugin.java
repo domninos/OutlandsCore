@@ -98,16 +98,19 @@ public final class ExtractionPlugin extends JavaPlugin {
         Abilities
         Loot
      -
+     - add min players (2 - configurable - bypassable via a test admin command - /extraction forcestart/forcestop)
+      - /extraction start - broadcast to ALL players that an extraction is about to start), start countdown
+      - /extraction or /extraction join -> join queue
+      - add countdown (time - configurable)
+      - events should get picked after everyone joins the extraction world or until countdown ends
      -
      -
      - fix
         - artifacts/charms should automatically replace the placeholder on /loadout when equipped.
         - when doing /extraction, make sure to give the artifact/charm item for them to right click it to where the loadout slot is. then, the placeholder item should have the "Drop item here" removed, as it is just a placeholder. so now, if player SHIFT + left/right click the placeholder, open the artifact or charm gui depending on which they shift clicked.
-        - fix
+        - disable despawning of mobs on events
      -
      -
-     -
-     - fix holograms not being removed when /extraction admin hologram <area> remove
      -
      -
      - add the possibility to increase the level of an area without recreating it

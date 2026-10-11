@@ -274,7 +274,7 @@ public final class WorldEventParser {
                     Math.max(1, mb.getInt("attack-radius", 3)),
                     Math.max(1, mb.getInt("attack-interval-seconds", 8)),
                     Math.max(0, mb.getDouble("attack-damage", 6.0)),
-                    Math.max(0.05, Math.min(1.0, mb.getDouble("speed", 0.3))),
+                    Math.clamp(mb.getDouble("speed", 0.3), 0.05, 1.0),
                     phases);
 
             return new RoamConfig(type, miniboss, null);
@@ -294,7 +294,7 @@ public final class WorldEventParser {
                 Math.max(1, gb.getInt("drop-interval-seconds", 8)),
                 Math.max(1, gb.getDouble("fight-threshold", 8.0)),
                 Math.max(1, gb.getInt("fight-seconds", 6)),
-                Math.max(0.05, Math.min(1.0, gb.getDouble("speed", 0.4))));
+                Math.clamp(gb.getDouble("speed", 0.4), 0.05, 1.0));
 
         return new RoamConfig(type, null, goblin);
     }

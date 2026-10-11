@@ -430,6 +430,20 @@ public class ConvoyBehavior {
         return event != null && event.isConvoy();
     }
 
+    /**
+     * The id of the first configured convoy event, used as the wand's default
+     * target so CONVOY mode works without arming via a command. Null when the
+     * config declares no convoy event.
+     */
+    public String getDefaultConvoyEventId() {
+        for (WorldEvent event : ctx.config().getEvents().values()) {
+            if (event.isConvoy())
+                return event.getId();
+        }
+
+        return null;
+    }
+
     /** The convoy event id currently armed onto the player's wand, or null. */
     public String getWandEvent(UUID playerId) {
         return ctx.convoyWands().get(playerId);
