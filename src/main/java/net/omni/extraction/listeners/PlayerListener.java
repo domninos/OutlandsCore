@@ -8,6 +8,9 @@ import net.omni.extraction.backpack.BackpackShopHolder;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.gameplay.RunManager;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.World;
 import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.loadout.LoadoutManager;
@@ -140,8 +143,27 @@ public class PlayerListener implements Listener {
         plugin.getPackManager().tryResourcePack(player);
 
         plugin.getPlayerDataManager().loadPlayer(uuid, () -> {
-            plugin.getRunManager().restorePendingReturn(player);
-            plugin.getRelicEffectManager().applyPassive(player);
+            Player p = Bukkit.getPlayer(uuid);
+            if (p == null || !p.isOnline()) return;
+            PlayerData data = plugin.getPlayerDataManager().getOrCreate(uuid);
+            boolean hasPendingReturn = data.isPendingReturn() || data.getReturnLocation() != null;
+            if (hasPendingReturn) {
+                plugin.getRunManager().restorePendingReturn(p);
+            } else {
+                Location spawn = plugin.getConfigUtil().getSpawnLocation();
+                String worldName = plugin.getConfigUtil().getWorldName();
+                if (spawn == null || spawn.getWorld() == null) {
+                    World w = Bukkit.getWorld(worldName);
+                    if (w != null) spawn = w.getSpawnLocation();
+                } else if (!worldName.equalsIgnoreCase(spawn.getWorld().getName())) {
+                    World w = Bukkit.getWorld(worldName);
+                    if (w != null) spawn = w.getSpawnLocation();
+                }
+                if (spawn != null) {
+                    p.teleport(spawn);
+                }
+            }
+            plugin.getRelicEffectManager().applyPassive(p);
         });
     }
 

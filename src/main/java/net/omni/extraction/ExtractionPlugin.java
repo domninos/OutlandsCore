@@ -84,6 +84,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private PackManager packManager;
     private WorldEventManager worldEventManager;
 
+
     /*
 
     TODO:
@@ -98,11 +99,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         Abilities
         Loot
      -
-     - add min players (2 - configurable - bypassable via a test admin command - /extraction forcestart/forcestop)
-      - /extraction start - broadcast to ALL players that an extraction is about to start), start countdown
-      - /extraction or /extraction join -> join queue
-      - add countdown (time - configurable)
-      - events should get picked after everyone joins the extraction world or until countdown ends
+      - add /extraction events start {event} [random|mutators]...
      -
      -
      - fix
@@ -269,6 +266,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.lootTableManager.load();
 
         this.worldEventManager = new WorldEventManager(this);
+
 
         this.relicManager = new RelicManager(this);
         this.relicManager.reload();
@@ -473,6 +471,8 @@ public final class ExtractionPlugin extends JavaPlugin {
     public WorldEventManager getWorldEventManager() {
         return worldEventManager;
     }
+
+
 
     public PackManager getPackManager() {
         return packManager;

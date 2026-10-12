@@ -5,7 +5,7 @@ settings:
   # Set to 0 to disable the countdown entirely — runs never auto-extract.
   time-limit-seconds: 300
   # Hours between runs (cooldown). Set to 0 to disable the cooldown.
-  cooldown-hours: 24
+  cooldown-hours: 0
   # Whether PvP is enabled in Extraction
   pvp-enabled: false
   # Whether players automatically extract when they disconnect mid-run.

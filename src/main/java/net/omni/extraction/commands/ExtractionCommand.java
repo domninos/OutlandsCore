@@ -478,7 +478,7 @@ public class ExtractionCommand implements CommandExecutor {
             case "start" -> {
                 if (args.length < 3) {
                     plugin.sendMessage(sender, Messages.USAGE
-                            .replace("usage", "/extraction events start {event}"));
+                            .replace("usage", "/extraction events start {event} [random|mutatorId...]"));
                     return true;
                 }
 

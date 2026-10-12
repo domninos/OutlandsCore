@@ -6,6 +6,8 @@ public final class ConfigKeys {
     }
 
     public static final String WORLD_NAME = "settings.world-name";
+    public static final String MIN_PLAYERS = "settings.min-players";
+    public static final String START_COUNTDOWN_SECONDS = "settings.start-countdown-seconds";
     public static final String TIME_LIMIT_SECONDS = "settings.time-limit-seconds";
     public static final String COOLDOWN_HOURS = "settings.cooldown-hours";
     public static final String PVP_ENABLED = "settings.pvp-enabled";

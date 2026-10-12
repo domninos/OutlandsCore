@@ -101,8 +101,95 @@ public class RelicManager {
         return artifacts;
     }
 
+    /**
+     * Looks up a definition scoped to a single category ({@link #KIND_CHARM} / {@link #KIND_ARTIFACT}).
+     */
+    public RelicDefinition getDefinition(String category, String id) {
+        if (id == null)
+            return null;
+
+        String key = id.toLowerCase(Locale.ROOT);
+
+        for (RelicDefinition def : getDefinitions(category))
+            if (def.getId().equals(key))
+                return def;
+
+        return null;
+    }
+
     public List<RelicDefinition> getDefinitions(String category) {
         return KIND_ARTIFACT.equals(category) ? artifacts : charms;
+    }
+
+    /**
+     * Grants permanent ownership of a relic definition to a player.
+     */
+    public void grant(PlayerData data, RelicDefinition def) {
+        if (def.isCharm())
+            data.addOwnedCharm(def.getId());
+        else
+            data.addOwnedArtifact(def.getId());
+    }
+
+    /**
+     * Revokes ownership; also clears the active slot when the relic is equipped.
+     * Returns {@code false} when the player did not own it.
+     */
+    public boolean revoke(PlayerData data, RelicDefinition def) {
+        boolean removed = def.isCharm()
+                ? data.removeOwnedCharm(def.getId())
+                : data.removeOwnedArtifact(def.getId());
+
+        if (def.isCharm() && def.getId().equalsIgnoreCase(data.getActiveCharm()))
+            data.setActiveCharm("");
+        else if (!def.isCharm() && def.getId().equalsIgnoreCase(data.getActiveArtifact()))
+            data.setActiveArtifact("");
+
+        return removed;
+    }
+
+    /**
+     * Builds the droppable/grantable relic item for a definition.
+     */
+    public ItemStack createRelicItem(RelicDefinition def) {
+        return RelicItemUtil.createItem(def);
+    }
+
+    /**
+     * Consumes a relic item to permanently unlock it.
+     */
+    public void learn(Player player, ItemStack item) {
+        String kind = RelicItemUtil.getKind(item);
+
+        if (kind == null)
+            return;
+
+        RelicDefinition def = getDefinition(RelicItemUtil.getId(item));
+
+        if (def == null)
+            return;
+
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+
+        boolean alreadyKnown = def.isCharm()
+                ? data.ownsCharm(def.getId())
+                : data.ownsArtifact(def.getId());
+
+        if (alreadyKnown) {
+            plugin.sendMessage(player, Messages.RELIC_ALREADY_OWNED.replace("relic", def.getName()));
+            return;
+        }
+
+        item.setAmount(item.getAmount() - 1);
+
+        if (def.isCharm())
+            data.addOwnedCharm(def.getId());
+        else
+            data.addOwnedArtifact(def.getId());
+
+        plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
+
+        plugin.sendMessage(player, Messages.RELIC_LEARNED.replace("relic", def.getName()));
     }
 
     public RelicDefinition getDefinition(String id) {
@@ -122,90 +209,9 @@ public class RelicManager {
         return null;
     }
 
-    /** Looks up a definition scoped to a single category ({@link #KIND_CHARM} / {@link #KIND_ARTIFACT}). */
-    public RelicDefinition getDefinition(String category, String id) {
-        if (id == null)
-            return null;
-
-        String key = id.toLowerCase(Locale.ROOT);
-
-        for (RelicDefinition def : getDefinitions(category))
-            if (def.getId().equals(key))
-                return def;
-
-        return null;
-    }
-
-    /** Grants permanent ownership of a relic definition to a player. */
-    public void grant(PlayerData data, RelicDefinition def) {
-        if (def.isCharm())
-            data.addOwnedCharm(def.getId());
-        else
-            data.addOwnedArtifact(def.getId());
-    }
-
-    /** Revokes ownership; also clears the active slot when the relic is equipped.
-     * Returns {@code false} when the player did not own it. */
-    public boolean revoke(PlayerData data, RelicDefinition def) {
-        boolean removed = def.isCharm()
-                ? data.removeOwnedCharm(def.getId())
-                : data.removeOwnedArtifact(def.getId());
-
-        if (def.isCharm() && def.getId().equalsIgnoreCase(data.getActiveCharm()))
-            data.setActiveCharm("");
-        else if (!def.isCharm() && def.getId().equalsIgnoreCase(data.getActiveArtifact()))
-            data.setActiveArtifact("");
-
-        return removed;
-    }
-
-    /** Builds the droppable/grantable relic item for a definition. */
-    public ItemStack createRelicItem(RelicDefinition def) {
-        return RelicItemUtil.createItem(def);
-    }
-
-    /** Consumes a relic item to permanently unlock it. */
-    public void learn(Player player, ItemStack item) {
-        String kind = RelicItemUtil.getKind(item);
-
-        if (kind == null)
-            return;
-
-        RelicDefinition def = getDefinition(RelicItemUtil.getId(item));
-
-        if (def == null)
-            return;
-
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
-
-        boolean alreadyKnown = def.isCharm()
-                ? data.ownsCharm(def.getId())
-                : data.ownsArtifact(def.getId());
-
-        if (alreadyKnown) {
-            plugin.sendMessage(player, Messages.RELIC_ALREADY_OWNED.replace("relic", def.getName()).toString());
-            return;
-        }
-
-        item.setAmount(item.getAmount() - 1);
-
-        if (def.isCharm())
-            data.addOwnedCharm(def.getId());
-        else
-            data.addOwnedArtifact(def.getId());
-
-        plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
-
-        plugin.sendMessage(player, Messages.RELIC_LEARNED.replace("relic", def.getName()).toString());
-    }
-
-    /** Opens the selection GUI for a category ({@link #KIND_CHARM} / {@link #KIND_ARTIFACT}). */
-    public void open(Player player, String category) {
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
-        player.openInventory(RelicGUI.build(plugin, player, category, data));
-    }
-
-    /** Handles a click inside a relic selection GUI. */
+    /**
+     * Handles a click inside a relic selection GUI.
+     */
     public void click(Player player, String category, int slot) {
         List<RelicDefinition> definitions = getDefinitions(category);
 
@@ -225,14 +231,14 @@ public class RelicManager {
 
             plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
             plugin.getRelicEffectManager().applyPassive(player);
-            plugin.sendMessage(player, Messages.RELIC_UNEQUIPPED.replace("relic", def.getName()).toString());
+            plugin.sendMessage(player, Messages.RELIC_UNEQUIPPED.replace("relic", def.getName()));
         } else {
             boolean owns = def.isCharm()
                     ? data.ownsCharm(def.getId())
                     : data.ownsArtifact(def.getId());
 
             if (!owns) {
-                plugin.sendMessage(player, Messages.RELIC_NOT_OWNED.replace("relic", def.getName()).toString());
+                plugin.sendMessage(player, Messages.RELIC_NOT_OWNED.replace("relic", def.getName()));
             } else {
                 if (def.isCharm())
                     data.setActiveCharm(def.getId());
@@ -248,10 +254,18 @@ public class RelicManager {
 
                 plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
                 plugin.getRelicEffectManager().applyPassive(player);
-                plugin.sendMessage(player, Messages.RELIC_EQUIPPED.replace("relic", def.getName()).toString());
+                plugin.sendMessage(player, Messages.RELIC_EQUIPPED.replace("relic", def.getName()));
             }
         }
 
         open(player, category);
+    }
+
+    /**
+     * Opens the selection GUI for a category ({@link #KIND_CHARM} / {@link #KIND_ARTIFACT}).
+     */
+    public void open(Player player, String category) {
+        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        player.openInventory(RelicGUI.build(plugin, player, category, data));
     }
 }
