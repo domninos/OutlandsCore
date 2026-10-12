@@ -44,11 +44,13 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 ### Config / messages
 - Config is split across files, routed by top-level section: `config.yml` (`settings`, `messages`,
   `storage`, `extraction`, `backpack`, `shop-gui`, `actionbar`, `holograms`, `scoreboard`, `loot`,
-  `containers`, `pack`), plus `relics.yml` (`relics`, `relic-gui`), `loadout.yml` (`loadout`,
+  `containers`, `pack`), plus `relics/relics.yml` (`relics`, `relic-gui`), `loadout.yml` (`loadout`,
   `loadout-gui`), `tokens.yml` (`upgrade-tokens`, `time-loot`, `token-loot`, `keys`, `event-items`),
   `upgrades.yml` (`upgrade-gui`, `upgrade-confirm`), and `areas.yml` (`areas`, `area-editor`).
   `config/ConfigManager` routes each path to its owning file; defaults live in the bundled YAML files
-  + `ConfigKeys` / `ConfigUtil`.
+  + `ConfigKeys` / `ConfigUtil`. The relic-definition files `relics/charms.yml` + `relics/artifacts.yml`
+  (loaded by `relics/RelicManager`) also live under `plugins/Extraction/relics/`; `ExtractionPlugin.
+  migrateLegacyRelicFiles()` moves any legacy root-level copies there on startup.
 - `messages.yml` defaults live in both `messages.yml` and the `Messages` enum (keep them in sync).
 
 ### DO NOT TOUCH

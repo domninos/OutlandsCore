@@ -15,7 +15,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Loads charm + artifact definitions from {@code charms.yml} / {@code artifacts.yml}
+ * Loads charm + artifact definitions from {@code relics/charms.yml} / {@code relics/artifacts.yml}
  * and handles learning, equipping and the selection GUIs.
  */
 public class RelicManager {
@@ -36,8 +36,8 @@ public class RelicManager {
         charms.clear();
         artifacts.clear();
 
-        loadFile("charms.yml", KIND_CHARM, charms);
-        loadFile("artifacts.yml", KIND_ARTIFACT, artifacts);
+        loadFile("relics/charms.yml", KIND_CHARM, charms);
+        loadFile("relics/artifacts.yml", KIND_ARTIFACT, artifacts);
 
         plugin.sendConsole("<green>Loaded " + charms.size() + " charms and " + artifacts.size() + " artifacts.</green>");
     }

@@ -23,7 +23,7 @@ public class ConfigManager {
 
     public ConfigManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
-        register("relics.yml", "relics", "relic-gui");
+        register("relics/relics.yml", "relics", "relic-gui");
         register("loadout.yml", "loadout", "loadout-gui");
         register("tokens.yml", "upgrade-tokens", "time-loot", "token-loot", "keys", "event-items");
         register("upgrades.yml", "upgrade-gui", "upgrade-confirm");

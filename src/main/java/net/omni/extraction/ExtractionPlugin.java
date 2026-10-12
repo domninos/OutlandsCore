@@ -49,6 +49,10 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+
 public final class ExtractionPlugin extends JavaPlugin {
 
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -216,6 +220,8 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         initChatRenderer();
 
+        migrateLegacyRelicFiles();
+
         this.messagesConfig = new ExtractionConfig(this, "messages.yml");
         this.messagesManager = new MessagesManager(this);
         messagesManager.loadMessages();
@@ -291,6 +297,31 @@ public final class ExtractionPlugin extends JavaPlugin {
         startSaveTask();
 
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
+    }
+
+    /** One-time move of legacy root-level relic files into {@code plugins/Extraction/relics/},
+     * preserving admin edits. Runs before the config/relic loaders so the new location is used. */
+    private void migrateLegacyRelicFiles() {
+        File dataFolder = getDataFolder();
+        File targetDir = new File(dataFolder, "relics");
+        String[] names = {"charms.yml", "artifacts.yml", "relics.yml"};
+
+        for (String name : names) {
+            File legacy = new File(dataFolder, name);
+            File target = new File(targetDir, name);
+
+            if (!legacy.isFile() || target.exists())
+                continue;
+
+            targetDir.mkdirs();
+
+            try {
+                Files.move(legacy.toPath(), target.toPath());
+                getLogger().info("Migrated " + name + " into plugins/Extraction/relics/.");
+            } catch (IOException e) {
+                getLogger().warning("Could not migrate " + name + " into relics/: " + e.getMessage());
+            }
+        }
     }
 
     private void initChatRenderer() {
