@@ -1,0 +1,27 @@
+# Relic activation
+# Right-clicking your equipped relic item DURING a run activates its effects
+# for a limited window (relics.activation-duration-seconds). A relic can supply
+# its own "duration:" override in charms.yml / artifacts.yml (0 = use this default).
+# While a relic is active you cannot reactivate it until the window wears off.
+# An active relic also emits a particle aura near the player: "particle:" per
+# relic (charms.yml / artifacts.yml) or relics.particle as the global fallback.
+# Format: PARTICLE_NAME or PARTICLE_NAME:#hexcolor (color applies to e.g. REDSTONE/DUST).
+relics:
+  activation-duration-seconds: 60
+  # Particle emitted near the player while their relic is active (global fallback)
+  particle: "END_ROD"
+  # How often (in ticks) the particle pulse fires (20 ticks = 1 second)
+  particle-ticks: 5
+
+# The relic selection GUIs (/charms and /artifacts)
+relic-gui:
+  charms-title: "<gradient:#FFD700:#FF7F50>Charms</gradient>"
+  artifacts-title: "<gradient:#FF69B4:#8A2BE2>Artifacts</gradient>"
+  rows: 6
+  filler-material: "GRAY_STAINED_GLASS_PANE"
+  filler-name: " "
+  placeholder-material: "BLACK_STAINED_GLASS_PANE"
+  placeholder-name: "<dark_gray>???</dark_gray>"
+  placeholder-lore:
+    - "<gray>You haven't discovered this yet.</gray>"
+    - "<gray>Find it by looting chests or killing mobs in areas.</gray>"

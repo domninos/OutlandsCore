@@ -28,7 +28,7 @@ public class MessagesManager {
                     savedDefaults++;
                 }
 
-                message.setCachedVal(plugin.getConfig().getStringList(message.getPath()));
+                message.setCachedVal(config.getStringList(message.getPath()));
             } else {
                 if (!config.contains(message.getPath())) {
                     config.set(message.getPath(), message.getDefaultVal());

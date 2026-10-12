@@ -1,0 +1,133 @@
+# Upgrade Token definitions
+# These are physical loot items found during runs.
+# upgrade-tier = the 1-based loadout tier index of the item this token grants
+# (tier 1 = first entry of the slot's tier list, e.g. WOODEN_SWORD = 1,
+# STONE_SWORD = 2). A token only applies when it is the exact next tier.
+upgrade-tokens:
+  stone_weapon:
+    material: PAPER
+    display-name: "<gray>Stone Weapon Upgrade</gray>"
+    upgrade-slot: WEAPON
+    upgrade-tier: 2
+    lore:
+      - "<gray>Apply to your weapon loadout"
+      - "<gray>to upgrade to Stone tier."
+  iron_helmet:
+    material: PAPER
+    display-name: "<gray>Iron Helmet Upgrade</gray>"
+    upgrade-slot: HELMET
+    upgrade-tier: 3
+    lore:
+      - "<gray>Apply to your helmet loadout"
+      - "<gray>to upgrade to Iron tier."
+  diamond_chestplate:
+    material: PAPER
+    display-name: "<gray>Diamond Chestplate Upgrade</gray>"
+    upgrade-slot: CHESTPLATE
+    upgrade-tier: 4
+    lore:
+      - "<gray>Apply to your chestplate loadout"
+      - "<gray>to upgrade to Diamond tier."
+
+# Time loot definitions
+# Physical TIME loot items found in chests (right-click while in a run adds
+# minutes to the run; right-click outside a run banks them for the next run).
+# Loot-table entries of type TIME pick a random definition from this list;
+# minutes is the specific time granted by that item. The display-name and lore
+# support the %time% placeholder (replaced with the item's minutes). A
+# display-name WITHOUT %time% automatically gets a "(+N minutes)" suffix.
+time-loot:
+  short_time:
+    material: CLOCK
+    display-name: "<yellow>Extra Time (+%time% minutes)</yellow>"
+    minutes: 2
+    lore:
+      - "<gray>Right-click while holding to add %time% minutes"
+      - "<gray>to your run, even outside Extraction."
+  medium_time:
+    material: CLOCK
+    display-name: "<gold>Extra Time (+%time% minutes)</gold>"
+    minutes: 5
+    lore:
+      - "<gray>Right-click while holding to add %time% minutes"
+      - "<gray>to your run, even outside Extraction."
+  long_time:
+    material: CLOCK
+    display-name: "<red>Extra Time (+%time% minutes)</red>"
+    minutes: 10
+    lore:
+      - "<gray>Right-click while holding to add %time% minutes"
+      - "<gray>to your run, even outside Extraction."
+
+# Token loot definitions
+# Physical TOKENS loot items found in chests (credits balance on pickup).
+# Loot-table entries of type TOKENS pick a random definition from this list.
+# The display-name and lore support the %amount% placeholder (replaced with the
+# entry's token amount). Falls back to loot.token-item-* when this section is empty.
+token-loot:
+  extraction_token:
+    material: GOLD_INGOT
+    display-name: "<gold>Extraction Token (+%amount%)</gold>"
+    lore:
+      - "<gray>Contains %amount% Extraction Tokens"
+      - "<gray>that can be spent on upgrades."
+
+# Key definitions
+# Chest keys are optional per-chest requirements: a chest whose location is
+# assigned a key (via /areas setchest {area} {index} key {keyId}) can only be
+# claimed while the player holds the matching key item. Keys are obtained as
+# loot: use type "KEY:<keyId>" in a loot table entry (or a mob drop) — the key
+# is consumed once per claimed chest. %key% in display-name/lore is replaced
+# with the key id.
+keys:
+  rusted_key:
+    material: TRIPWIRE_HOOK
+    display-name: "<gray>Rusted Key</gray>"
+    lore:
+      - "<gray>Opens a rusty Extraction chest."
+  golden_key:
+    material: GOLD_NUGGET
+    display-name: "<gold>Golden Key</gold>"
+    lore:
+      - "<gray>Opens a secure Extraction chest."
+
+# Event item definitions
+# Built-in unique items used by world events. Loot-table/mob-drop entries of
+# type "EVENT:<id>" resolve through this section (like keys). %item% in
+# display-name/lore is replaced with the id.
+event-items:
+  meteor_fragment:
+    material: NETHER_STAR
+    display-name: "<aqua><bold>Meteor Fragment</bold></aqua>"
+    lore:
+      - "<dark_aqua>A scorched shard from the fallen"
+      - "<dark_aqua>meteor — a prized crafting material."
+  meteor_rock:
+    material: BLACKSTONE
+    display-name: "<gray>Meteor Rock</gray>"
+    lore:
+      - "<dark_gray>A charred lump of the crater floor."
+  supply_crate_key:
+    material: TRIPWIRE_HOOK
+    display-name: "<gold>Crate Key</gold>"
+    lore:
+      - "<gray>A heavy key stamped with the"
+      - "<gray>emblem of the supply convoy."
+  hazmat_fragment:
+    material: CHORUS_FRUIT
+    display-name: "<green><bold>Hazmat Fragment</bold></green>"
+    lore:
+      - "<dark_green>A glowing toxin-neutralizing"
+      - "<dark_green>shard harvested from the storm."
+  boss_trophy:
+    material: TOTEM_OF_UNDYING
+    display-name: "<dark_red><bold>Boss Trophy</bold></dark_red>"
+    lore:
+      - "<red>Torn from the corpse of a roaming"
+      - "<red>Mini Boss — proof of the kill."
+  treasure_map:
+    material: FILLED_MAP
+    display-name: "<gold><bold>Treasure Map</bold></gold>"
+    lore:
+      - "<yellow>A weathered map dropped by the"
+      - "<yellow>Treasure Goblin. X marks the spot."

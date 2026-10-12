@@ -58,7 +58,8 @@ public class PackManager {
     }
 
     public void init() {
-        File packFile = new File(plugin.getDataFolder(), "ExtractionPack.zip");
+        File packFile = new File(plugin.getDataFolder(), "pack/ExtractionPack.zip");
+        packFile.getParentFile().mkdirs();
 
         if (!packFile.exists()) {
             plugin.getLogger().warning("ExtractionPack.zip not found. Place the pack in: " + packFile.getAbsolutePath());
@@ -241,7 +242,7 @@ public class PackManager {
         StringBuilder sb = new StringBuilder();
         sb.append("<dark_gray>▪▪▪ Resource Pack Diagnostics ▪▪▪</dark_gray>\n");
 
-        File packFile = new File(plugin.getDataFolder(), "ExtractionPack.zip");
+        File packFile = new File(plugin.getDataFolder(), "pack/ExtractionPack.zip");
         if (!packFile.exists()) {
             sb.append("<red>ExtractionPack.zip is missing:</red> ").append(packFile.getAbsolutePath()).append("\n");
             return sb.toString();

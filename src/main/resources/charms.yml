@@ -2,7 +2,7 @@
 # Admins can add/remove charms freely; the effect types are fixed (see RelicEffectType).
 # Each charm is keyed by id. Effects list optional "threshold" (used by *LOW_HP types).
 # Optional "particle:" spawns a particle aura near the player while the charm is
-# active (e.g. FLAME or REDSTONE:#ff8800); omit it to use relics.particle in config.yml.
+# active (e.g. FLAME or REDSTONE:#ff8800); omit it to use relics.particle in relics.yml.
 
 iron:
   name: "<green>Iron Charm</green>"

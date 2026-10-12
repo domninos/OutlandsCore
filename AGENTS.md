@@ -42,7 +42,13 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 - The SQLite JDBC driver is bundled with PaperMC — do **not** add `org.xerial:sqlite-jdbc`.
 
 ### Config / messages
-- `config.yml` defaults live in `config.yml` + `ConfigKeys` / `ConfigUtil`.
+- Config is split across files, routed by top-level section: `config.yml` (`settings`, `messages`,
+  `storage`, `extraction`, `backpack`, `shop-gui`, `actionbar`, `holograms`, `scoreboard`, `loot`,
+  `containers`, `pack`), plus `relics.yml` (`relics`, `relic-gui`), `loadout.yml` (`loadout`,
+  `loadout-gui`), `tokens.yml` (`upgrade-tokens`, `time-loot`, `token-loot`, `keys`, `event-items`),
+  `upgrades.yml` (`upgrade-gui`, `upgrade-confirm`), and `areas.yml` (`areas`, `area-editor`).
+  `config/ConfigManager` routes each path to its owning file; defaults live in the bundled YAML files
+  + `ConfigKeys` / `ConfigUtil`.
 - `messages.yml` defaults live in both `messages.yml` and the `Messages` enum (keep them in sync).
 
 ### DO NOT TOUCH
@@ -63,8 +69,8 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   `handleReload` re-applies the prefix after `configUtil.reloadConfig()`.
 - `commands/AreaCommand.java` + `AreaTabCompleter.java`: `/areas` management (perm `extraction.areas`).
 - `commands/ExtractCommand.java`, `TokensCommand.java`, `UpgradeCommand.java`, `LoadoutCommand.java`.
-- `config/ConfigKeys.java`, `config/ConfigUtil.java`, `config/ExtractionConfig.java` (file IO for
-  config.yml and messages.yml).
+- `config/ConfigKeys.java`, `config/ConfigUtil.java`, `config/ConfigManager.java` (routes each config
+  path to its owning split file), `config/ExtractionConfig.java` (generic per-file YAML IO).
 - `data/DatabaseManager.java` (SQLite `extraction.db`), `data/PlayerData.java`,
   `data/PlayerDataManager.java` (return location + pre-run inventory snapshot persistence).
   `PlayerDataManager.onDisable()` flips `disabled` so `savePlayer` writes synchronously
@@ -110,8 +116,9 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 - `chat/ActionBarManager.java`: the default HUD (replaces the scoreboard). Repeating task (`actionbar.update-ticks`)
   sends the run/cooldown timer (`%extraction_timer%`) while a player is in a run or on cooldown; `showTokens(UUID,int)`
   overlays `+{n} tokens` for `actionbar.kill-feedback-ticks`. Reads `actionbar.enabled`.
-- `pack/PackManager.java`: hosts `ExtractionPack.zip` over a local HTTP server (port 25393, bound to `0.0.0.0`)
-  and offers it on join (`addResourcePack`, `required=true`). The offered pack UUID is **content-derived**
+- `pack/PackManager.java`: hosts `pack/ExtractionPack.zip` (under the plugin data folder, i.e.
+  `plugins/Extraction/pack/`; the folder is auto-created on init) over a local HTTP server (port 25393, bound
+  to `0.0.0.0`) and offers it on join (`addResourcePack`, `required=true`). The offered pack UUID is **content-derived**
   (SHA-256 of the zip, unless
   config `pack.id` pins a fixed one) so clients re-download changed packs instead of reusing Minecraft's
   UUID-keyed cache; the served URL appends `?h=<hash8>` to defeat HTTP caches. **The host clients download

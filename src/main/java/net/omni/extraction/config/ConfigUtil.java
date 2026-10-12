@@ -22,6 +22,7 @@ public class ConfigUtil {
     };
 
     private final ExtractionPlugin plugin;
+    private final ConfigManager configManager;
     private final Map<String, List<Map<String, Object>>> loadoutTiers;
     private final Map<String, Map<String, Object>> upgradeTokenDefinitions;
     private final Map<String, Map<String, Object>> timeLootDefinitions;
@@ -208,12 +209,11 @@ public class ConfigUtil {
     private int lootDefaultItemsPerChest;
     private String lootTokenItemMaterial;
     private String lootTokenItemName;
-    private String lootTimeItemMaterial;
-    private String lootTimeItemName;
     private String prefix;
 
     public ConfigUtil(ExtractionPlugin plugin) {
         this.plugin = plugin;
+        this.configManager = new ConfigManager(plugin);
         this.loadoutTiers = new HashMap<>();
         this.upgradeTokenDefinitions = new HashMap<>();
         this.timeLootDefinitions = new HashMap<>();
@@ -257,6 +257,7 @@ public class ConfigUtil {
     public void load() {
         plugin.saveDefaultConfig();
         plugin.reloadConfig();
+        configManager.reloadAll();
 
         AtomicInteger savedDefaults = new AtomicInteger();
 
@@ -317,18 +318,18 @@ public class ConfigUtil {
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
 
-        if (savedDefaults.get() > 0) {
-            plugin.saveConfig();
-            plugin.sendConsole("<green>Successfully loaded " + savedDefaults.get() + " default configuration(s)</green>");
-        }
+        configManager.saveDirty();
 
-        plugin.sendConsole("<green>Successfully loaded config.yml</green>");
+        if (savedDefaults.get() > 0)
+            plugin.sendConsole("<green>Successfully loaded " + savedDefaults.get() + " default configuration(s)</green>");
+
+        plugin.sendConsole("<green>Successfully loaded config files</green>");
     }
 
     private String getAndDefaultString(String path, String defaultVal, AtomicInteger counter) {
-        String temp = plugin.getConfig().getString(path);
+        String temp = configManager.forPath(path).getString(path);
         if (temp == null) {
-            plugin.getConfig().set(path, defaultVal);
+            configManager.write(path, defaultVal);
             counter.incrementAndGet();
             return defaultVal;
         }
@@ -336,30 +337,30 @@ public class ConfigUtil {
     }
 
     private int getAndDefaultInt(String path, int defaultVal, AtomicInteger counter) {
-        if (!plugin.getConfig().contains(path)) {
-            plugin.getConfig().set(path, defaultVal);
+        if (!configManager.forPath(path).contains(path)) {
+            configManager.write(path, defaultVal);
             counter.incrementAndGet();
             return defaultVal;
         }
-        return plugin.getConfig().getInt(path);
+        return configManager.forPath(path).getInt(path);
     }
 
     private boolean getAndDefaultBoolean(String path, boolean defaultVal, AtomicInteger counter) {
-        if (!plugin.getConfig().contains(path)) {
-            plugin.getConfig().set(path, defaultVal);
+        if (!configManager.forPath(path).contains(path)) {
+            configManager.write(path, defaultVal);
             counter.incrementAndGet();
             return defaultVal;
         }
-        return plugin.getConfig().getBoolean(path);
+        return configManager.forPath(path).getBoolean(path);
     }
 
     private double getAndDefaultDouble(String path, double defaultVal, AtomicInteger counter) {
-        if (!plugin.getConfig().contains(path)) {
-            plugin.getConfig().set(path, defaultVal);
+        if (!configManager.forPath(path).contains(path)) {
+            configManager.write(path, defaultVal);
             counter.incrementAndGet();
             return defaultVal;
         }
-        return plugin.getConfig().getDouble(path);
+        return configManager.forPath(path).getDouble(path);
     }
 
     private int[] parseColor(String value, int defaultRed, int defaultGreen, int defaultBlue) {
@@ -426,12 +427,14 @@ public class ConfigUtil {
     private void loadUpgradeTokenDefinitions(AtomicInteger savedDefaults) {
         upgradeTokenDefinitions.clear();
 
-        ConfigurationSection section = plugin.getConfig().getConfigurationSection(ConfigKeys.UPGRADE_TOKENS);
+        ConfigurationSection section = configManager.forPath(ConfigKeys.UPGRADE_TOKENS)
+                .getConfigurationSection(ConfigKeys.UPGRADE_TOKENS);
 
         if (section == null || section.getKeys(false).isEmpty()) {
-            plugin.getConfig().set(ConfigKeys.UPGRADE_TOKENS, getDefaultUpgradeTokens());
+            configManager.write(ConfigKeys.UPGRADE_TOKENS, getDefaultUpgradeTokens());
             savedDefaults.incrementAndGet();
-            section = plugin.getConfig().getConfigurationSection(ConfigKeys.UPGRADE_TOKENS);
+            section = configManager.forPath(ConfigKeys.UPGRADE_TOKENS)
+                    .getConfigurationSection(ConfigKeys.UPGRADE_TOKENS);
         }
 
         if (section != null) {
@@ -453,12 +456,13 @@ public class ConfigUtil {
     private void loadTimeLootDefinitions(AtomicInteger savedDefaults) {
         timeLootDefinitions.clear();
 
-        ConfigurationSection section = plugin.getConfig().getConfigurationSection(ConfigKeys.TIME_LOOT);
+        ConfigurationSection section = configManager.forPath(ConfigKeys.TIME_LOOT)
+                .getConfigurationSection(ConfigKeys.TIME_LOOT);
 
         if (section == null || section.getKeys(false).isEmpty()) {
-            plugin.getConfig().set(ConfigKeys.TIME_LOOT, getDefaultTimeLoot());
+            configManager.write(ConfigKeys.TIME_LOOT, getDefaultTimeLoot());
             savedDefaults.incrementAndGet();
-            section = plugin.getConfig().getConfigurationSection(ConfigKeys.TIME_LOOT);
+            section = configManager.forPath(ConfigKeys.TIME_LOOT).getConfigurationSection(ConfigKeys.TIME_LOOT);
         }
 
         if (section != null) {
@@ -480,12 +484,13 @@ public class ConfigUtil {
     private void loadKeyDefinitions(AtomicInteger savedDefaults) {
         keyDefinitions.clear();
 
-        ConfigurationSection section = plugin.getConfig().getConfigurationSection(ConfigKeys.KEYS);
+        ConfigurationSection section = configManager.forPath(ConfigKeys.KEYS)
+                .getConfigurationSection(ConfigKeys.KEYS);
 
         if (section == null || section.getKeys(false).isEmpty()) {
-            plugin.getConfig().set(ConfigKeys.KEYS, getDefaultKeys());
+            configManager.write(ConfigKeys.KEYS, getDefaultKeys());
             savedDefaults.incrementAndGet();
-            section = plugin.getConfig().getConfigurationSection(ConfigKeys.KEYS);
+            section = configManager.forPath(ConfigKeys.KEYS).getConfigurationSection(ConfigKeys.KEYS);
         }
 
         if (section != null) {
@@ -507,12 +512,14 @@ public class ConfigUtil {
     private void loadEventItemDefinitions(AtomicInteger savedDefaults) {
         eventItemDefinitions.clear();
 
-        ConfigurationSection section = plugin.getConfig().getConfigurationSection(ConfigKeys.EVENT_ITEMS);
+        ConfigurationSection section = configManager.forPath(ConfigKeys.EVENT_ITEMS)
+                .getConfigurationSection(ConfigKeys.EVENT_ITEMS);
 
         if (section == null || section.getKeys(false).isEmpty()) {
-            plugin.getConfig().set(ConfigKeys.EVENT_ITEMS, getDefaultEventItems());
+            configManager.write(ConfigKeys.EVENT_ITEMS, getDefaultEventItems());
             savedDefaults.incrementAndGet();
-            section = plugin.getConfig().getConfigurationSection(ConfigKeys.EVENT_ITEMS);
+            section = configManager.forPath(ConfigKeys.EVENT_ITEMS)
+                    .getConfigurationSection(ConfigKeys.EVENT_ITEMS);
         }
 
         if (section != null) {
@@ -534,12 +541,14 @@ public class ConfigUtil {
     private void loadTokenLootDefinitions(AtomicInteger savedDefaults) {
         tokenLootDefinitions.clear();
 
-        ConfigurationSection section = plugin.getConfig().getConfigurationSection(ConfigKeys.TOKEN_LOOT);
+        ConfigurationSection section = configManager.forPath(ConfigKeys.TOKEN_LOOT)
+                .getConfigurationSection(ConfigKeys.TOKEN_LOOT);
 
         if (section == null || section.getKeys(false).isEmpty()) {
-            plugin.getConfig().set(ConfigKeys.TOKEN_LOOT, getDefaultTokenLoot());
+            configManager.write(ConfigKeys.TOKEN_LOOT, getDefaultTokenLoot());
             savedDefaults.incrementAndGet();
-            section = plugin.getConfig().getConfigurationSection(ConfigKeys.TOKEN_LOOT);
+            section = configManager.forPath(ConfigKeys.TOKEN_LOOT)
+                    .getConfigurationSection(ConfigKeys.TOKEN_LOOT);
         }
 
         if (section != null) {
@@ -632,18 +641,20 @@ public class ConfigUtil {
     private void loadSpawn() {
         this.spawnLocation = null;
 
-        String worldName = plugin.getConfig().getString(ConfigKeys.SPAWN + ".world");
+        FileConfiguration config = configManager.forPath(ConfigKeys.SPAWN);
+
+        String worldName = config.getString(ConfigKeys.SPAWN + ".world");
         if (worldName == null) return;
 
         World world = Bukkit.getWorld(worldName);
         if (world == null) return;
 
         this.spawnLocation = new Location(world,
-                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".x"),
-                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".y"),
-                plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".z"),
-                (float) plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".yaw"),
-                (float) plugin.getConfig().getDouble(ConfigKeys.SPAWN + ".pitch"));
+                config.getDouble(ConfigKeys.SPAWN + ".x"),
+                config.getDouble(ConfigKeys.SPAWN + ".y"),
+                config.getDouble(ConfigKeys.SPAWN + ".z"),
+                (float) config.getDouble(ConfigKeys.SPAWN + ".yaw"),
+                (float) config.getDouble(ConfigKeys.SPAWN + ".pitch"));
     }
 
     private void loadScoreboard(AtomicInteger savedDefaults) {
@@ -690,8 +701,6 @@ public class ConfigUtil {
         this.lootDefaultItemsPerChest = Math.max(1, getAndDefaultInt(ConfigKeys.LOOT_DEFAULT_ITEMS_PER_CHEST, 3, savedDefaults));
         this.lootTokenItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_MATERIAL, "GOLD_INGOT", savedDefaults);
         this.lootTokenItemName = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_NAME, "<gold>Extraction Token</gold>", savedDefaults);
-        this.lootTimeItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_MATERIAL, "CLOCK", savedDefaults);
-        this.lootTimeItemName = getAndDefaultString(ConfigKeys.LOOT_TIME_ITEM_NAME, "<yellow>Extra Time (+%time% minutes)</yellow>", savedDefaults);
         this.lootChestHologramOngoing = loadLootChestHologramState("ongoing", List.of(
                 "<red><bold>AREA ONGOING</bold></red>"
         ), savedDefaults);
@@ -709,9 +718,10 @@ public class ConfigUtil {
      * "ready" text so old configs keep working.
      */
     private List<String> loadLootChestHologramState(String state, List<String> defaults, AtomicInteger counter) {
-        if (plugin.getConfig().isList(ConfigKeys.LOOT_CHEST_HOLOGRAM)) {
+        if (configManager.forPath(ConfigKeys.LOOT_CHEST_HOLOGRAM).isList(ConfigKeys.LOOT_CHEST_HOLOGRAM)) {
             if (state.equals("ready"))
-                return new ArrayList<>(plugin.getConfig().getStringList(ConfigKeys.LOOT_CHEST_HOLOGRAM));
+                return new ArrayList<>(configManager.forPath(ConfigKeys.LOOT_CHEST_HOLOGRAM)
+                        .getStringList(ConfigKeys.LOOT_CHEST_HOLOGRAM));
 
             return new ArrayList<>(defaults);
         }
@@ -889,9 +899,9 @@ public class ConfigUtil {
     }
 
     private List<Integer> loadIntList(String path, List<Integer> defaultVal, AtomicInteger counter) {
-        List<Integer> values = plugin.getConfig().getIntegerList(path);
+        List<Integer> values = configManager.forPath(path).getIntegerList(path);
         if (values.isEmpty()) {
-            plugin.getConfig().set(path, defaultVal);
+            configManager.write(path, defaultVal);
             counter.incrementAndGet();
             return new ArrayList<>(defaultVal);
         }
@@ -900,7 +910,7 @@ public class ConfigUtil {
 
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> loadTierList(String path) {
-        List<?> raw = plugin.getConfig().getList(path);
+        List<?> raw = configManager.forPath(path).getList(path);
 
         if (raw == null)
             return new ArrayList<>();
@@ -920,10 +930,10 @@ public class ConfigUtil {
     }
 
     private void setDefaults(String path, List<Map<String, Object>> defaults) {
-        if (plugin.getConfig().contains(path))
+        if (configManager.forPath(path).contains(path))
             return;
 
-        plugin.getConfig().set(path, defaults);
+        configManager.write(path, defaults);
     }
 
     private List<Map<String, Object>> getDefaultArmorTiers(String slot) {
@@ -1091,22 +1101,22 @@ public class ConfigUtil {
     }
 
     private List<String> getAndDefaultStringList(String path, List<String> defaultVal, AtomicInteger counter) {
-        if (!plugin.getConfig().contains(path)) {
-            plugin.getConfig().set(path, defaultVal);
+        if (!configManager.forPath(path).contains(path)) {
+            configManager.write(path, defaultVal);
             counter.incrementAndGet();
             return new ArrayList<>(defaultVal);
         }
-        return new ArrayList<>(plugin.getConfig().getStringList(path));
+        return new ArrayList<>(configManager.forPath(path).getStringList(path));
     }
 
     private List<Integer> getAndDefaultIntList(String path, List<Integer> defaultVal, AtomicInteger counter) {
-        if (!plugin.getConfig().contains(path)) {
-            plugin.getConfig().set(path, defaultVal);
+        if (!configManager.forPath(path).contains(path)) {
+            configManager.write(path, defaultVal);
             counter.incrementAndGet();
             return new ArrayList<>(defaultVal);
         }
 
-        List<Object> raw = new ArrayList<>(plugin.getConfig().getList(path, new ArrayList<>()));
+        List<Object> raw = new ArrayList<>(configManager.forPath(path).getList(path, new ArrayList<>()));
         List<Integer> result = new ArrayList<>();
 
         for (Object value : raw) {
@@ -1716,14 +1726,6 @@ public class ConfigUtil {
 
     public String getLootTokenItemName() {
         return lootTokenItemName;
-    }
-
-    public String getLootTimeItemMaterial() {
-        return lootTimeItemMaterial;
-    }
-
-    public String getLootTimeItemName() {
-        return lootTimeItemName;
     }
 
     public List<Integer> getBackpackTierSlots() {

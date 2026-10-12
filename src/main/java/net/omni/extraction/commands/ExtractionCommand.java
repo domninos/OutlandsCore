@@ -114,7 +114,7 @@ public class ExtractionCommand implements CommandExecutor {
 
         if (sender.hasPermission("extraction.admin")) {
             help.append("\n  <dark_gray>Admin Commands:</dark_gray>\n");
-            MessageUtil.append("extraction reload", "Reloads config.yml and messages.yml", help);
+            MessageUtil.append("extraction reload", "Reloads the config files and messages.yml", help);
             MessageUtil.append("extraction settokens {player} {amount}", "Set a player's token balance", help);
             MessageUtil.append("extraction givetokens {player} {amount}", "Give tokens to a player", help);
             MessageUtil.append("extraction giveupgrade {player} {token}", "Give an upgrade token", help);

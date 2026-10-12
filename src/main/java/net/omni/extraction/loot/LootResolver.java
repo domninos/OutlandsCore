@@ -27,6 +27,9 @@ import java.util.Random;
  */
 public class LootResolver {
 
+    private static final String DEFAULT_TIME_MATERIAL = "CLOCK";
+    private static final String DEFAULT_TIME_NAME = "<yellow>Extra Time (+%time% minutes)</yellow>";
+
     private final ExtractionPlugin plugin;
     private final Random random;
 
@@ -56,7 +59,7 @@ public class LootResolver {
 
             if (def == null) {
                 plugin.getLogger().warning("Unknown event item '" + itemId
-                        + "' — define it under 'event-items:' in config.yml.");
+                        + "' — define it under 'event-items:' in tokens.yml.");
                 return result;
             }
 
@@ -156,8 +159,8 @@ public class LootResolver {
                 if (key != null) {
                     Map<String, Object> def = plugin.getConfigUtil().getTimeLootDefinitions().get(key);
 
-                    String mat = def.get("material") != null ? String.valueOf(def.get("material")) : plugin.getConfigUtil().getLootTimeItemMaterial();
-                    String name = def.get("display-name") != null ? String.valueOf(def.get("display-name")) : plugin.getConfigUtil().getLootTimeItemName();
+                    String mat = def.get("material") != null ? String.valueOf(def.get("material")) : DEFAULT_TIME_MATERIAL;
+                    String name = def.get("display-name") != null ? String.valueOf(def.get("display-name")) : DEFAULT_TIME_NAME;
                     int minutes = def.get("minutes") instanceof Number num ? num.intValue() : 1;
 
                     StringBuilder loreBuilder = new StringBuilder();
@@ -175,9 +178,7 @@ public class LootResolver {
                     result.add(LootItemUtil.createTimeItem(mat, name,
                             loreBuilder.isEmpty() ? null : loreBuilder.toString(), Math.max(1, minutes)));
                 } else {
-                    String mat = plugin.getConfigUtil().getLootTimeItemMaterial();
-                    String name = plugin.getConfigUtil().getLootTimeItemName();
-                    result.add(LootItemUtil.createTimeItem(mat, name, null, amount));
+                    result.add(LootItemUtil.createTimeItem(DEFAULT_TIME_MATERIAL, DEFAULT_TIME_NAME, null, amount));
                 }
             }
             default -> plugin.getLogger().warning("Unknown loot entry type '" + type + "'.");
@@ -218,7 +219,7 @@ public class LootResolver {
         Map<String, Object> def = plugin.getConfigUtil().getKeyDefinitions().get(keyId);
 
         if (def == null) {
-            plugin.getLogger().warning("Unknown loot key '" + keyId + "' — define it under 'keys:' in config.yml.");
+            plugin.getLogger().warning("Unknown loot key '" + keyId + "' — define it under 'keys:' in tokens.yml.");
             return null;
         }
 

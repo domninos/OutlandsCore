@@ -1,0 +1,114 @@
+# Area editing tools (/areas)
+areas:
+  # Pending wand edits (spawn points, chest, bounds) are flushed to disk
+  # every N seconds. Set to 0 to disable the periodic save (/areas update still works).
+  auto-save-seconds: 30
+  # How often (in seconds) area cooldowns are checked and areas return to READY.
+  # Set to 0 to disable.
+  state-check-seconds: 1
+  # Keep spawned area mobs inside their area by returning them to their spawn point.
+  mob-containment:
+    enabled: true
+    # How often (in ticks) containment is checked (20 ticks = 1 second).
+    check-ticks: 20
+    # Extra blocks outside the area bounds mobs may wander before being returned.
+    margin: 0
+  # When a player enters an area that's not READY (cooldown/respawning),
+  # tell them how long until it's available.
+  cooldown-block:
+    enabled: true
+  outline:
+    # How often (in ticks) the selection outline and point markers refresh
+    refresh-ticks: 10
+    # Maximum number of particles used to draw the selection box
+    max-points: 256
+    # Particle used for the selection box (DUST supports the colors below)
+    particle: DUST
+    # Selection box color as "r,g,b"
+    color: "0,180,255"
+    # Mob spawn point marker color as "r,g,b"
+    color-mob: "0,255,0"
+    # Boss spawn point marker color as "r,g,b"
+    color-boss: "255,0,0"
+    # Loot chest marker color as "r,g,b"
+    color-chest: "255,215,0"
+    # Radius (in blocks) used by shift + left-click to remove a spawn point
+    point-remove-radius: 3
+
+# Wand GUI editor (/areas wand)
+# Left-clicking a block in SPAWN mode opens a multi-page editor to pick the mob,
+# count, level, respawn time and boss flag. Left-clicking a block in CHEST mode
+# opens a picker for the chest's loot table. Icons use Material names.
+area-editor:
+  title: "<gradient:#00AAFF:#55FFFF>Area Editor</gradient>"
+  rows: 6
+  filler-material: GRAY_STAINED_GLASS_PANE
+  filler-name: " "
+  # Navigation bar (any GUI size): back = first cell of the bottom row,
+  # previous-page = center -1, question = center, next-page = center +1,
+  # next-step = last cell. Example (54-slot GUI): 45 = back, 48 = previous page,
+  # 49 = question, 50 = next page, 53 = next step. Clicking "back" on the first
+  # step cancels.
+  nav-back-material: ARROW
+  nav-back-name: "<yellow>Back</yellow>"
+  nav-next-material: LIME_DYE
+  nav-next-name: "<green>Next</green>"
+  nav-cancel-material: BARRIER
+  nav-cancel-name: "<red>Cancel</red>"
+  list-prev-material: ARROW
+  list-prev-name: "<yellow>Previous Page</yellow>"
+  list-prev-lore:
+    - "<gray>Previous set of choices.</gray>"
+  list-next-material: ARROW
+  list-next-name: "<yellow>Next Page</yellow>"
+  list-next-lore:
+    - "<gray>Next set of choices.</gray>"
+  # Loot table picker (CHEST mode). %name% = table display-name/id.
+  chest-icon-material: CHEST
+  chest-icon-name: "<white>%name%</white>"
+  chest-icon-lore:
+    - "<gray>Click to set this loot table</gray>"
+  default-loot-name: "<green>Default (area loot)</green>"
+  # Mob select (SPAWN mode). %name% = mob template id / provider / vanilla type.
+  mob-icon-material: ZOMBIE_HEAD
+  mob-icon-name: "<white>%name%</white>"
+  # Numeric pages. The counter row shows the current value and +/- buttons for
+  # each configured increment. The icon/name of a step can be overridden below.
+  count-smallest: 1
+  count-increments: [1, 5, 10]
+  level-smallest: 1
+  level-increments: [1, 5, 10]
+  respawn-smallest: 0
+  respawn-increments: [5, 30, 60]
+  increment-icon-material: GREEN_STAINED_GLASS_PANE
+  increment-icon-name: "<green>+%value%</green>"
+  decrement-icon-material: RED_STAINED_GLASS_PANE
+  decrement-icon-name: "<red>-%value%</red>"
+  count-icon-material: GOLD_INGOT
+  count-icon-name: "<yellow>Amount: %count%</yellow>"
+  level-icon-material: EXPERIENCE_BOTTLE
+  level-icon-name: "<yellow>Level: %value%</yellow>"
+  respawn-icon-material: CLOCK
+  respawn-icon-name: "<yellow>Respawn: %value% s</yellow>"
+  # Boss flag page
+  boss-yes-material: GREEN_WOOL
+  boss-yes-name: "<green>Boss: Yes</green>"
+  boss-no-material: RED_WOOL
+  boss-no-name: "<red>Boss: No</red>"
+  # Mob select category tabs (SPAWN mode). Tabs sit in the top row (slots 1/4/7)
+  # on the mob picker page. The active tab gets a green checkmark suffix.
+  mob-category-extraction-material: BOOK
+  mob-category-extraction-name: "<green>Extraction mobs</green>"
+  mob-category-vanilla-material: OAK_SIGN
+  mob-category-vanilla-name: "<yellow>Vanilla mobs</yellow>"
+  mob-category-mythic-material: DRAGON_EGG
+  mob-category-mythic-name: "<light_purple>MythicMobs</light_purple>"
+  # Relic drop assignment (SPAWN mode): pick charms/artifacts to drop from this
+  # spawn, then set each one's chance (%). Assigned drops REPLACE the mob
+  # template's `drops:` list; leave empty to keep inheriting template drops.
+  drop-chance-icon-material: EXPERIENCE_BOTTLE
+  drop-chance-icon-name: "<yellow>Chance: %value%%</yellow>"
+  drop-chance-increments: [10, 25, 50]
+  drop-chance-smallest: 0
+  drop-remove-material: RED_WOOL
+  drop-remove-name: "<red>Remove relic</red>"

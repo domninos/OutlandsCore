@@ -10,7 +10,7 @@ public enum Messages {
     PLAYER_NOT_FOUND("player_not_found", "<red>Player %player% not found.</red>"),
     USAGE("usage", "<red>Invalid arguments. Usage: %usage%</red>"),
     UNKNOWN_COMMAND("unknown_cmd", "<red>Unknown command.</red>"),
-    RELOADED("reloaded", "<green>config.yml and messages.yml have been reloaded.</green>"),
+    RELOADED("reloaded", "<green>config files and messages.yml have been reloaded.</green>"),
 
     RUN_ENTERED("run.entered", "<green>You have entered Extraction! Extract before your time runs out.</green>"),
     RUN_TIMER_ONE_MINUTE("run.timer-one-minute", "<yellow>1 minute remaining in Extraction!</yellow>"),
@@ -83,7 +83,7 @@ public enum Messages {
     AREA_CHEST_ONGOING("area.chest-ongoing", "<red>The area is still being cleared - loot is not available yet.</red>"),
     AREA_CHEST_KEY_NEEDED("area.chest-key-needed", "<red>This chest requires a <white>%key%</white>.</red>"),
     AREA_CHEST_KEY_SET("area.chest-key-set", "<green>Set key <white>%key%</white> for chest <white>%index%</white> in <white>%area%</white>.</green>"),
-    AREA_CHEST_KEY_UNKNOWN("area.chest-key-unknown", "<red>Unknown key <white>%key%</white>. Define it under 'keys:' in config.yml.</red>"),
+    AREA_CHEST_KEY_UNKNOWN("area.chest-key-unknown", "<red>Unknown key <white>%key%</white>. Define it under 'keys:' in tokens.yml.</red>"),
     AREA_WAND_GIVEN("area.wand-given", "<green>You received the area wand (<white>%mode%</white>).</green>"),
     AREA_POS1_SET("area.pos1-set", "<green>Corner 1 set at <white>%x%, %y%, %z%</white>.</green>"),
     AREA_POS2_SET("area.pos2-set", "<green>Corner 2 set at <white>%x%, %y%, %z%</white>.</green>"),
