@@ -102,6 +102,23 @@ public final class ConfigKeys {
     public static final String LOADOUT_GUI_FILLER_NAME = "loadout-gui.filler.name";
 
     public static final String STORAGE_AUTO_SAVE_SECONDS = "storage.auto-save-seconds";
+    public static final String STORAGE_THREADS = "storage.threads";
+    public static final String STORAGE_TYPE = "storage.type";
+    public static final String STORAGE_MYSQL_HOST = "storage.mysql.host";
+    public static final String STORAGE_MYSQL_PORT = "storage.mysql.port";
+    public static final String STORAGE_MYSQL_DATABASE = "storage.mysql.database";
+    public static final String STORAGE_MYSQL_USERNAME = "storage.mysql.username";
+    public static final String STORAGE_MYSQL_PASSWORD = "storage.mysql.password";
+    public static final String STORAGE_MYSQL_TABLE_PREFIX = "storage.mysql.table-prefix";
+    public static final String STORAGE_MYSQL_USE_SSL = "storage.mysql.use-ssl";
+    public static final String STORAGE_MYSQL_POOL_SIZE = "storage.mysql.pool-size";
+
+    public static final String PARTY = "party";
+    public static final String PARTY_MAX_MEMBERS = "party.max-members";
+    public static final String PARTY_INVITE_EXPIRE_SECONDS = "party.invite-expire-seconds";
+    public static final String PARTY_CROSS_SERVER = "party.cross-server";
+    public static final String PARTY_BROADCAST_JOIN_LEAVE = "party.broadcast-join-leave";
+    public static final String PARTY_CHAT_FORMAT = "party.chat-format";
 
     public static final String AREAS_AUTO_SAVE_SECONDS = "areas.auto-save-seconds";
     public static final String AREAS_STATE_CHECK_SECONDS = "areas.state-check-seconds";

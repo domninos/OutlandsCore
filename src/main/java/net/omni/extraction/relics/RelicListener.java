@@ -34,7 +34,7 @@ public class RelicListener implements Listener {
         Player attacker = resolvePlayerAttacker(event.getDamager());
         Player victim = event.getEntity() instanceof Player p ? p : null;
         PlayerData attackerData = attacker != null
-                ? plugin.getPlayerDataManager().getOrLoadSync(attacker.getUniqueId()) : null;
+                ? plugin.getPlayerDataManager().getLoaded(attacker.getUniqueId()) : null;
 
         if (attacker != null && attackerData != null && isSessionMob(event.getEntity())) {
             double mult = plugin.getRelicEffectManager()
@@ -44,7 +44,7 @@ public class RelicListener implements Listener {
         }
 
         if (victim != null && isSessionMob(event.getDamager())) {
-            PlayerData victimData = plugin.getPlayerDataManager().getOrLoadSync(victim.getUniqueId());
+            PlayerData victimData = plugin.getPlayerDataManager().getLoaded(victim.getUniqueId());
             double mult = plugin.getRelicEffectManager()
                     .damageTakenMultiplier(victimData, healthPercent(victim));
             if (mult != 1.0)
@@ -60,7 +60,7 @@ public class RelicListener implements Listener {
         if (!(event.getEntity() instanceof Player player))
             return;
 
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
         double mult = plugin.getRelicEffectManager().fallDamageMultiplier(data);
 
         if (mult != 1.0)

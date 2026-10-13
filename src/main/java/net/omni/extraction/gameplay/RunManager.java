@@ -57,7 +57,7 @@ public class RunManager {
             return false;
         }
 
-        PlayerData data = playerDataManager.getOrLoadSync(uuid);
+        PlayerData data = playerDataManager.getLoaded(uuid);
 
         // Fresh run: relic effects only activate later by right-clicking the
         // granted relic item in-run, so strip any leftover activation state.
@@ -127,7 +127,7 @@ public class RunManager {
         run.cancelTimer();
 
         Player player = Bukkit.getPlayer(uuid);
-        PlayerData data = playerDataManager.getOrLoadSync(uuid);
+        PlayerData data = playerDataManager.getLoaded(uuid);
 
         int tokens = calculateTokens(run);
         tokenManager.addTokens(uuid, tokens);
@@ -201,7 +201,7 @@ public class RunManager {
 
         run.cancelTimer();
 
-        PlayerData data = playerDataManager.getOrLoadSync(uuid);
+        PlayerData data = playerDataManager.getLoaded(uuid);
         Player player = Bukkit.getPlayer(uuid);
 
         // The physical backpack drops at the death location; purge the pre-run
@@ -293,7 +293,7 @@ public class RunManager {
      */
     public void restorePendingReturn(Player player) {
         UUID uuid = player.getUniqueId();
-        PlayerData data = playerDataManager.getOrLoadSync(uuid);
+        PlayerData data = playerDataManager.getLoaded(uuid);
 
         if (!data.isPendingReturn())
             return;

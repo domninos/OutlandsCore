@@ -9,16 +9,23 @@ import org.bukkit.World;
 import org.bukkit.inventory.ItemStack;
 
 import javax.annotation.Nullable;
+import java.io.File;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -34,87 +41,111 @@ public class PlayerDataManager {
         this.cache = new ConcurrentHashMap<>();
     }
 
+    /**
+     * Asynchronously loads a player's data off the main thread, serialized
+     * against every other database operation for the same UUID. {@code onComplete}
+     * (if any) runs on the Bukkit main thread once the cache is populated.
+     */
     public void loadPlayer(UUID uuid, @Nullable Runnable onComplete) {
         PlayerData current = cache.get(uuid);
 
-        if (current != null && current.isDirty()) {
+        if (current != null && (current.isDirty() || current.isLoaded())) {
             current.setLoaded(true);
             if (onComplete != null)
                 onComplete.run();
             return;
         }
 
-        plugin.getDatabaseManager().executeAsync(() -> {
-            try (Connection conn = plugin.getDatabaseManager().getConnection();
-                 PreparedStatement ps = conn.prepareStatement("SELECT * FROM player_data WHERE uuid = ?")) {
-                ps.setString(1, uuid.toString());
-                ResultSet rs = ps.executeQuery();
+        AsyncDatabase async = plugin.getDatabaseManager().async();
 
-                PlayerData existing = cache.get(uuid);
+        async.supplyKeyed(uuid, () -> {
+            PlayerData existing = cache.get(uuid);
 
-                if (existing != null && existing.isDirty()) {
-                    existing.setLoaded(true);
-                    if (onComplete != null)
-                        plugin.getDatabaseManager().executeSync(onComplete);
-                    return;
-                }
-
-                PlayerData data = existing != null ? existing : new PlayerData(uuid);
-                applyRow(data, rs);
-                data.setLoaded(true);
-                data.clearDirty();
-                cache.putIfAbsent(uuid, data);
-
-                if (onComplete != null)
-                    plugin.getDatabaseManager().executeSync(onComplete);
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "Failed to load player data for " + uuid, e);
+            if (existing != null && existing.isDirty()) {
+                existing.setLoaded(true);
+                return existing;
             }
+
+            PlayerData data = existing != null ? existing : new PlayerData(uuid);
+            loadRowInto(data);
+            data.setLoaded(true);
+            data.clearDirty();
+            cache.putIfAbsent(uuid, data);
+            return cache.get(uuid);
+        }).whenComplete((data, error) -> {
+            if (error != null) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to load player data for " + uuid, error);
+                return;
+            }
+
+            if (onComplete != null)
+                async.mainExecutor().execute(onComplete);
         });
     }
 
     /**
-     * Loads a player's data synchronously on the calling (main) thread and
-     * registers it in the cache. Used by code that must never work against a
-     * fresh throwaway {@link PlayerData} (e.g. opening the loadout upgrade
-     * GUIs), where the async {@link #loadPlayer} may not have finished yet.
-     * Populates the already-cached instance (never replaces it) so a
-     * concurrently-created instance can't lose its edits, and force-loads
-     * unloaded cached instances so no caller ever reads stale-empty data.
+     * Loads a player's data on the calling thread. <b>Must only be called from an
+     * asynchronous context</b> (e.g. {@code AsyncPlayerPreLoginEvent}), never the
+     * Bukkit main thread. Populates (never replaces) an already-cached instance
+     * and force-loads unloaded instances so later cache reads cannot see
+     * stale-empty data. In-flight edits win over the database snapshot.
      */
-    public PlayerData getOrLoadSync(UUID uuid) {
+    public PlayerData loadPlayerBlocking(UUID uuid) {
         PlayerData data = cache.get(uuid);
 
         if (data != null) {
             if (data.isDirty()) {
                 data.setLoaded(true);
-            } else if (!data.isLoaded()) {
-                loadSyncInto(data);
-                data.clearDirty();
+                return data;
             }
 
-            return data;
+            if (data.isLoaded())
+                return data;
+        } else {
+            PlayerData fresh = new PlayerData(uuid);
+            PlayerData previous = cache.putIfAbsent(uuid, fresh);
+            data = previous != null ? previous : fresh;
         }
 
-        data = new PlayerData(uuid);
-        loadSyncInto(data);
+        loadRowInto(data);
+        data.setLoaded(true);
         data.clearDirty();
-        cache.putIfAbsent(uuid, data);
-        return cache.get(uuid);
+        return data;
     }
 
-    /** Populates {@code data} from its database row (if present). */
-    private void loadSyncInto(PlayerData data) {
+    /** Populates {@code data} from its database row (if present). Runs on the caller's thread. */
+    private void loadRowInto(PlayerData data) {
         try (Connection conn = plugin.getDatabaseManager().getConnection();
-             PreparedStatement ps = conn.prepareStatement("SELECT * FROM player_data WHERE uuid = ?")) {
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM "
+                     + plugin.getDatabaseManager().playerDataTable() + " WHERE uuid = ?")) {
             ps.setString(1, data.getUuid().toString());
             ResultSet rs = ps.executeQuery();
             applyRow(data, rs);
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to load player data for " + data.getUuid(), e);
         }
+    }
 
-        data.setLoaded(true);
+    /**
+     * Cache-only accessor: returns the cached instance for {@code uuid} without
+     * touching the database. Player data is guaranteed to be cached by the
+     * pre-login blocking load before any gameplay path runs, so this never
+     * blocks. If it is somehow missing, an empty instance is registered and a
+     * warning is logged rather than hitting the database on the main thread.
+     */
+    public PlayerData getLoaded(UUID uuid) {
+        PlayerData data = cache.get(uuid);
+
+        if (data != null)
+            return data;
+
+        PlayerData fresh = new PlayerData(uuid);
+        PlayerData previous = cache.putIfAbsent(uuid, fresh);
+        data = previous != null ? previous : fresh;
+
+        plugin.getLogger().warning("Player data for " + uuid
+                + " was requested before it was loaded — returning an empty instance.");
+        return data;
     }
 
     private void applyRow(PlayerData data, ResultSet rs) throws SQLException {
@@ -274,13 +305,8 @@ public class PlayerDataManager {
     }
 
     private void writePlayerToDb(UUID uuid, PlayerData data) {
-        String insert = """
-                INSERT OR REPLACE INTO player_data (uuid, tokens, loadout, loadout_contents, customized_cells, cooldown_until, last_kill_count, last_event_count, last_boss_count, extra_time_seconds, return_location, pre_run_inventory, pre_run_armor, pending_return, owned_charms, owned_artifacts, active_charm, active_artifact)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
-
         try (Connection conn = plugin.getDatabaseManager().getConnection();
-             PreparedStatement ps = conn.prepareStatement(insert)) {
+             PreparedStatement ps = conn.prepareStatement(plugin.getDatabaseManager().playerUpsertSql())) {
 
             ps.setString(1, uuid.toString());
             ps.setInt(2, data.getTokens());
@@ -385,7 +411,7 @@ public class PlayerDataManager {
             return;
         }
 
-        plugin.getDatabaseManager().executeAsync(() -> writePlayerToDb(uuid, data));
+        plugin.getDatabaseManager().runKeyed(uuid, () -> writePlayerToDb(uuid, data));
     }
 
     /** Switches saves to synchronous writes (used during onDisable, when the
@@ -418,15 +444,87 @@ public class PlayerDataManager {
      * players that are not currently loaded. Used when cooldowns are disabled.
      */
     public void clearAllCooldowns() {
-        plugin.getDatabaseManager().executeAsync(() -> {
+        plugin.getDatabaseManager().runAsync(() -> {
             try (Connection conn = plugin.getDatabaseManager().getConnection();
                  PreparedStatement ps = conn.prepareStatement(
-                         "UPDATE player_data SET cooldown_until = 0 WHERE cooldown_until > 0")) {
+                         "UPDATE " + plugin.getDatabaseManager().playerDataTable()
+                                 + " SET cooldown_until = 0 WHERE cooldown_until > 0")) {
                 ps.executeUpdate();
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to clear all cooldowns", e);
             }
         });
+    }
+
+    private static final Set<String> NUMERIC_PLAYER_COLUMNS = Set.of(
+            "tokens", "last_kill_count", "last_event_count", "last_boss_count",
+            "extra_time_seconds", "pending_return");
+
+    /**
+     * One-time import of a legacy SQLite {@code extraction.db} into the active
+     * MySQL/MariaDB backend. Values are copied verbatim (no interpretation), so
+     * the migration is faithful. Only valid when the backend is MySQL.
+     *
+     * @return the number of rows imported, or {@code -1} on failure.
+     */
+    public int importFromSqlite(File sqliteFile) {
+        if (!plugin.getDatabaseManager().isMysql()) {
+            plugin.getLogger().warning("migrate-db requested but storage.type is not mysql.");
+            return -1;
+        }
+
+        int imported = 0;
+
+        try (Connection source = DriverManager.getConnection("jdbc:sqlite:" + sqliteFile.getAbsolutePath());
+             Statement select = source.createStatement();
+             ResultSet rs = select.executeQuery("SELECT * FROM player_data")) {
+
+            Set<String> available = new HashSet<>();
+            ResultSetMetaData meta = rs.getMetaData();
+            for (int i = 1; i <= meta.getColumnCount(); i++)
+                available.add(meta.getColumnName(i).toLowerCase(Locale.ROOT));
+
+            boolean hasLoadoutContents = available.contains("loadout_contents");
+            boolean hasLoadoutItems = available.contains("loadout_items");
+
+            try (Connection target = plugin.getDatabaseManager().getConnection();
+                 PreparedStatement ps = target.prepareStatement(plugin.getDatabaseManager().playerUpsertSql())) {
+
+                while (rs.next()) {
+                    for (int i = 0; i < DatabaseManager.PLAYER_COLUMNS.length; i++) {
+                        String column = DatabaseManager.PLAYER_COLUMNS[i];
+                        String sourceColumn = column;
+
+                        if (column.equals("loadout_contents") && !hasLoadoutContents && hasLoadoutItems)
+                            sourceColumn = "loadout_items";
+
+                        if (!available.contains(sourceColumn)) {
+                            if (NUMERIC_PLAYER_COLUMNS.contains(column))
+                                ps.setLong(i + 1, 0L);
+                            else
+                                ps.setString(i + 1, null);
+                        } else if (column.equals("cooldown_until")) {
+                            ps.setLong(i + 1, rs.getLong(sourceColumn));
+                        } else if (NUMERIC_PLAYER_COLUMNS.contains(column)) {
+                            ps.setInt(i + 1, rs.getInt(sourceColumn));
+                        } else {
+                            ps.setString(i + 1, rs.getString(sourceColumn));
+                        }
+                    }
+
+                    ps.executeUpdate();
+                    imported++;
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "SQLite -> MySQL migration (target write) failed", e);
+                return -1;
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "SQLite -> MySQL migration failed", e);
+            return -1;
+        }
+
+        return imported;
     }
 
     public void saveAll() {

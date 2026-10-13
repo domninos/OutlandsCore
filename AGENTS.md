@@ -5,8 +5,8 @@ Extraction — a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 - Package: `net.omni.extraction`
 - Artifact: `net.omni:Extraction:1.0.0`
 - Main class: `net.omni.extraction.ExtractionPlugin`
-- Data file: `extraction.db` in the plugin data folder (`plugins/Extraction/`)
-- Permissions: `extraction.*` with children `extraction.admin`, `extraction.play`, `extraction.areas`, `extraction.bypass.cooldown`
+- Data file: `extraction.db` under `plugins/Extraction/data/` by default; or MariaDB/MySQL when `storage.type: mysql` (see Storage below)
+- Permissions: `extraction.*` with children `extraction.admin`, `extraction.play`, `extraction.areas`, `extraction.party`, `extraction.bypass.cooldown`
 - Placeholders: PlaceholderAPI identifier `extraction` (`%extraction_*%`); built-in fallbacks resolved by `scoreboard/PlaceholderValues`
 - World: `settings.world-name` default `outlands` — this is the server's extraction world folder, intentionally NOT renamed
 
@@ -40,13 +40,37 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 
 ### Dependencies
 - The SQLite JDBC driver is bundled with PaperMC — do **not** add `org.xerial:sqlite-jdbc`.
+- The MariaDB JDBC driver (`org.mariadb.jdbc:mariadb-java-client`) is loaded at runtime through Paper's
+  `plugin.yml` `libraries:` block — do **not** shade it.
+
+### Storage
+- `storage.type: sqlite` (default) uses the bundled SQLite file; `storage.type: mysql` uses MariaDB/MySQL
+  (`storage.mysql.*`: host/port/database/username/password/table-prefix/use-ssl/pool-size). Cross-server
+  features (parties) require `mysql` so the data is shared.
+- **All database access runs off the Bukkit main thread.** `data/AsyncDatabase` owns a dedicated, named,
+  daemon worker pool (`storage.threads`, default 3) and a `CompletableFuture` API:
+  `supplyAsync`/`runAsync`, per-key serialization `supplyKeyed`/`runKeyed` (a per-UUID chain so a
+  load/save/mutation for one entity can never interleave), and `mainExecutor()` (hops a continuation back
+  to the main thread; drops it once the plugin is disabled). On SQLite the pool is a single thread (global
+  FIFO order — also per-key order — and no `SQLITE_BUSY`); on MySQL it is `storage.threads` wide. `shutdown(ms)`
+  drains the per-key chains + pool. `DatabaseManager` constructs it, exposes `supplyAsync/runAsync/supplyKeyed/
+  runKeyed/mainExecutor`, keeps `executeAsync` as a `runAsync` delegate, and `drain()`/`close()` (drain then
+  close the Hikari datasource).
+- `data/DatabaseManager` is dialect-aware (`Dialect.SQLITE`/`MYSQL`, `isMysql()`, `table(name)` applies the
+  optional MySQL table prefix, `playerUpsertSql()` returns `INSERT OR REPLACE` on SQLite / `INSERT … ON
+  DUPLICATE KEY UPDATE` on MySQL). It creates `player_data` plus the party tables (`party`, `party_member`,
+  `party_invite`, `party_chat_toggle`). The legacy SQLite `ALTER` migrations are skipped on MySQL.
+- `/extraction admin migratedb` (perm `extraction.admin`) one-time copies every row of an existing SQLite
+  `player_data` into the active MySQL backend (`PlayerDataManager.importFromSqlite`) — manual, run after
+  switching `storage.type` to `mysql`; runs on the async worker.
 
 ### Config / messages
 - Config is split across files, routed by top-level section: `config.yml` (`settings`, `messages`,
   `storage`, `extraction`, `backpack`, `shop-gui`, `actionbar`, `holograms`, `scoreboard`, `loot`,
   `containers`, `pack`), plus `relics/relics.yml` (`relics`, `relic-gui`), `loadout.yml` (`loadout`,
   `loadout-gui`), `tokens.yml` (`upgrade-tokens`, `time-loot`, `token-loot`, `keys`, `event-items`),
-  `upgrades.yml` (`upgrade-gui`, `upgrade-confirm`), and `areas.yml` (`areas`, `area-editor`).
+  `upgrades.yml` (`upgrade-gui`, `upgrade-confirm`), `areas.yml` (`areas`, `area-editor`), and
+  `party.yml` (`party`).
   `config/ConfigManager` routes each path to its owning file; defaults live in the bundled YAML files
   + `ConfigKeys` / `ConfigUtil`. The relic-definition files `relics/charms.yml` + `relics/artifacts.yml`
   (loaded by `relics/RelicManager`) also live under `plugins/Extraction/relics/`; `ExtractionPlugin.
@@ -59,8 +83,13 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 ## Relevant Files
 - `ExtractionPlugin.java`: main class. onEnable: `initChatRenderer()` (detection lines use `getLogger()` —
   before the prefix is loaded) → `configUtil` load + `chatRenderer.setPrefix(configUtil.getPrefix())` →
-  messages file/manager → data/managers → registerCommands + registerListeners → start tasks;
-  onDisable reverses and flushes.
+  messages file/manager → data/managers → registerCommands + registerListeners → start tasks; ends with
+  `preloadOnlinePlayers()` (async-loads data for anyone already online, e.g. after `/extraction reload`).
+  onDisable: `playerDataManager.onDisable()` FIRST (flips `disabled` so saves become synchronous) → stops
+  the scheduled tasks → **`databaseManager.drain()`** (waits out every in-flight worker task so the pool and
+  the main thread never write at once) → `areaClearManager`/`runManager`/`worldEventManager`/party shutdowns
+  (now synchronous saves) → `playerDataManager.flush()` (synchronous final dump) → config/messages flush →
+  `databaseManager.close()`.
 - `chat/ChatRenderer.java`, `chat/PaperChatRenderer.java`, `chat/SpigotChatRenderer.java`: `setPrefix(String)`
   makes the prefix configurable via `config.yml` -> `messages.prefix` (MiniMessage on Paper; converted to
   legacy on Spigot). `plugin.sendMessage()`/`sendConsole()` route through the renderer; startup console
@@ -73,12 +102,47 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 - `commands/ExtractCommand.java`, `TokensCommand.java`, `UpgradeCommand.java`, `LoadoutCommand.java`.
 - `config/ConfigKeys.java`, `config/ConfigUtil.java`, `config/ConfigManager.java` (routes each config
   path to its owning split file), `config/ExtractionConfig.java` (generic per-file YAML IO).
-- `data/DatabaseManager.java` (SQLite `extraction.db`), `data/PlayerData.java`,
-  `data/PlayerDataManager.java` (return location + pre-run inventory snapshot persistence).
-  `PlayerDataManager.onDisable()` flips `disabled` so `savePlayer` writes synchronously
-  (`writePlayerToDb` direct) instead of `executeAsync` — the scheduler refuses new tasks for a
-  disabled plugin, so `ExtractionPlugin.onDisable` calls it FIRST (before `areaClearManager.shutdown`/
-  `runManager.shutdown`'s token/cooldown/leftover saves).
+- `data/DatabaseManager.java` (SQLite `extraction.db` by default, or MariaDB/MySQL when `storage.type: mysql`),
+  `data/PlayerData.java`, `data/PlayerDataManager.java` (return location + pre-run inventory snapshot persistence;
+  `importFromSqlite(File)` backs `/extraction admin migratedb`), `data/AsyncDatabase.java` (the off-thread
+  `CompletableFuture` worker: pool + per-key serialization + `mainExecutor` + `shutdown` drain).
+  **Loading:** `PlayerListener`'s `AsyncPlayerPreLoginEvent` handler calls `loadPlayerBlocking(uuid)` on the
+  async login thread, so the cache is always warm before gameplay; `loadPlayer(uuid, onComplete)` is the async
+  (re)load (used on join and for offline admin targets); `getLoaded(uuid)` is the **cache-only** accessor every
+  gameplay/GUI path uses (never touches the database). `ExtractionPlugin` also `preloadOnlinePlayers()` on enable
+  (reload case). **Saving:** `savePlayer` is a no-op when clean, else `runKeyed` (or a direct synchronous write
+  once `disabled`); `saveAllDirty` (periodic dump) enqueues; `flush`/`saveAllSync` write synchronously at
+  shutdown. `PlayerDataManager.onDisable()` flips `disabled` so `savePlayer` writes synchronously
+  (`writePlayerToDb` direct) instead of `runKeyed` — the worker only accepts new tasks while the plugin is
+  enabled, and `ExtractionPlugin.onDisable` drains the worker before this point.
+- `party/Party.java` (roster: id, leader, ordered members), `party/PartyManager.java`: DB-backed
+  cross-server party system (`/extraction party`), built after the data managers. Roster/invites live in the
+  `party`/`party_member`/`party_invite` tables (invites keyed by lowercased target *name* so they work across
+  servers); a per-server cache (`membershipByPlayer`/`partiesById`) backs cheap lookups and
+  `%extraction_party%` (leader name; `PlaceholderValues`). Public ops: `create/invite/join/leave/kick/disband/
+  list/info/chat`. Chat and invite logic are split out: `party/PartyChat.java` owns `chat` + the per-player
+  **party chat mode** (toggled via `/extraction party chat on|off`, persisted in the `party_chat_toggle`
+  table so it works across servers) + the relay-out/in for `chat`; `party/Invites.java` owns the invite
+  lifecycle (sending, `findFor`/`deleteFor`, the `Invite` record) + the relay-out/in for `invite`. The
+  `party_chat_toggle` table is created by `DatabaseManager.createPartyTables` on both dialects, upserted via
+  `DatabaseManager.partyToggleUpsertSql()`; `PartyChat` caches the flag (loaded on join, removed on quit,
+  default OFF) and `PartyManager` exposes `setPartyChatMode`/`isPartyChatEnabled`. When enabled, the
+  `PartyListener` `AsyncChatEvent` handler cancels the player's normal chat and routes it to the party
+  (only while they are in a party — a toggled-on player outside a party keeps global chat; delivery is
+  scheduled onto the main thread). `party/PartyListener.java` owns ALL party event handling — the Bukkit
+  join/quit/chat handlers (`loadPlayer`/`handleQuit`/`onAsyncChat`) plus the `BungeeCord` plugin channel
+  (register/unregister of outgoing+incoming in `register()`/`shutdown()`, and `onPluginMessageReceived`
+  framing → `PartyManager.handleRelay`). `PartyManager.handleRelay` dispatches decoded payloads to
+  `PartyChat`/`Invites` (chat/invite) and reloads caches (update). The outbound side relays chat + invites
+  through the `BungeeCord` channel (`Forward`/`ForwardToPlayer`, subchannel `extraction:party`, Gson payload)
+  — gated by `party.cross-server` — via the package-private `memberArray`/`forwardAll`/`forwardToPlayer`
+  shared by `PartyChat`/`Invites`.
+  `commands/PartyCommand.java` dispatches the subcommands (wired into `ExtractionCommand` `case "party"`).
+  **Threading:** every `PartyManager`/`PartyChat`/`Invites` DB operation runs on `DatabaseManager.supplyKeyed/
+  runKeyed` (keyed by player UUID); player names/UUIDs/online targets are captured on the main thread before
+  the async work, and cache indexing, chat delivery, and the BungeeCord relay run in a `mainExecutor()`
+  continuation. `loadPlayer` guards against duplicate in-flight loads (`loading` set) and against a late
+  completion resurrecting a quit player (checks `Bukkit.getPlayer`); `asyncChat` reads the cache only.
 - `event/PlayerEnterAreaEvent.java`, `event/PlayerLeaveAreaEvent.java`: non-cancellable custom Bukkit events
   (`org.bukkit.event.Event`) fired by `AreaManager` on area enter/leave transitions (incl. on quit).
 - `gameplay/RunManager.java`: enterRun / extractPlayer / handleDeath / handleDisconnect / shutdown /
@@ -178,6 +242,11 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   (system scope), `com.github.MilkBowl:VaultAPI:1.7.1` (provided).
 
 ## Completed
+- Config-toggleable storage backend (`storage.type: sqlite` default / `mysql`) + `/extraction admin migratedb`
+  one-time SQLite→MySQL row copy; MariaDB driver loaded via `plugin.yml` `libraries:`.
+- Cross-server party system (`/extraction party`): DB-backed (`party`/`party_member`/`party_invite`), per-server
+  cache, BungeeCord `extraction:party` relay for chat/invites, `party.yml` config, `extraction.party` permission,
+  `%extraction_party%` returns the leader name.
 - Mob containment (AreaClearManager), MythicMob attribute copy, default loadout, `/upgrade` + `/tokens`
   commands, periodic area state task, Extraction spawn (`/extraction setspawn`), configurable chat prefix
   (`messages.prefix` + reload hook).
@@ -277,7 +346,7 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 - Storage = chest loot ONLY: the run inventory is NEVER stored. `RunManager.extractPlayer`/`handleDisconnect`/
   `shutdown` no longer write `player.getInventory().getContents()` into `extractedLoot` (they used to REPLACE it,
   wiping banked chest loot); the list is fed strictly by `AreaClearManager.redeemChest`/`storeLeftover` (both now
-  `getOrLoadSync` so a still-loading owner can't blank a real DB row). Death still wipes storage on purpose
+  use the cache-only `getLoaded` so a still-loading owner can't blank a real DB row). Death still wipes storage on purpose
   (`handleDeath`). `restorePendingReturn` still announces banked loot via `EXTRACT_LOOT_STORED` on relog.
 - Storage GUI allows **fully free** withdraw — item clicks, shift-click, drags, claim-all, nav and number-key
   transfers all work even mid-run (no `isWithdrawBlocked` gate; the `withdraw.blocked` message is unused/kept).
@@ -311,11 +380,12 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   stored items. Removals still work because taking an item touches the cell. `syncLoadout` saves
   UNCONDITIONALLY after sync (no `updated` flag gate; `savePlayer` is a no-op when clean).
   Player-data load racing: `PlayerData.loaded` starts false (`getOrCreate` mints unloaded instances)
-  and is set true by any DB-read path; `getOrLoadSync(uuid)` force-loads unloaded cached instances
-  synchronously before returning (skips load when dirty — in-flight edits win), and `loadPlayer` NEVER
-  bails on a cached instance (it async-populates the existing instance; only dirty instances skip the
-  DB snapshot, never replaced via `putIfAbsent`). `/loadout` and `/upgrade` open use `getOrLoadSync`,
-  and `handleLoadoutClick`/`handleLoadoutDrag`/`handleUpgradeClick`/`handleUpgradeDrag`/`syncStorage`
+  and is set true by any DB-read path; the async `loadPlayer(uuid, onComplete)` NEVER bails on a cached
+  instance (it populates the existing instance; only dirty instances skip the DB snapshot, never replaced
+  via `putIfAbsent`), and `loadPlayerBlocking(uuid)` is the synchronous variant used on the async
+  `AsyncPlayerPreLoginEvent` thread so the cache is always warm before gameplay. Every gameplay/GUI path
+  reads the cache with the cache-only `getLoaded(uuid)` (never a DB touch), and
+  `handleLoadoutClick`/`handleLoadoutDrag`/`handleUpgradeClick`/`handleUpgradeDrag`/`syncStorage`
   are load-guarded; `onInventoryClose` upgrades the upgrade-GUI close to also `savePlayer` (tiers
   always committed). `/extraction reload` now closes open loadout/upgrade GUIs FIRST (so close-time
   sync/tier-save run with real data) before `guiManager.clearAll()`, instead of severing live GUIs and
@@ -366,8 +436,8 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   `materializeTier(slot, tokenTier, previousTier, data)` so the reverted tier's item/null is restored (the
   materialized new-tier item can't linger). Stored customization applies to all cells including tier cells
   (charm/artifact/pet/offhand + free inventory-mirror slots). `RunManager.enterRun` reads player data via
-  `getOrLoadSync` (not `getOrCreate`) so `applyLoadout` never sees an unloaded tier-0 instance after a fresh
-  join / mid-session reload. Sequential free-fill and the 36-slot overflow→storage branch were
+  `getLoaded` so `applyLoadout` never sees an unloaded tier-0 instance after a fresh
+  join / mid-session reload (the pre-login `loadPlayerBlocking` guarantees the cache is warm). Sequential free-fill and the 36-slot overflow→storage branch were
   removed (1 cell = 1 exact slot).
 - Upgrade quality: upgrade tokens apply ONLY to the exact next tier — `LoadoutManager.applyUpgradeToken` requires
   `tokenTier == getEffectiveTier(slot) + 1` (any skip is rejected with `loadout.token-wrong-tier`, wired through

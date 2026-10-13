@@ -28,6 +28,7 @@ public class ConfigManager {
         register("tokens.yml", "upgrade-tokens", "time-loot", "token-loot", "keys", "event-items");
         register("upgrades.yml", "upgrade-gui", "upgrade-confirm");
         register("areas.yml", "areas", "area-editor");
+        register("party.yml", "party");
     }
 
     private void register(String fileName, String... sections) {

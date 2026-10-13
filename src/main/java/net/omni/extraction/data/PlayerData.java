@@ -56,7 +56,7 @@ public class PlayerData {
     /**
      * Whether this instance reflects the persisted database row. Instances
      * minted by {@code getOrCreate} start unloaded and are populated by
-     * {@code loadPlayer} / {@code getOrLoadSync} before live data is used.
+     * {@code loadPlayer} / {@code loadPlayerBlocking} before live data is used.
      */
     public boolean isLoaded() {
         return loaded;

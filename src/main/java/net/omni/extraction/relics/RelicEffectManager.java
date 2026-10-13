@@ -240,7 +240,7 @@ public class RelicEffectManager {
         if (lastLabels.isEmpty() && activations.isEmpty())
             return;
 
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(uuid);
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(uuid);
 
         Set<String> relevant = new HashSet<>(lastLabels.getOrDefault(uuid, Map.of()).keySet());
         for (RelicDefinition def : activeRelics(data))
@@ -311,7 +311,7 @@ public class RelicEffectManager {
             if (player == null || player.isDead())
                 continue;
 
-            PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(uuid);
+            PlayerData data = plugin.getPlayerDataManager().getLoaded(uuid);
             List<RelicDefinition> defs = activeRelics(data);
             if (defs.isEmpty())
                 continue;
@@ -382,7 +382,7 @@ public class RelicEffectManager {
      * and any leftover modifiers are stripped.
      */
     public void applyPassive(Player player) {
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
 
         double speedPercent = 0;
         double maxHealth = 0;

@@ -33,9 +33,11 @@ import java.util.Map;
 public class ExtractionCommand implements CommandExecutor {
 
     private final ExtractionPlugin plugin;
+    private final PartyCommand partyCommand;
 
     public ExtractionCommand(ExtractionPlugin plugin) {
         this.plugin = plugin;
+        this.partyCommand = new PartyCommand(plugin);
     }
 
     @Override
@@ -64,6 +66,7 @@ public class ExtractionCommand implements CommandExecutor {
             case "artifacts" -> handleRelicAdmin(sender, args, RelicManager.KIND_ARTIFACT);
             case "charms" -> handleRelicAdmin(sender, args, RelicManager.KIND_CHARM);
             case "events" -> handleEvents(sender, args);
+            case "party" -> partyCommand.handle(sender, args);
             case "admin" -> handleAdmin(sender, args);
             default -> {
                 plugin.sendMessage(sender, Messages.UNKNOWN_COMMAND.toString());
@@ -403,32 +406,36 @@ public class ExtractionCommand implements CommandExecutor {
             return true;
         }
 
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(target.getUniqueId());
         String relicName = def.getName();
 
-        if (action.equals("give")) {
-            plugin.getRelicManager().grant(data, def);
-            plugin.sendMessage(sender, Messages.RELIC_GIVEN.replace(
-                    "relic", relicName,
-                    "player", target.getName()));
-        } else {
-            if (!plugin.getRelicManager().revoke(data, def)) {
-                plugin.sendMessage(sender, Messages.RELIC_NOT_OWNED_BY.replace(
+        plugin.getPlayerDataManager().loadPlayer(target.getUniqueId(), () -> {
+            PlayerData data = plugin.getPlayerDataManager().getLoaded(target.getUniqueId());
+
+            if (action.equals("give")) {
+                plugin.getRelicManager().grant(data, def);
+                plugin.sendMessage(sender, Messages.RELIC_GIVEN.replace(
                         "relic", relicName,
                         "player", target.getName()));
-                return true;
+            } else {
+                if (!plugin.getRelicManager().revoke(data, def)) {
+                    plugin.sendMessage(sender, Messages.RELIC_NOT_OWNED_BY.replace(
+                            "relic", relicName,
+                            "player", target.getName()));
+                    return;
+                }
+
+                plugin.sendMessage(sender, Messages.RELIC_REMOVED.replace(
+                        "relic", relicName,
+                        "player", target.getName()));
+
+                Player online = target.getPlayer();
+                if (online != null)
+                    plugin.getRelicEffectManager().applyPassive(online);
             }
 
-            plugin.sendMessage(sender, Messages.RELIC_REMOVED.replace(
-                    "relic", relicName,
-                    "player", target.getName()));
+            plugin.getPlayerDataManager().savePlayer(target.getUniqueId());
+        });
 
-            Player online = target.getPlayer();
-            if (online != null)
-                plugin.getRelicEffectManager().applyPassive(online);
-        }
-
-        plugin.getPlayerDataManager().savePlayerSync(target.getUniqueId());
         return true;
     }
 
@@ -632,7 +639,7 @@ public class ExtractionCommand implements CommandExecutor {
 
         if (args.length < 2) {
             plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction admin <addhologram|sethologram|delhologram> {area} | packinfo"));
+                    .replace("usage", "/extraction admin {addhologram|sethologram|delhologram} {area} | packinfo | migratedb"));
             return true;
         }
 
@@ -643,15 +650,19 @@ public class ExtractionCommand implements CommandExecutor {
             return true;
         }
 
+        if (action.equals("migratedb") || action.equals("migrate-db")) {
+            return handleMigrateDb(sender);
+        }
+
         if (args.length < 3) {
             plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction admin <addhologram|sethologram|delhologram> {area}"));
+                    .replace("usage", "/extraction admin {addhologram|sethologram|delhologram} {area}"));
             return true;
         }
 
         if (!action.equals("addhologram") && !action.equals("sethologram") && !action.equals("delhologram")) {
             plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction admin <addhologram|sethologram|delhologram> {area} | packinfo"));
+                    .replace("usage", "/extraction admin {addhologram|sethologram|delhologram} {area} | packinfo | migratedb"));
             return true;
         }
 
@@ -680,6 +691,34 @@ public class ExtractionCommand implements CommandExecutor {
         Location location = action.equals("sethologram") ? player.getEyeLocation() : player.getLocation();
         plugin.getHologramManager().setPosition(area, location);
         plugin.sendMessage(sender, Messages.AREA_HOLOGRAM_SET.replace("area", area.getName()));
+        return true;
+    }
+
+    private boolean handleMigrateDb(CommandSender sender) {
+        if (!plugin.getDatabaseManager().isMysql()) {
+            plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_NOT_MYSQL.toString());
+            return true;
+        }
+
+        java.io.File sqlite = new java.io.File(plugin.getDataFolder(), "data/extraction.db");
+        if (!sqlite.isFile()) {
+            plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_NO_SQLITE.toString());
+            return true;
+        }
+
+        plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_STARTED.toString());
+
+        plugin.getDatabaseManager().executeAsync(() -> {
+            int imported = plugin.getPlayerDataManager().importFromSqlite(sqlite);
+
+            plugin.getDatabaseManager().executeSync(() -> {
+                if (imported < 0)
+                    plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_FAILED.toString());
+                else
+                    plugin.sendMessage(sender, Messages.ADMIN_MIGRATED.replace("count", String.valueOf(imported)));
+            });
+        });
+
         return true;
     }
 

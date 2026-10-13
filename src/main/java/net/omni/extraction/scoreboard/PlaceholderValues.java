@@ -70,7 +70,7 @@ public final class PlaceholderValues {
                 Area area = plugin.getAreaManager().getAreaAt(player.getLocation());
                 yield area != null ? area.getState().name() : "";
             }
-            case "party" -> plugin.getConfigUtil().getScoreboardPartyPlaceholder();
+            case "party" -> plugin.getPartyManager().getPartyPlaceholder(player.getUniqueId());
             case "ip" -> plugin.getConfigUtil().getScoreboardServerIp();
             case "clock" -> clockValue(plugin);
             default -> {

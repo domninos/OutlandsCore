@@ -328,7 +328,7 @@ public class AreaClearManager {
 
         int bonusRolls = killer != null
                 ? plugin.getRelicEffectManager().chestRollBonus(
-                        plugin.getPlayerDataManager().getOrLoadSync(killer.getUniqueId())) : 0;
+                        plugin.getPlayerDataManager().getLoaded(killer.getUniqueId())) : 0;
 
         int rolls = area.getItemsPerChest() > 0 ? area.getItemsPerChest()
                 : table.getItemsPerChest() > 0 ? table.getItemsPerChest()
@@ -433,7 +433,7 @@ public class AreaClearManager {
 
         int bonusRolls = killer != null
                 ? plugin.getRelicEffectManager().chestRollBonus(
-                        plugin.getPlayerDataManager().getOrLoadSync(killer.getUniqueId())) : 0;
+                        plugin.getPlayerDataManager().getLoaded(killer.getUniqueId())) : 0;
 
         for (int i = 0; i < Math.max(1, bonusRolls); i++) {
             for (AreaLootEntry entry : area.getLootEntries()) {
@@ -648,7 +648,7 @@ public class AreaClearManager {
             return new ArrayList<>();
 
         double chance = plugin.getRelicEffectManager().bonusDropChancePercent(
-                plugin.getPlayerDataManager().getOrLoadSync(killer.getUniqueId()), boss);
+                plugin.getPlayerDataManager().getLoaded(killer.getUniqueId()), boss);
 
         if (chance <= 0)
             return new ArrayList<>();

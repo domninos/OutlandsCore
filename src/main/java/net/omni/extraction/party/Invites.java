@@ -19,6 +19,9 @@ import java.util.logging.Level;
  * cross-server relay-out), looking up pending invites, clearing them, and the
  * relay-in ({@code handleRelay}). The {@code party_invite} table is the source
  * of truth; each {@link Invite} is a pending invite for one target name.
+ *
+ * <p>The database work runs on the off-thread worker; the notification/relay
+ * run on the main thread.</p>
  */
 class Invites {
 
@@ -33,64 +36,82 @@ class Invites {
     record Invite(UUID partyId, String inviterName, long expiresAt) {
     }
 
+    private enum CreateResult {OK, NOT_IN, LEADER_ONLY, ALREADY_IN, TARGET_IN_PARTY}
+
+    private record CreateOutcome(CreateResult result, UUID partyId, String targetDisplay) {
+    }
+
     void create(Player player, String targetName) {
-        Party party = partyManager.loadPartyOfPlayer(player.getUniqueId());
+        UUID uuid = player.getUniqueId();
+        String playerName = player.getName();
 
-        if (party == null) {
-            send(player, Messages.PARTY_NOT_IN);
-            return;
-        }
-
-        if (!party.isLeader(player.getUniqueId())) {
-            send(player, Messages.PARTY_LEADER_ONLY);
-            return;
-        }
-
+        // Resolve the online target on the main thread before touching the database.
         Player target = Bukkit.getPlayerExact(targetName);
+        UUID targetUuid = target != null ? target.getUniqueId() : null;
+        String targetDisplay = target != null ? target.getName() : targetName;
 
-        if (target != null && target.getUniqueId().equals(player.getUniqueId())) {
-            send(player, Messages.PARTY_ALREADY_IN);
-            return;
-        }
+        plugin.getDatabaseManager().supplyKeyed(uuid, () -> {
+            Party party = partyManager.loadPartyOfPlayer(uuid);
 
-        if (target != null && partyManager.loadPartyOfPlayer(target.getUniqueId()) != null) {
-            send(player, Messages.PARTY_TARGET_IN_PARTY.replace("player", target.getName()));
-            return;
-        }
+            if (party == null)
+                return new CreateOutcome(CreateResult.NOT_IN, null, null);
 
-        long expires = System.currentTimeMillis()
-                + Math.max(1, plugin.getConfigUtil().getPartyInviteExpireSeconds()) * 1000L;
+            if (!party.isLeader(uuid))
+                return new CreateOutcome(CreateResult.LEADER_ONLY, null, null);
 
-        DatabaseManager database = plugin.getDatabaseManager();
+            if (targetUuid != null && targetUuid.equals(uuid))
+                return new CreateOutcome(CreateResult.ALREADY_IN, null, null);
 
-        try (Connection conn = database.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "DELETE FROM " + database.table("party_invite") + " WHERE party_id = ? AND target = ?")) {
-                ps.setString(1, party.getId().toString());
-                ps.setString(2, targetName.toLowerCase());
-                ps.executeUpdate();
+            if (targetUuid != null && partyManager.loadPartyOfPlayer(targetUuid) != null)
+                return new CreateOutcome(CreateResult.TARGET_IN_PARTY, null, targetDisplay);
+
+            long expires = System.currentTimeMillis()
+                    + Math.max(1, plugin.getConfigUtil().getPartyInviteExpireSeconds()) * 1000L;
+
+            DatabaseManager database = plugin.getDatabaseManager();
+
+            try (Connection conn = database.getConnection()) {
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "DELETE FROM " + database.table("party_invite") + " WHERE party_id = ? AND target = ?")) {
+                    ps.setString(1, party.getId().toString());
+                    ps.setString(2, targetName.toLowerCase());
+                    ps.executeUpdate();
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "INSERT INTO " + database.table("party_invite")
+                                + " (party_id, target, inviter_uuid, inviter_name, expires_at) VALUES (?, ?, ?, ?, ?)")) {
+                    ps.setString(1, party.getId().toString());
+                    ps.setString(2, targetName.toLowerCase());
+                    ps.setString(3, uuid.toString());
+                    ps.setString(4, playerName);
+                    ps.setLong(5, expires);
+                    ps.executeUpdate();
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to invite " + targetName, e);
+                return null;
             }
 
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO " + database.table("party_invite")
-                            + " (party_id, target, inviter_uuid, inviter_name, expires_at) VALUES (?, ?, ?, ?, ?)")) {
-                ps.setString(1, party.getId().toString());
-                ps.setString(2, targetName.toLowerCase());
-                ps.setString(3, player.getUniqueId().toString());
-                ps.setString(4, player.getName());
-                ps.setLong(5, expires);
-                ps.executeUpdate();
+            return new CreateOutcome(CreateResult.OK, party.getId(), targetName.toLowerCase());
+        }).whenComplete((outcome, error) -> plugin.getDatabaseManager().mainExecutor().execute(() -> {
+            if (error != null || outcome == null)
+                return;
+
+            switch (outcome.result()) {
+                case NOT_IN -> send(player, Messages.PARTY_NOT_IN);
+                case LEADER_ONLY -> send(player, Messages.PARTY_LEADER_ONLY);
+                case ALREADY_IN -> send(player, Messages.PARTY_ALREADY_IN);
+                case TARGET_IN_PARTY -> send(player, Messages.PARTY_TARGET_IN_PARTY.replace("player", outcome.targetDisplay()));
+                case OK -> {
+                    if (target != null)
+                        send(target, Messages.PARTY_INVITE_RECEIVED.replace("player", playerName));
+
+                    relayInvite(player, outcome.targetDisplay(), playerName, outcome.partyId());
+                    send(player, Messages.PARTY_INVITE_SENT.replace("player", targetDisplay));
+                }
             }
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to invite " + targetName, e);
-            return;
-        }
-
-        if (target != null)
-            send(target, Messages.PARTY_INVITE_RECEIVED.replace("player", player.getName()));
-
-        relayInvite(player, targetName.toLowerCase(), player.getName(), party.getId());
-        send(player, Messages.PARTY_INVITE_SENT.replace("player", targetName));
+        }));
     }
 
     /** The newest pending invite for a (lowercased) player name, optionally from a specific inviter. */

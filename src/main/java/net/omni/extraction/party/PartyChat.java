@@ -24,6 +24,9 @@ import java.util.logging.Level;
  * are routed to the party instead of global chat. The state is persisted in
  * the {@code party_chat_toggle} table (cross-server) with a per-server cache
  * populated on join and discarded on quit.
+ *
+ * <p>All database access happens on the off-thread worker; cache mutations
+ * happen on the main thread.</p>
  */
 class PartyChat {
 
@@ -41,6 +44,22 @@ class PartyChat {
     // ------------------------------------------------------------------
 
     void load(UUID uuid) {
+        plugin.getDatabaseManager().supplyKeyed(uuid, () -> readEnabled(uuid))
+                .whenComplete((enabled, error) -> plugin.getDatabaseManager().mainExecutor().execute(() -> {
+                    if (error != null) {
+                        plugin.getLogger().log(Level.SEVERE, "Failed to load party chat mode for " + uuid, error);
+                        return;
+                    }
+
+                    // A player who quit before the read completed must not be re-cached.
+                    if (Bukkit.getPlayer(uuid) == null)
+                        return;
+
+                    chatEnabled.put(uuid, enabled);
+                }));
+    }
+
+    private boolean readEnabled(UUID uuid) {
         DatabaseManager database = plugin.getDatabaseManager();
         boolean enabled = false;
 
@@ -56,11 +75,15 @@ class PartyChat {
             plugin.getLogger().log(Level.SEVERE, "Failed to load party chat mode for " + uuid, e);
         }
 
-        chatEnabled.put(uuid, enabled);
+        return enabled;
     }
 
     void remove(UUID uuid) {
         chatEnabled.remove(uuid);
+    }
+
+    void clear() {
+        chatEnabled.clear();
     }
 
     boolean isEnabled(UUID uuid) {
@@ -69,7 +92,7 @@ class PartyChat {
 
     void setEnabled(UUID uuid, boolean enabled) {
         chatEnabled.put(uuid, enabled);
-        persist(uuid, enabled);
+        plugin.getDatabaseManager().runKeyed(uuid, () -> persist(uuid, enabled));
     }
 
     private void persist(UUID uuid, boolean enabled) {
@@ -90,13 +113,26 @@ class PartyChat {
     // ------------------------------------------------------------------
 
     void chat(Player player, String message) {
-        Party party = partyManager.loadPartyOfPlayer(player.getUniqueId());
+        UUID uuid = player.getUniqueId();
+        Party cached = partyManager.getParty(uuid);
 
-        if (party == null) {
-            send(player, Messages.PARTY_NOT_IN);
+        if (cached != null) {
+            deliver(player, cached, message);
             return;
         }
 
+        plugin.getDatabaseManager().supplyKeyed(uuid, () -> partyManager.loadPartyOfPlayer(uuid))
+                .whenComplete((party, error) -> plugin.getDatabaseManager().mainExecutor().execute(() -> {
+                    if (error != null || party == null) {
+                        send(player, Messages.PARTY_NOT_IN);
+                        return;
+                    }
+
+                    deliver(player, party, message);
+                }));
+    }
+
+    private void deliver(Player player, Party party, String message) {
         String line = plugin.getConfigUtil().getPartyChatFormat()
                 .replace("%player%", player.getName())
                 .replace("%message%", message);

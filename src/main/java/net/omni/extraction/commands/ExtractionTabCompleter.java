@@ -29,6 +29,7 @@ public class ExtractionTabCompleter implements TabCompleter {
             subcommands.add("loadout");
             subcommands.add("shop");
             subcommands.add("tokens");
+            subcommands.add("party");
 
             if (sender.hasPermission("extraction.admin")) {
                 subcommands.add("admin");
@@ -49,9 +50,15 @@ public class ExtractionTabCompleter implements TabCompleter {
         }
 
         if (args.length == 2) {
+            if (args[0].equalsIgnoreCase("party")) {
+                return StringUtil.copyPartialMatches(args[1],
+                        List.of("create", "invite", "join", "leave", "kick", "disband", "list", "info", "chat"),
+                        new ArrayList<>());
+            }
+
             if (args[0].equalsIgnoreCase("admin") && sender.hasPermission("extraction.admin")) {
                 return StringUtil.copyPartialMatches(args[1],
-                        List.of("addhologram", "sethologram", "delhologram", "packinfo"), new ArrayList<>());
+                        List.of("addhologram", "sethologram", "delhologram", "packinfo", "migratedb"), new ArrayList<>());
             }
 
             if (args[0].equalsIgnoreCase("events") && sender.hasPermission("extraction.admin")) {
@@ -68,6 +75,37 @@ public class ExtractionTabCompleter implements TabCompleter {
                 case "settokens", "givetokens", "giveupgrade", "forceextract" -> null;
                 default -> Collections.emptyList();
             };
+        }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("party")
+                && (args[1].equalsIgnoreCase("invite") || args[1].equalsIgnoreCase("info"))) {
+            List<String> playerNames = Bukkit.getOnlinePlayers().stream()
+                    .map(player -> player.getName())
+                    .toList();
+            return StringUtil.copyPartialMatches(args[2], playerNames, new ArrayList<>());
+        }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("party")
+                && args[1].equalsIgnoreCase("chat")) {
+            return StringUtil.copyPartialMatches(args[2], List.of("on", "off"), new ArrayList<>());
+        }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("party")
+                && (args[1].equalsIgnoreCase("kick") || args[1].equalsIgnoreCase("join"))) {
+            List<String> names = new ArrayList<>();
+
+            if (sender instanceof org.bukkit.entity.Player player) {
+                net.omni.extraction.party.Party party = plugin.getPartyManager().loadPartyOfPlayer(player.getUniqueId());
+
+                if (party != null)
+                    names.addAll(party.getMembers().values());
+            }
+
+            names.addAll(Bukkit.getOnlinePlayers().stream().map(org.bukkit.entity.Player::getName).toList());
+            return StringUtil.copyPartialMatches(args[2], names, new ArrayList<>());
         }
 
         if (args.length == 3

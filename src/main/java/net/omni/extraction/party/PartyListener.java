@@ -72,10 +72,11 @@ public class PartyListener implements Listener, PluginMessageListener {
 
         // Only intercept when the player has party chat mode enabled AND is in a party:
         // a toggled-on player outside any party must not have their chat swallowed.
+        // Cache-only on this asynchronous thread — never touch the database here.
         if (!partyManager.isPartyChatEnabled(player.getUniqueId()))
             return;
 
-        if (partyManager.loadPartyOfPlayer(player.getUniqueId()) == null)
+        if (partyManager.getParty(player.getUniqueId()) == null)
             return;
 
         String text = PlainTextComponentSerializer.plainText().serialize(event.message()).trim();
@@ -85,7 +86,7 @@ public class PartyListener implements Listener, PluginMessageListener {
 
         event.setCancelled(true);
 
-        // Delivery + relay (sendPluginMessage/DB) run on the main thread.
+        // Delivery + relay (sendPluginMessage) must run on the main thread.
         Bukkit.getScheduler().runTask(plugin, () -> partyManager.chat(player, text));
     }
 

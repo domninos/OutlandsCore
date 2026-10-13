@@ -33,6 +33,8 @@ import net.omni.extraction.messages.MessageUtil;
 import net.omni.extraction.mobs.MobResolver;
 import net.omni.extraction.mobs.MobTemplateManager;
 import net.omni.extraction.pack.PackManager;
+import net.omni.extraction.party.PartyListener;
+import net.omni.extraction.party.PartyManager;
 import net.omni.extraction.relics.RelicEffectManager;
 import net.omni.extraction.relics.RelicItemUtil;
 import net.omni.extraction.relics.RelicListener;
@@ -87,6 +89,8 @@ public final class ExtractionPlugin extends JavaPlugin {
     private RelicEffectManager relicEffectManager;
     private PackManager packManager;
     private WorldEventManager worldEventManager;
+    private PartyManager partyManager;
+    private PartyListener partyListener;
 
 
     /*
@@ -181,6 +185,11 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         stopSaveTask();
 
+        // Drain the async database worker before any main-thread shutdown writes
+        // (player-data saves become synchronous once disabled) so the SQLite
+        // writer can never be hit by the pool and the main thread at once.
+        databaseManager.drain();
+
         if (areaSelectionVisualizer != null)
             areaSelectionVisualizer.stop();
 
@@ -191,7 +200,6 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         areaClearManager.shutdown();
         runManager.shutdown();
-        playerDataManager.flush();
 
         if (worldEventManager != null)
             worldEventManager.shutdown();
@@ -203,6 +211,14 @@ public final class ExtractionPlugin extends JavaPlugin {
             areaEditorManager.clearAll();
 
         extractionManager.flush();
+
+        if (partyListener != null)
+            partyListener.shutdown();
+
+        if (partyManager != null)
+            partyManager.shutdown();
+
+        playerDataManager.flush();
 
         configUtil.flush();
         messagesManager.flush();
@@ -241,6 +257,7 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         this.databaseManager = new DatabaseManager(this);
         this.playerDataManager = new PlayerDataManager(this);
+        this.partyManager = new PartyManager(this);
         this.backpackManager = new BackpackManager(this);
         this.extractionManager = new ExtractionManager(this);
 
@@ -295,8 +312,19 @@ public final class ExtractionPlugin extends JavaPlugin {
         hologramManager.start();
         relicEffectManager.start();
         startSaveTask();
+        preloadOnlinePlayers();
 
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
+    }
+
+    /**
+     * Loads player data for everyone already online (e.g. after a plugin reload,
+     * where no {@code AsyncPlayerPreLoginEvent} fires), so cache-only lookups
+     * stay valid.
+     */
+    private void preloadOnlinePlayers() {
+        for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers())
+            playerDataManager.loadPlayer(player.getUniqueId(), null);
     }
 
     /** One-time move of legacy root-level relic files into {@code plugins/Extraction/relics/},
@@ -357,6 +385,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         new ScoreboardListener(this).register();
         new AreaEditorListener(this).register();
         new RelicListener(this).register();
+
+        this.partyListener = new PartyListener(this);
+        partyListener.register();
     }
 
     private void startSaveTask() {
@@ -507,5 +538,9 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public PackManager getPackManager() {
         return packManager;
+    }
+
+    public PartyManager getPartyManager() {
+        return partyManager;
     }
 }

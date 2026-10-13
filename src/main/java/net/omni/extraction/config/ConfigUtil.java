@@ -180,6 +180,22 @@ public class ConfigUtil {
     private List<String> loadoutCompassLore;
 
     private int autoSaveSeconds;
+    private int storageThreads = 3;
+    private String storageType = "sqlite";
+    private String mysqlHost = "localhost";
+    private int mysqlPort = 3306;
+    private String mysqlDatabase = "extraction";
+    private String mysqlUsername = "root";
+    private String mysqlPassword = "";
+    private String mysqlTablePrefix = "";
+    private boolean mysqlUseSsl;
+    private int mysqlPoolSize = 5;
+
+    private int partyMaxMembers = 6;
+    private int partyInviteExpireSeconds = 60;
+    private boolean partyCrossServer = true;
+    private boolean partyBroadcastJoinLeave = true;
+    private String partyChatFormat;
 
     private boolean scoreboardEnabled;
     private boolean scoreboardOnlyInWorld;
@@ -317,6 +333,23 @@ public class ConfigUtil {
         loadPack(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
+        this.storageThreads = getAndDefaultInt(ConfigKeys.STORAGE_THREADS, 3, savedDefaults);
+        this.storageType = getAndDefaultString(ConfigKeys.STORAGE_TYPE, "sqlite", savedDefaults);
+        this.mysqlHost = getAndDefaultString(ConfigKeys.STORAGE_MYSQL_HOST, "localhost", savedDefaults);
+        this.mysqlPort = getAndDefaultInt(ConfigKeys.STORAGE_MYSQL_PORT, 3306, savedDefaults);
+        this.mysqlDatabase = getAndDefaultString(ConfigKeys.STORAGE_MYSQL_DATABASE, "extraction", savedDefaults);
+        this.mysqlUsername = getAndDefaultString(ConfigKeys.STORAGE_MYSQL_USERNAME, "root", savedDefaults);
+        this.mysqlPassword = getAndDefaultString(ConfigKeys.STORAGE_MYSQL_PASSWORD, "", savedDefaults);
+        this.mysqlTablePrefix = getAndDefaultString(ConfigKeys.STORAGE_MYSQL_TABLE_PREFIX, "", savedDefaults);
+        this.mysqlUseSsl = getAndDefaultBoolean(ConfigKeys.STORAGE_MYSQL_USE_SSL, false, savedDefaults);
+        this.mysqlPoolSize = getAndDefaultInt(ConfigKeys.STORAGE_MYSQL_POOL_SIZE, 5, savedDefaults);
+
+        this.partyMaxMembers = getAndDefaultInt(ConfigKeys.PARTY_MAX_MEMBERS, 6, savedDefaults);
+        this.partyInviteExpireSeconds = getAndDefaultInt(ConfigKeys.PARTY_INVITE_EXPIRE_SECONDS, 60, savedDefaults);
+        this.partyCrossServer = getAndDefaultBoolean(ConfigKeys.PARTY_CROSS_SERVER, true, savedDefaults);
+        this.partyBroadcastJoinLeave = getAndDefaultBoolean(ConfigKeys.PARTY_BROADCAST_JOIN_LEAVE, true, savedDefaults);
+        this.partyChatFormat = getAndDefaultString(ConfigKeys.PARTY_CHAT_FORMAT,
+                "<gray>[Party]</gray> <white>%player%</white> <dark_gray>»</dark_gray> <white>%message%</white>", savedDefaults);
 
         configManager.saveDirty();
 
@@ -1608,6 +1641,70 @@ public class ConfigUtil {
 
     public int getAutoSaveSeconds() {
         return autoSaveSeconds;
+    }
+
+    public int getStorageThreads() {
+        return Math.max(1, storageThreads);
+    }
+
+    public boolean isMysqlStorage() {
+        return "mysql".equalsIgnoreCase(storageType);
+    }
+
+    public String getStorageType() {
+        return storageType;
+    }
+
+    public String getMysqlHost() {
+        return mysqlHost;
+    }
+
+    public int getMysqlPort() {
+        return mysqlPort;
+    }
+
+    public String getMysqlDatabase() {
+        return mysqlDatabase;
+    }
+
+    public String getMysqlUsername() {
+        return mysqlUsername;
+    }
+
+    public String getMysqlPassword() {
+        return mysqlPassword;
+    }
+
+    public String getMysqlTablePrefix() {
+        return mysqlTablePrefix;
+    }
+
+    public boolean isMysqlUseSsl() {
+        return mysqlUseSsl;
+    }
+
+    public int getMysqlPoolSize() {
+        return mysqlPoolSize;
+    }
+
+    public int getPartyMaxMembers() {
+        return partyMaxMembers;
+    }
+
+    public int getPartyInviteExpireSeconds() {
+        return partyInviteExpireSeconds;
+    }
+
+    public boolean isPartyCrossServer() {
+        return partyCrossServer;
+    }
+
+    public boolean isPartyBroadcastJoinLeave() {
+        return partyBroadcastJoinLeave;
+    }
+
+    public String getPartyChatFormat() {
+        return partyChatFormat;
     }
 
     public boolean isScoreboardEnabled() {

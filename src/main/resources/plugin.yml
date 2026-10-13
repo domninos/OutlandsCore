@@ -10,6 +10,10 @@ softdepend: [ PlaceholderAPI, ProtocolLib, MythicMobs, MMOItems, ItemEdit, Nexo,
 
 authors: [ domninos ]
 
+# Runtime-downloaded libraries (Paper). Only needed when storage.type = mysql.
+libraries:
+  - org.mariadb.jdbc:mariadb-java-client:3.4.1
+
 commands:
   extraction:
     description: Enter Extraction or manage the plugin
@@ -43,7 +47,11 @@ permissions:
       extraction.admin: true
       extraction.play: true
       extraction.areas: true
+      extraction.party: true
       extraction.bypass.cooldown: true
+  extraction.party:
+    description: Allows using the party system
+    default: true
   extraction.admin:
     description: Allows managing the Extraction plugin
     default: op

@@ -169,7 +169,7 @@ public class RelicManager {
         if (def == null)
             return;
 
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
 
         boolean alreadyKnown = def.isCharm()
                 ? data.ownsCharm(def.getId())
@@ -219,7 +219,7 @@ public class RelicManager {
             return;
 
         RelicDefinition def = definitions.get(slot);
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
 
         String equippedId = def.isCharm() ? data.getActiveCharm() : data.getActiveArtifact();
 
@@ -265,7 +265,7 @@ public class RelicManager {
      * Opens the selection GUI for a category ({@link #KIND_CHARM} / {@link #KIND_ARTIFACT}).
      */
     public void open(Player player, String category) {
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
         player.openInventory(RelicGUI.build(plugin, player, category, data));
     }
 }

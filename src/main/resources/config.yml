@@ -27,13 +27,32 @@ messages:
   # Shown before every plugin message in chat and in the console after startup.
   # Supports MiniMessage tags on Paper; falls back to legacy color codes on Spigot.
   # Set to "" (empty) to show messages without a prefix.
-  prefix: "<gradient:#2C2C2C:#555555:#AAAAAA>Extraction</gradient> <white>»</white> "
+  prefix: "<gradient:#2C2C2C:#555555:#AAAAAA>ᴇxᴛʀᴀᴄᴛɪᴏɴ</gradient> <white>»</white> "
 
 # Player data persistence
 storage:
   # How often (in seconds) dirty player data is flushed to the database.
   # Data is also saved on player quit and on shutdown.
   auto-save-seconds: 30
+  # Size of the dedicated off-thread worker pool that runs ALL database
+  # operations (loads, saves, party lookups). Never increases the Bukkit main
+  # thread's workload; raise it for busy MySQL servers.
+  threads: 3
+  # Backend: "sqlite" (default, single-server, no setup) or "mysql"
+  # (MariaDB/MySQL). Use "mysql" to share data across servers behind a proxy
+  # (required for cross-server parties).
+  type: sqlite
+  # MariaDB/MySQL connection, used when type = mysql.
+  mysql:
+    host: localhost
+    port: 3306
+    database: extraction
+    username: root
+    password: ""
+    # Optional prefix prepended to every table name.
+    table-prefix: ""
+    use-ssl: false
+    pool-size: 5
 
 # Extraction reward settings
 extraction:
@@ -134,7 +153,8 @@ scoreboard:
     - <white>  %extraction_ip%
   # Value of %extraction_area% when the player is not inside an area
   no-area-text: ᴡɪʟᴅᴇʀɴᴇꜱꜱ
-  # Value of %extraction_party% (party system is not implemented yet)
+  # Value of %extraction_party% when the player is not in a party
+  # (in a party it shows the leader's name).
   party-placeholder: ɴᴏɴᴇ
   # Value of %extraction_timer% when the player has no run and no cooldown
   idle-text: ɪᴅʟᴇ

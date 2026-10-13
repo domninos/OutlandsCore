@@ -135,6 +135,17 @@ public class PlayerListener implements Listener {
             data.setReturnLocation(null);
     }
 
+    @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR)
+    public void onPreLogin(AsyncPlayerPreLoginEvent event) {
+        if (event.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED)
+            return;
+
+        // Runs on the asynchronous login thread (never the main thread), so the
+        // blocking load is safe and guarantees the cache is warm before any
+        // gameplay path calls getLoaded(...).
+        plugin.getPlayerDataManager().loadPlayerBlocking(event.getUniqueId());
+    }
+
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
@@ -190,7 +201,7 @@ public class PlayerListener implements Listener {
             return;
 
         PlayerDataManager dataManager = plugin.getPlayerDataManager();
-        PlayerData data = dataManager.getOrLoadSync(player.getUniqueId());
+        PlayerData data = dataManager.getLoaded(player.getUniqueId());
 
         if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder) {
             plugin.getGuiManager().refreshUpgrade(player, data);
@@ -213,7 +224,7 @@ public class PlayerListener implements Listener {
     }
 
     private void reopenUpgrade(Player player) {
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
         plugin.getGuiManager().openUpgrade(player, data);
     }
 
@@ -278,7 +289,7 @@ public class PlayerListener implements Listener {
     private void handleUpgradeClick(Player player, InventoryClickEvent event) {
         PlayerDataManager dataManager = plugin.getPlayerDataManager();
         if (!dataManager.isLoaded(player.getUniqueId()))
-            dataManager.getOrLoadSync(player.getUniqueId());
+            dataManager.getLoaded(player.getUniqueId());
 
         LoadoutSlot slot = UpgradeGUI.getSlotFromClick(plugin, event.getRawSlot());
 
@@ -373,7 +384,7 @@ public class PlayerListener implements Listener {
 
         PlayerDataManager dataManager = plugin.getPlayerDataManager();
         if (!dataManager.isLoaded(player.getUniqueId()))
-            dataManager.getOrLoadSync(player.getUniqueId());
+            dataManager.getLoaded(player.getUniqueId());
 
         switch (event.getAction()) {
             case DROP_ALL_SLOT, DROP_ONE_SLOT, DROP_ALL_CURSOR, DROP_ONE_CURSOR, HOTBAR_SWAP -> {
@@ -467,7 +478,7 @@ public class PlayerListener implements Listener {
     }
 
     private void openUpgradeConfirm(Player player, LoadoutSlot slot) {
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
         UpgradeTier nextTier = plugin.getUpgradeManager().getNextTier(slot,
                 plugin.getLoadoutManager().getEffectiveTier(data, slot));
 
@@ -525,7 +536,7 @@ public class PlayerListener implements Listener {
         LoadoutSlot slot = holder.getSlot();
         UpgradeTier nextTier = holder.getNextTier();
 
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
 
         // Re-validate the purchase still applies to the next tier (the player's
         // tier may have changed while the confirm menu was open).
@@ -651,7 +662,7 @@ public class PlayerListener implements Listener {
     private void handleUpgradeDrag(Player player, InventoryDragEvent event) {
         PlayerDataManager dataManager = plugin.getPlayerDataManager();
         if (!dataManager.isLoaded(player.getUniqueId()))
-            dataManager.getOrLoadSync(player.getUniqueId());
+            dataManager.getLoaded(player.getUniqueId());
 
         for (int rawSlot : event.getRawSlots()) {
             LoadoutSlot slot = UpgradeGUI.getSlotFromClick(plugin, rawSlot);
@@ -676,7 +687,7 @@ public class PlayerListener implements Listener {
 
         PlayerDataManager dataManager = plugin.getPlayerDataManager();
         if (!dataManager.isLoaded(player.getUniqueId()))
-            dataManager.getOrLoadSync(player.getUniqueId());
+            dataManager.getLoaded(player.getUniqueId());
 
         for (int rawSlot : event.getRawSlots()) {
             if (rawSlot >= top.getSize()) {
@@ -743,10 +754,10 @@ public class PlayerListener implements Listener {
         }
 
         final int previousTier = plugin.getLoadoutManager().getEffectiveTier(
-                plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId()), slot);
+                plugin.getPlayerDataManager().getLoaded(player.getUniqueId()), slot);
 
         Bukkit.getScheduler().runTask(plugin, () -> {
-            PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+            PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
 
             if (!plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), tokenTier, data)) {
                 sendWrongTier(player, slot, data);
@@ -878,7 +889,7 @@ public class PlayerListener implements Listener {
             event.setCancelled(true);
 
             String relicId = RelicItemUtil.getId(item);
-            PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+            PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
 
             boolean equipped = relicId != null
                     && (relicId.equalsIgnoreCase(data.getActiveCharm())
@@ -925,7 +936,7 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        PlayerData data = plugin.getPlayerDataManager().getOrLoadSync(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
         data.addExtraTimeSeconds(minutes * 60);
         plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
         LootItemUtil.consumeOne(item);
