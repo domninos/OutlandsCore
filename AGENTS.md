@@ -127,9 +127,15 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   legacy on Spigot). `plugin.sendMessage()`/`sendConsole()` route through the renderer; startup console
   messages before config loads use `getLogger()`.
 - `commands/ExtractionCommand.java` (the `/extraction` command): enter / toggle-extract via RunManager,
-  help/about/reload/settokens/givetokens/giveupgrade/forceextract/setspawn/storage/tokens/loadout +
-  `admin` (wraps `admin addhologram/sethologram/delhologram {area}`).
-  `handleReload` re-applies the prefix after `configUtil.reloadConfig()`.
+   help/about/reload/settokens/givetokens/giveupgrade/forceextract/setspawn/setlobby/storage/tokens/loadout +
+   `admin` (wraps `admin addhologram/sethologram/delhologram {area}`).
+   `handleReload` re-applies the prefix after `configUtil.reloadConfig()`.
+   Two separate spawns: `settings.spawn` (extraction/outlands entry, set via `/extraction setspawn`, used by
+   `/extraction enter` + the convoy escape route) and `settings.lobby` (separate world — default `DeadSpawn` —
+   set via `/extraction setlobby`). On join, `PlayerListener.onPlayerJoin` teleports any player who is NOT
+   resuming a run (no `pendingReturn`/`returnLocation`, which `settings.return-on-disconnect` controls) to the
+   lobby: the configured `settings.lobby` point, else the lobby world's spawn, else (with a one-time warning)
+   the extraction world spawn. `ConfigUtil.loadLobby()`/`getLobbyLocation()`/`getLobbyWorldName()`.
 - `commands/AreaCommand.java` + `AreaTabCompleter.java`: `/areas` management (perm `extraction.areas`).
 - `commands/ExtractCommand.java`, `TokensCommand.java`, `UpgradeCommand.java`, `LoadoutCommand.java`.
 - `config/ConfigKeys.java`, `config/ConfigUtil.java`, `config/ConfigManager.java` (routes each config
@@ -286,13 +292,17 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   (system scope), `com.github.MilkBowl:VaultAPI:1.7.1` (provided).
 
 ## Completed
+- Separate lobby spawn: `settings.spawn` stays the extraction/outlands entry (unchanged, used by
+  `/extraction enter` + convoy), and new `settings.lobby` (world default `DeadSpawn`, `/extraction setlobby`)
+  is where any player who joins without an in-progress run is teleported (missing lobby world → warn + fall back).
 - Config-toggleable storage backend (`storage.type: sqlite` default / `mysql`) + `/extraction admin migratedb`
   one-time SQLite→MySQL row copy; MariaDB driver loaded via `plugin.yml` `libraries:`.
 - Cross-server party system (`/extraction party`): DB-backed (`party`/`party_member`), per-server
   cache, BungeeCord `extraction:party` relay for chat/invites, `party.yml` config, `extraction.party` permission,
   `%extraction_party%` returns the leader name.
 - Mob containment (AreaClearManager), MythicMob attribute copy, default loadout, `/upgrade` + `/tokens`
-  commands, periodic area state task, Extraction spawn (`/extraction setspawn`), configurable chat prefix
+  commands, periodic area state task, Extraction spawn (`/extraction setspawn`) + lobby spawn
+  (`/extraction setlobby`), configurable chat prefix
   (`messages.prefix` + reload hook).
 - Rename refactor Outlands → Extraction: package `net.omni.extraction`, main class `ExtractionPlugin`,
   `OutlandsCommand/TabCompleter/Config` → `Extraction*`, permissions → `extraction.*`, PAPI identifier +

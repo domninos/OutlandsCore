@@ -142,6 +142,7 @@ public enum Messages {
     ADMIN_GIVE_UPGRADE("admin.give-upgrade", "<green>Gave %token% to %player%.</green>"),
     ADMIN_FORCE_EXTRACT("admin.force-extract", "<green>Force extracted %player% from Extraction.</green>"),
     ADMIN_SET_SPAWN("admin.set-spawn", "<green>Set the Extraction entry spawn in <white>%world%</white>.</green>"),
+    ADMIN_SET_LOBBY("admin.set-lobby", "<green>Set the lobby spawn in <white>%world%</white>.</green>"),
     ADMIN_MIGRATE_NOT_MYSQL("admin.migrate-not-mysql", "<red>Storage is already SQLite — there is nothing to migrate to. Set <white>storage.type</white> to <white>mysql</white> and restart the server first.</red>"),
     ADMIN_STORAGE_RESTART_REQUIRED("admin.storage-restart-required", "<red>storage.type is set to <white>%type%</white>, but the running backend is <white>%active%</white>. A full server restart is required to switch databases — /extraction reload does not change the active backend.</red>"),
     ADMIN_STORAGE_FALLBACK_ACTIVE("admin.storage-fallback-active", "<red>Running on the SQLite fallback: MySQL/MariaDB was unavailable at startup, so player data is local-only and not shared across servers. Fix <white>storage.mysql</white> and restart the server.</red>"),
