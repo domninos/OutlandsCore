@@ -16,7 +16,6 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Spawns event mob groups and resolves the terrain/origin helpers they need
@@ -155,7 +154,13 @@ public class EventSpawner {
     }
 
     public Location pickOrigin(WorldEvent event) {
+        String worldName = ctx.plugin().getConfigUtil().getWorldName();
+
         for (EventSpawnLocation point : event.getSpawnLocations()) {
+            // Events must stay in the extraction world.
+            if (worldName != null && !worldName.isBlank() && !worldName.equalsIgnoreCase(point.world()))
+                continue;
+
             World world = Bukkit.getWorld(point.world());
             if (world == null)
                 continue;
@@ -165,12 +170,11 @@ public class EventSpawner {
 
         if (!event.getSpawnLocations().isEmpty()) {
             ctx.plugin().getLogger().warning("Event '" + event.getId()
-                    + "' spawn-locations are all in unloaded worlds — falling back to a random player origin.");
+                    + "' spawn-locations are all outside the extraction world or in unloaded worlds — "
+                    + "falling back to an extraction player origin.");
         }
 
-        List<Player> candidates = Bukkit.getOnlinePlayers().stream()
-                .filter(player -> player.getWorld() != null)
-                .collect(Collectors.toList());
+        List<Player> candidates = ctx.eligiblePlayers();
 
         if (candidates.isEmpty())
             return null;

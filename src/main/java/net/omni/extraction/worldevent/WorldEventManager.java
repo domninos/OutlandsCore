@@ -101,6 +101,11 @@ public class WorldEventManager {
         if (!enabled)
             return;
 
+        // Only start when at least one player is in the extraction world and has
+        // entered extraction (/extraction); otherwise the event would spawn off-world.
+        if (ctx.eligiblePlayers().isEmpty())
+            return;
+
         if (active.size() >= maxConcurrent)
             return;
 

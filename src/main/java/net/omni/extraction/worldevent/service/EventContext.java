@@ -10,7 +10,11 @@ import net.omni.extraction.worldevent.behavior.StormBehavior;
 import net.omni.extraction.worldevent.behavior.WaveBehavior;
 import net.omni.extraction.worldevent.config.EventSettings;
 import net.omni.extraction.worldevent.config.WorldEventsConfig;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -151,5 +155,32 @@ public class EventContext {
 
     public WaveBehavior waves() {
         return waves;
+    }
+
+    /**
+     * Online players who are in the extraction world AND have entered extraction
+     * (/extraction). World events only start near/for these players.
+     */
+    public List<Player> eligiblePlayers() {
+        String worldName = plugin.getConfigUtil().getWorldName();
+        if (worldName == null || worldName.isBlank())
+            return List.of();
+
+        List<Player> result = new ArrayList<>();
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getWorld() == null)
+                continue;
+
+            if (!worldName.equalsIgnoreCase(player.getWorld().getName()))
+                continue;
+
+            if (!plugin.getExtractionManager().isExtractionPlayer(player.getUniqueId()))
+                continue;
+
+            result.add(player);
+        }
+
+        return result;
     }
 }

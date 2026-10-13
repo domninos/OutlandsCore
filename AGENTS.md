@@ -612,7 +612,12 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
     resolving through the new config.yml `event-items:` section (like `keys:`; `ConfigKeys.EVENT_ITEMS`,
     `ConfigUtil.loadEventItemDefinitions`/`getEventItemDefinitions`, `LootItemUtil.createEventItem`).
     `WorldEventManager` (constructed in `ExtractionPlugin` after `lootTableManager`, getter `getWorldEventManager()`)
-    auto-schedules via a weighted handler at `check-seconds`, spawns through the shared `AreaMobFactory` with the
+    auto-schedules via a weighted handler at `check-seconds`, but only when at least one **eligible player** exists
+    (`EventContext.eligiblePlayers()` = online, in `settings.world-name`, and `isExtractionPlayer` i.e. has run
+    `/extraction`); `tryStartEvent` bails otherwise so an event can never spawn for players who aren't running
+    Extraction. `EventSpawner.pickOrigin` skips configured `spawn-locations` outside the extraction world and falls
+    back only to `eligiblePlayers()`, so origins (and thus mobs/chests) stay in the extraction world. It spawns
+    through the shared `AreaMobFactory` with the
     difficulty multiplier `1 + (level-1)*difficulty-step` on health/damage (event-boss drops = entry `drops` if set,
     else template drops), drives an Adventure boss bar, per-in-World-player compass targeting, and a DH waypoint
     (`HologramManager.updateWaypointHologram`, name `extraction_event_<id>`), and pays completion loot to every
