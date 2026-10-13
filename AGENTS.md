@@ -45,8 +45,20 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 
 ### Storage
 - `storage.type: sqlite` (default) uses the bundled SQLite file; `storage.type: mysql` uses MariaDB/MySQL
-  (`storage.mysql.*`: host/port/database/username/password/table-prefix/use-ssl/pool-size). Cross-server
-  features (parties) require `mysql` so the data is shared.
+  (`storage.mysql.*`: host/port/database/username/password/table-prefix/use-ssl/pool-size/fallback-to-sqlite).
+  Cross-server features (parties) require `mysql` so the data is shared. `use-ssl` defaults **true** and is
+  written to the JDBC URL as `sslMode=trust` (encrypt, accept self-signed certs, no hostname/CA verification) —
+  this avoids the MySQL 8 `caching_sha2_password` "RSA public key is not available" auth error without
+  `allowPublicKeyRetrieval`. `false` emits `sslMode=disable`.
+- **MySQL startup fallback:** `DatabaseManager` resolves the backend in `resolveDataSource(cfg)`. If mysql is
+  configured but the pool fails to initialize (server down, bad creds, TLS/auth errors) and
+  `storage.mysql.fallback-to-sqlite` is true (default), it logs a loud SEVERE warning and runs on the local
+  SQLite file (`Dialect.SQLITE`, empty prefix) instead of aborting `onEnable`; `isFallback()` then reports true
+  (`isConfiguredMysql()` still reflects the config). When the option is false the failure propagates (hard fail).
+  Caveat: data written during the outage is local-only and is **not** synced to MySQL — fix settings + restart.
+  `dialect`/`tablePrefix` are therefore mutable (not final) and `AsyncDatabase` is built *after* the dialect is
+  resolved (so SQLite gets the single-threaded worker). `/extraction reload` shows `admin.storage-fallback-active`
+  while the fallback is active (`admin.storage-restart-required` otherwise).
 - **All database access runs off the Bukkit main thread.** `data/AsyncDatabase` owns a dedicated, named,
   daemon worker pool (`storage.threads`, default 3) and a `CompletableFuture` API:
   `supplyAsync`/`runAsync`, per-key serialization `supplyKeyed`/`runKeyed` (a per-UUID chain so a
@@ -106,7 +118,8 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 - `commands/ExtractCommand.java`, `TokensCommand.java`, `UpgradeCommand.java`, `LoadoutCommand.java`.
 - `config/ConfigKeys.java`, `config/ConfigUtil.java`, `config/ConfigManager.java` (routes each config
   path to its owning split file), `config/ExtractionConfig.java` (generic per-file YAML IO).
-- `data/DatabaseManager.java` (SQLite `extraction.db` by default, or MariaDB/MySQL when `storage.type: mysql`),
+- `data/DatabaseManager.java` (SQLite `extraction.db` by default, or MariaDB/MySQL when `storage.type: mysql`;
+  `resolveDataSource(cfg)` picks the backend + may fall back to SQLite, `isFallback()`/`isConfiguredMysql()`),
   `data/PlayerData.java`, `data/PlayerDataManager.java` (return location + pre-run inventory snapshot persistence;
   `importFromSqlite(File)` backs `/extraction admin migratedb`), `data/AsyncDatabase.java` (the off-thread
   `CompletableFuture` worker: pool + per-key serialization + `mainExecutor` + `shutdown` drain).

@@ -51,8 +51,17 @@ storage:
     password: ""
     # Optional prefix prepended to every table name.
     table-prefix: ""
-    use-ssl: false
+    # Encrypt the connection with TLS. Strongly recommended: it avoids the
+    # MySQL 8 "RSA public key is not available" auth error (the password is
+    # sent over the encrypted channel instead). Uses sslMode=trust, which
+    # accepts self-signed server certificates (no hostname/CA verification).
+    use-ssl: true
     pool-size: 5
+    # If MySQL/MariaDB is unreachable when the server starts, run on the local
+    # SQLite file instead of disabling the plugin. Data written during the
+    # outage is LOCAL ONLY and is not synced back to MySQL — fix the mysql
+    # settings and restart to resume shared storage.
+    fallback-to-sqlite: true
 
 # Extraction reward settings
 extraction:

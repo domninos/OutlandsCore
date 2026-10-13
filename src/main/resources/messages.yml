@@ -150,6 +150,7 @@ admin:
   set-spawn: "<green>Set the Extraction entry spawn in <white>%world%</white>.</green>"
   migrate-not-mysql: "<red>Storage is already SQLite — there is nothing to migrate to. Set <white>storage.type</white> to <white>mysql</white> and restart the server first.</red>"
   storage-restart-required: "<red>storage.type is set to <white>%type%</white>, but the running backend is <white>%active%</white>. A full server restart is required to switch databases — /extraction reload does not change the active backend.</red>"
+  storage-fallback-active: "<red>Running on the SQLite fallback: MySQL/MariaDB was unavailable at startup, so player data is local-only and not shared across servers. Fix <white>storage.mysql</white> and restart the server.</red>"
   migrate-no-sqlite: "<red>No SQLite database found at <white>plugins/Extraction/data/extraction.db</white>.</red>"
   migrate-started: "<gray>Starting SQLite → MySQL migration...</gray>"
   migrated: "<green>Migrated <white>%count%</white> player row(s) to MySQL.</green>"

@@ -27,8 +27,10 @@ public class DatabaseManager {
     };
 
     private final ExtractionPlugin plugin;
-    private final Dialect dialect;
-    private final String tablePrefix;
+    private final boolean configuredMysql;
+    private Dialect dialect;
+    private String tablePrefix;
+    private boolean fellBack;
     private final AsyncDatabase asyncDatabase;
     private HikariDataSource dataSource;
 
@@ -36,11 +38,54 @@ public class DatabaseManager {
         this.plugin = plugin;
 
         ConfigUtil cfg = plugin.getConfigUtil();
-        this.dialect = cfg.isMysqlStorage() ? Dialect.MYSQL : Dialect.SQLITE;
-        this.tablePrefix = dialect == Dialect.MYSQL ? normalizePrefix(cfg.getMysqlTablePrefix()) : "";
+        this.configuredMysql = cfg.isMysqlStorage();
+        this.dataSource = resolveDataSource(cfg);
         this.asyncDatabase = new AsyncDatabase(plugin, cfg.getStorageThreads(), dialect == Dialect.SQLITE);
 
         initialize();
+    }
+
+    /**
+     * Resolves the active backend. When MySQL is configured but its pool cannot
+     * be initialized (server down, bad credentials, TLS/auth errors) and
+     * {@code storage.mysql.fallback-to-sqlite} is enabled, this falls back to the
+     * local SQLite file so the plugin still enables; otherwise the failure is
+     * propagated. Sets {@link #dialect}/{@link #tablePrefix} to the resolved backend.
+     */
+    private HikariDataSource resolveDataSource(ConfigUtil cfg) {
+        if (!configuredMysql) {
+            dialect = Dialect.SQLITE;
+            tablePrefix = "";
+            return buildSqlite();
+        }
+
+        try {
+            HikariDataSource mysql = buildMysql();
+            dialect = Dialect.MYSQL;
+            tablePrefix = normalizePrefix(cfg.getMysqlTablePrefix());
+            return mysql;
+        } catch (RuntimeException e) {
+            if (!cfg.isMysqlFallbackToSqlite())
+                throw e;
+
+            fellBack = true;
+            plugin.getLogger().severe("MySQL/MariaDB is unavailable — falling back to the local SQLite database.");
+            plugin.getLogger().severe("Data written now is LOCAL ONLY: it is NOT shared across servers and will not "
+                    + "be written to MySQL. Fix the storage.mysql settings and restart the server.");
+            dialect = Dialect.SQLITE;
+            tablePrefix = "";
+            return buildSqlite();
+        }
+    }
+
+    /** True when MySQL was configured but the plugin fell back to SQLite. */
+    public boolean isFallback() {
+        return fellBack;
+    }
+
+    /** True when {@code storage.type} is configured as mysql (regardless of fallback). */
+    public boolean isConfiguredMysql() {
+        return configuredMysql;
     }
 
     private String normalizePrefix(String prefix) {
@@ -111,8 +156,6 @@ public class DatabaseManager {
     }
 
     private void initialize() {
-        this.dataSource = dialect == Dialect.MYSQL ? buildMysql() : buildSqlite();
-
         try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
             createPlayerTable(stmt);
             createPartyTables(stmt);
@@ -148,7 +191,7 @@ public class DatabaseManager {
 
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl("jdbc:mariadb://" + cfg.getMysqlHost() + ":" + cfg.getMysqlPort()
-                + "/" + cfg.getMysqlDatabase() + "?useSSL=" + cfg.isMysqlUseSsl());
+                + "/" + cfg.getMysqlDatabase() + "?sslMode=" + (cfg.isMysqlUseSsl() ? "trust" : "disable"));
         config.setUsername(cfg.getMysqlUsername());
         config.setPassword(cfg.getMysqlPassword());
         config.setDriverClassName("org.mariadb.jdbc.Driver");

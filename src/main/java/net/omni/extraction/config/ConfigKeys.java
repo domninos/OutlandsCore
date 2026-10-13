@@ -112,6 +112,7 @@ public final class ConfigKeys {
     public static final String STORAGE_MYSQL_TABLE_PREFIX = "storage.mysql.table-prefix";
     public static final String STORAGE_MYSQL_USE_SSL = "storage.mysql.use-ssl";
     public static final String STORAGE_MYSQL_POOL_SIZE = "storage.mysql.pool-size";
+    public static final String STORAGE_MYSQL_FALLBACK_SQLITE = "storage.mysql.fallback-to-sqlite";
 
     public static final String PARTY = "party";
     public static final String PARTY_MAX_MEMBERS = "party.max-members";

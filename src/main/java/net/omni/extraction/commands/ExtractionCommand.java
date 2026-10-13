@@ -170,7 +170,9 @@ public class ExtractionCommand implements CommandExecutor {
 
         boolean configuredMysql = plugin.getConfigUtil().isMysqlStorage();
         boolean activeMysql = plugin.getDatabaseManager().isMysql();
-        if (configuredMysql != activeMysql)
+        if (plugin.getDatabaseManager().isFallback())
+            plugin.sendMessage(sender, Messages.ADMIN_STORAGE_FALLBACK_ACTIVE.toString());
+        else if (configuredMysql != activeMysql)
             plugin.sendMessage(sender, Messages.ADMIN_STORAGE_RESTART_REQUIRED.replace(
                     "type", configuredMysql ? "mysql" : "sqlite",
                     "active", activeMysql ? "mysql" : "sqlite"));

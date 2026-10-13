@@ -188,8 +188,9 @@ public class ConfigUtil {
     private String mysqlUsername = "root";
     private String mysqlPassword = "";
     private String mysqlTablePrefix = "";
-    private boolean mysqlUseSsl;
+    private boolean mysqlUseSsl = true;
     private int mysqlPoolSize = 5;
+    private boolean mysqlFallbackToSqlite = true;
 
     private int partyMaxMembers = 6;
     private int partyInviteExpireSeconds = 60;
@@ -341,8 +342,9 @@ public class ConfigUtil {
         this.mysqlUsername = getAndDefaultString(ConfigKeys.STORAGE_MYSQL_USERNAME, "root", savedDefaults);
         this.mysqlPassword = getAndDefaultString(ConfigKeys.STORAGE_MYSQL_PASSWORD, "", savedDefaults);
         this.mysqlTablePrefix = getAndDefaultString(ConfigKeys.STORAGE_MYSQL_TABLE_PREFIX, "", savedDefaults);
-        this.mysqlUseSsl = getAndDefaultBoolean(ConfigKeys.STORAGE_MYSQL_USE_SSL, false, savedDefaults);
+        this.mysqlUseSsl = getAndDefaultBoolean(ConfigKeys.STORAGE_MYSQL_USE_SSL, true, savedDefaults);
         this.mysqlPoolSize = getAndDefaultInt(ConfigKeys.STORAGE_MYSQL_POOL_SIZE, 5, savedDefaults);
+        this.mysqlFallbackToSqlite = getAndDefaultBoolean(ConfigKeys.STORAGE_MYSQL_FALLBACK_SQLITE, true, savedDefaults);
 
         this.partyMaxMembers = getAndDefaultInt(ConfigKeys.PARTY_MAX_MEMBERS, 6, savedDefaults);
         this.partyInviteExpireSeconds = getAndDefaultInt(ConfigKeys.PARTY_INVITE_EXPIRE_SECONDS, 60, savedDefaults);
@@ -1685,6 +1687,10 @@ public class ConfigUtil {
 
     public int getMysqlPoolSize() {
         return mysqlPoolSize;
+    }
+
+    public boolean isMysqlFallbackToSqlite() {
+        return mysqlFallbackToSqlite;
     }
 
     public int getPartyMaxMembers() {
