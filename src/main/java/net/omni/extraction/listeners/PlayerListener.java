@@ -51,6 +51,7 @@ public class PlayerListener implements Listener {
     private static final long DEATH_RESPAWN_DELAY_TICKS = 2L;
     private final ExtractionPlugin plugin;
     private final Map<UUID, Long> lastBlockBlocked = new HashMap<>();
+    private boolean lobbyWorldWarned;
 
     public PlayerListener(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -161,21 +162,40 @@ public class PlayerListener implements Listener {
             if (hasPendingReturn) {
                 plugin.getRunManager().restorePendingReturn(p);
             } else {
-                Location spawn = plugin.getConfigUtil().getSpawnLocation();
-                String worldName = plugin.getConfigUtil().getWorldName();
-                if (spawn == null || spawn.getWorld() == null) {
-                    World w = Bukkit.getWorld(worldName);
-                    if (w != null) spawn = w.getSpawnLocation();
-                } else if (!worldName.equalsIgnoreCase(spawn.getWorld().getName())) {
-                    World w = Bukkit.getWorld(worldName);
-                    if (w != null) spawn = w.getSpawnLocation();
-                }
-                if (spawn != null) {
-                    p.teleport(spawn);
-                }
+                Location lobby = resolveLobbyLocation();
+                if (lobby != null)
+                    p.teleport(lobby);
             }
             plugin.getRelicEffectManager().applyPassive(p);
         });
+    }
+
+    /**
+     * Resolves where a non-resuming joiner should spawn: the configured lobby
+     * point, else the lobby world's spawn. If the lobby world is not loaded the
+     * player is left where the server spawned them (never moved into the
+     * extraction world) and a one-time admin warning is logged.
+     */
+    private Location resolveLobbyLocation() {
+        Location lobby = plugin.getConfigUtil().getLobbyLocation();
+
+        if (lobby != null && lobby.getWorld() != null)
+            return lobby;
+
+        String lobbyWorldName = plugin.getConfigUtil().getLobbyWorldName();
+        World lobbyWorld = Bukkit.getWorld(lobbyWorldName);
+
+        if (lobbyWorld != null)
+            return lobbyWorld.getSpawnLocation();
+
+        if (!lobbyWorldWarned) {
+            lobbyWorldWarned = true;
+            plugin.getLogger().warning("Lobby world '" + lobbyWorldName
+                    + "' is not loaded — players will spawn wherever the server places them. "
+                    + "Load the world or set settings.lobby.world to a loaded world.");
+        }
+
+        return null;
     }
 
     @EventHandler

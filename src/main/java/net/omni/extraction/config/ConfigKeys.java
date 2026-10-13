@@ -13,6 +13,7 @@ public final class ConfigKeys {
     public static final String PVP_ENABLED = "settings.pvp-enabled";
     public static final String RETURN_ON_DISCONNECT = "settings.return-on-disconnect";
     public static final String SPAWN = "settings.spawn";
+    public static final String LOBBY = "settings.lobby";
 
     public static final String EXTRACT_BASE_TOKENS = "extraction.base-tokens";
     public static final String EXTRACT_PER_KILL = "extraction.per-kill";

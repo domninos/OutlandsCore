@@ -12,15 +12,27 @@ settings:
   # On their next login they are returned to the location they entered from,
   # their saved pre-run gear is restored, and loot/tokens are banked.
   return-on-disconnect: true
-  # Optional spawn location used when entering Extraction via /extraction.
+  # Extraction (outlands) entry spawn — where /extraction enter places players.
   # Set in-game with /extraction setspawn. Falls back to the world spawn if unset.
-  # spawn:
-  #   world: outlands
-  #   x: 0.5
-  #   y: 64.0
-  #   z: 0.5
-#   yaw: 0.0
-#   pitch: 0.0
+  spawn:
+    world: outlands
+    x: 0.5
+    y: 64.0
+    z: 0.5
+    yaw: 0.0
+    pitch: 0.0
+  # Lobby spawn — players who join without an in-progress run are teleported
+  # here. This is a separate world; the folder must already exist and be
+  # loaded on the server. Set the exact point in-game with /extraction setlobby.
+  # When no point is configured the lobby world's own spawn is used (never the
+  # extraction world).
+  lobby:
+    world: ExtractionSpawn
+    # x: 0.5
+    # y: 64.0
+    # z: 0.5
+    # yaw: 0.0
+    # pitch: 0.0
 
 # Chat prefix shown before plugin messages (configurable)
 messages:
@@ -45,17 +57,17 @@ storage:
   # operations (loads, saves, party lookups). Never increases the Bukkit main
   # thread's workload; raise it for busy MySQL servers.
   threads: 3
-  # Backend: "sqlite" (default, single-server, no setup) or "mysql"
+  # Backend: "sqlite" (single-server, no setup) or "mysql"
   # (MariaDB/MySQL). Use "mysql" to share data across servers behind a proxy
   # (required for cross-server parties).
-  type: sqlite
+  type: mysql
   # MariaDB/MySQL connection, used when type = mysql.
   mysql:
     host: localhost
     port: 3306
     database: extraction
     username: root
-    password: ""
+    password: "root"
     # Optional prefix prepended to every table name.
     table-prefix: ""
     # Encrypt the connection with TLS. Strongly recommended: it avoids the

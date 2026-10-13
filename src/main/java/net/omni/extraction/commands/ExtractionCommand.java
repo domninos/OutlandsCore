@@ -63,6 +63,7 @@ public class ExtractionCommand implements CommandExecutor {
             case "giveupgrade" -> handleGiveUpgrade(sender, args);
             case "forceextract" -> handleForceExtract(sender, args);
             case "setspawn" -> handleSetSpawn(sender);
+            case "setlobby" -> handleSetLobby(sender);
             case "artifacts" -> handleRelicAdmin(sender, args, RelicManager.KIND_ARTIFACT);
             case "charms" -> handleRelicAdmin(sender, args, RelicManager.KIND_CHARM);
             case "events" -> handleEvents(sender, args);
@@ -125,6 +126,7 @@ public class ExtractionCommand implements CommandExecutor {
             MessageUtil.append("extraction artifacts give/remove {id} {player}", "Grant or revoke an artifact (online or offline)", help);
             MessageUtil.append("extraction forceextract {player}", "Force extract a player", help);
             MessageUtil.append("extraction setspawn", "Set the Extraction entry spawn", help);
+            MessageUtil.append("extraction setlobby", "Set the lobby spawn (where joiners spawn)", help);
             MessageUtil.append("extraction admin addhologram {area}", "Place the area hologram at your feet", help);
             MessageUtil.append("extraction admin sethologram {area}", "Move the area hologram to your eye level", help);
             MessageUtil.append("extraction admin delhologram {area}", "Remove the area hologram", help);
@@ -380,6 +382,22 @@ public class ExtractionCommand implements CommandExecutor {
 
         plugin.getConfigUtil().setSpawnLocation(player.getLocation());
         plugin.sendMessage(sender, Messages.ADMIN_SET_SPAWN.replace("world", player.getWorld().getName()));
+        return true;
+    }
+
+    private boolean handleSetLobby(CommandSender sender) {
+        if (!sender.hasPermission("extraction.admin")) {
+            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
+            return true;
+        }
+
+        if (!(sender instanceof Player player)) {
+            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
+            return true;
+        }
+
+        plugin.getConfigUtil().setLobbyLocation(player.getLocation());
+        plugin.sendMessage(sender, Messages.ADMIN_SET_LOBBY.replace("world", player.getWorld().getName()));
         return true;
     }
 

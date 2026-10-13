@@ -40,6 +40,7 @@ public class ExtractionTabCompleter implements TabCompleter {
                 subcommands.add("giveupgrade");
                 subcommands.add("forceextract");
                 subcommands.add("setspawn");
+                subcommands.add("setlobby");
                 subcommands.add("artifacts");
                 subcommands.add("charms");
             }
