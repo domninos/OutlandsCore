@@ -1,0 +1,14 @@
+# Party system
+party:
+  # Maximum number of members in a single party (including the leader).
+  max-members: 6
+  # How long (in seconds) an invite stays valid before it expires.
+  invite-expire-seconds: 60
+  # Relay party chat and invites across servers behind a proxy
+  # (BungeeCord / Velocity). Requires storage.type: mysql so party data is
+  # shared. Set to false on a single-server setup to avoid proxy warnings.
+  cross-server: true
+  # Broadcast join/leave/kick messages to every online party member.
+  broadcast-join-leave: true
+  # Party chat line format. Placeholders: %player%, %message%.
+  chat-format: "<gray>[Party]</gray> <white>%player%</white> <dark_gray>»</dark_gray> <white>%message%</white>"
