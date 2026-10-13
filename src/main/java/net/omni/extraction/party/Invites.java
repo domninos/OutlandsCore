@@ -1,5 +1,7 @@
 package net.omni.extraction.party;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.data.DatabaseManager;
@@ -11,22 +13,33 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
 
 /**
  * Party invite lifecycle: sending (with the local notification and the
  * cross-server relay-out), looking up pending invites, clearing them, and the
- * relay-in ({@code handleRelay}). The {@code party_invite} table is the source
- * of truth; each {@link Invite} is a pending invite for one target name.
+ * relay-in ({@code handleRelay}).
+ *
+ * <p>Pending invites are stored as a JSON array in the {@code party.invites}
+ * column (each element {@code {target, inviterUuid, inviterName, expiresAt}}).
+ * The target is a lowercased player name so invites work across servers; the
+ * shared database is the source of truth. Looking up an invite for a player is
+ * therefore a scan of the {@code party} table (small in practice).</p>
  *
  * <p>The database work runs on the off-thread worker; the notification/relay
- * run on the main thread.</p>
+ * run on the main thread. Reads and read-modify-write mutations of the shared
+ * {@code invites} column are serialized through {@link #inviteLock} so two
+ * worker threads (the MySQL pool is multi-threaded) cannot clobber each
+ * other's column write.</p>
  */
 class Invites {
 
     private final ExtractionPlugin plugin;
     private final PartyManager partyManager;
+    private final Object inviteLock = new Object();
 
     Invites(ExtractionPlugin plugin, PartyManager partyManager) {
         this.plugin = plugin;
@@ -34,6 +47,10 @@ class Invites {
     }
 
     record Invite(UUID partyId, String inviterName, long expiresAt) {
+    }
+
+    /** One party row whose invites JSON changed and needs writing back. */
+    private record Pending(UUID partyId, String json) {
     }
 
     private enum CreateResult {OK, NOT_IN, LEADER_ONLY, ALREADY_IN, TARGET_IN_PARTY}
@@ -67,33 +84,30 @@ class Invites {
 
             long expires = System.currentTimeMillis()
                     + Math.max(1, plugin.getConfigUtil().getPartyInviteExpireSeconds()) * 1000L;
+            String targetKey = targetName.toLowerCase();
 
             DatabaseManager database = plugin.getDatabaseManager();
 
-            try (Connection conn = database.getConnection()) {
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "DELETE FROM " + database.table("party_invite") + " WHERE party_id = ? AND target = ?")) {
-                    ps.setString(1, party.getId().toString());
-                    ps.setString(2, targetName.toLowerCase());
-                    ps.executeUpdate();
-                }
+            synchronized (inviteLock) {
+                try (Connection conn = database.getConnection()) {
+                    JsonArray invites = readInvites(conn, party.getId());
+                    removeTarget(invites, targetKey);
 
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "INSERT INTO " + database.table("party_invite")
-                                + " (party_id, target, inviter_uuid, inviter_name, expires_at) VALUES (?, ?, ?, ?, ?)")) {
-                    ps.setString(1, party.getId().toString());
-                    ps.setString(2, targetName.toLowerCase());
-                    ps.setString(3, uuid.toString());
-                    ps.setString(4, playerName);
-                    ps.setLong(5, expires);
-                    ps.executeUpdate();
+                    JsonObject entry = new JsonObject();
+                    entry.addProperty("target", targetKey);
+                    entry.addProperty("inviterUuid", uuid.toString());
+                    entry.addProperty("inviterName", playerName);
+                    entry.addProperty("expiresAt", expires);
+                    invites.add(entry);
+
+                    writeInvites(conn, party.getId(), plugin.getGson().toJson(invites));
+                } catch (SQLException e) {
+                    plugin.getLogger().log(Level.SEVERE, "Failed to invite " + targetName, e);
+                    return null;
                 }
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "Failed to invite " + targetName, e);
-                return null;
             }
 
-            return new CreateOutcome(CreateResult.OK, party.getId(), targetName.toLowerCase());
+            return new CreateOutcome(CreateResult.OK, party.getId(), targetKey);
         }).whenComplete((outcome, error) -> plugin.getDatabaseManager().mainExecutor().execute(() -> {
             if (error != null || outcome == null)
                 return;
@@ -117,40 +131,72 @@ class Invites {
     /** The newest pending invite for a (lowercased) player name, optionally from a specific inviter. */
     Invite findFor(String playerName, String targetName) {
         DatabaseManager database = plugin.getDatabaseManager();
+        String target = playerName.toLowerCase();
+        Invite best = null;
 
-        try (Connection conn = database.getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "SELECT party_id, inviter_name, expires_at FROM " + database.table("party_invite")
-                             + " WHERE target = ? ORDER BY expires_at DESC")) {
-            ps.setString(1, playerName.toLowerCase());
-
-            try (ResultSet rs = ps.executeQuery()) {
+        synchronized (inviteLock) {
+            try (Connection conn = database.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(
+                         "SELECT id, invites FROM " + database.table("party"));
+                 ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    String inviter = rs.getString("inviter_name");
+                    UUID partyId = UUID.fromString(rs.getString("id"));
+                    JsonArray invites = parseInvites(rs.getString("invites"));
 
-                    if (targetName != null && !targetName.isBlank() && !inviter.equalsIgnoreCase(targetName))
-                        continue;
+                    for (JsonElement element : invites) {
+                        if (!element.isJsonObject())
+                            continue;
 
-                    return new Invite(UUID.fromString(rs.getString("party_id")), inviter, rs.getLong("expires_at"));
+                        JsonObject entry = element.getAsJsonObject();
+
+                        if (!entry.has("target") || !target.equalsIgnoreCase(entry.get("target").getAsString()))
+                            continue;
+
+                        String inviter = entry.has("inviterName") ? entry.get("inviterName").getAsString() : "";
+
+                        if (targetName != null && !targetName.isBlank() && !inviter.equalsIgnoreCase(targetName))
+                            continue;
+
+                        long expiresAt = entry.has("expiresAt") ? entry.get("expiresAt").getAsLong() : 0L;
+
+                        if (best == null || expiresAt > best.expiresAt())
+                            best = new Invite(partyId, inviter, expiresAt);
+                    }
                 }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to look up invites for " + playerName, e);
             }
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to look up invites for " + playerName, e);
         }
 
-        return null;
+        return best;
     }
 
     void deleteFor(String targetName) {
         DatabaseManager database = plugin.getDatabaseManager();
+        String target = targetName.toLowerCase();
 
-        try (Connection conn = database.getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "DELETE FROM " + database.table("party_invite") + " WHERE target = ?")) {
-            ps.setString(1, targetName.toLowerCase());
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to clear invites for " + targetName, e);
+        synchronized (inviteLock) {
+            try (Connection conn = database.getConnection()) {
+                List<Pending> pending = new ArrayList<>();
+
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT id, invites FROM " + database.table("party"));
+                     ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        JsonArray invites = parseInvites(rs.getString("invites"));
+
+                        if (!removeTarget(invites, target))
+                            continue;
+
+                        pending.add(new Pending(UUID.fromString(rs.getString("id")), plugin.getGson().toJson(invites)));
+                    }
+                }
+
+                for (Pending change : pending)
+                    writeInvites(conn, change.partyId(), change.json());
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to clear invites for " + targetName, e);
+            }
         }
     }
 
@@ -158,15 +204,73 @@ class Invites {
     void delete(Party party, String targetName) {
         DatabaseManager database = plugin.getDatabaseManager();
 
-        try (Connection conn = database.getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "DELETE FROM " + database.table("party_invite") + " WHERE party_id = ? AND target = ?")) {
-            ps.setString(1, party.getId().toString());
-            ps.setString(2, targetName.toLowerCase());
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to clear invite for " + targetName, e);
+        synchronized (inviteLock) {
+            try (Connection conn = database.getConnection()) {
+                JsonArray invites = readInvites(conn, party.getId());
+
+                if (removeTarget(invites, targetName.toLowerCase()))
+                    writeInvites(conn, party.getId(), plugin.getGson().toJson(invites));
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to clear invite for " + targetName, e);
+            }
         }
+    }
+
+    // ------------------------------------------------------------------
+    // JSON column helpers
+    // ------------------------------------------------------------------
+
+    private JsonArray readInvites(Connection conn, UUID partyId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT invites FROM " + plugin.getDatabaseManager().table("party") + " WHERE id = ?")) {
+            ps.setString(1, partyId.toString());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next())
+                    return new JsonArray();
+
+                return parseInvites(rs.getString("invites"));
+            }
+        }
+    }
+
+    private void writeInvites(Connection conn, UUID partyId, String json) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE " + plugin.getDatabaseManager().table("party") + " SET invites = ? WHERE id = ?")) {
+            ps.setString(1, json);
+            ps.setString(2, partyId.toString());
+            ps.executeUpdate();
+        }
+    }
+
+    private JsonArray parseInvites(String json) {
+        if (json == null || json.isBlank())
+            return new JsonArray();
+
+        try {
+            JsonArray array = plugin.getGson().fromJson(json, JsonArray.class);
+            return array == null ? new JsonArray() : array;
+        } catch (RuntimeException e) {
+            return new JsonArray();
+        }
+    }
+
+    /** Removes every entry whose {@code target} equals {@code target} (lowercased); true if any removed. */
+    private boolean removeTarget(JsonArray invites, String target) {
+        boolean removed = false;
+
+        for (int i = invites.size() - 1; i >= 0; i--) {
+            JsonElement element = invites.get(i);
+
+            if (element.isJsonObject()
+                    && element.getAsJsonObject().has("target")
+                    && target.equalsIgnoreCase(element.getAsJsonObject().get("target").getAsString())) {
+                invites.remove(i);
+                removed = true;
+            }
+        }
+
+        return removed;
     }
 
     private void relayInvite(Player carrier, String targetName, String inviterName, UUID partyId) {

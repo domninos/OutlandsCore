@@ -70,8 +70,13 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   close the Hikari datasource).
 - `data/DatabaseManager` is dialect-aware (`Dialect.SQLITE`/`MYSQL`, `isMysql()`, `table(name)` applies the
   optional MySQL table prefix, `playerUpsertSql()` returns `INSERT OR REPLACE` on SQLite / `INSERT … ON
-  DUPLICATE KEY UPDATE` on MySQL). It creates `player_data` plus the party tables (`party`, `party_member`,
-  `party_invite`, `party_chat_toggle`). The legacy SQLite `ALTER` migrations are skipped on MySQL.
+  DUPLICATE KEY UPDATE` on MySQL). It creates `player_data` plus the party tables (`party`, `party_member`)
+  — exactly three tables. `party` holds `invites` (a JSON array column of
+  `{target, inviterUuid, inviterName, expiresAt}`; nullable/`TEXT` on MySQL, `TEXT NOT NULL DEFAULT '[]'`
+  on SQLite); `party_member` holds `chat_enabled` (`TINYINT NOT NULL DEFAULT 0`). The legacy
+  `party_invite`/`party_chat_toggle` tables are dropped on startup (`dropTableIfExists`); `ensureColumn`
+  (SQLite `PRAGMA table_info` / MySQL `INFORMATION_SCHEMA.COLUMNS`) back-fills `party.invites` +
+  `party_member.chat_enabled` on pre-existing tables. The legacy SQLite `ALTER` migrations are skipped on MySQL.
   Index creation (`createIndexIfAbsent`) is dialect-aware: SQLite uses `CREATE INDEX IF NOT EXISTS`; MySQL
   checks `INFORMATION_SCHEMA.STATISTICS` first (MySQL lacks `IF NOT EXISTS` on `CREATE INDEX`, which errors
   1064 and logs a driver WARN) and back-fills missing indexes on existing tables.
@@ -144,16 +149,17 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   (`writePlayerToDb` direct) instead of `runKeyed` — the worker only accepts new tasks while the plugin is
   enabled, and `ExtractionPlugin.onDisable` drains the worker before this point.
 - `party/Party.java` (roster: id, leader, ordered members), `party/PartyManager.java`: DB-backed
-  cross-server party system (`/extraction party`), built after the data managers. Roster/invites live in the
-  `party`/`party_member`/`party_invite` tables (invites keyed by lowercased target *name* so they work across
-  servers); a per-server cache (`membershipByPlayer`/`partiesById`) backs cheap lookups and
+  cross-server party system (`/extraction party`), built after the data managers. Roster lives in the
+  `party`/`party_member` tables and pending invites are a JSON array in `party.invites` (keyed by lowercased
+  target *name* so they work across servers); a per-server cache (`membershipByPlayer`/`partiesById`) backs
+  cheap lookups and
   `%extraction_party%` (leader name; `PlaceholderValues`). Public ops: `create/invite/join/leave/kick/disband/
   list/info/chat`. Chat and invite logic are split out: `party/PartyChat.java` owns `chat` + the per-player
-  **party chat mode** (toggled via `/extraction party chat on|off`, persisted in the `party_chat_toggle`
-  table so it works across servers) + the relay-out/in for `chat`; `party/Invites.java` owns the invite
-  lifecycle (sending, `findFor`/`deleteFor`, the `Invite` record) + the relay-out/in for `invite`. The
-  `party_chat_toggle` table is created by `DatabaseManager.createPartyTables` on both dialects, upserted via
-  `DatabaseManager.partyToggleUpsertSql()`; `PartyChat` caches the flag (loaded on join, removed on quit,
+  **party chat mode** (toggled via `/extraction party chat on|off`, persisted in `party_member.chat_enabled`
+  so it works across servers, scoped to the player's current membership — it resets to OFF when they leave,
+  are kicked, or the party disbands) + the relay-out/in for `chat`; `party/Invites.java` owns the invite
+  lifecycle (sending, `findFor`/`deleteFor`, the `Invite` record, read-modify-write of the `party.invites`
+  JSON column) + the relay-out/in for `invite`. `PartyChat` caches the flag (loaded on join, removed on quit,
   default OFF) and `PartyManager` exposes `setPartyChatMode`/`isPartyChatEnabled`. When enabled, the
   `PartyListener` `AsyncChatEvent` handler cancels the player's normal chat and routes it to the party
   (only while they are in a party — a toggled-on player outside a party keeps global chat; delivery is
@@ -169,8 +175,10 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   **Threading:** every `PartyManager`/`PartyChat`/`Invites` DB operation runs on `DatabaseManager.supplyKeyed/
   runKeyed` (keyed by player UUID); player names/UUIDs/online targets are captured on the main thread before
   the async work, and cache indexing, chat delivery, and the BungeeCord relay run in a `mainExecutor()`
-  continuation. `loadPlayer` guards against duplicate in-flight loads (`loading` set) and against a late
-  completion resurrecting a quit player (checks `Bukkit.getPlayer`); `asyncChat` reads the cache only.
+  continuation. `Invites` serializes its read-modify-write of the shared `party.invites` column through a
+  single in-process lock (a nested `supplyKeyed` would deadlock the single-threaded SQLite pool). `loadPlayer`
+  guards against duplicate in-flight loads (`loading` set) and against a late completion resurrecting a quit
+  player (checks `Bukkit.getPlayer`); `asyncChat` reads the cache only.
 - `event/PlayerEnterAreaEvent.java`, `event/PlayerLeaveAreaEvent.java`: non-cancellable custom Bukkit events
   (`org.bukkit.event.Event`) fired by `AreaManager` on area enter/leave transitions (incl. on quit).
 - `gameplay/RunManager.java`: enterRun / extractPlayer / handleDeath / handleDisconnect / shutdown /
@@ -272,7 +280,7 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 ## Completed
 - Config-toggleable storage backend (`storage.type: sqlite` default / `mysql`) + `/extraction admin migratedb`
   one-time SQLite→MySQL row copy; MariaDB driver loaded via `plugin.yml` `libraries:`.
-- Cross-server party system (`/extraction party`): DB-backed (`party`/`party_member`/`party_invite`), per-server
+- Cross-server party system (`/extraction party`): DB-backed (`party`/`party_member`), per-server
   cache, BungeeCord `extraction:party` relay for chat/invites, `party.yml` config, `extraction.party` permission,
   `%extraction_party%` returns the leader name.
 - Mob containment (AreaClearManager), MythicMob attribute copy, default loadout, `/upgrade` + `/tokens`

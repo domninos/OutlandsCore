@@ -1,6 +1,7 @@
 package net.omni.extraction.data;
 
 import net.omni.extraction.ExtractionPlugin;
+import org.jspecify.annotations.NonNull;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -46,7 +47,7 @@ public final class AsyncDatabase {
             private final AtomicInteger counter = new AtomicInteger();
 
             @Override
-            public Thread newThread(Runnable runnable) {
+            public Thread newThread(@NonNull Runnable runnable) {
                 Thread thread = new Thread(runnable, "Extraction-DB-" + counter.incrementAndGet());
                 thread.setDaemon(true);
                 return thread;

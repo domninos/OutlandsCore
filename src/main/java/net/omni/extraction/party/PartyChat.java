@@ -22,8 +22,9 @@ import java.util.logging.Level;
  * ({@code relayChat}) and the relay-in ({@code handleRelay}). Also owns the
  * per-player party chat mode — when enabled a player's normal chat messages
  * are routed to the party instead of global chat. The state is persisted in
- * the {@code party_chat_toggle} table (cross-server) with a per-server cache
- * populated on join and discarded on quit.
+ * the {@code party_member.chat_enabled} column (cross-server, scoped to the
+ * player's current party membership) with a per-server cache populated on join
+ * and discarded on quit.
  *
  * <p>All database access happens on the off-thread worker; cache mutations
  * happen on the main thread.</p>
@@ -65,11 +66,11 @@ class PartyChat {
 
         try (Connection conn = database.getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                     "SELECT enabled FROM " + database.table("party_chat_toggle") + " WHERE uuid = ?")) {
+                     "SELECT chat_enabled FROM " + database.table("party_member") + " WHERE uuid = ? LIMIT 1")) {
             ps.setString(1, uuid.toString());
 
             try (ResultSet rs = ps.executeQuery()) {
-                enabled = rs.next() && rs.getBoolean("enabled");
+                enabled = rs.next() && rs.getBoolean("chat_enabled");
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to load party chat mode for " + uuid, e);
@@ -99,9 +100,10 @@ class PartyChat {
         DatabaseManager database = plugin.getDatabaseManager();
 
         try (Connection conn = database.getConnection();
-             PreparedStatement ps = conn.prepareStatement(database.partyToggleUpsertSql())) {
-            ps.setString(1, uuid.toString());
-            ps.setBoolean(2, enabled);
+             PreparedStatement ps = conn.prepareStatement(
+                     "UPDATE " + database.table("party_member") + " SET chat_enabled = ? WHERE uuid = ?")) {
+            ps.setBoolean(1, enabled);
+            ps.setString(2, uuid.toString());
             ps.executeUpdate();
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save party chat mode for " + uuid, e);

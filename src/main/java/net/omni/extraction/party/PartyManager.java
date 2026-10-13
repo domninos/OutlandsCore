@@ -707,12 +707,7 @@ public class PartyManager {
             ps.executeUpdate();
         }
 
-        try (PreparedStatement ps = conn.prepareStatement(
-                "DELETE FROM " + database.table("party_invite") + " WHERE party_id = ?")) {
-            ps.setString(1, id.toString());
-            ps.executeUpdate();
-        }
-
+        // Pending invites live in party.invites and are removed with the row.
         try (PreparedStatement ps = conn.prepareStatement(
                 "DELETE FROM " + database.table("party") + " WHERE id = ?")) {
             ps.setString(1, id.toString());

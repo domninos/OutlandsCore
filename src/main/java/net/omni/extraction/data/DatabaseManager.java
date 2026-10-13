@@ -147,18 +147,6 @@ public class DatabaseManager {
         return "INSERT OR REPLACE INTO " + playerDataTable() + " (" + columns + ") VALUES (" + values + ")";
     }
 
-    /** Upsert statement for the per-player party chat toggle, built for the active dialect. */
-    public String partyToggleUpsertSql() {
-        String tableName = table("party_chat_toggle");
-
-        if (dialect == Dialect.MYSQL) {
-            return "INSERT INTO " + tableName + " (uuid, enabled) VALUES (?, ?) "
-                    + "ON DUPLICATE KEY UPDATE enabled = VALUES(enabled)";
-        }
-
-        return "INSERT OR REPLACE INTO " + tableName + " (uuid, enabled) VALUES (?, ?)";
-    }
-
     private void initialize() {
         try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
             createPlayerTable(stmt);
@@ -384,7 +372,8 @@ public class DatabaseManager {
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " + table("party") + " ("
                 + "id VARCHAR(36) PRIMARY KEY, "
                 + "leader VARCHAR(36) NOT NULL, "
-                + "created_at BIGINT NOT NULL)"
+                + "created_at BIGINT NOT NULL, "
+                + "invites " + invitesColumnDef() + ")"
                 + tableSuffix());
 
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " + table("party_member") + " ("
@@ -392,25 +381,75 @@ public class DatabaseManager {
                 + "uuid VARCHAR(36) NOT NULL, "
                 + "name VARCHAR(16) NOT NULL, "
                 + "joined_at BIGINT NOT NULL, "
+                + "chat_enabled TINYINT NOT NULL DEFAULT 0, "
                 + "PRIMARY KEY (party_id, uuid))"
                 + tableSuffix());
 
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " + table("party_invite") + " ("
-                + "party_id VARCHAR(36) NOT NULL, "
-                + "target VARCHAR(16) NOT NULL, "
-                + "inviter_uuid VARCHAR(36) NOT NULL, "
-                + "inviter_name VARCHAR(16) NOT NULL, "
-                + "expires_at BIGINT NOT NULL, "
-                + "PRIMARY KEY (party_id, target))"
-                + tableSuffix());
+        // Back-fill the columns on pre-existing tables (CREATE IF NOT EXISTS is a no-op then).
+        ensureColumn(stmt, table("party"), "invites", invitesColumnDef());
+        ensureColumn(stmt, table("party_member"), "chat_enabled", "TINYINT NOT NULL DEFAULT 0");
 
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " + table("party_chat_toggle") + " ("
-                + "uuid VARCHAR(36) PRIMARY KEY, "
-                + "enabled TINYINT NOT NULL)"
-                + tableSuffix());
+        // Consolidated away: the per-player chat toggle now lives on party_member.chat_enabled
+        // and pending invites are a JSON column on party.invites. Drop the legacy tables.
+        dropTableIfExists(stmt, "party_invite");
+        dropTableIfExists(stmt, "party_chat_toggle");
 
         createIndexIfAbsent(stmt, table("party_member"), "idx_party_member_uuid", "uuid");
-        createIndexIfAbsent(stmt, table("party_invite"), "idx_party_invite_target", "target");
+    }
+
+    /**
+     * Definition of the {@code party.invites} JSON column. MySQL/MariaDB forbid a literal
+     * default on a {@code TEXT}/{@code BLOB} column, so it is nullable there (a {@code null}
+     * value is read as an empty list); SQLite gets an explicit empty-array default.
+     */
+    private String invitesColumnDef() {
+        return dialect == Dialect.MYSQL ? "TEXT" : "TEXT NOT NULL DEFAULT '[]'";
+    }
+
+    /** Adds {@code columnName} to {@code tableName} when absent, dialect-aware; never aborts startup. */
+    private void ensureColumn(Statement stmt, String tableName, String columnName, String columnDef) {
+        try {
+            boolean present;
+
+            if (dialect == Dialect.MYSQL) {
+                try (PreparedStatement ps = stmt.getConnection().prepareStatement(
+                        "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS "
+                                + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?")) {
+                    ps.setString(1, tableName);
+                    ps.setString(2, columnName);
+
+                    try (ResultSet rs = ps.executeQuery()) {
+                        present = rs.next();
+                    }
+                }
+            } else {
+                present = false;
+
+                try (ResultSet rs = stmt.executeQuery("PRAGMA table_info(" + tableName + ")")) {
+                    while (rs.next()) {
+                        if (columnName.equalsIgnoreCase(rs.getString("name"))) {
+                            present = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (present)
+                return;
+
+            stmt.executeUpdate("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDef);
+        } catch (SQLException e) {
+            plugin.getLogger().warning("Could not ensure column " + columnName + " on " + tableName + ": " + e.getMessage());
+        }
+    }
+
+    private void dropTableIfExists(Statement stmt, String tableName) {
+        try {
+            stmt.executeUpdate("DROP TABLE IF EXISTS " + table(tableName));
+        } catch (SQLException e) {
+            plugin.getLogger().warning("Could not drop legacy party table " + tableName + ": " + e.getMessage());
+        }
     }
 
     /**
