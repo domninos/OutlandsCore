@@ -7,6 +7,9 @@ import net.omni.extraction.config.ConfigUtil;
 
 import java.io.File;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.CompletableFuture;
@@ -60,6 +63,7 @@ public class DatabaseManager {
         }
 
         try {
+            ensureMysqlDatabase(cfg);
             HikariDataSource mysql = buildMysql();
             dialect = Dialect.MYSQL;
             tablePrefix = normalizePrefix(cfg.getMysqlTablePrefix());
@@ -211,6 +215,62 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * Best-effort: verifies the configured MySQL/MariaDB schema exists and, if
+     * not, creates it with a utf8mb4 charset. Connects without a default schema
+     * so the check works even when the database has never been created, then
+     * queries {@code INFORMATION_SCHEMA.SCHEMATA} (which needs no {@code CREATE}
+     * privilege for an existing database). Any failure is logged and swallowed —
+     * the subsequent pool attempt (and its SQLite fallback) decides the outcome,
+     * so a server that is merely unreachable here does not abort startup early.
+     */
+    private void ensureMysqlDatabase(ConfigUtil cfg) {
+        String database = cfg.getMysqlDatabase();
+        if (database == null || database.isBlank())
+            return;
+
+        try {
+            Class.forName("org.mariadb.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            plugin.getLogger().warning("MariaDB driver not available — skipping database existence check.");
+            return;
+        }
+
+        String url = "jdbc:mariadb://" + cfg.getMysqlHost() + ":" + cfg.getMysqlPort()
+                + "/?sslMode=" + (cfg.isMysqlUseSsl() ? "trust" : "disable") + "&connectTimeout=5000";
+
+        try (Connection conn = DriverManager.getConnection(url, cfg.getMysqlUsername(), cfg.getMysqlPassword())) {
+            boolean exists;
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?")) {
+                ps.setString(1, database);
+                try (ResultSet rs = ps.executeQuery()) {
+                    exists = rs.next();
+                }
+            }
+
+            if (!exists) {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.executeUpdate("CREATE DATABASE " + quoteIdentifier(database)
+                            + " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                }
+                plugin.getLogger().info("Created MySQL database '" + database + "'.");
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().warning("Could not verify/create MySQL database '" + database + "': " + e.getMessage());
+        }
+    }
+
+    /** Wraps a MySQL identifier in backticks, escaping embedded backticks. */
+    private String quoteIdentifier(String name) {
+        return "`" + name.replace("`", "``") + "`";
+    }
+
+    /** Charset clause appended to MySQL {@code CREATE TABLE}s; empty on SQLite. */
+    private String tableSuffix() {
+        return dialect == Dialect.MYSQL ? " DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" : "";
+    }
+
     private void createPlayerTable(Statement stmt) throws SQLException {
         if (dialect == Dialect.MYSQL) {
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " + playerDataTable() + " ("
@@ -231,7 +291,8 @@ public class DatabaseManager {
                     + "owned_charms LONGTEXT, "
                     + "owned_artifacts LONGTEXT, "
                     + "active_charm VARCHAR(255) DEFAULT '', "
-                    + "active_artifact VARCHAR(255) DEFAULT '')");
+                    + "active_artifact VARCHAR(255) DEFAULT '')"
+                    + tableSuffix());
             return;
         }
 
@@ -323,14 +384,16 @@ public class DatabaseManager {
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " + table("party") + " ("
                 + "id VARCHAR(36) PRIMARY KEY, "
                 + "leader VARCHAR(36) NOT NULL, "
-                + "created_at BIGINT NOT NULL)");
+                + "created_at BIGINT NOT NULL)"
+                + tableSuffix());
 
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " + table("party_member") + " ("
                 + "party_id VARCHAR(36) NOT NULL, "
                 + "uuid VARCHAR(36) NOT NULL, "
                 + "name VARCHAR(16) NOT NULL, "
                 + "joined_at BIGINT NOT NULL, "
-                + "PRIMARY KEY (party_id, uuid))");
+                + "PRIMARY KEY (party_id, uuid))"
+                + tableSuffix());
 
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " + table("party_invite") + " ("
                 + "party_id VARCHAR(36) NOT NULL, "
@@ -338,21 +401,48 @@ public class DatabaseManager {
                 + "inviter_uuid VARCHAR(36) NOT NULL, "
                 + "inviter_name VARCHAR(16) NOT NULL, "
                 + "expires_at BIGINT NOT NULL, "
-                + "PRIMARY KEY (party_id, target))");
+                + "PRIMARY KEY (party_id, target))"
+                + tableSuffix());
 
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " + table("party_chat_toggle") + " ("
                 + "uuid VARCHAR(36) PRIMARY KEY, "
-                + "enabled TINYINT NOT NULL)");
+                + "enabled TINYINT NOT NULL)"
+                + tableSuffix());
 
+        createIndexIfAbsent(stmt, table("party_member"), "idx_party_member_uuid", "uuid");
+        createIndexIfAbsent(stmt, table("party_invite"), "idx_party_invite_target", "target");
+    }
+
+    /**
+     * Creates an index if it does not already exist, dialect-aware: SQLite supports
+     * {@code CREATE INDEX IF NOT EXISTS}, while MySQL/MariaDB do not (they return a
+     * 1064 syntax error). On MySQL the existence is checked via
+     * {@code INFORMATION_SCHEMA.STATISTICS} first, so no failing statement (and no
+     * driver WARN) is ever emitted, and a missing index on an existing table is
+     * back-filled. Failures are logged as warnings and never abort startup.
+     */
+    private void createIndexIfAbsent(Statement stmt, String tableName, String indexName, String column) {
         try {
-            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_party_member_uuid ON " + table("party_member") + " (uuid)");
-        } catch (SQLException ignored) {
-            // MySQL lacks CREATE INDEX IF NOT EXISTS — a duplicate name means it already exists.
-        }
-        try {
-            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_party_invite_target ON " + table("party_invite") + " (target)");
-        } catch (SQLException ignored) {
-            // Index already exists.
+            if (dialect == Dialect.MYSQL) {
+                try (PreparedStatement ps = stmt.getConnection().prepareStatement(
+                        "SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS "
+                                + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?")) {
+                    ps.setString(1, tableName);
+                    ps.setString(2, indexName);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next())
+                            return;
+                    }
+                }
+
+                stmt.executeUpdate("CREATE INDEX " + quoteIdentifier(indexName) + " ON "
+                        + quoteIdentifier(tableName) + " (" + quoteIdentifier(column) + ")");
+                return;
+            }
+
+            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS " + indexName + " ON " + tableName + " (" + column + ")");
+        } catch (SQLException e) {
+            plugin.getLogger().warning("Could not create index " + indexName + " on " + tableName + ": " + e.getMessage());
         }
     }
 

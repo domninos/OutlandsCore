@@ -72,9 +72,20 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   optional MySQL table prefix, `playerUpsertSql()` returns `INSERT OR REPLACE` on SQLite / `INSERT … ON
   DUPLICATE KEY UPDATE` on MySQL). It creates `player_data` plus the party tables (`party`, `party_member`,
   `party_invite`, `party_chat_toggle`). The legacy SQLite `ALTER` migrations are skipped on MySQL.
+  Index creation (`createIndexIfAbsent`) is dialect-aware: SQLite uses `CREATE INDEX IF NOT EXISTS`; MySQL
+  checks `INFORMATION_SCHEMA.STATISTICS` first (MySQL lacks `IF NOT EXISTS` on `CREATE INDEX`, which errors
+  1064 and logs a driver WARN) and back-fills missing indexes on existing tables.
 - `/extraction admin migratedb` (perm `extraction.admin`) one-time copies every row of an existing SQLite
   `player_data` into the active MySQL backend (`PlayerDataManager.importFromSqlite`) — manual, run after
   switching `storage.type` to `mysql`; runs on the async worker.
+- **MySQL database auto-create:** when `storage.type: mysql`, `resolveDataSource` calls
+  `DatabaseManager.ensureMysqlDatabase(cfg)` before building the pool. It connects *without* a schema,
+  queries `INFORMATION_SCHEMA.SCHEMATA` for `storage.mysql.database`, and runs
+  `CREATE DATABASE … CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci` only when missing (backtick-escaped
+  name). No `CREATE` privilege is needed when the database already exists; any bootstrap `SQLException` is
+  logged and swallowed so the normal pool attempt (and `fallback-to-sqlite`) decides the outcome. MySQL
+  `CREATE TABLE`s also append `DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci` (`tableSuffix()`, empty on
+  SQLite).
 - `/extraction reload` does **not** switch the active database backend — `DatabaseManager` resolves its
   dialect/datasource once in the constructor at `onEnable`. Changing `storage.type` requires a **full server
   restart**; reload warns (`admin.storage-restart-required`) when the configured type differs from the active
