@@ -167,6 +167,14 @@ public class ExtractionCommand implements CommandExecutor {
 
         plugin.getConfigUtil().reloadConfig();
         plugin.getChatRenderer().setPrefix(plugin.getConfigUtil().getPrefix());
+
+        boolean configuredMysql = plugin.getConfigUtil().isMysqlStorage();
+        boolean activeMysql = plugin.getDatabaseManager().isMysql();
+        if (configuredMysql != activeMysql)
+            plugin.sendMessage(sender, Messages.ADMIN_STORAGE_RESTART_REQUIRED.replace(
+                    "type", configuredMysql ? "mysql" : "sqlite",
+                    "active", activeMysql ? "mysql" : "sqlite"));
+
         plugin.getMessagesManager().loadMessages();
         plugin.getUpgradeManager().reload();
         plugin.getScoreboardManager().reload();

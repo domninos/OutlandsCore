@@ -63,6 +63,10 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 - `/extraction admin migratedb` (perm `extraction.admin`) one-time copies every row of an existing SQLite
   `player_data` into the active MySQL backend (`PlayerDataManager.importFromSqlite`) — manual, run after
   switching `storage.type` to `mysql`; runs on the async worker.
+- `/extraction reload` does **not** switch the active database backend — `DatabaseManager` resolves its
+  dialect/datasource once in the constructor at `onEnable`. Changing `storage.type` requires a **full server
+  restart**; reload warns (`admin.storage-restart-required`) when the configured type differs from the active
+  one. Correct migration flow: edit `storage.type` (+ mysql settings) → restart → `/extraction admin migratedb`.
 
 ### Config / messages
 - Config is split across files, routed by top-level section: `config.yml` (`settings`, `messages`,
