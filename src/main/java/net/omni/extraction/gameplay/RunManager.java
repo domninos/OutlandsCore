@@ -76,7 +76,7 @@ public class RunManager {
         if (baseLimit > 0 && bankedTime > 0)
             data.setExtraTimeSeconds(0);
 
-        playerDataManager.savePlayer(uuid);
+        playerDataManager.savePlayerNow(uuid);
 
         // Keep the physical backpack(s) with the player through the run: they
         // are put into the run inventory after the loadout is granted.
@@ -159,7 +159,7 @@ public class RunManager {
         plugin.getRelicEffectManager().deactivate(uuid);
 
         plugin.getExtractionManager().removeExtraction(uuid);
-        playerDataManager.savePlayer(uuid);
+        playerDataManager.savePlayerNow(uuid);
         return true;
     }
 
@@ -260,7 +260,7 @@ public class RunManager {
         data.setPreRunInventory(new ArrayList<>());
         data.setPreRunArmor(new ArrayList<>());
         data.setPendingDeathRestore(false);
-        playerDataManager.savePlayer(player.getUniqueId());
+        playerDataManager.savePlayerNow(player.getUniqueId());
     }
 
     public void handleDisconnect(UUID uuid) {
@@ -281,7 +281,7 @@ public class RunManager {
         // pendingReturn) so the next login teleports the player back home
         // with their saved gear restored.
         data.setPendingReturn(true);
-        playerDataManager.savePlayer(uuid);
+        playerDataManager.savePlayerNow(uuid);
 
         plugin.getRelicEffectManager().clearRun(uuid);
     }
@@ -305,7 +305,7 @@ public class RunManager {
         restorePlayerInventory(player, data);
 
         data.clearRunSnapshot();
-        playerDataManager.savePlayer(uuid);
+        playerDataManager.savePlayerNow(uuid);
 
         if (returnLocation != null && returnLocation.getWorld() != null) {
             player.teleport(returnLocation);

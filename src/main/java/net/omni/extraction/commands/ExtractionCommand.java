@@ -443,7 +443,7 @@ public class ExtractionCommand implements CommandExecutor {
                     plugin.getRelicEffectManager().applyPassive(online);
             }
 
-            plugin.getPlayerDataManager().savePlayer(target.getUniqueId());
+            plugin.getPlayerDataManager().savePlayerNow(target.getUniqueId());
         });
 
         return true;

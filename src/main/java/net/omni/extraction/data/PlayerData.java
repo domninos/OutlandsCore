@@ -28,6 +28,7 @@ public class PlayerData {
     private String activeArtifact;
     private boolean dirty;
     private boolean loaded;
+    private transient Runnable dirtyListener;
 
     public PlayerData(UUID uuid) {
         this.uuid = uuid;
@@ -70,12 +71,66 @@ public class PlayerData {
         return dirty;
     }
 
+    /**
+     * Notified whenever a mutation marks this instance dirty, so the owning
+     * manager can buffer a write-behind snapshot. Notified on the thread that
+     * performed the mutation (the Bukkit main thread in every live path).
+     */
+    public void setDirtyListener(Runnable dirtyListener) {
+        this.dirtyListener = dirtyListener;
+    }
+
     public void markDirty() {
         this.dirty = true;
+
+        if (dirtyListener != null)
+            dirtyListener.run();
     }
 
     public void clearDirty() {
         this.dirty = false;
+    }
+
+    /**
+     * An immutable-style snapshot of every persisted field. Taken on the main
+     * thread so the off-thread save worker never reads state that the main
+     * thread might mutate mid-write. The copy has no dirty listener and starts
+     * loaded/clean.
+     */
+    public PlayerData copy() {
+        PlayerData copy = new PlayerData(uuid);
+
+        copy.tokens = tokens;
+        copy.loadoutTiers = new HashMap<>(loadoutTiers);
+        copy.loadoutItems = copyItems(loadoutItems);
+        copy.customizedCells = new HashSet<>(customizedCells);
+        copy.cooldownUntil = cooldownUntil;
+        copy.lastKillCount = lastKillCount;
+        copy.lastEventCount = lastEventCount;
+        copy.lastBossCount = lastBossCount;
+        copy.extraTimeSeconds = extraTimeSeconds;
+        copy.returnLocation = returnLocation == null ? null : returnLocation.clone();
+        copy.preRunInventory = copyItems(preRunInventory);
+        copy.preRunArmor = copyItems(preRunArmor);
+        copy.pendingReturn = pendingReturn;
+        copy.pendingDeathRestore = pendingDeathRestore;
+        copy.ownedCharms = new HashSet<>(ownedCharms);
+        copy.ownedArtifacts = new HashSet<>(ownedArtifacts);
+        copy.activeCharm = activeCharm;
+        copy.activeArtifact = activeArtifact;
+        copy.dirty = false;
+        copy.loaded = true;
+
+        return copy;
+    }
+
+    private static List<ItemStack> copyItems(List<ItemStack> items) {
+        List<ItemStack> out = new ArrayList<>(items.size());
+
+        for (ItemStack item : items)
+            out.add(item == null ? null : item.clone());
+
+        return out;
     }
 
     public UUID getUuid() {

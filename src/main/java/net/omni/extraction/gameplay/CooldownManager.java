@@ -67,12 +67,12 @@ public class CooldownManager {
         PlayerData data = playerDataManager.getOrCreate(uuid);
         long cooldownUntil = System.currentTimeMillis() + (hours * 3600000L);
         data.setCooldownUntil(cooldownUntil);
-        playerDataManager.savePlayer(uuid);
+        playerDataManager.savePlayerShared(uuid);
     }
 
     public void clearCooldown(UUID uuid) {
         PlayerData data = playerDataManager.getOrCreate(uuid);
         data.setCooldownUntil(0);
-        playerDataManager.savePlayer(uuid);
+        playerDataManager.savePlayerShared(uuid);
     }
 }

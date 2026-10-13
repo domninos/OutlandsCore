@@ -187,7 +187,7 @@ public class RelicManager {
         else
             data.addOwnedArtifact(def.getId());
 
-        plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
+        plugin.getPlayerDataManager().savePlayerShared(player.getUniqueId());
 
         plugin.sendMessage(player, Messages.RELIC_LEARNED.replace("relic", def.getName()));
     }

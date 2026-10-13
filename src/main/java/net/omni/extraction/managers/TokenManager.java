@@ -17,7 +17,7 @@ public class TokenManager {
         PlayerData data = playerDataManager.getOrCreate(uuid);
 
         data.setTokens(Math.max(0, amount));
-        playerDataManager.savePlayer(uuid);
+        playerDataManager.savePlayerShared(uuid);
     }
 
     public void addTokens(UUID uuid, int amount) {
@@ -27,7 +27,7 @@ public class TokenManager {
         PlayerData data = playerDataManager.getOrCreate(uuid);
         data.addTokens(amount);
 
-        playerDataManager.savePlayer(uuid);
+        playerDataManager.savePlayerShared(uuid);
     }
 
     public void removeTokens(UUID uuid, int amount) {
@@ -37,7 +37,7 @@ public class TokenManager {
         PlayerData data = playerDataManager.getOrCreate(uuid);
         data.removeTokens(amount);
 
-        playerDataManager.savePlayer(uuid);
+        playerDataManager.savePlayerShared(uuid);
     }
 
     public boolean hasTokens(UUID uuid, int amount) {

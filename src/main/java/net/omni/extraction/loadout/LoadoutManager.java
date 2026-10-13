@@ -243,7 +243,7 @@ public class LoadoutManager {
         if (nextTier != null) {
             data.setLoadoutTier(slot.getConfigKey(), nextTier.getTierLevel());
             materializeTier(slot, currentTier, nextTier.getTierLevel(), data);
-            plugin.getPlayerDataManager().savePlayer(data.getUuid());
+            plugin.getPlayerDataManager().savePlayerShared(data.getUuid());
         }
     }
 
@@ -290,7 +290,7 @@ public class LoadoutManager {
                 if (tokenTier == currentTier + 1) {
                     data.setLoadoutTier(slot.getConfigKey(), tokenTier);
                     materializeTier(slot, currentTier, tokenTier, data);
-                    plugin.getPlayerDataManager().savePlayer(data.getUuid());
+                    plugin.getPlayerDataManager().savePlayerShared(data.getUuid());
                     return true;
                 }
 

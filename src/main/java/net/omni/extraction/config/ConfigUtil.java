@@ -180,6 +180,7 @@ public class ConfigUtil {
     private List<String> loadoutCompassLore;
 
     private int autoSaveSeconds;
+    private int saveQueueSize = 10;
     private int storageThreads = 3;
     private String storageType = "sqlite";
     private String mysqlHost = "localhost";
@@ -334,6 +335,7 @@ public class ConfigUtil {
         loadPack(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
+        this.saveQueueSize = getAndDefaultInt(ConfigKeys.STORAGE_SAVE_QUEUE_SIZE, 10, savedDefaults);
         this.storageThreads = getAndDefaultInt(ConfigKeys.STORAGE_THREADS, 3, savedDefaults);
         this.storageType = getAndDefaultString(ConfigKeys.STORAGE_TYPE, "sqlite", savedDefaults);
         this.mysqlHost = getAndDefaultString(ConfigKeys.STORAGE_MYSQL_HOST, "localhost", savedDefaults);
@@ -1643,6 +1645,10 @@ public class ConfigUtil {
 
     public int getAutoSaveSeconds() {
         return autoSaveSeconds;
+    }
+
+    public int getSaveQueueSize() {
+        return saveQueueSize;
     }
 
     public int getStorageThreads() {

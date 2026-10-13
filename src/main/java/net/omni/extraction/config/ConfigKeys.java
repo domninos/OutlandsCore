@@ -102,6 +102,7 @@ public final class ConfigKeys {
     public static final String LOADOUT_GUI_FILLER_NAME = "loadout-gui.filler.name";
 
     public static final String STORAGE_AUTO_SAVE_SECONDS = "storage.auto-save-seconds";
+    public static final String STORAGE_SAVE_QUEUE_SIZE = "storage.save-queue-size";
     public static final String STORAGE_THREADS = "storage.threads";
     public static final String STORAGE_TYPE = "storage.type";
     public static final String STORAGE_MYSQL_HOST = "storage.mysql.host";

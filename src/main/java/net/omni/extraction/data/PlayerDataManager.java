@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -34,11 +35,73 @@ public class PlayerDataManager {
 
     private final ExtractionPlugin plugin;
     private final Map<UUID, PlayerData> cache;
+    private final Map<UUID, PlayerData> pending = new LinkedHashMap<>();
+    private final Object queueLock = new Object();
     private volatile boolean disabled;
+    private int pendingChanges;
+    private int queueSize;
 
     public PlayerDataManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
         this.cache = new ConcurrentHashMap<>();
+        this.queueSize = plugin.getConfigUtil() == null ? 10 : plugin.getConfigUtil().getSaveQueueSize();
+    }
+
+    /** Creates a cache instance wired to the write-behind queue. */
+    private PlayerData newData(UUID uuid) {
+        PlayerData data = new PlayerData(uuid);
+        data.setDirtyListener(() -> onDirty(data));
+        return data;
+    }
+
+    /**
+     * Enqueue a snapshot of {@code data} for a later batched write. Runs on the
+     * mutating (main) thread; the off-thread worker never touches live state.
+     */
+    private void queue(PlayerData data, boolean count) {
+        boolean flushNow;
+
+        synchronized (queueLock) {
+            data.clearDirty();
+            pending.put(data.getUuid(), data.copy());
+
+            if (count)
+                pendingChanges++;
+
+            flushNow = queueSize > 0 && pendingChanges >= queueSize;
+        }
+
+        if (flushNow)
+            flushPending();
+    }
+
+    /** A mutation marked {@code data} dirty: buffer it unless the plugin is shutting down/unloaded. */
+    private void onDirty(PlayerData data) {
+        if (disabled || !data.isLoaded())
+            return;
+
+        queue(data, true);
+    }
+
+    /** Writes every buffered snapshot off-thread and clears the buffer. */
+    private void flushPending() {
+        if (disabled)
+            return;
+
+        Map<UUID, PlayerData> batch;
+
+        synchronized (queueLock) {
+            if (pending.isEmpty())
+                return;
+
+            batch = new LinkedHashMap<>(pending);
+            pending.clear();
+            pendingChanges = 0;
+        }
+
+        for (Map.Entry<UUID, PlayerData> entry : batch.entrySet())
+            plugin.getDatabaseManager().runKeyed(entry.getKey(),
+                    () -> writePlayerToDb(entry.getKey(), entry.getValue()));
     }
 
     /**
@@ -66,7 +129,7 @@ public class PlayerDataManager {
                 return existing;
             }
 
-            PlayerData data = existing != null ? existing : new PlayerData(uuid);
+            PlayerData data = existing != null ? existing : newData(uuid);
             loadRowInto(data);
             data.setLoaded(true);
             data.clearDirty();
@@ -102,7 +165,7 @@ public class PlayerDataManager {
             if (data.isLoaded())
                 return data;
         } else {
-            PlayerData fresh = new PlayerData(uuid);
+            PlayerData fresh = newData(uuid);
             PlayerData previous = cache.putIfAbsent(uuid, fresh);
             data = previous != null ? previous : fresh;
         }
@@ -295,15 +358,6 @@ public class PlayerDataManager {
         }
     }
 
-    public void savePlayerSync(UUID uuid) {
-        PlayerData data = cache.get(uuid);
-
-        if (data == null)
-            return;
-
-        writePlayerToDb(uuid, data);
-    }
-
     private void writePlayerToDb(UUID uuid, PlayerData data) {
         try (Connection conn = plugin.getDatabaseManager().getConnection();
              PreparedStatement ps = conn.prepareStatement(plugin.getDatabaseManager().playerUpsertSql())) {
@@ -394,24 +448,63 @@ public class PlayerDataManager {
     }
 
     public void unloadPlayer(UUID uuid) {
-        savePlayer(uuid);
+        savePlayerNow(uuid);
         cache.remove(uuid);
     }
 
+    /**
+     * Buffered save: queues a snapshot to be written at the next flush
+     * (queue size reached or auto-save interval). Used for non-critical
+     * changes; mutations are also auto-queued by the dirty listener, so this
+     * is mainly an explicit "ensure queued" hint.
+     */
     public void savePlayer(UUID uuid) {
         PlayerData data = cache.get(uuid);
 
-        if (data == null || !data.isDirty())
+        if (data == null || !data.isLoaded())
             return;
 
+        queue(data, false);
+    }
+
+    /**
+     * Buffered on a single server, but writes immediately when the backend is
+     * MySQL: tokens, cooldowns and purchases are read by other servers, so a
+     * deferred write could be observed as stale (duplication/rollback).
+     */
+    public void savePlayerShared(UUID uuid) {
+        if (plugin.getDatabaseManager().isMysql())
+            savePlayerNow(uuid);
+        else
+            savePlayer(uuid);
+    }
+
+    /**
+     * Writes the player's current state to the database immediately, off-thread
+     * (synchronously once {@link #disabled}). Used for run/quit/death state and
+     * cross-server-critical data. Any buffered snapshot for the player is
+     * dropped so a later flush cannot overwrite it with older state.
+     */
+    public void savePlayerNow(UUID uuid) {
+        PlayerData data = cache.get(uuid);
+
+        if (data == null)
+            return;
+
+        PlayerData snapshot = data.copy();
         data.clearDirty();
 
+        synchronized (queueLock) {
+            if (pending.remove(uuid) != null && pendingChanges > 0)
+                pendingChanges--;
+        }
+
         if (disabled) {
-            writePlayerToDb(uuid, data);
+            writePlayerToDb(uuid, snapshot);
             return;
         }
 
-        plugin.getDatabaseManager().runKeyed(uuid, () -> writePlayerToDb(uuid, data));
+        plugin.getDatabaseManager().runKeyed(uuid, () -> writePlayerToDb(uuid, snapshot));
     }
 
     /** Switches saves to synchronous writes (used during onDisable, when the
@@ -420,15 +513,17 @@ public class PlayerDataManager {
         this.disabled = true;
     }
 
+    /** Interval flush: queues any lingering dirty instance, then writes the buffer. */
     public void saveAllDirty() {
-        for (Map.Entry<UUID, PlayerData> entry : cache.entrySet()) {
-            if (entry.getValue().isDirty())
-                savePlayer(entry.getKey());
-        }
+        for (PlayerData data : cache.values())
+            if (data.isDirty() && data.isLoaded())
+                queue(data, false);
+
+        flushPending();
     }
 
     public PlayerData getOrCreate(UUID uuid) {
-        return cache.computeIfAbsent(uuid, PlayerData::new);
+        return cache.computeIfAbsent(uuid, this::newData);
     }
 
     public boolean isLoaded(UUID uuid) {
@@ -533,6 +628,17 @@ public class PlayerDataManager {
     }
 
     public void flush() {
+        Map<UUID, PlayerData> batch;
+
+        synchronized (queueLock) {
+            batch = new LinkedHashMap<>(pending);
+            pending.clear();
+            pendingChanges = 0;
+        }
+
+        for (Map.Entry<UUID, PlayerData> entry : batch.entrySet())
+            writePlayerToDb(entry.getKey(), entry.getValue());
+
         saveAllSync();
 
         if (!cache.isEmpty())

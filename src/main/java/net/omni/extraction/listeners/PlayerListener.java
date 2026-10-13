@@ -104,7 +104,7 @@ public class PlayerListener implements Listener {
 
             if (data.getReturnLocation() != null) {
                 data.setReturnLocation(null);
-                plugin.getPlayerDataManager().savePlayer(uuid);
+                plugin.getPlayerDataManager().savePlayerNow(uuid);
             }
         }, DEATH_RESPAWN_DELAY_TICKS);
     }
@@ -938,7 +938,7 @@ public class PlayerListener implements Listener {
 
         PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
         data.addExtraTimeSeconds(minutes * 60);
-        plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
+        plugin.getPlayerDataManager().savePlayerShared(player.getUniqueId());
         LootItemUtil.consumeOne(item);
 
         plugin.sendMessage(player, Messages.LOOT_TIME_BANKED.replace("time", String.valueOf(minutes)));

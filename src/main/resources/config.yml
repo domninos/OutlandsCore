@@ -34,6 +34,13 @@ storage:
   # How often (in seconds) dirty player data is flushed to the database.
   # Data is also saved on player quit and on shutdown.
   auto-save-seconds: 30
+  # Write-behind queue: changes are buffered in memory and flushed to the
+  # database once this many changes have accumulated — even before the
+  # auto-save interval. Set to 0 to only flush on the interval, quit and
+  # shutdown (still never on the main thread). Cross-server-sensitive data
+  # (tokens, cooldowns, purchases) and run/quit state always write
+  # immediately and do not count toward this queue.
+  save-queue-size: 10
   # Size of the dedicated off-thread worker pool that runs ALL database
   # operations (loads, saves, party lookups). Never increases the Bukkit main
   # thread's workload; raise it for busy MySQL servers.

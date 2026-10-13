@@ -143,11 +143,19 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   async login thread, so the cache is always warm before gameplay; `loadPlayer(uuid, onComplete)` is the async
   (re)load (used on join and for offline admin targets); `getLoaded(uuid)` is the **cache-only** accessor every
   gameplay/GUI path uses (never touches the database). `ExtractionPlugin` also `preloadOnlinePlayers()` on enable
-  (reload case). **Saving:** `savePlayer` is a no-op when clean, else `runKeyed` (or a direct synchronous write
-  once `disabled`); `saveAllDirty` (periodic dump) enqueues; `flush`/`saveAllSync` write synchronously at
-  shutdown. `PlayerDataManager.onDisable()` flips `disabled` so `savePlayer` writes synchronously
-  (`writePlayerToDb` direct) instead of `runKeyed` — the worker only accepts new tasks while the plugin is
-  enabled, and `ExtractionPlugin.onDisable` drains the worker before this point.
+  (reload case). **Saving (write-behind queue):** `PlayerData.markDirty()` (every setter) fires a
+  `dirtyListener` the manager installs, so any mutation auto-enqueues a **snapshot** (`PlayerData.copy()` — taken
+  on the main thread; the worker never reads live state) into an in-memory pending map. The queue flushes off-thread
+  when it reaches `storage.save-queue-size` changes (default 10; counted per mutation, one write per player per
+  flush since the map coalesces) or on the periodic `saveAllDirty` dump (`storage.auto-save-seconds`, default 30).
+  Three entry points: `savePlayer(uuid)` = buffered; `savePlayerShared(uuid)` = immediate (`savePlayerNow`) on
+  MySQL, buffered on SQLite — used for cross-server-critical data (tokens/cooldowns/purchases/banked time) since a
+  deferred write could be read as stale by another server; `savePlayerNow(uuid)` = always immediate (run
+  enter/extract/death/disconnect, admin grants; drops any buffered snapshot for that UUID). `unloadPlayer` now
+  `savePlayerNow`s then evicts. `flush`/`saveAllSync` write the pending batch + whole cache synchronously at
+  shutdown. `PlayerDataManager.onDisable()` flips `disabled` so `savePlayerNow` writes synchronously
+  (`writePlayerToDb` direct); the dirty listener is a no-op while `disabled`, and `ExtractionPlugin.onDisable`
+  drains the worker before this point. Tradeoff: a hard crash can lose the buffered (non-immediate) window.
 - `party/Party.java` (roster: id, leader, ordered members), `party/PartyManager.java`: DB-backed
   cross-server party system (`/extraction party`), built after the data managers. Roster lives in the
   `party`/`party_member` tables and pending invites are a JSON array in `party.invites` (keyed by lowercased
