@@ -14,25 +14,13 @@ settings:
   return-on-disconnect: true
   # Extraction (outlands) entry spawn — where /extraction enter places players.
   # Set in-game with /extraction setspawn. Falls back to the world spawn if unset.
-  spawn:
-    world: outlands
-    x: 0.5
-    y: 64.0
-    z: 0.5
-    yaw: 0.0
-    pitch: 0.0
-  # Lobby spawn — players who join without an in-progress run are teleported
-  # here. This is a separate world; the folder must already exist and be
-  # loaded on the server. Set the exact point in-game with /extraction setlobby.
-  # When no point is configured the lobby world's own spawn is used (never the
-  # extraction world).
-  lobby:
-    world: ExtractionSpawn
-    # x: 0.5
-    # y: 64.0
-    # z: 0.5
-    # yaw: 0.0
-    # pitch: 0.0
+  # spawn:
+  #   world: outlands
+  #   x: 0.5
+  #   y: 64.0
+  #   z: 0.5
+#   yaw: 0.0
+#   pitch: 0.0
 
 # Chat prefix shown before plugin messages (configurable)
 messages:

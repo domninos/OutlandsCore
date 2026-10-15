@@ -48,6 +48,7 @@ import net.omni.extraction.worldevent.WorldEventListener;
 import net.omni.extraction.worldevent.WorldEventManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -131,6 +132,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      - fix the basic events logic
       - only try event if a player is in /extraction
       - fix chances
+     - fix compass -> set area and event location pool
      -
 
      */
@@ -152,8 +154,6 @@ public final class ExtractionPlugin extends JavaPlugin {
         Artifact of the Explorer
         Nearby undiscovered areas appear on the compass/map
         -
-         - party system (new database), update extraction.db (if SQLITE, but prefer MariaDB/MYSQL)
-         - support party for loot (all party members must be able to loot it.
          - add "Time remaining" for all party
          -
          -
@@ -185,9 +185,6 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         stopSaveTask();
 
-        // Drain the async database worker before any main-thread shutdown writes
-        // (player-data saves become synchronous once disabled) so the SQLite
-        // writer can never be hit by the pool and the main thread at once.
         databaseManager.drain();
 
         if (areaSelectionVisualizer != null)
@@ -317,18 +314,22 @@ public final class ExtractionPlugin extends JavaPlugin {
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
     }
 
-    /**
-     * Loads player data for everyone already online (e.g. after a plugin reload,
-     * where no {@code AsyncPlayerPreLoginEvent} fires), so cache-only lookups
-     * stay valid.
-     */
-    private void preloadOnlinePlayers() {
-        for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers())
-            playerDataManager.loadPlayer(player.getUniqueId(), null);
+    private void initChatRenderer() {
+        try {
+            Class.forName("net.kyori.adventure.text.Component");
+            this.chatRenderer = new PaperChatRenderer();
+            getLogger().info("PaperMC detected. Using PaperChatRenderer.");
+        } catch (ClassNotFoundException e) {
+            this.chatRenderer = new SpigotChatRenderer();
+            getLogger().warning("PaperMC not detected. Using SpigotChatRenderer.");
+        }
+        MessageUtil.init(chatRenderer);
     }
 
-    /** One-time move of legacy root-level relic files into {@code plugins/Extraction/relics/},
-     * preserving admin edits. Runs before the config/relic loaders so the new location is used. */
+    /**
+     * One-time move of legacy root-level relic files into {@code plugins/Extraction/relics/},
+     * preserving admin edits. Runs before the config/relic loaders so the new location is used.
+     */
     private void migrateLegacyRelicFiles() {
         File dataFolder = getDataFolder();
         File targetDir = new File(dataFolder, "relics");
@@ -350,18 +351,6 @@ public final class ExtractionPlugin extends JavaPlugin {
                 getLogger().warning("Could not migrate " + name + " into relics/: " + e.getMessage());
             }
         }
-    }
-
-    private void initChatRenderer() {
-        try {
-            Class.forName("net.kyori.adventure.text.Component");
-            this.chatRenderer = new PaperChatRenderer();
-            getLogger().info("PaperMC detected. Using PaperChatRenderer.");
-        } catch (ClassNotFoundException e) {
-            this.chatRenderer = new SpigotChatRenderer();
-            getLogger().warning("PaperMC not detected. Using SpigotChatRenderer.");
-        }
-        MessageUtil.init(chatRenderer);
     }
 
     private void registerCommands() {
@@ -397,6 +386,16 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         playerSaveTask = Bukkit.getScheduler().runTaskTimer(this,
                 () -> playerDataManager.saveAllDirty(), 20L * seconds, 20L * seconds);
+    }
+
+    /**
+     * Loads player data for everyone already online (e.g. after a plugin reload,
+     * where no {@code AsyncPlayerPreLoginEvent} fires), so cache-only lookups
+     * stay valid.
+     */
+    private void preloadOnlinePlayers() {
+        for (Player player : Bukkit.getOnlinePlayers())
+            playerDataManager.loadPlayer(player.getUniqueId(), null);
     }
 
     private void stopSaveTask() {
@@ -533,7 +532,6 @@ public final class ExtractionPlugin extends JavaPlugin {
     public WorldEventManager getWorldEventManager() {
         return worldEventManager;
     }
-
 
 
     public PackManager getPackManager() {
