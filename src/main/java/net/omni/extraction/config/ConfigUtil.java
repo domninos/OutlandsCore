@@ -64,6 +64,8 @@ public class ConfigUtil {
     private List<String> relicGuiPlaceholderLore;
 
     private Location spawnLocation;
+    private Location lobbyLocation;
+    private String lobbyWorld = "ExtractionSpawn";
     private int areaAutoSaveSeconds;
     private int areaStateCheckSeconds;
     private boolean mobContainmentEnabled;
@@ -325,6 +327,7 @@ public class ConfigUtil {
         loadUpgradeConfirm(savedDefaults);
         loadLoadoutGui(savedDefaults);
         loadSpawn();
+        loadLobby(savedDefaults);
         loadScoreboard(savedDefaults);
         loadActionbar(savedDefaults);
         loadHolograms(savedDefaults);
@@ -693,6 +696,31 @@ public class ConfigUtil {
                 config.getDouble(ConfigKeys.SPAWN + ".z"),
                 (float) config.getDouble(ConfigKeys.SPAWN + ".yaw"),
                 (float) config.getDouble(ConfigKeys.SPAWN + ".pitch"));
+    }
+
+    private void loadLobby(AtomicInteger savedDefaults) {
+        this.lobbyLocation = null;
+
+        // Auto-adds settings.lobby.world to existing configs so the block is
+        // discoverable/editable; the world must already be loaded by the server.
+        this.lobbyWorld = getAndDefaultString(ConfigKeys.LOBBY + ".world", "ExtractionSpawn", savedDefaults);
+
+        FileConfiguration config = configManager.forPath(ConfigKeys.LOBBY);
+
+        // Only resolve an exact point when the world is loaded and coordinates
+        // are present; otherwise the join handler falls back to the world spawn.
+        if (!config.isSet(ConfigKeys.LOBBY + ".x"))
+            return;
+
+        World world = Bukkit.getWorld(this.lobbyWorld);
+        if (world == null) return;
+
+        this.lobbyLocation = new Location(world,
+                config.getDouble(ConfigKeys.LOBBY + ".x"),
+                config.getDouble(ConfigKeys.LOBBY + ".y"),
+                config.getDouble(ConfigKeys.LOBBY + ".z"),
+                (float) config.getDouble(ConfigKeys.LOBBY + ".yaw"),
+                (float) config.getDouble(ConfigKeys.LOBBY + ".pitch"));
     }
 
     private void loadScoreboard(AtomicInteger savedDefaults) {

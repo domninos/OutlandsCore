@@ -98,7 +98,6 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     TODO:
      -
-     - migrate to MariaDB/MySQL, use plugin.yml's library loader
      -
      -
      - Boss Creator
