@@ -2,133 +2,36 @@ package net.omni.extraction.data;
 
 import com.google.gson.reflect.TypeToken;
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.loadout.LoadoutSlot;
-import net.omni.extraction.util.ItemSerializationUtil;
-import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.inventory.ItemStack;
 
 import javax.annotation.Nullable;
 import java.io.File;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.sql.*;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class PlayerDataManager {
 
-    /** Single ordering key: every player_data write is serialized through it. */
+    /**
+     * Single ordering key: every player_data write is serialized through it.
+     */
     private static final Object PLAYER_SAVE_KEY = new Object();
-
+    private static final Set<String> NUMERIC_PLAYER_COLUMNS = Set.of(
+            "tokens", "last_kill_count", "last_event_count", "last_boss_count",
+            "extra_time_seconds", "pending_return");
     private final ExtractionPlugin plugin;
     private final Map<UUID, PlayerData> cache;
     private final Set<UUID> pending = new LinkedHashSet<>();
     private final Object queueLock = new Object();
     private volatile boolean disabled;
     private int pendingChanges;
-    private int queueSize;
+    private final int queueSize;
 
     public PlayerDataManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
         this.cache = new ConcurrentHashMap<>();
         this.queueSize = plugin.getConfigUtil() == null ? 10 : plugin.getConfigUtil().getSaveQueueSize();
-    }
-
-    /** Creates a cache instance wired to the write-behind queue. */
-    private PlayerData newData(UUID uuid) {
-        PlayerData data = new PlayerData(uuid);
-        data.setDirtyListener(() -> onDirty(data));
-        return data;
-    }
-
-    /**
-     * Marks {@code data} for a later batched write. Only the UUID is buffered:
-     * the snapshot is taken once per flush on the calling (main) thread, so a
-     * burst of mutations costs one copy instead of one per setter. The
-     * off-thread worker never touches live state.
-     */
-    private void queue(PlayerData data, boolean count) {
-        boolean flushNow;
-
-        synchronized (queueLock) {
-            data.clearDirty();
-            pending.add(data.getUuid());
-
-            if (count)
-                pendingChanges++;
-
-            flushNow = queueSize > 0 && pendingChanges >= queueSize;
-        }
-
-        if (flushNow)
-            flushPending();
-    }
-
-    /** A mutation marked {@code data} dirty: buffer it unless the plugin is shutting down/unloaded. */
-    private void onDirty(PlayerData data) {
-        if (disabled || !data.isLoaded())
-            return;
-
-        queue(data, true);
-    }
-
-    /**
-     * Snapshots every buffered player on the calling thread and writes the batch
-     * off-thread. Unloaded/evicted instances are skipped: they have no
-     * authoritative state and must never overwrite a real database row.
-     */
-    private void flushPending() {
-        if (disabled)
-            return;
-
-        Map<UUID, PlayerData> batch = snapshotPending();
-
-        if (batch.isEmpty())
-            return;
-
-        plugin.getDatabaseManager().runKeyed(PLAYER_SAVE_KEY, () -> writeBatch(batch));
-    }
-
-    /**
-     * Copies the pending players (once each) and clears the buffer. Must run on
-     * the mutating thread so the worker never reads live {@link PlayerData}.
-     */
-    private Map<UUID, PlayerData> snapshotPending() {
-        Map<UUID, PlayerData> batch = new LinkedHashMap<>();
-
-        synchronized (queueLock) {
-            if (pending.isEmpty())
-                return batch;
-
-            for (UUID uuid : pending) {
-                PlayerData data = cache.get(uuid);
-
-                if (data != null && data.isLoaded())
-                    batch.put(uuid, data.copy());
-            }
-
-            pending.clear();
-            pendingChanges = 0;
-        }
-
-        return batch;
     }
 
     /**
@@ -175,32 +78,11 @@ public class PlayerDataManager {
     }
 
     /**
-     * Loads a player's data on the calling thread. <b>Must only be called from an
-     * asynchronous context</b> (e.g. {@code AsyncPlayerPreLoginEvent}), never the
-     * Bukkit main thread. Populates (never replaces) an already-cached instance
-     * and force-loads unloaded instances so later cache reads cannot see
-     * stale-empty data. In-flight edits win over the database snapshot.
+     * Creates a cache instance wired to the write-behind queue.
      */
-    public PlayerData loadPlayerBlocking(UUID uuid) {
-        PlayerData data = cache.get(uuid);
-
-        if (data != null) {
-            if (data.isLoaded())
-                return data;
-        } else {
-            PlayerData fresh = newData(uuid);
-            PlayerData previous = cache.putIfAbsent(uuid, fresh);
-            data = previous != null ? previous : fresh;
-        }
-
-        if (!loadRowInto(data)) {
-            plugin.getLogger().warning("Player data for " + data.getUuid()
-                    + " could not be loaded and stays unloaded (it will not be persisted until a load succeeds).");
-            return data;
-        }
-
-        data.setLoaded(true);
-        data.clearDirty();
+    private PlayerData newData(UUID uuid) {
+        PlayerData data = new PlayerData(uuid);
+        data.setDirtyListener(() -> onDirty(data));
         return data;
     }
 
@@ -230,25 +112,13 @@ public class PlayerDataManager {
     }
 
     /**
-     * Cache-only accessor: returns the cached instance for {@code uuid} without
-     * touching the database. Player data is guaranteed to be cached by the
-     * pre-login blocking load before any gameplay path runs, so this never
-     * blocks. If it is somehow missing, an empty instance is registered and a
-     * warning is logged rather than hitting the database on the main thread.
+     * A mutation marked {@code data} dirty: buffer it unless the plugin is shutting down/unloaded.
      */
-    public PlayerData getLoaded(UUID uuid) {
-        PlayerData data = cache.get(uuid);
+    private void onDirty(PlayerData data) {
+        if (disabled || !data.isLoaded())
+            return;
 
-        if (data != null)
-            return data;
-
-        PlayerData fresh = newData(uuid);
-        PlayerData previous = cache.putIfAbsent(uuid, fresh);
-        data = previous != null ? previous : fresh;
-
-        plugin.getLogger().warning("Player data for " + uuid
-                + " was requested before it was loaded — returning an empty instance.");
-        return data;
+        queue(data, true);
     }
 
     private void applyRow(PlayerData data, ResultSet rs) throws SQLException {
@@ -268,7 +138,7 @@ public class PlayerDataManager {
 
         String itemJson = rs.getString("loadout_contents");
         if (itemJson != null && !itemJson.isEmpty() && !itemJson.equals("[]")) {
-            data.setLoadoutItems(migrateLoadoutItems(deserializeItems(itemJson)));
+            data.setLoadoutItems(DataUtility.migrateLoadoutItems(plugin, DataUtility.deserializeItems(itemJson)));
         }
 
         String customizedJson = rs.getString("customized_cells");
@@ -286,15 +156,15 @@ public class PlayerDataManager {
         data.setLastBossCount(rs.getInt("last_boss_count"));
         data.setExtraTimeSeconds(rs.getInt("extra_time_seconds"));
 
-        data.setReturnLocation(deserializeLocation(rs.getString("return_location")));
+        data.setReturnLocation(DataUtility.deserializeLocation(plugin, rs.getString("return_location")));
 
         String preRunInventoryJson = rs.getString("pre_run_inventory");
         if (preRunInventoryJson != null && !preRunInventoryJson.isEmpty() && !preRunInventoryJson.equals("[]"))
-            data.setPreRunInventory(deserializeItems(preRunInventoryJson));
+            data.setPreRunInventory(DataUtility.deserializeItems(preRunInventoryJson));
 
         String preRunArmorJson = rs.getString("pre_run_armor");
         if (preRunArmorJson != null && !preRunArmorJson.isEmpty() && !preRunArmorJson.equals("[]"))
-            data.setPreRunArmor(deserializeItems(preRunArmorJson));
+            data.setPreRunArmor(DataUtility.deserializeItems(preRunArmorJson));
 
         data.setPendingReturn(rs.getInt("pending_return") == 1);
 
@@ -347,64 +217,76 @@ public class PlayerDataManager {
         }
     }
 
-    private List<ItemStack> deserializeItems(String base64) {
-        return ItemSerializationUtil.fromBase64(base64);
+    /**
+     * Marks {@code data} for a later batched write. Only the UUID is buffered:
+     * the snapshot is taken once per flush on the calling (main) thread, so a
+     * burst of mutations costs one copy instead of one per setter. The
+     * off-thread worker never touches live state.
+     */
+    private void queue(PlayerData data, boolean count) {
+        boolean flushNow;
+
+        synchronized (queueLock) {
+            data.clearDirty();
+            pending.add(data.getUuid());
+
+            if (count)
+                pendingChanges++;
+
+            flushNow = queueSize > 0 && pendingChanges >= queueSize;
+        }
+
+        if (flushNow)
+            flushPending();
     }
 
-    private static final int LEGACY_SLOT_COUNT = 11;
-
-    /** Legacy format (11 entries, LoadoutSlot ordinal-indexed). */
-    private List<ItemStack> migrateLoadoutItems(List<ItemStack> items) {
-        int guiSize = plugin.getConfigUtil().getLoadoutGuiSize();
-        List<ItemStack> out = new ArrayList<>(Collections.nCopies(guiSize, null));
-
-        if (items == null || items.isEmpty())
-            return out;
-
-        if (items.size() == LEGACY_SLOT_COUNT) {
-            LoadoutSlot[] slots = LoadoutSlot.values();
-
-            for (int i = 0; i < items.size(); i++) {
-                ItemStack item = items.get(i);
-                if (item == null) continue;
-
-                int target = plugin.getConfigUtil().getLoadoutGuiSlot(slots[i].name().toLowerCase());
-                if (target >= 0 && target < guiSize)
-                    out.set(target, item);
-            }
-
-            relocateLegacyArmorPositions(out);
-            return out;
-        }
-
-        for (int i = 0; i < items.size() && i < out.size(); i++)
-            out.set(i, items.get(i));
-
-        return out;
+    private void debugLog(String message) {
+        if (plugin.getConfigUtil() != null && plugin.getConfigUtil().isStorageDebug())
+            plugin.getLogger().info(message);
+        else
+            plugin.getLogger().fine(message);
     }
 
-    private static final int[] LEGACY_ARMOR_SLOTS = {10, 19, 28, 37};
+    /**
+     * Snapshots every buffered player on the calling thread and writes the batch
+     * off-thread. Unloaded/evicted instances are skipped: they have no
+     * authoritative state and must never overwrite a real database row.
+     */
+    private void flushPending() {
+        if (disabled)
+            return;
 
-    private void relocateLegacyArmorPositions(List<ItemStack> out) {
-        String[] names = {"helmet", "chestplate", "leggings", "boots"};
+        Map<UUID, PlayerData> batch = snapshotPending();
 
-        for (String name : names) {
-            int current = plugin.getConfigUtil().getLoadoutGuiSlot(name);
-            if (current >= 0 && current < out.size() && out.get(current) != null)
-                return;
-        }
+        if (batch.isEmpty())
+            return;
 
-        for (int i = 0; i < names.length; i++) {
-            int current = plugin.getConfigUtil().getLoadoutGuiSlot(names[i]);
-            int legacy = LEGACY_ARMOR_SLOTS[i];
+        plugin.getDatabaseManager().runKeyed(PLAYER_SAVE_KEY, () -> writeBatch(batch));
+    }
 
-            if (current < 0 || current >= out.size()) continue;
-            if (legacy == current || legacy < 0 || legacy >= out.size()) continue;
-            if (out.get(current) == null && out.get(legacy) != null) {
-                out.set(current, out.get(legacy));
-                out.set(legacy, null);
+    /**
+     * Copies the pending players (once each) and clears the buffer. Must run on
+     * the mutating thread so the worker never reads live {@link PlayerData}.
+     */
+    private Map<UUID, PlayerData> snapshotPending() {
+        Map<UUID, PlayerData> batch = new LinkedHashMap<>();
+
+        synchronized (queueLock) {
+            if (pending.isEmpty())
+                return batch;
+
+            for (UUID uuid : pending) {
+                PlayerData data = cache.get(uuid);
+
+                if (data != null && data.isLoaded())
+                    batch.put(uuid, data.copy());
             }
+
+            pending.clear();
+            pendingChanges = 0;
         }
+
+        return batch;
     }
 
     /**
@@ -429,6 +311,24 @@ public class PlayerDataManager {
         for (int from = 0; from < entries.size(); from += chunkSize) {
             int to = Math.min(entries.size(), from + chunkSize);
             writeChunk(entries.subList(from, to));
+        }
+    }
+
+    private void writePlayerToDb(UUID uuid, PlayerData data) {
+        try (Connection conn = plugin.getDatabaseManager().getConnection();
+             PreparedStatement ps = conn.prepareStatement(plugin.getDatabaseManager().playerUpsertSql())) {
+
+            bindPlayer(ps, uuid, data);
+            ps.executeUpdate();
+
+            long itemCount = data.getLoadoutItems() == null
+                    ? 0 : data.getLoadoutItems().stream().filter(Objects::nonNull).count();
+            debugLog("Saved player data for " + uuid + ": " + itemCount
+                    + " loadout item(s), " + data.getLoadoutTiers().size() + " tier(s), "
+                    + data.getCustomizedCells().size() + " customized cell(s), "
+                    + data.getTokens() + " token(s)");
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to save player data for " + uuid, e);
         }
     }
 
@@ -466,39 +366,23 @@ public class PlayerDataManager {
         }
     }
 
-    private void writePlayerToDb(UUID uuid, PlayerData data) {
-        try (Connection conn = plugin.getDatabaseManager().getConnection();
-             PreparedStatement ps = conn.prepareStatement(plugin.getDatabaseManager().playerUpsertSql())) {
-
-            bindPlayer(ps, uuid, data);
-            ps.executeUpdate();
-
-            long itemCount = data.getLoadoutItems() == null
-                    ? 0 : data.getLoadoutItems().stream().filter(Objects::nonNull).count();
-            debugLog("Saved player data for " + uuid + ": " + itemCount
-                    + " loadout item(s), " + data.getLoadoutTiers().size() + " tier(s), "
-                    + data.getCustomizedCells().size() + " customized cell(s), "
-                    + data.getTokens() + " token(s)");
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to save player data for " + uuid, e);
-        }
-    }
-
-    /** Binds the canonical {@link DatabaseManager#PLAYER_COLUMNS} values (1-based). */
+    /**
+     * Binds the canonical {@link DatabaseManager#PLAYER_COLUMNS} values (1-based).
+     */
     private void bindPlayer(PreparedStatement ps, UUID uuid, PlayerData data) throws SQLException {
         ps.setString(1, uuid.toString());
         ps.setInt(2, data.getTokens());
         ps.setString(3, plugin.getGson().toJson(data.getLoadoutTiers()));
-        ps.setString(4, serializeItems(padLoadoutItems(data.getLoadoutItems())));
+        ps.setString(4, DataUtility.serializeItems(DataUtility.padLoadoutItems(plugin, data.getLoadoutItems())));
         ps.setString(5, plugin.getGson().toJson(data.getCustomizedCells()));
         ps.setLong(6, data.getCooldownUntil());
         ps.setInt(7, data.getLastKillCount());
         ps.setInt(8, data.getLastEventCount());
         ps.setInt(9, data.getLastBossCount());
         ps.setInt(10, data.getExtraTimeSeconds());
-        ps.setString(11, serializeLocation(data.getReturnLocation()));
-        ps.setString(12, serializeItems(data.getPreRunInventory()));
-        ps.setString(13, serializeItems(data.getPreRunArmor()));
+        ps.setString(11, DataUtility.serializeLocation(data.getReturnLocation()));
+        ps.setString(12, DataUtility.serializeItems(data.getPreRunInventory()));
+        ps.setString(13, DataUtility.serializeItems(data.getPreRunArmor()));
         ps.setInt(14, data.isPendingReturn() ? 1 : 0);
         ps.setString(15, plugin.getGson().toJson(data.getOwnedCharms()));
         ps.setString(16, plugin.getGson().toJson(data.getOwnedArtifacts()));
@@ -507,111 +391,61 @@ public class PlayerDataManager {
         ps.setString(19, plugin.getGson().toJson(data.getDiscoveredAreas()));
     }
 
-    private void debugLog(String message) {
-        if (plugin.getConfigUtil() != null && plugin.getConfigUtil().isStorageDebug())
-            plugin.getLogger().info(message);
-        else
-            plugin.getLogger().fine(message);
-    }
+    /**
+     * Loads a player's data on the calling thread. <b>Must only be called from an
+     * asynchronous context</b> (e.g. {@code AsyncPlayerPreLoginEvent}), never the
+     * Bukkit main thread. Populates (never replaces) an already-cached instance
+     * and force-loads unloaded instances so later cache reads cannot see
+     * stale-empty data. In-flight edits win over the database snapshot.
+     */
+    public PlayerData loadPlayerBlocking(UUID uuid) {
+        PlayerData data = cache.get(uuid);
 
-    private String serializeItems(List<ItemStack> items) {
-        return ItemSerializationUtil.toBase64(items);
-    }
-
-    private List<ItemStack> padLoadoutItems(List<ItemStack> items) {
-        int size = plugin.getConfigUtil().getLoadoutGuiSize();
-
-        if (items.size() >= size)
-            return new ArrayList<>(items.subList(0, size));
-
-        List<ItemStack> padded = new ArrayList<>(items);
-        while (padded.size() < size)
-            padded.add(null);
-
-        return padded;
-    }
-
-    private String serializeLocation(@Nullable Location location) {
-        if (location == null || location.getWorld() == null)
-            return "";
-
-        return location.getWorld().getName() + "|"
-                + location.getX() + "|"
-                + location.getY() + "|"
-                + location.getZ() + "|"
-                + location.getYaw() + "|"
-                + location.getPitch();
-    }
-
-    private @Nullable Location deserializeLocation(String value) {
-        if (value == null || value.isBlank())
-            return null;
-
-        String[] parts = value.split("\\|");
-        if (parts.length < 6)
-            return null;
-
-        World world = plugin.getServer().getWorld(parts[0]);
-        if (world == null)
-            return null;
-
-        try {
-            return new Location(world,
-                    Double.parseDouble(parts[1]),
-                    Double.parseDouble(parts[2]),
-                    Double.parseDouble(parts[3]),
-                    Float.parseFloat(parts[4]),
-                    Float.parseFloat(parts[5]));
-        } catch (NumberFormatException e) {
-            return null;
+        if (data != null) {
+            if (data.isLoaded())
+                return data;
+        } else {
+            PlayerData fresh = newData(uuid);
+            PlayerData previous = cache.putIfAbsent(uuid, fresh);
+            data = previous != null ? previous : fresh;
         }
+
+        if (!loadRowInto(data)) {
+            plugin.getLogger().warning("Player data for " + data.getUuid()
+                    + " could not be loaded and stays unloaded (it will not be persisted until a load succeeds).");
+            return data;
+        }
+
+        data.setLoaded(true);
+        data.clearDirty();
+        return data;
+    }
+
+    /**
+     * Cache-only accessor: returns the cached instance for {@code uuid} without
+     * touching the database. Player data is guaranteed to be cached by the
+     * pre-login blocking load before any gameplay path runs, so this never
+     * blocks. If it is somehow missing, an empty instance is registered and a
+     * warning is logged rather than hitting the database on the main thread.
+     */
+    public PlayerData getLoaded(UUID uuid) {
+        PlayerData data = cache.get(uuid);
+
+        if (data != null)
+            return data;
+
+        PlayerData fresh = newData(uuid);
+        PlayerData previous = cache.putIfAbsent(uuid, fresh);
+        data = previous != null ? previous : fresh;
+
+        plugin.getLogger().warning("Player data for " + uuid
+                + " was requested before it was loaded — returning an empty instance.");
+        return data;
     }
 
     public void unloadPlayer(UUID uuid) {
         savePlayerNow(uuid);
         cache.remove(uuid);
-    }
-
-    /**
-     * Buffered save: queues a snapshot to be written at the next flush
-     * (queue size reached or auto-save interval). Used for non-critical
-     * changes; mutations are also auto-queued by the dirty listener, so this
-     * is mainly an explicit "ensure queued" hint.
-     */
-    public void savePlayer(UUID uuid) {
-        PlayerData data = cache.get(uuid);
-
-        if (data == null || !data.isLoaded())
-            return;
-
-        queue(data, false);
-    }
-
-    /**
-     * Buffered on a single server, but writes immediately when the backend is
-     * MySQL: tokens, cooldowns and purchases are read by other servers, so a
-     * deferred write could be observed as stale (duplication/rollback).
-     */
-    public void savePlayerShared(UUID uuid) {
-        if (plugin.getDatabaseManager().isMysql())
-            savePlayerNow(uuid);
-        else
-            savePlayer(uuid);
-    }
-
-    /**
-     * Marks an area as discovered for the player (called on the main thread when
-     * they enter it). Discovery is cross-server data, so it is saved immediately
-     * on MySQL; SQLite uses the buffered write-behind queue.
-     */
-    public void markAreaDiscovered(UUID uuid, String areaName) {
-        PlayerData data = getLoaded(uuid);
-
-        if (data == null || !data.isLoaded())
-            return;
-
-        if (data.markAreaDiscovered(areaName))
-            savePlayerShared(uuid);
     }
 
     /**
@@ -644,13 +478,44 @@ public class PlayerDataManager {
         plugin.getDatabaseManager().runKeyed(PLAYER_SAVE_KEY, () -> writeBatch(batch));
     }
 
-    /** Switches saves to synchronous writes (used during onDisable, when the
-     * scheduler no longer accepts tasks for this plugin). */
+    /**
+     * Buffered on a single server, but writes immediately when the backend is
+     * MySQL: tokens, cooldowns and purchases are read by other servers, so a
+     * deferred write could be observed as stale (duplication/rollback).
+     */
+    public void savePlayerShared(UUID uuid) {
+        if (plugin.getDatabaseManager().isMysql())
+            savePlayerNow(uuid);
+        else
+            savePlayer(uuid);
+    }
+
+    /**
+     * Marks an area as discovered for the player (called on the main thread when
+     * they enter it). Discovery is cross-server data, so it is saved immediately
+     * on MySQL; SQLite uses the buffered write-behind queue.
+     */
+    public void markAreaDiscovered(UUID uuid, String areaName) {
+        PlayerData data = getLoaded(uuid);
+
+        if (data == null || !data.isLoaded())
+            return;
+
+        if (data.markAreaDiscovered(areaName))
+            savePlayerShared(uuid);
+    }
+
+    /**
+     * Switches saves to synchronous writes (used during onDisable, when the
+     * scheduler no longer accepts tasks for this plugin).
+     */
     public void onDisable() {
         this.disabled = true;
     }
 
-    /** Interval flush: queues any lingering dirty instance, then writes the buffer. */
+    /**
+     * Interval flush: queues any lingering dirty instance, then writes the buffer.
+     */
     public void saveAllDirty() {
         for (PlayerData data : cache.values())
             if (data.isDirty() && data.isLoaded())
@@ -687,10 +552,6 @@ public class PlayerDataManager {
             }
         });
     }
-
-    private static final Set<String> NUMERIC_PLAYER_COLUMNS = Set.of(
-            "tokens", "last_kill_count", "last_event_count", "last_boss_count",
-            "extra_time_seconds", "pending_return");
 
     /**
      * One-time import of a legacy SQLite {@code extraction.db} into the active
@@ -762,6 +623,21 @@ public class PlayerDataManager {
     public void saveAll() {
         for (UUID uuid : cache.keySet())
             savePlayer(uuid);
+    }
+
+    /**
+     * Buffered save: queues a snapshot to be written at the next flush
+     * (queue size reached or auto-save interval). Used for non-critical
+     * changes; mutations are also auto-queued by the dirty listener, so this
+     * is mainly an explicit "ensure queued" hint.
+     */
+    public void savePlayer(UUID uuid) {
+        PlayerData data = cache.get(uuid);
+
+        if (data == null || !data.isLoaded())
+            return;
+
+        queue(data, false);
     }
 
     /**
