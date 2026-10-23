@@ -31,6 +31,9 @@ loadout:
   token-wrong-tier: "<red>Your next %slot% tier is <white>%tier%</white> — you can only apply the next upgrade in sequence.</red>"
   token-applied: "<green>Applied %token_name% to your %slot%!</green>"
   compass-undroppable: "<red>The Extraction Compass cannot be dropped while you're in a run.</red>"
+compass:
+  tracking: "<green>Now tracking <white>%area%</white>.</green>"
+  no-target: "<red>That area's location is unavailable from here.</red>"
 upgrade:
   opened: "<gray>Opened your armor upgrade menu.</gray>"
 block:

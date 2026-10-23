@@ -101,7 +101,8 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   `storage`, `extraction`, `backpack`, `shop-gui`, `actionbar`, `holograms`, `scoreboard`, `loot`,
   `containers`, `pack`), plus `relics/relics.yml` (`relics`, `relic-gui`), `loadout.yml` (`loadout`,
   `loadout-gui`), `tokens.yml` (`upgrade-tokens`, `time-loot`, `token-loot`, `keys`, `event-items`),
-  `upgrades.yml` (`upgrade-gui`, `upgrade-confirm`), `areas.yml` (`areas`, `area-editor`), and
+  `upgrades.yml` (`upgrade-gui`, `upgrade-confirm`), `areas.yml` (`areas`, `area-editor`),
+  `shop.yml` (`shop-hub`, `shop`, `enchantments`), `compass.yml` (`compass`), and
   `party.yml` (`party`).
   `config/ConfigManager` routes each path to its owning file; defaults live in the bundled YAML files
   + `ConfigKeys` / `ConfigUtil`. The relic-definition files `relics/charms.yml` + `relics/artifacts.yml`
@@ -731,6 +732,20 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
     `AreaManager.resolveSpawns` works unchanged; `AreaClearManager.spawnGroup` still overwrites count/level from the
     spawn-entry after resolve. `AreaSpawnDefinition.count` (a template copy) is stale for per-spawn entries — read
     the entry fields in callers.
+- **Area Compass discovery GUI**: right-clicking the Extraction Compass during a run opens `compass/CompassGUI`
+  (non-cached, built fresh from live data) and lists **every** configured area from `AreaManager.getAreas()`.
+  `compass/CompassHolder` (slot→area map) backs click handling; `listeners/CompassGUIListener` opens the GUI
+  (`RIGHT_CLICK_AIR/BLOCK` + `LoadoutManager.isLoadoutCompass` + `RunManager.isPlayerInRun`) and on click sets
+  `player.setCompassTarget(area.getCenter())`, sends `compass.tracking`, and closes. Cross-world/centre-less areas
+  send `compass.no-target`. Icons/slots live in `compass.yml` (`compass.*`, routed in `ConfigManager`):
+  `default-icon` (material/name/lore/custom-model-data, placeholders `%area% %level% %distance% %status% %state%
+  %world% %x% %y% %z%`), per-area `slot` + `icon` overrides, `state-lore.discovered/undiscovered` appended to the
+  icon lore, `filler`/`empty` items, `title`/`rows`. Areas without an entry get the default icon + lowest free slot
+  (invalid/duplicate slots warn + auto-assign). Discovery is persisted per player in the new
+  `player_data.discovered_areas` JSON set (`PlayerData.discoveredAreas`, `PlayerDataManager.markAreaDiscovered` =
+  cache-only `getLoaded` + `savePlayerShared`, immediate on MySQL): `AreaManager.checkPlayerAreas` marks the area on
+  first entry. `DatabaseManager.PLAYER_COLUMNS` gained the column (index 19) with `CREATE TABLE` + `ensureColumn`
+  migrations for existing MySQL/SQLite tables. Messages `compass.tracking`/`compass.no-target`.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

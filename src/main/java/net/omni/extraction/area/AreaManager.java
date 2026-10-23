@@ -348,6 +348,7 @@ public class AreaManager {
 
             if (area != null) {
                 playerAreas.put(uuid, current);
+                plugin.getPlayerDataManager().markAreaDiscovered(uuid, area.getName());
                 plugin.getAreaClearManager().onPlayerEnter(player, area);
                 Bukkit.getPluginManager().callEvent(new PlayerEnterAreaEvent(player, area));
             } else

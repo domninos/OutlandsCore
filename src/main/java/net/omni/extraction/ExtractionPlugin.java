@@ -21,6 +21,7 @@ import net.omni.extraction.gui.GUIManager;
 import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.integration.ExternalPluginManager;
 import net.omni.extraction.listeners.BackpackGUIListener;
+import net.omni.extraction.listeners.CompassGUIListener;
 import net.omni.extraction.listeners.EnchantGUIListener;
 import net.omni.extraction.listeners.LoadoutGUIListener;
 import net.omni.extraction.listeners.PlayerListener;
@@ -374,6 +375,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new LoadoutGUIListener(this).register();
         new RelicGUIListener(this).register();
         new BackpackGUIListener(this).register();
+        new CompassGUIListener(this).register();
         new AreaWandListener(this).register();
         new AreaListener(this).register();
         areaSelectionVisualizer.register();

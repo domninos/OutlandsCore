@@ -38,6 +38,8 @@ public enum Messages {
     LOADOUT_TOKEN_WRONG_TIER("loadout.token-wrong-tier", "<red>Your next %slot% tier is <white>%tier%</white> — you can only apply the next upgrade in sequence.</red>"),
     LOADOUT_TOKEN_APPLIED("loadout.token-applied", "<green>Applied %token_name% to your %slot%!</green>"),
     LOADOUT_COMPASS_UNDROPPABLE("loadout.compass-undroppable", "<red>The Extraction Compass cannot be dropped while you're in a run.</red>"),
+    COMPASS_TRACKING("compass.tracking", "<green>Now tracking <white>%area%</white>.</green>"),
+    COMPASS_NO_TARGET("compass.no-target", "<red>That area's location is unavailable from here.</red>"),
     UPGRADE_OPENED("upgrade.opened", "<gray>Opened your armor upgrade menu.</gray>"),
     BLOCK_BLOCKED("block.blocked", "<red>You cannot break or place blocks in Extraction.</red>"),
 

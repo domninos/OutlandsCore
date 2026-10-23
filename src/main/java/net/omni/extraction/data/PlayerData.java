@@ -24,6 +24,7 @@ public class PlayerData {
     private boolean pendingDeathRestore;
     private Set<String> ownedCharms;
     private Set<String> ownedArtifacts;
+    private Set<String> discoveredAreas;
     private String activeCharm;
     private String activeArtifact;
     private boolean dirty;
@@ -48,6 +49,7 @@ public class PlayerData {
         this.pendingDeathRestore = false;
         this.ownedCharms = new HashSet<>();
         this.ownedArtifacts = new HashSet<>();
+        this.discoveredAreas = new HashSet<>();
         this.activeCharm = "";
         this.activeArtifact = "";
         this.dirty = false;
@@ -116,6 +118,7 @@ public class PlayerData {
         copy.pendingDeathRestore = pendingDeathRestore;
         copy.ownedCharms = new HashSet<>(ownedCharms);
         copy.ownedArtifacts = new HashSet<>(ownedArtifacts);
+        copy.discoveredAreas = new HashSet<>(discoveredAreas);
         copy.activeCharm = activeCharm;
         copy.activeArtifact = activeArtifact;
         copy.dirty = false;
@@ -398,6 +401,38 @@ public class PlayerData {
             return false;
 
         if (ownedArtifacts.remove(id.toLowerCase(java.util.Locale.ROOT))) {
+            markDirty();
+            return true;
+        }
+
+        return false;
+    }
+
+    public Set<String> getDiscoveredAreas() {
+        return discoveredAreas;
+    }
+
+    public void setDiscoveredAreas(java.util.Collection<String> discovered) {
+        this.discoveredAreas = new HashSet<>();
+
+        if (discovered != null)
+            for (String id : discovered)
+                if (id != null)
+                    this.discoveredAreas.add(id.toLowerCase(java.util.Locale.ROOT));
+
+        markDirty();
+    }
+
+    public boolean isAreaDiscovered(String id) {
+        return id != null && discoveredAreas.contains(id.toLowerCase(java.util.Locale.ROOT));
+    }
+
+    /** Returns true when the area was newly added (and therefore needs a save). */
+    public boolean markAreaDiscovered(String id) {
+        if (id == null)
+            return false;
+
+        if (discoveredAreas.add(id.toLowerCase(java.util.Locale.ROOT))) {
             markDirty();
             return true;
         }

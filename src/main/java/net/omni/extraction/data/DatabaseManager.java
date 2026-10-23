@@ -26,7 +26,8 @@ public class DatabaseManager {
             "uuid", "tokens", "loadout", "loadout_contents", "customized_cells", "cooldown_until",
             "last_kill_count", "last_event_count", "last_boss_count", "extra_time_seconds",
             "return_location", "pre_run_inventory", "pre_run_armor", "pending_return",
-            "owned_charms", "owned_artifacts", "active_charm", "active_artifact"
+            "owned_charms", "owned_artifacts", "active_charm", "active_artifact",
+            "discovered_areas"
     };
 
     private final ExtractionPlugin plugin;
@@ -279,8 +280,10 @@ public class DatabaseManager {
                     + "owned_charms LONGTEXT, "
                     + "owned_artifacts LONGTEXT, "
                     + "active_charm VARCHAR(255) DEFAULT '', "
-                    + "active_artifact VARCHAR(255) DEFAULT '')"
+                    + "active_artifact VARCHAR(255) DEFAULT '', "
+                    + "discovered_areas LONGTEXT)"
                     + tableSuffix());
+            ensureColumn(stmt, playerDataTable(), "discovered_areas", "LONGTEXT");
             return;
         }
 
@@ -303,7 +306,8 @@ public class DatabaseManager {
                         owned_charms TEXT DEFAULT '[]',
                         owned_artifacts TEXT DEFAULT '[]',
                         active_charm TEXT DEFAULT '',
-                        active_artifact TEXT DEFAULT ''
+                        active_artifact TEXT DEFAULT '',
+                        discovered_areas TEXT DEFAULT '[]'
                     )
                 """);
         try {
@@ -366,6 +370,9 @@ public class DatabaseManager {
         } catch (SQLException ignored) {
             // Column already exists.
         }
+
+        ensureColumn(stmt, playerDataTable(), "discovered_areas",
+                dialect == Dialect.MYSQL ? "LONGTEXT" : "TEXT DEFAULT '[]'");
     }
 
     private void createPartyTables(Statement stmt) throws SQLException {

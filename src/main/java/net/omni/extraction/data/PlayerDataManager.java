@@ -279,6 +279,15 @@ public class PlayerDataManager {
         data.setActiveCharm(rs.getString("active_charm"));
         data.setActiveArtifact(rs.getString("active_artifact"));
 
+        String discoveredAreasJson = rs.getString("discovered_areas");
+        if (discoveredAreasJson != null && !discoveredAreasJson.isEmpty() && !discoveredAreasJson.equals("[]")) {
+            List<String> ids = plugin.getGson().fromJson(discoveredAreasJson, new TypeToken<List<String>>() {
+            }.getType());
+
+            if (ids != null)
+                data.setDiscoveredAreas(ids);
+        }
+
         List<ItemStack> loadedItems = data.getLoadoutItems();
         Map<String, Integer> loadedTiers = data.getLoadoutTiers();
 
@@ -380,6 +389,7 @@ public class PlayerDataManager {
             ps.setString(16, plugin.getGson().toJson(data.getOwnedArtifacts()));
             ps.setString(17, data.getActiveCharm());
             ps.setString(18, data.getActiveArtifact());
+            ps.setString(19, plugin.getGson().toJson(data.getDiscoveredAreas()));
 
             ps.executeUpdate();
 
@@ -477,6 +487,21 @@ public class PlayerDataManager {
             savePlayerNow(uuid);
         else
             savePlayer(uuid);
+    }
+
+    /**
+     * Marks an area as discovered for the player (called on the main thread when
+     * they enter it). Discovery is cross-server data, so it is saved immediately
+     * on MySQL; SQLite uses the buffered write-behind queue.
+     */
+    public void markAreaDiscovered(UUID uuid, String areaName) {
+        PlayerData data = getLoaded(uuid);
+
+        if (data == null || !data.isLoaded())
+            return;
+
+        if (data.markAreaDiscovered(areaName))
+            savePlayerShared(uuid);
     }
 
     /**

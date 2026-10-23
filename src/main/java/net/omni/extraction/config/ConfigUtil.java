@@ -1,6 +1,7 @@
 package net.omni.extraction.config;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.compass.CompassIcon;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -197,6 +198,18 @@ public class ConfigUtil {
     private String loadoutCompassName;
     private List<String> loadoutCompassLore;
 
+    private String compassTitle;
+    private int compassRows;
+    private String compassFillerMaterial;
+    private String compassFillerName;
+    private List<String> compassStateLoreDiscovered;
+    private List<String> compassStateLoreUndiscovered;
+    private String compassEmptyMaterial;
+    private String compassEmptyName;
+    private CompassIcon compassDefaultIcon;
+    private final Map<String, Integer> compassAreaSlots = new HashMap<>();
+    private final Map<String, CompassIcon> compassAreaIcons = new HashMap<>();
+
     private int autoSaveSeconds;
     private int saveQueueSize = 10;
     private int storageThreads = 3;
@@ -352,6 +365,7 @@ public class ConfigUtil {
         loadBackpack(savedDefaults);
         loadShopGui(savedDefaults);
         loadShop(savedDefaults);
+        loadCompass(savedDefaults);
         loadRelicGui(savedDefaults);
         loadPack(savedDefaults);
 
@@ -694,6 +708,75 @@ public class ConfigUtil {
         this.loadoutCompassLore = getAndDefaultStringList(ConfigKeys.LOADOUT_COMPASS_LORE,
                 List.of("<gray>Points toward an active event</gray>", "<gray>or the extraction spawn.</gray>"),
                 savedDefaults);
+    }
+
+    private void loadCompass(AtomicInteger savedDefaults) {
+        this.compassTitle = getAndDefaultString(ConfigKeys.COMPASS_TITLE,
+                "<dark_gray>Area Compass</dark_gray>", savedDefaults);
+        this.compassRows = Math.clamp(getAndDefaultInt(ConfigKeys.COMPASS_ROWS, 6, savedDefaults), 1, 6);
+        this.compassFillerMaterial = getAndDefaultString(ConfigKeys.COMPASS_FILLER_MATERIAL,
+                "GRAY_STAINED_GLASS_PANE", savedDefaults);
+        this.compassFillerName = getAndDefaultString(ConfigKeys.COMPASS_FILLER_NAME, " ", savedDefaults);
+        this.compassStateLoreDiscovered = getAndDefaultStringList(ConfigKeys.COMPASS_STATE_LORE_DISCOVERED,
+                List.of("<green>Discovered</green>"), savedDefaults);
+        this.compassStateLoreUndiscovered = getAndDefaultStringList(ConfigKeys.COMPASS_STATE_LORE_UNDISCOVERED,
+                List.of("<yellow>Undiscovered</yellow>"), savedDefaults);
+        this.compassEmptyMaterial = getAndDefaultString(ConfigKeys.COMPASS_EMPTY_MATERIAL,
+                "BARRIER", savedDefaults);
+        this.compassEmptyName = getAndDefaultString(ConfigKeys.COMPASS_EMPTY_NAME,
+                "<red>No areas configured</red>", savedDefaults);
+
+        String defaultMaterial = getAndDefaultString(ConfigKeys.COMPASS_DEFAULT_ICON_MATERIAL,
+                "COMPASS", savedDefaults);
+        String defaultName = getAndDefaultString(ConfigKeys.COMPASS_DEFAULT_ICON_NAME,
+                "<white>%area%</white>", savedDefaults);
+        List<String> defaultLore = getAndDefaultStringList(ConfigKeys.COMPASS_DEFAULT_ICON_LORE,
+                List.of(
+                        "<gray>Level <white>%level%</white></gray>",
+                        "<gray>Distance <white>%distance%</white> blocks</gray>",
+                        "<gray>Status: <white>%status%</white></gray>",
+                        "<yellow>Click to track this area.</yellow>"
+                ), savedDefaults);
+        int defaultCustomModelData = getAndDefaultInt(ConfigKeys.COMPASS_DEFAULT_ICON_CUSTOM_MODEL_DATA,
+                0, savedDefaults);
+        this.compassDefaultIcon = new CompassIcon(defaultMaterial, defaultName, defaultLore, defaultCustomModelData);
+
+        compassAreaSlots.clear();
+        compassAreaIcons.clear();
+
+        ConfigurationSection section = configManager.forPath(ConfigKeys.COMPASS_AREAS)
+                .getConfigurationSection(ConfigKeys.COMPASS_AREAS);
+
+        if (section == null)
+            return;
+
+        for (String key : section.getKeys(false)) {
+            ConfigurationSection areaSection = section.getConfigurationSection(key);
+
+            if (areaSection == null)
+                continue;
+
+            String id = key.toLowerCase(java.util.Locale.ROOT);
+
+            if (areaSection.contains("slot"))
+                compassAreaSlots.put(id, areaSection.getInt("slot"));
+
+            ConfigurationSection iconSection = areaSection.getConfigurationSection("icon");
+
+            if (iconSection == null)
+                continue;
+
+            String material = iconSection.getString("material", defaultMaterial);
+            String name = iconSection.getString("name", defaultName);
+            List<String> lore = iconSection.contains("lore")
+                    ? new ArrayList<>(iconSection.getStringList("lore"))
+                    : new ArrayList<>(defaultLore);
+            int customModelData = iconSection.contains("custom-model-data")
+                    ? iconSection.getInt("custom-model-data")
+                    : defaultCustomModelData;
+
+            compassAreaIcons.put(id, new CompassIcon(material, name, lore, customModelData));
+        }
     }
 
     private void loadSpawn() {
@@ -1761,6 +1844,52 @@ public class ConfigUtil {
 
     public List<String> getLoadoutCompassLore() {
         return loadoutCompassLore;
+    }
+
+    public String getCompassTitle() {
+        return compassTitle;
+    }
+
+    public int getCompassSize() {
+        return compassRows * 9;
+    }
+
+    public String getCompassFillerMaterial() {
+        return compassFillerMaterial;
+    }
+
+    public String getCompassFillerName() {
+        return compassFillerName;
+    }
+
+    public List<String> getCompassStateLore(boolean discovered) {
+        return discovered ? compassStateLoreDiscovered : compassStateLoreUndiscovered;
+    }
+
+    public String getCompassEmptyMaterial() {
+        return compassEmptyMaterial;
+    }
+
+    public String getCompassEmptyName() {
+        return compassEmptyName;
+    }
+
+    public CompassIcon getCompassDefaultIcon() {
+        return compassDefaultIcon;
+    }
+
+    /** Configured icon for the area, or null when the area has no icon section. */
+    public CompassIcon getCompassAreaIcon(String areaName) {
+        return areaName == null ? null : compassAreaIcons.get(areaName.toLowerCase(java.util.Locale.ROOT));
+    }
+
+    /** Configured slot for the area, or -1 when unset. */
+    public int getCompassAreaSlot(String areaName) {
+        if (areaName == null)
+            return -1;
+
+        Integer slot = compassAreaSlots.get(areaName.toLowerCase(java.util.Locale.ROOT));
+        return slot == null ? -1 : slot;
     }
 
     public int getAutoSaveSeconds() {

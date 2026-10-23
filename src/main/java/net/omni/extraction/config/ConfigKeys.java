@@ -88,6 +88,22 @@ public final class ConfigKeys {
     public static final String LOADOUT_COMPASS_NAME = "loadout.compass.name";
     public static final String LOADOUT_COMPASS_LORE = "loadout.compass.lore";
 
+    public static final String COMPASS = "compass";
+    public static final String COMPASS_TITLE = "compass.title";
+    public static final String COMPASS_ROWS = "compass.rows";
+    public static final String COMPASS_FILLER_MATERIAL = "compass.filler.material";
+    public static final String COMPASS_FILLER_NAME = "compass.filler.name";
+    public static final String COMPASS_STATE_LORE_DISCOVERED = "compass.state-lore.discovered";
+    public static final String COMPASS_STATE_LORE_UNDISCOVERED = "compass.state-lore.undiscovered";
+    public static final String COMPASS_EMPTY_MATERIAL = "compass.empty.material";
+    public static final String COMPASS_EMPTY_NAME = "compass.empty.name";
+    public static final String COMPASS_DEFAULT_ICON = "compass.default-icon";
+    public static final String COMPASS_DEFAULT_ICON_MATERIAL = "compass.default-icon.material";
+    public static final String COMPASS_DEFAULT_ICON_NAME = "compass.default-icon.name";
+    public static final String COMPASS_DEFAULT_ICON_LORE = "compass.default-icon.lore";
+    public static final String COMPASS_DEFAULT_ICON_CUSTOM_MODEL_DATA = "compass.default-icon.custom-model-data";
+    public static final String COMPASS_AREAS = "compass.areas";
+
     public static final String UPGRADE_TOKENS = "upgrade-tokens";
 
     public static final String TIME_LOOT = "time-loot";

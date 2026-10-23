@@ -30,6 +30,7 @@ public class ConfigManager {
         register("areas.yml", "areas", "area-editor");
         register("party.yml", "party");
         register("shop.yml", "shop-hub", "shop", "enchantments");
+        register("compass.yml", "compass");
     }
 
     private void register(String fileName, String... sections) {

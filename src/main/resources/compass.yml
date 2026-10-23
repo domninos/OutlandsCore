@@ -1,0 +1,36 @@
+compass:
+  title: "<dark_gray>Area Compass</dark_gray>"
+  rows: 6
+  filler:
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+  state-lore:
+    discovered:
+      - "<green>Discovered</green>"
+    undiscovered:
+      - "<yellow>Undiscovered</yellow>"
+  empty:
+    material: BARRIER
+    name: "<red>No areas configured</red>"
+  default-icon:
+    material: COMPASS
+    name: "<white>%area%</white>"
+    lore:
+      - "<gray>Level <white>%level%</white></gray>"
+      - "<gray>Distance <white>%distance%</white> blocks</gray>"
+      - "<gray>Status: <white>%status%</white></gray>"
+      - "<yellow>Click to track this area.</yellow>"
+    custom-model-data: 0
+  # Per-area overrides. Any area without an entry is auto-assigned the
+  # default icon and the lowest free slot. Area names are case-insensitive.
+  # Example:
+  # areas:
+  #   military_base:
+  #     slot: 10
+  #     icon:
+  #       material: COMPASS
+  #       name: "<white>Military Base</white>"
+  #       lore:
+  #         - "<gray>A fortified outpost.</gray>"
+  #       custom-model-data: 12345
+  areas: {}
