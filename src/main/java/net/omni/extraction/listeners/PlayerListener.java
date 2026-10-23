@@ -8,21 +8,26 @@ import net.omni.extraction.backpack.BackpackShopHolder;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.gameplay.RunManager;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.World;
 import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.loadout.LoadoutManager;
 import net.omni.extraction.loadout.LoadoutSlot;
-import net.omni.extraction.loot.LootItemUtil;
+import net.omni.extraction.util.LootItemUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.relics.RelicHolder;
-import net.omni.extraction.relics.RelicItemUtil;
+import net.omni.extraction.util.RelicItemUtil;
 import net.omni.extraction.relics.RelicManager;
+import net.omni.extraction.shop.ConsumablesHolder;
+import net.omni.extraction.shop.EnchantShopHolder;
+import net.omni.extraction.shop.EnchantTargetHolder;
+import net.omni.extraction.shop.ShopHolder;
 import net.omni.extraction.upgrade.*;
+import net.omni.extraction.util.UpgradeTokenUtil;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -290,13 +295,13 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        if (event.getView().getTopInventory().getHolder() instanceof net.omni.extraction.shop.ShopHolder) {
+        if (event.getView().getTopInventory().getHolder() instanceof ShopHolder) {
             event.setCancelled(true);
             handleNewShopClick(player, event);
             return;
         }
 
-        if (event.getView().getTopInventory().getHolder() instanceof net.omni.extraction.shop.ConsumablesHolder) {
+        if (event.getView().getTopInventory().getHolder() instanceof ConsumablesHolder) {
             event.setCancelled(true);
             if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER) {
                 plugin.getShopManager().purchaseConsumable(player, event.getRawSlot());
@@ -304,7 +309,7 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        if (event.getView().getTopInventory().getHolder() instanceof net.omni.extraction.shop.EnchantShopHolder) {
+        if (event.getView().getTopInventory().getHolder() instanceof EnchantShopHolder) {
             event.setCancelled(true);
             if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER) {
                 handleEnchantShopClick(player, event);
@@ -312,7 +317,7 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        if (event.getView().getTopInventory().getHolder() instanceof net.omni.extraction.shop.EnchantTargetHolder holder) {
+        if (event.getView().getTopInventory().getHolder() instanceof EnchantTargetHolder holder) {
             event.setCancelled(true);
             if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER) {
                 handleEnchantTargetClick(player, event, holder);
@@ -426,7 +431,8 @@ public class PlayerListener implements Listener {
     }
 
     private void handleNewShopClick(Player player, InventoryClickEvent event) {
-        if (event.getClickedInventory() == null || event.getClickedInventory().getType() == InventoryType.PLAYER) return;
+        if (event.getClickedInventory() == null || event.getClickedInventory().getType() == InventoryType.PLAYER)
+            return;
         ItemStack item = event.getCurrentItem();
         if (item == null) return;
         org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
@@ -470,11 +476,17 @@ public class PlayerListener implements Listener {
         for (String k : defs.keySet()) {
             java.util.Map<String, Object> d = defs.get(k);
             String dn = String.valueOf(d.getOrDefault("name", k)).toLowerCase(Locale.ROOT).replaceAll("<[^>]+>", "");
-            if (name.contains(k) || dn.contains(name) || name.contains(dn.replace(" ", "_"))) { key = k; break; }
+            if (name.contains(k) || dn.contains(name) || name.contains(dn.replace(" ", "_"))) {
+                key = k;
+                break;
+            }
         }
         if (key == null && !defs.isEmpty()) {
             // fallback: first match by material/name rough
-            for (String k : defs.keySet()) { key = k; break; }
+            for (String k : defs.keySet()) {
+                key = k;
+                break;
+            }
         }
         if (key != null) plugin.getShopManager().openEnchantTargets(player, key);
     }
@@ -487,51 +499,13 @@ public class PlayerListener implements Listener {
         int[] slots = {10, 12, 14, 16, 19, 21, 23, 25};
         for (int i = 0; i < slots.length; i++) {
             if (slots[i] == rawSlot) {
-                // find cell for this item - easier: scan
-                java.util.List<int[]> mapping = java.util.List.of(new int[]{10,0}, new int[]{12,1}, new int[]{14,2}, new int[]{16,3}, new int[]{19,4}, new int[]{21,5}, new int[]{23,6}, new int[]{25,7});
-                // resolve via shop manager scan logic by reopening? just ask shop manager to apply by index
-                plugin.getShopManager().applyEnchant(player, holder.enchantKey(), getCellForTarget(player, i));
+                net.omni.extraction.shop.ShopGUI shop = plugin.getGuiManager().findShop(player);
+                int cell = shop == null ? -1 : shop.getTargetCell(i);
+                if (cell < 0) return;
+                plugin.getShopManager().applyEnchant(player, holder.enchantKey(), cell);
                 return;
             }
         }
-    }
-
-    private int getCellForTarget(Player player, int idx) {
-        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
-        net.omni.extraction.config.ConfigUtil config = plugin.getConfigUtil();
-        int guiSize = config.getLoadoutGuiSize();
-        int found = -1;
-        int count = 0;
-        for (int cell = 0; cell < guiSize; cell++) {
-            if (LoadoutGUI.isFirstRowFillerCell(plugin, cell)) continue;
-            org.bukkit.inventory.ItemStack item = null;
-            if (data.isCellCustomized(cell)) {
-                item = data.getItemAt(cell);
-            } else {
-                LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, cell);
-                if (slot == null) continue;
-                if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT) {
-                    String kind = slot == LoadoutSlot.CHARM ? net.omni.extraction.relics.RelicManager.KIND_CHARM : net.omni.extraction.relics.RelicManager.KIND_ARTIFACT;
-                    String id = slot == LoadoutSlot.CHARM ? data.getActiveCharm() : data.getActiveArtifact();
-                    if (id == null || id.isBlank()) continue;
-                    net.omni.extraction.relics.RelicDefinition defRel = plugin.getRelicManager().getDefinition(kind, id);
-                    if (defRel == null) continue;
-                    item = plugin.getRelicEffectManager().equippedItem(data.getUuid(), defRel);
-                } else if (slot == LoadoutSlot.OFFHAND) {
-                    item = plugin.getLoadoutManager().buildCompassItem();
-                } else {
-                    int tierLevel = plugin.getLoadoutManager().getEffectiveTier(data, slot);
-                    if (tierLevel <= 0) continue;
-                    net.omni.extraction.upgrade.UpgradeTier tier = plugin.getUpgradeManager().getTier(slot, tierLevel);
-                    if (tier == null) continue;
-                    item = plugin.getLoadoutManager().buildTierItem(tier);
-                }
-            }
-            if (item == null || LoadoutGUI.isPlaceholder(item)) continue;
-            if (count == idx) return cell;
-            count++;
-        }
-        return found;
     }
 
     private void handleLoadoutClick(Player player, InventoryClickEvent event) {
@@ -685,6 +659,7 @@ public class PlayerListener implements Listener {
             event.setCursor(token);
 
             plugin.getGuiManager().refreshUpgrade(player, data);
+            plugin.getGuiManager().refreshShop(player);
         } else {
             sendWrongTier(player, slot, data);
         }
@@ -728,6 +703,7 @@ public class PlayerListener implements Listener {
                 "slot", slot.getDisplayName(),
                 "tier", nextTier.getTierName()));
 
+        plugin.getGuiManager().refreshShop(player);
         reopenUpgrade(player);
     }
 

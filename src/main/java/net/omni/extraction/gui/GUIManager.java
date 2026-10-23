@@ -3,6 +3,8 @@ package net.omni.extraction.gui;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.loadout.LoadoutGUI;
+import net.omni.extraction.shop.ShopGUI;
+import net.omni.extraction.shop.ShopView;
 import net.omni.extraction.upgrade.UpgradeGUI;
 import org.bukkit.entity.Player;
 
@@ -16,6 +18,7 @@ public class GUIManager {
 
     private final Set<LoadoutGUI> loadoutGuis = new HashSet<>();
     private final Set<UpgradeGUI> upgradeGuis = new HashSet<>();
+    private final Set<ShopGUI> shopGuis = new HashSet<>();
 
     public GUIManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -67,14 +70,37 @@ public class GUIManager {
         gui.refresh(data);
     }
 
+    public void openShop(Player player, ShopView view) {
+        getOrCreateShop(player).open(player, view);
+    }
+
+    public void openShop(Player player, ShopView view, String enchantKey) {
+        getOrCreateShop(player).openEnchantTargets(player, enchantKey);
+    }
+
+    public void refreshShop(Player player) {
+        ShopGUI gui = findShop(player);
+        if (gui != null) gui.refresh(player);
+    }
+
+    public ShopGUI findShop(Player player) {
+        for (ShopGUI gui : shopGuis) {
+            if (gui.getOwner().equals(player.getUniqueId()))
+                return gui;
+        }
+        return null;
+    }
+
     public void removePlayer(UUID uuid) {
         loadoutGuis.removeIf(gui -> gui.getOwner().equals(uuid));
         upgradeGuis.removeIf(gui -> gui.getOwner().equals(uuid));
+        shopGuis.removeIf(gui -> gui.getOwner().equals(uuid));
     }
 
     public void clearAll() {
         loadoutGuis.clear();
         upgradeGuis.clear();
+        shopGuis.clear();
     }
 
     private LoadoutGUI getOrCreateLoadout(Player player) {
@@ -96,6 +122,15 @@ public class GUIManager {
 
         UpgradeGUI gui = new UpgradeGUI(plugin, player);
         upgradeGuis.add(gui);
+        return gui;
+    }
+
+    private ShopGUI getOrCreateShop(Player player) {
+        ShopGUI gui = findShop(player);
+        if (gui != null) return gui;
+
+        gui = new ShopGUI(plugin, player);
+        shopGuis.add(gui);
         return gui;
     }
 }
