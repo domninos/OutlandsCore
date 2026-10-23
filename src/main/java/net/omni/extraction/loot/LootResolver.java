@@ -1,5 +1,7 @@
 package net.omni.extraction.loot;
 
+import net.omni.extraction.util.LootItemUtil;
+
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.integration.ExternalItemProvider;
 import net.omni.extraction.relics.RelicDefinition;

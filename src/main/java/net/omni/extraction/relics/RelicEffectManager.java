@@ -1,5 +1,7 @@
 package net.omni.extraction.relics;
 
+import net.omni.extraction.util.RelicItemUtil;
+
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.gameplay.RunManager;

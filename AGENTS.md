@@ -320,6 +320,13 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   extract pays base + per-event only. Wired through `AreaListener.onEntityDeath` + `AreaClearSession.bossMobs`.
 - `/areas setlevel {area} {level}` sets a stored per-area level override (0 = derive from spawns; override always wins).
 - Expanded `/extshop` (`/extshop`) opens a category hub (Consumables, Enchantments, Gear Upgrades, Backpack) from `shop.yml`; consumables bought with tokens drop leftovers at feet if inventory full; enchantments can be applied in-place to eligible loadout items (armor + sword/axe/pickaxe).
+- Shop GUI caching: `shop/ShopGUI` (+ `ShopView`) mirrors the LoadoutGUI/UpgradeGUI pattern and is cached per player in
+  `GUIManager` (`openShop`/`refreshShop`/`findShop`, cleared with `removePlayer`/`clearAll`). `ShopManager` only builds
+  views through `ShopGUI`; after a successful consumable purchase, enchant apply (no longer closes), or `/upgrade`
+  purchase the cached shop inventory is refreshed in place. `ShopGUI` stores the eligible target-cell list so enchant
+  clicks map to the right loadout cell without rescanning.
+- Utility package: `util/StringUtils` holds `capitalize`/`toRoman`/`stripTags`; `LootItemUtil`, `MessageUtil`,
+  `RelicItemUtil`, and `UpgradeTokenUtil` live in `net.omni.extraction.util` (stateful `ConfigUtil` stays in `config/`).
 - Multiple loot chest locations per area with optional per-chest loot table type (`AreaChestLocation`); wand
   CHEST add/remove-nearest; `/areas setchest`; legacy `loot.chest-location` migrates on load.
 - `PaperChatRenderer.toComponent` converts legacy `§` codes to MiniMessage tags so mixed placeholder/message

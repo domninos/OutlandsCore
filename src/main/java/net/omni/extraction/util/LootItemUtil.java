@@ -1,4 +1,4 @@
-package net.omni.extraction.loot;
+package net.omni.extraction.util;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;

@@ -1,4 +1,4 @@
-package net.omni.extraction.messages;
+package net.omni.extraction.util;
 
 import net.omni.extraction.chat.ChatRenderer;
 

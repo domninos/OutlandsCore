@@ -1,4 +1,6 @@
-package net.omni.extraction.relics;
+package net.omni.extraction.util;
+
+import net.omni.extraction.relics.RelicDefinition;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;

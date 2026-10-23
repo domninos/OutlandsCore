@@ -1,5 +1,7 @@
 package net.omni.extraction.upgrade;
 
+import net.omni.extraction.util.UpgradeTokenUtil;
+
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.loadout.LoadoutSlot;

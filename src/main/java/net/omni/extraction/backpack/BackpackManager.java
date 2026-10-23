@@ -1,7 +1,7 @@
 package net.omni.extraction.backpack;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.loot.LootItemUtil;
+import net.omni.extraction.util.LootItemUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.ItemSerializationUtil;
 import org.bukkit.Material;

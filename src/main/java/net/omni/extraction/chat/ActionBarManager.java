@@ -3,7 +3,7 @@ package net.omni.extraction.chat;
 import net.kyori.adventure.text.Component;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.data.PlayerData;
-import net.omni.extraction.messages.MessageUtil;
+import net.omni.extraction.util.MessageUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.scoreboard.PlaceholderValues;
 import org.bukkit.Bukkit;
