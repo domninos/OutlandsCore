@@ -142,6 +142,8 @@ public final class ConfigKeys {
     public static final String STORAGE_AUTO_SAVE_SECONDS = "storage.auto-save-seconds";
     public static final String STORAGE_SAVE_QUEUE_SIZE = "storage.save-queue-size";
     public static final String STORAGE_THREADS = "storage.threads";
+    public static final String STORAGE_BATCH_SIZE = "storage.batch-size";
+    public static final String STORAGE_DEBUG = "storage.debug";
     public static final String STORAGE_TYPE = "storage.type";
     public static final String STORAGE_MYSQL_HOST = "storage.mysql.host";
     public static final String STORAGE_MYSQL_PORT = "storage.mysql.port";

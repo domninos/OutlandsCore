@@ -49,7 +49,13 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   Cross-server features (parties) require `mysql` so the data is shared. `use-ssl` defaults **true** and is
   written to the JDBC URL as `sslMode=trust` (encrypt, accept self-signed certs, no hostname/CA verification) —
   this avoids the MySQL 8 `caching_sha2_password` "RSA public key is not available" auth error without
-  `allowPublicKeyRetrieval`. `false` emits `sslMode=disable`.
+  `allowPublicKeyRetrieval`. `false` emits `sslMode=disable`. The SQLite URL adds
+  `journal_mode=WAL&synchronous=NORMAL&busy_timeout=5000` (pool max 3) — the data folder also contains
+  `extraction.db-wal`/`-shm`, so backups must include them (or stop the server before copying the `.db`).
+  The MySQL URL enables `useServerPrepStmts`, `rewriteBatchedStatements`, prepared-statement caching
+  (`prepStmtCacheSize=256`), `cacheServerConfiguration`, `useLocalSessionState`, `maintainTimeStats=false`.
+- **`storage.batch-size`** (default 100; 0 = unlimited) caps rows per player-data transaction;
+  **`storage.debug`** (default false) logs each individual load/save at INFO instead of FINE.
 - **MySQL startup fallback:** `DatabaseManager` resolves the backend in `resolveDataSource(cfg)`. If mysql is
   configured but the pool fails to initialize (server down, bad creds, TLS/auth errors) and
   `storage.mysql.fallback-to-sqlite` is true (default), it logs a loud SEVERE warning and runs on the local
@@ -144,7 +150,8 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
 - `config/ConfigKeys.java`, `config/ConfigUtil.java`, `config/ConfigManager.java` (routes each config
   path to its owning split file), `config/ExtractionConfig.java` (generic per-file YAML IO).
 - `data/DatabaseManager.java` (SQLite `extraction.db` by default, or MariaDB/MySQL when `storage.type: mysql`;
-  `resolveDataSource(cfg)` picks the backend + may fall back to SQLite, `isFallback()`/`isConfiguredMysql()`),
+  `resolveDataSource(cfg)` picks the backend + may fall back to SQLite, `isFallback()`/`isConfiguredMysql()`,
+  cached `playerUpsertSql()`),
   `data/PlayerData.java`, `data/PlayerDataManager.java` (return location + pre-run inventory snapshot persistence;
   `importFromSqlite(File)` backs `/extraction admin migratedb`), `data/AsyncDatabase.java` (the off-thread
   `CompletableFuture` worker: pool + per-key serialization + `mainExecutor` + `shutdown` drain).
@@ -153,18 +160,23 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   (re)load (used on join and for offline admin targets); `getLoaded(uuid)` is the **cache-only** accessor every
   gameplay/GUI path uses (never touches the database). `ExtractionPlugin` also `preloadOnlinePlayers()` on enable
   (reload case). **Saving (write-behind queue):** `PlayerData.markDirty()` (every setter) fires a
-  `dirtyListener` the manager installs, so any mutation auto-enqueues a **snapshot** (`PlayerData.copy()` — taken
-  on the main thread; the worker never reads live state) into an in-memory pending map. The queue flushes off-thread
-  when it reaches `storage.save-queue-size` changes (default 10; counted per mutation, one write per player per
-  flush since the map coalesces) or on the periodic `saveAllDirty` dump (`storage.auto-save-seconds`, default 30).
-  Three entry points: `savePlayer(uuid)` = buffered; `savePlayerShared(uuid)` = immediate (`savePlayerNow`) on
-  MySQL, buffered on SQLite — used for cross-server-critical data (tokens/cooldowns/purchases/banked time) since a
-  deferred write could be read as stale by another server; `savePlayerNow(uuid)` = always immediate (run
-  enter/extract/death/disconnect, admin grants; drops any buffered snapshot for that UUID). `unloadPlayer` now
-  `savePlayerNow`s then evicts. `flush`/`saveAllSync` write the pending batch + whole cache synchronously at
-  shutdown. `PlayerDataManager.onDisable()` flips `disabled` so `savePlayerNow` writes synchronously
-  (`writePlayerToDb` direct); the dirty listener is a no-op while `disabled`, and `ExtractionPlugin.onDisable`
-  drains the worker before this point. Tradeoff: a hard crash can lose the buffered (non-immediate) window.
+  `dirtyListener` the manager installs, so any mutation auto-enqueues the **player UUID** (coalesced; one copy per
+  flush) rather than taking a snapshot per setter. The queue flushes off-thread when it reaches `storage.save-queue-size`
+  changes (default 10; counted per mutation, one write per player per flush) or on the periodic `saveAllDirty` dump
+  (`storage.auto-save-seconds`, default 30). Snapshots are taken **once per flush on the calling (main) thread** and
+  written in batches (`storage.batch-size`) inside a transaction, one connection per chunk; a failed chunk rolls back
+  and retries row-by-row. All player writes are serialized through a single `PLAYER_SAVE_KEY` in `runKeyed` (so a
+  batch cannot overwrite a newer immediate save). Three entry points: `savePlayer(uuid)` = buffered; `savePlayerShared(uuid)`
+  = immediate (`savePlayerNow`) on MySQL, buffered on SQLite — used for cross-server-critical data
+  (tokens/cooldowns/purchases/banked time) since a deferred write could be read as stale by another server;
+  `savePlayerNow(uuid)` = always immediate (run enter/extract/death/disconnect, admin grants; drops any buffered
+  snapshot for that UUID). `unloadPlayer` now `savePlayerNow`s then evicts. `flush`/`saveAllSync` merge pending +
+  loaded cache, skip unloaded instances, and write synchronously in batches at shutdown.
+  `PlayerDataManager.onDisable()` flips `disabled` so `savePlayerNow`/`flush` write synchronously; the dirty
+  listener is a no-op while `disabled`, and `ExtractionPlugin.onDisable` drains the worker before this point.
+  Tradeoff: a hard crash can lose the buffered (non-immediate) window. `loadRowInto` uses explicit
+  `DatabaseManager.PLAYER_COLUMNS` and only marks a player loaded on a successful query (failures keep it unloaded
+  and never persist it).
 - `party/Party.java` (roster: id, leader, ordered members), `party/PartyManager.java`: DB-backed
   cross-server party system (`/extraction party`), built after the data managers. Roster lives in the
   `party`/`party_member` tables and pending invites are a JSON array in `party.invites` (keyed by lowercased

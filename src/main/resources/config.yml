@@ -57,6 +57,16 @@ storage:
   # operations (loads, saves, party lookups). Never increases the Bukkit main
   # thread's workload; raise it for busy MySQL servers.
   threads: 3
+  # Maximum number of player rows written per transaction. Dirty player data is
+  # coalesced (one write per player per flush) and then batched into transactions
+  # of this size. Set to 0 for unlimited (not recommended for very large servers).
+  batch-size: 100
+  # Log every individual player load/save at INFO (very chatty on busy servers).
+  # Leave false to log those at FINE; WARNING/SEVERE are always logged.
+  debug: false
+  # SQLite stores its journal in WAL mode: the data folder also contains
+  # extraction.db-wal and extraction.db-shm, so include them in backups (or stop
+  # the server before copying the .db file).
   # Backend: "sqlite" (single-server, no setup) or "mysql"
   # (MariaDB/MySQL). Use "mysql" to share data across servers behind a proxy
   # (required for cross-server parties).

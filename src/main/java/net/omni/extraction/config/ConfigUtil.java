@@ -213,6 +213,8 @@ public class ConfigUtil {
     private int autoSaveSeconds;
     private int saveQueueSize = 10;
     private int storageThreads = 3;
+    private int storageBatchSize = 100;
+    private boolean storageDebug = false;
     private String storageType = "sqlite";
     private String mysqlHost = "localhost";
     private int mysqlPort = 3306;
@@ -372,6 +374,8 @@ public class ConfigUtil {
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
         this.saveQueueSize = getAndDefaultInt(ConfigKeys.STORAGE_SAVE_QUEUE_SIZE, 10, savedDefaults);
         this.storageThreads = getAndDefaultInt(ConfigKeys.STORAGE_THREADS, 3, savedDefaults);
+        this.storageBatchSize = getAndDefaultInt(ConfigKeys.STORAGE_BATCH_SIZE, 100, savedDefaults);
+        this.storageDebug = getAndDefaultBoolean(ConfigKeys.STORAGE_DEBUG, false, savedDefaults);
         this.storageType = getAndDefaultString(ConfigKeys.STORAGE_TYPE, "sqlite", savedDefaults);
         this.mysqlHost = getAndDefaultString(ConfigKeys.STORAGE_MYSQL_HOST, "localhost", savedDefaults);
         this.mysqlPort = getAndDefaultInt(ConfigKeys.STORAGE_MYSQL_PORT, 3306, savedDefaults);
@@ -1902,6 +1906,14 @@ public class ConfigUtil {
 
     public int getStorageThreads() {
         return Math.max(1, storageThreads);
+    }
+
+    public int getStorageBatchSize() {
+        return storageBatchSize <= 0 ? Integer.MAX_VALUE : storageBatchSize;
+    }
+
+    public boolean isStorageDebug() {
+        return storageDebug;
     }
 
     public boolean isMysqlStorage() {

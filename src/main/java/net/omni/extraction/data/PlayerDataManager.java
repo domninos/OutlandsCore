@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -33,9 +34,12 @@ import java.util.logging.Level;
 
 public class PlayerDataManager {
 
+    /** Single ordering key: every player_data write is serialized through it. */
+    private static final Object PLAYER_SAVE_KEY = new Object();
+
     private final ExtractionPlugin plugin;
     private final Map<UUID, PlayerData> cache;
-    private final Map<UUID, PlayerData> pending = new LinkedHashMap<>();
+    private final Set<UUID> pending = new LinkedHashSet<>();
     private final Object queueLock = new Object();
     private volatile boolean disabled;
     private int pendingChanges;
@@ -55,15 +59,17 @@ public class PlayerDataManager {
     }
 
     /**
-     * Enqueue a snapshot of {@code data} for a later batched write. Runs on the
-     * mutating (main) thread; the off-thread worker never touches live state.
+     * Marks {@code data} for a later batched write. Only the UUID is buffered:
+     * the snapshot is taken once per flush on the calling (main) thread, so a
+     * burst of mutations costs one copy instead of one per setter. The
+     * off-thread worker never touches live state.
      */
     private void queue(PlayerData data, boolean count) {
         boolean flushNow;
 
         synchronized (queueLock) {
             data.clearDirty();
-            pending.put(data.getUuid(), data.copy());
+            pending.add(data.getUuid());
 
             if (count)
                 pendingChanges++;
@@ -83,25 +89,46 @@ public class PlayerDataManager {
         queue(data, true);
     }
 
-    /** Writes every buffered snapshot off-thread and clears the buffer. */
+    /**
+     * Snapshots every buffered player on the calling thread and writes the batch
+     * off-thread. Unloaded/evicted instances are skipped: they have no
+     * authoritative state and must never overwrite a real database row.
+     */
     private void flushPending() {
         if (disabled)
             return;
 
-        Map<UUID, PlayerData> batch;
+        Map<UUID, PlayerData> batch = snapshotPending();
+
+        if (batch.isEmpty())
+            return;
+
+        plugin.getDatabaseManager().runKeyed(PLAYER_SAVE_KEY, () -> writeBatch(batch));
+    }
+
+    /**
+     * Copies the pending players (once each) and clears the buffer. Must run on
+     * the mutating thread so the worker never reads live {@link PlayerData}.
+     */
+    private Map<UUID, PlayerData> snapshotPending() {
+        Map<UUID, PlayerData> batch = new LinkedHashMap<>();
 
         synchronized (queueLock) {
             if (pending.isEmpty())
-                return;
+                return batch;
 
-            batch = new LinkedHashMap<>(pending);
+            for (UUID uuid : pending) {
+                PlayerData data = cache.get(uuid);
+
+                if (data != null && data.isLoaded())
+                    batch.put(uuid, data.copy());
+            }
+
             pending.clear();
             pendingChanges = 0;
         }
 
-        for (Map.Entry<UUID, PlayerData> entry : batch.entrySet())
-            plugin.getDatabaseManager().runKeyed(entry.getKey(),
-                    () -> writePlayerToDb(entry.getKey(), entry.getValue()));
+        return batch;
     }
 
     /**
@@ -112,8 +139,7 @@ public class PlayerDataManager {
     public void loadPlayer(UUID uuid, @Nullable Runnable onComplete) {
         PlayerData current = cache.get(uuid);
 
-        if (current != null && (current.isDirty() || current.isLoaded())) {
-            current.setLoaded(true);
+        if (current != null && current.isLoaded()) {
             if (onComplete != null)
                 onComplete.run();
             return;
@@ -124,15 +150,17 @@ public class PlayerDataManager {
         async.supplyKeyed(uuid, () -> {
             PlayerData existing = cache.get(uuid);
 
-            if (existing != null && existing.isDirty()) {
-                existing.setLoaded(true);
+            if (existing != null && existing.isLoaded()) {
                 return existing;
             }
 
             PlayerData data = existing != null ? existing : newData(uuid);
-            loadRowInto(data);
-            data.setLoaded(true);
-            data.clearDirty();
+
+            if (loadRowInto(data)) {
+                data.setLoaded(true);
+                data.clearDirty();
+            }
+
             cache.putIfAbsent(uuid, data);
             return cache.get(uuid);
         }).whenComplete((data, error) -> {
@@ -157,11 +185,6 @@ public class PlayerDataManager {
         PlayerData data = cache.get(uuid);
 
         if (data != null) {
-            if (data.isDirty()) {
-                data.setLoaded(true);
-                return data;
-            }
-
             if (data.isLoaded())
                 return data;
         } else {
@@ -170,22 +193,39 @@ public class PlayerDataManager {
             data = previous != null ? previous : fresh;
         }
 
-        loadRowInto(data);
+        if (!loadRowInto(data)) {
+            plugin.getLogger().warning("Player data for " + data.getUuid()
+                    + " could not be loaded and stays unloaded (it will not be persisted until a load succeeds).");
+            return data;
+        }
+
         data.setLoaded(true);
         data.clearDirty();
         return data;
     }
 
-    /** Populates {@code data} from its database row (if present). Runs on the caller's thread. */
-    private void loadRowInto(PlayerData data) {
+    /**
+     * Populates {@code data} from its database row (if present). Runs on the
+     * caller's thread. Returns {@code false} when the query fails, so callers do
+     * not mark an empty instance as loaded (which would let a later save wipe a
+     * real row with defaults).
+     */
+    private boolean loadRowInto(PlayerData data) {
+        String columns = String.join(", ", DatabaseManager.PLAYER_COLUMNS);
+
         try (Connection conn = plugin.getDatabaseManager().getConnection();
-             PreparedStatement ps = conn.prepareStatement("SELECT * FROM "
+             PreparedStatement ps = conn.prepareStatement("SELECT " + columns + " FROM "
                      + plugin.getDatabaseManager().playerDataTable() + " WHERE uuid = ?")) {
             ps.setString(1, data.getUuid().toString());
-            ResultSet rs = ps.executeQuery();
-            applyRow(data, rs);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                applyRow(data, rs);
+            }
+
+            return true;
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to load player data for " + data.getUuid(), e);
+            return false;
         }
     }
 
@@ -202,7 +242,7 @@ public class PlayerDataManager {
         if (data != null)
             return data;
 
-        PlayerData fresh = new PlayerData(uuid);
+        PlayerData fresh = newData(uuid);
         PlayerData previous = cache.putIfAbsent(uuid, fresh);
         data = previous != null ? previous : fresh;
 
@@ -301,7 +341,7 @@ public class PlayerDataManager {
                             + ", tiers=" + storedTiers
                             + ") but decoded to 0 items/0 tiers — possible data loss");
         } else if (storedItems || storedTiers) {
-            plugin.getLogger().info("Loaded loadout for " + data.getUuid() + ": "
+            debugLog("Loaded loadout for " + data.getUuid() + ": "
                     + (loadedItems == null ? 0 : loadedItems.stream().filter(Objects::nonNull).count())
                     + " item(s), " + (loadedTiers == null ? 0 : loadedTiers.size()) + " tier(s)");
         }
@@ -367,41 +407,111 @@ public class PlayerDataManager {
         }
     }
 
+    /**
+     * Writes a batch of player snapshots on the caller's (worker) thread, one
+     * transaction per chunk of {@code storage.batch-size} rows. A failed chunk is
+     * rolled back and retried row-by-row so one bad row does not lose the rest.
+     */
+    private void writeBatch(Map<UUID, PlayerData> batch) {
+        if (batch.isEmpty())
+            return;
+
+        List<Map.Entry<UUID, PlayerData>> entries = new ArrayList<>(batch.entrySet());
+
+        if (entries.size() == 1) {
+            Map.Entry<UUID, PlayerData> entry = entries.get(0);
+            writePlayerToDb(entry.getKey(), entry.getValue());
+            return;
+        }
+
+        int chunkSize = plugin.getConfigUtil().getStorageBatchSize();
+
+        for (int from = 0; from < entries.size(); from += chunkSize) {
+            int to = Math.min(entries.size(), from + chunkSize);
+            writeChunk(entries.subList(from, to));
+        }
+    }
+
+    private void writeChunk(List<Map.Entry<UUID, PlayerData>> chunk) {
+        String sql = plugin.getDatabaseManager().playerUpsertSql();
+
+        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                for (Map.Entry<UUID, PlayerData> entry : chunk) {
+                    bindPlayer(ps, entry.getKey(), entry.getValue());
+                    ps.addBatch();
+                }
+
+                ps.executeBatch();
+                conn.commit();
+            } catch (SQLException e) {
+                try {
+                    conn.rollback();
+                } catch (SQLException rollbackError) {
+                    plugin.getLogger().log(Level.WARNING, "Could not roll back failed player-data batch", rollbackError);
+                }
+
+                throw e;
+            }
+
+            debugLog("Saved " + chunk.size() + " player data row(s) in one transaction.");
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to save a batch of " + chunk.size()
+                    + " player data row(s); retrying individually", e);
+
+            for (Map.Entry<UUID, PlayerData> entry : chunk)
+                writePlayerToDb(entry.getKey(), entry.getValue());
+        }
+    }
+
     private void writePlayerToDb(UUID uuid, PlayerData data) {
         try (Connection conn = plugin.getDatabaseManager().getConnection();
              PreparedStatement ps = conn.prepareStatement(plugin.getDatabaseManager().playerUpsertSql())) {
 
-            ps.setString(1, uuid.toString());
-            ps.setInt(2, data.getTokens());
-            ps.setString(3, plugin.getGson().toJson(data.getLoadoutTiers()));
-            ps.setString(4, serializeItems(padLoadoutItems(data.getLoadoutItems())));
-            ps.setString(5, plugin.getGson().toJson(data.getCustomizedCells()));
-            ps.setLong(6, data.getCooldownUntil());
-            ps.setInt(7, data.getLastKillCount());
-            ps.setInt(8, data.getLastEventCount());
-            ps.setInt(9, data.getLastBossCount());
-            ps.setInt(10, data.getExtraTimeSeconds());
-            ps.setString(11, serializeLocation(data.getReturnLocation()));
-            ps.setString(12, serializeItems(data.getPreRunInventory()));
-            ps.setString(13, serializeItems(data.getPreRunArmor()));
-            ps.setInt(14, data.isPendingReturn() ? 1 : 0);
-            ps.setString(15, plugin.getGson().toJson(data.getOwnedCharms()));
-            ps.setString(16, plugin.getGson().toJson(data.getOwnedArtifacts()));
-            ps.setString(17, data.getActiveCharm());
-            ps.setString(18, data.getActiveArtifact());
-            ps.setString(19, plugin.getGson().toJson(data.getDiscoveredAreas()));
-
+            bindPlayer(ps, uuid, data);
             ps.executeUpdate();
 
             long itemCount = data.getLoadoutItems() == null
                     ? 0 : data.getLoadoutItems().stream().filter(Objects::nonNull).count();
-            plugin.getLogger().info("Saved player data for " + uuid + ": " + itemCount
+            debugLog("Saved player data for " + uuid + ": " + itemCount
                     + " loadout item(s), " + data.getLoadoutTiers().size() + " tier(s), "
                     + data.getCustomizedCells().size() + " customized cell(s), "
                     + data.getTokens() + " token(s)");
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save player data for " + uuid, e);
         }
+    }
+
+    /** Binds the canonical {@link DatabaseManager#PLAYER_COLUMNS} values (1-based). */
+    private void bindPlayer(PreparedStatement ps, UUID uuid, PlayerData data) throws SQLException {
+        ps.setString(1, uuid.toString());
+        ps.setInt(2, data.getTokens());
+        ps.setString(3, plugin.getGson().toJson(data.getLoadoutTiers()));
+        ps.setString(4, serializeItems(padLoadoutItems(data.getLoadoutItems())));
+        ps.setString(5, plugin.getGson().toJson(data.getCustomizedCells()));
+        ps.setLong(6, data.getCooldownUntil());
+        ps.setInt(7, data.getLastKillCount());
+        ps.setInt(8, data.getLastEventCount());
+        ps.setInt(9, data.getLastBossCount());
+        ps.setInt(10, data.getExtraTimeSeconds());
+        ps.setString(11, serializeLocation(data.getReturnLocation()));
+        ps.setString(12, serializeItems(data.getPreRunInventory()));
+        ps.setString(13, serializeItems(data.getPreRunArmor()));
+        ps.setInt(14, data.isPendingReturn() ? 1 : 0);
+        ps.setString(15, plugin.getGson().toJson(data.getOwnedCharms()));
+        ps.setString(16, plugin.getGson().toJson(data.getOwnedArtifacts()));
+        ps.setString(17, data.getActiveCharm());
+        ps.setString(18, data.getActiveArtifact());
+        ps.setString(19, plugin.getGson().toJson(data.getDiscoveredAreas()));
+    }
+
+    private void debugLog(String message) {
+        if (plugin.getConfigUtil() != null && plugin.getConfigUtil().isStorageDebug())
+            plugin.getLogger().info(message);
+        else
+            plugin.getLogger().fine(message);
     }
 
     private String serializeItems(List<ItemStack> items) {
@@ -513,23 +623,25 @@ public class PlayerDataManager {
     public void savePlayerNow(UUID uuid) {
         PlayerData data = cache.get(uuid);
 
-        if (data == null)
+        if (data == null || !data.isLoaded())
             return;
 
         PlayerData snapshot = data.copy();
         data.clearDirty();
 
         synchronized (queueLock) {
-            if (pending.remove(uuid) != null && pendingChanges > 0)
+            if (pending.remove(uuid) && pendingChanges > 0)
                 pendingChanges--;
         }
 
+        Map<UUID, PlayerData> batch = Map.of(uuid, snapshot);
+
         if (disabled) {
-            writePlayerToDb(uuid, snapshot);
+            writeBatch(batch);
             return;
         }
 
-        plugin.getDatabaseManager().runKeyed(uuid, () -> writePlayerToDb(uuid, snapshot));
+        plugin.getDatabaseManager().runKeyed(PLAYER_SAVE_KEY, () -> writeBatch(batch));
     }
 
     /** Switches saves to synchronous writes (used during onDisable, when the
@@ -652,28 +764,33 @@ public class PlayerDataManager {
             savePlayer(uuid);
     }
 
+    /**
+     * Final synchronous dump at shutdown: merges the write-behind buffer with the
+     * whole loaded cache (current state wins) and writes it in batches. Unloaded
+     * instances are skipped so an empty placeholder can never overwrite a row.
+     */
     public void flush() {
-        Map<UUID, PlayerData> batch;
+        Map<UUID, PlayerData> batch = snapshotPending();
 
-        synchronized (queueLock) {
-            batch = new LinkedHashMap<>(pending);
-            pending.clear();
-            pendingChanges = 0;
+        for (Map.Entry<UUID, PlayerData> entry : cache.entrySet()) {
+            PlayerData data = entry.getValue();
+
+            if (data.isLoaded())
+                batch.put(entry.getKey(), data.copy());
         }
 
-        for (Map.Entry<UUID, PlayerData> entry : batch.entrySet())
-            writePlayerToDb(entry.getKey(), entry.getValue());
-
-        saveAllSync();
-
-        if (!cache.isEmpty())
-            cache.values().forEach(PlayerData::flush);
-
+        writeBatch(batch);
         cache.clear();
     }
 
     public void saveAllSync() {
-        for (Map.Entry<UUID, PlayerData> entry : cache.entrySet())
-            writePlayerToDb(entry.getKey(), entry.getValue());
+        Map<UUID, PlayerData> batch = new LinkedHashMap<>();
+
+        for (Map.Entry<UUID, PlayerData> entry : cache.entrySet()) {
+            if (entry.getValue().isLoaded())
+                batch.put(entry.getKey(), entry.getValue().copy());
+        }
+
+        writeBatch(batch);
     }
 }

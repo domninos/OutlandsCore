@@ -37,6 +37,7 @@ public class DatabaseManager {
     private boolean fellBack;
     private final AsyncDatabase asyncDatabase;
     private HikariDataSource dataSource;
+    private String playerUpsertSql;
 
     public DatabaseManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -45,6 +46,7 @@ public class DatabaseManager {
         this.configuredMysql = cfg.isMysqlStorage();
         this.dataSource = resolveDataSource(cfg);
         this.asyncDatabase = new AsyncDatabase(plugin, cfg.getStorageThreads(), dialect == Dialect.SQLITE);
+        this.playerUpsertSql = buildPlayerUpsertSql();
 
         initialize();
     }
@@ -118,6 +120,10 @@ public class DatabaseManager {
 
     /** Upsert statement for the player_data table, built for the active dialect. */
     public String playerUpsertSql() {
+        return playerUpsertSql;
+    }
+
+    private String buildPlayerUpsertSql() {
         StringBuilder columns = new StringBuilder();
         StringBuilder values = new StringBuilder();
         StringBuilder updates = new StringBuilder();
@@ -168,9 +174,11 @@ public class DatabaseManager {
         if (!dataFolder.exists()) dataFolder.mkdirs();
 
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:sqlite:" + new File(dataFolder, "extraction.db").getAbsolutePath());
+        config.setPoolName("Extraction-SQLite");
+        config.setJdbcUrl("jdbc:sqlite:" + new File(dataFolder, "extraction.db").getAbsolutePath()
+                + "?journal_mode=WAL&synchronous=NORMAL&busy_timeout=5000");
         config.setConnectionTestQuery("SELECT 1");
-        config.setMaximumPoolSize(5);
+        config.setMaximumPoolSize(3);
         config.setMinimumIdle(1);
         config.setConnectionTimeout(5000);
         config.setIdleTimeout(60000);
@@ -183,12 +191,21 @@ public class DatabaseManager {
         ConfigUtil cfg = plugin.getConfigUtil();
 
         HikariConfig config = new HikariConfig();
+        config.setPoolName("Extraction-MySQL");
         config.setJdbcUrl("jdbc:mariadb://" + cfg.getMysqlHost() + ":" + cfg.getMysqlPort()
-                + "/" + cfg.getMysqlDatabase() + "?sslMode=" + (cfg.isMysqlUseSsl() ? "trust" : "disable"));
+                + "/" + cfg.getMysqlDatabase() + "?sslMode=" + (cfg.isMysqlUseSsl() ? "trust" : "disable")
+                + "&useServerPrepStmts=true"
+                + "&rewriteBatchedStatements=true"
+                + "&cachePrepStmts=true"
+                + "&prepStmtCacheSize=256"
+                + "&prepStmtCacheSqlLimit=2048"
+                + "&cacheServerConfiguration=true"
+                + "&useLocalSessionState=true"
+                + "&maintainTimeStats=false");
         config.setUsername(cfg.getMysqlUsername());
         config.setPassword(cfg.getMysqlPassword());
         config.setDriverClassName("org.mariadb.jdbc.Driver");
-        config.setMaximumPoolSize(Math.max(1, cfg.getMysqlPoolSize()));
+        config.setMaximumPoolSize(Math.max(2, cfg.getMysqlPoolSize()));
         config.setMinimumIdle(1);
         config.setConnectionTimeout(5000);
         config.setIdleTimeout(60000);
