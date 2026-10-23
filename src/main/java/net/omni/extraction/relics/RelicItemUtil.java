@@ -60,10 +60,10 @@ public class RelicItemUtil {
             return item;
 
         meta.customName(MiniMessage.miniMessage().deserialize(
-                nameOverride != null && !nameOverride.isBlank() ? nameOverride : def.getName()));
+                nameOverride != null && !nameOverride.isBlank() ? nameOverride : def.name()));
 
         List<Component> loreLines = new ArrayList<>();
-        for (String line : def.getLore())
+        for (String line : def.lore())
             loreLines.add(MiniMessage.miniMessage().deserialize(line));
 
         if (extraLore != null && !extraLore.isBlank())
@@ -78,8 +78,8 @@ public class RelicItemUtil {
         meta.setMaxStackSize(1);
 
         meta.getPersistentDataContainer().set(KEY_RELIC, PersistentDataType.BYTE, (byte) 1);
-        meta.getPersistentDataContainer().set(KEY_KIND, PersistentDataType.STRING, def.getCategory());
-        meta.getPersistentDataContainer().set(KEY_ID, PersistentDataType.STRING, def.getId());
+        meta.getPersistentDataContainer().set(KEY_KIND, PersistentDataType.STRING, def.category());
+        meta.getPersistentDataContainer().set(KEY_ID, PersistentDataType.STRING, def.id());
 
         item.setItemMeta(meta);
         return item;

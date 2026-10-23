@@ -47,6 +47,7 @@ public class Area {
     private String name;
     private String world;
     private String difficulty;
+    private int level;
     private int cooldownSeconds;
     private int respawnSeconds;
     private boolean bossBarEnabled;
@@ -67,6 +68,7 @@ public class Area {
         this.name = name;
         this.world = world;
         this.difficulty = "NORMAL";
+        this.level = 0;
         this.cooldownSeconds = DEFAULT_COOLDOWN_SECONDS;
         this.respawnSeconds = DEFAULT_RESPAWN_SECONDS;
 
@@ -99,6 +101,7 @@ public class Area {
 
         Area area = new Area(name, world);
         area.setDifficulty(config.getString("difficulty", "NORMAL"));
+        area.setLevel(config.getInt("level", 0));
         area.setCooldownSeconds(config.getInt("cooldown-seconds", DEFAULT_COOLDOWN_SECONDS));
         area.setRespawnSeconds(config.getInt("respawn-seconds", DEFAULT_RESPAWN_SECONDS));
 
@@ -342,6 +345,15 @@ public class Area {
 
     public void setDifficulty(String difficulty) {
         this.difficulty = difficulty;
+    }
+
+    /** Stored level override; 0 means derive from spawn entries. */
+    public int getLevel() {
+        return level;
+    }
+
+    public void setLevel(int level) {
+        this.level = level;
     }
 
     public int getCooldownSeconds() {
@@ -777,6 +789,10 @@ public class Area {
         config.set("name", name);
         config.set("world", world);
         config.set("difficulty", difficulty);
+
+        if (level > 0)
+            config.set("level", level);
+
         config.set("cooldown-seconds", cooldownSeconds);
         config.set("respawn-seconds", respawnSeconds);
 

@@ -46,18 +46,6 @@ class Invites {
         this.partyManager = partyManager;
     }
 
-    record Invite(UUID partyId, String inviterName, long expiresAt) {
-    }
-
-    /** One party row whose invites JSON changed and needs writing back. */
-    private record Pending(UUID partyId, String json) {
-    }
-
-    private enum CreateResult {OK, NOT_IN, LEADER_ONLY, ALREADY_IN, TARGET_IN_PARTY}
-
-    private record CreateOutcome(CreateResult result, UUID partyId, String targetDisplay) {
-    }
-
     void create(Player player, String targetName) {
         UUID uuid = player.getUniqueId();
         String playerName = player.getName();
@@ -116,7 +104,8 @@ class Invites {
                 case NOT_IN -> send(player, Messages.PARTY_NOT_IN);
                 case LEADER_ONLY -> send(player, Messages.PARTY_LEADER_ONLY);
                 case ALREADY_IN -> send(player, Messages.PARTY_ALREADY_IN);
-                case TARGET_IN_PARTY -> send(player, Messages.PARTY_TARGET_IN_PARTY.replace("player", outcome.targetDisplay()));
+                case TARGET_IN_PARTY ->
+                        send(player, Messages.PARTY_TARGET_IN_PARTY.replace("player", outcome.targetDisplay()));
                 case OK -> {
                     if (target != null)
                         send(target, Messages.PARTY_INVITE_RECEIVED.replace("player", playerName));
@@ -128,7 +117,89 @@ class Invites {
         }));
     }
 
-    /** The newest pending invite for a (lowercased) player name, optionally from a specific inviter. */
+    private JsonArray readInvites(Connection conn, UUID partyId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT invites FROM " + plugin.getDatabaseManager().table("party") + " WHERE id = ?")) {
+            ps.setString(1, partyId.toString());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next())
+                    return new JsonArray();
+
+                return parseInvites(rs.getString("invites"));
+            }
+        }
+    }
+
+    /**
+     * Removes every entry whose {@code target} equals {@code target} (lowercased); true if any removed.
+     */
+    private boolean removeTarget(JsonArray invites, String target) {
+        boolean removed = false;
+
+        for (int i = invites.size() - 1; i >= 0; i--) {
+            JsonElement element = invites.get(i);
+
+            if (element.isJsonObject()
+                    && element.getAsJsonObject().has("target")
+                    && target.equalsIgnoreCase(element.getAsJsonObject().get("target").getAsString())) {
+                invites.remove(i);
+                removed = true;
+            }
+        }
+
+        return removed;
+    }
+
+    private void writeInvites(Connection conn, UUID partyId, String json) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE " + plugin.getDatabaseManager().table("party") + " SET invites = ? WHERE id = ?")) {
+            ps.setString(1, json);
+            ps.setString(2, partyId.toString());
+            ps.executeUpdate();
+        }
+    }
+
+    private void send(Player player, Messages message) {
+        plugin.sendMessage(player, message.toString());
+    }
+
+    private void send(Player player, String message) {
+        plugin.sendMessage(player, message);
+    }
+
+    private void relayInvite(Player carrier, String targetName, String inviterName, UUID partyId) {
+        if (!plugin.getConfigUtil().isPartyCrossServer())
+            return;
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("action", "invite");
+        payload.addProperty("target", targetName);
+        payload.addProperty("inviter", inviterName);
+        payload.addProperty("partyId", partyId.toString());
+
+        partyManager.forwardToPlayer(carrier, targetName, payload);
+    }
+
+    private JsonArray parseInvites(String json) {
+        if (json == null || json.isBlank())
+            return new JsonArray();
+
+        try {
+            JsonArray array = plugin.getGson().fromJson(json, JsonArray.class);
+            return array == null ? new JsonArray() : array;
+        } catch (RuntimeException e) {
+            return new JsonArray();
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // JSON column helpers
+    // ------------------------------------------------------------------
+
+    /**
+     * The newest pending invite for a (lowercased) player name, optionally from a specific inviter.
+     */
     Invite findFor(String playerName, String targetName) {
         DatabaseManager database = plugin.getDatabaseManager();
         String target = playerName.toLowerCase();
@@ -200,7 +271,9 @@ class Invites {
         }
     }
 
-    /** Clears any pending invite for the target when they are kicked from the party. */
+    /**
+     * Clears any pending invite for the target when they are kicked from the party.
+     */
     void delete(Party party, String targetName) {
         DatabaseManager database = plugin.getDatabaseManager();
 
@@ -216,88 +289,26 @@ class Invites {
         }
     }
 
-    // ------------------------------------------------------------------
-    // JSON column helpers
-    // ------------------------------------------------------------------
-
-    private JsonArray readInvites(Connection conn, UUID partyId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT invites FROM " + plugin.getDatabaseManager().table("party") + " WHERE id = ?")) {
-            ps.setString(1, partyId.toString());
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next())
-                    return new JsonArray();
-
-                return parseInvites(rs.getString("invites"));
-            }
-        }
-    }
-
-    private void writeInvites(Connection conn, UUID partyId, String json) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(
-                "UPDATE " + plugin.getDatabaseManager().table("party") + " SET invites = ? WHERE id = ?")) {
-            ps.setString(1, json);
-            ps.setString(2, partyId.toString());
-            ps.executeUpdate();
-        }
-    }
-
-    private JsonArray parseInvites(String json) {
-        if (json == null || json.isBlank())
-            return new JsonArray();
-
-        try {
-            JsonArray array = plugin.getGson().fromJson(json, JsonArray.class);
-            return array == null ? new JsonArray() : array;
-        } catch (RuntimeException e) {
-            return new JsonArray();
-        }
-    }
-
-    /** Removes every entry whose {@code target} equals {@code target} (lowercased); true if any removed. */
-    private boolean removeTarget(JsonArray invites, String target) {
-        boolean removed = false;
-
-        for (int i = invites.size() - 1; i >= 0; i--) {
-            JsonElement element = invites.get(i);
-
-            if (element.isJsonObject()
-                    && element.getAsJsonObject().has("target")
-                    && target.equalsIgnoreCase(element.getAsJsonObject().get("target").getAsString())) {
-                invites.remove(i);
-                removed = true;
-            }
-        }
-
-        return removed;
-    }
-
-    private void relayInvite(Player carrier, String targetName, String inviterName, UUID partyId) {
-        if (!plugin.getConfigUtil().isPartyCrossServer())
-            return;
-
-        JsonObject payload = new JsonObject();
-        payload.addProperty("action", "invite");
-        payload.addProperty("target", targetName);
-        payload.addProperty("inviter", inviterName);
-        payload.addProperty("partyId", partyId.toString());
-
-        partyManager.forwardToPlayer(carrier, targetName, payload);
-    }
-
-    /** Handles a decoded {@code invite} relay payload routed here by {@link PartyManager#handleRelay}. */
+    /**
+     * Handles a decoded {@code invite} relay payload routed here by {@link PartyManager#handleRelay}.
+     */
     void handleRelay(JsonObject payload) {
         Player target = Bukkit.getPlayerExact(payload.get("target").getAsString());
         if (target != null)
             send(target, Messages.PARTY_INVITE_RECEIVED.replace("player", payload.get("inviter").getAsString()));
     }
 
-    private void send(Player player, Messages message) {
-        plugin.sendMessage(player, message.toString());
+    private enum CreateResult {OK, NOT_IN, LEADER_ONLY, ALREADY_IN, TARGET_IN_PARTY}
+
+    record Invite(UUID partyId, String inviterName, long expiresAt) {
     }
 
-    private void send(Player player, String message) {
-        plugin.sendMessage(player, message);
+    /**
+     * One party row whose invites JSON changed and needs writing back.
+     */
+    private record Pending(UUID partyId, String json) {
+    }
+
+    private record CreateOutcome(CreateResult result, UUID partyId, String targetDisplay) {
     }
 }

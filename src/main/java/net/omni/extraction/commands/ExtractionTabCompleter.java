@@ -154,7 +154,7 @@ public class ExtractionTabCompleter implements TabCompleter {
                 && args[0].equalsIgnoreCase("artifacts")
                 && sender.hasPermission("extraction.admin")) {
             List<String> ids = plugin.getRelicManager().getDefinitions(RelicManager.KIND_ARTIFACT).stream()
-                    .map(def -> def.getId())
+                    .map(def -> def.id())
                     .toList();
             return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
         }
@@ -163,7 +163,7 @@ public class ExtractionTabCompleter implements TabCompleter {
                 && args[0].equalsIgnoreCase("charms")
                 && sender.hasPermission("extraction.admin")) {
             List<String> ids = plugin.getRelicManager().getDefinitions(RelicManager.KIND_CHARM).stream()
-                    .map(def -> def.getId())
+                    .map(def -> def.id())
                     .toList();
             return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
         }

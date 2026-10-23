@@ -8,16 +8,8 @@ import java.util.List;
  * A statically-defined charm or artifact. Definitions live in charms.yml
  * charmed / artifacts.yml (keyed by id) and are loaded by {@link RelicManager}.
  */
-public class RelicDefinition {
-
-    private final String id;
-    private final String category;
-    private final String name;
-    private final String materialName;
-    private final List<String> lore;
-    private final List<RelicEffect> effects;
-    private final int durationSeconds;
-    private final String particle;
+public record RelicDefinition(String id, String category, String name, String materialName, List<String> lore,
+                              List<RelicEffect> effects, int durationSeconds, String particle) {
 
     public RelicDefinition(String id, String category, String name, String materialName,
                            List<String> lore, List<RelicEffect> effects, int durationSeconds,
@@ -32,21 +24,12 @@ public class RelicDefinition {
         this.particle = particle == null || particle.isBlank() ? null : particle.trim();
     }
 
-    public String getId() {
-        return id;
-    }
-
-    /** {@code "charm"} or {@code "artifact"}. */
-    public String getCategory() {
+    /**
+     * {@code "charm"} or {@code "artifact"}.
+     */
+    @Override
+    public String category() {
         return category;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getMaterialName() {
-        return materialName;
     }
 
     public Material getMaterial() {
@@ -54,21 +37,19 @@ public class RelicDefinition {
         return material != null ? material : Material.PAPER;
     }
 
-    public List<String> getLore() {
-        return lore;
-    }
-
-    public List<RelicEffect> getEffects() {
-        return effects;
-    }
-
-    /** Activation window in seconds for this relic; {@code <= 0} = use the global config default. */
-    public int getDurationSeconds() {
+    /**
+     * Activation window in seconds for this relic; {@code <= 0} = use the global config default.
+     */
+    @Override
+    public int durationSeconds() {
         return durationSeconds;
     }
 
-    /** Raw particle spawn spec ("PARTICLE" or "PARTICLE:#hex"); {@code null} = use the global default. */
-    public String getParticle() {
+    /**
+     * Raw particle spawn spec ("PARTICLE" or "PARTICLE:#hex"); {@code null} = use the global default.
+     */
+    @Override
+    public String particle() {
         return particle;
     }
 

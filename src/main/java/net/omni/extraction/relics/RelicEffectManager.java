@@ -19,14 +19,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Relic effects are per-run TIMED: equipping a relic is inert until the player
@@ -39,24 +32,29 @@ import java.util.UUID;
  */
 public class RelicEffectManager {
 
+    /**
+     * Lore line appended to the equipped/granted relic item.
+     */
+    public static final String EQUIP_LORE = "<gray>Equipped — right-click during a run to activate</gray>";
     private static final UUID MOVEMENT_SPEED_MOD = UUID.fromString("2a43980b-8712-4cf1-9df0-3c4344913228");
     private static final UUID MAX_HEALTH_MOD = UUID.fromString("8b77b9b0-1912-49b4-bbf4-79f3a1ad5280");
-
     private static final String MOVEMENT_SPEED_NAME = "extraction_relic_speed";
     private static final String MAX_HEALTH_NAME = "extraction_relic_health";
-
-    /** Lore line appended to the equipped/granted relic item. */
-    public static final String EQUIP_LORE = "<gray>Equipped — right-click during a run to activate</gray>";
-
     private final ExtractionPlugin plugin;
 
-    /** player uuid -> (equipped relic id -> expiry epoch millis). */
+    /**
+     * player uuid -> (equipped relic id -> expiry epoch millis).
+     */
     private final Map<UUID, Map<String, Long>> activations = new HashMap<>();
 
-    /** player uuid -> (relic id -> last rendered display label) so items only repaint when the second ticks. */
+    /**
+     * player uuid -> (relic id -> last rendered display label) so items only repaint when the second ticks.
+     */
     private final Map<UUID, Map<String, String>> lastLabels = new HashMap<>();
 
-    /** raw particle spec ("NAME" or "NAME:#hex") -> parsed spawn descriptor. */
+    /**
+     * raw particle spec ("NAME" or "NAME:#hex") -> parsed spawn descriptor.
+     */
     private final Map<String, ParticleSpec> particleCache = new HashMap<>();
 
     private BukkitTask task;
@@ -66,15 +64,18 @@ public class RelicEffectManager {
         this.plugin = plugin;
     }
 
-    /** Starts the 1s expiry/display sweep and the particle pulse. */
-    public void start() {
+    /**
+     * Re-reads particle config and restarts the tasks (called on /extraction reload).
+     */
+    public void reload() {
+        particleCache.clear();
         stop();
-        task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 20L);
-        particleTask = Bukkit.getScheduler().runTaskTimer(plugin, this::spawnParticles,
-                20L, Math.max(1, plugin.getConfigUtil().getRelicParticleTicks()));
+        start();
     }
 
-    /** Stops both sweeps. */
+    /**
+     * Stops both sweeps.
+     */
     public void stop() {
         if (task != null) {
             task.cancel();
@@ -87,98 +88,14 @@ public class RelicEffectManager {
         }
     }
 
-    /** Re-reads particle config and restarts the tasks (called on /extraction reload). */
-    public void reload() {
-        particleCache.clear();
-        stop();
-        start();
-    }
-
-    /** Activates an equipped relic for its (configurable) window and applies its effects. */
-    public void activate(Player player, RelicDefinition def) {
-        UUID uuid = player.getUniqueId();
-
-        if (isActivated(uuid, def.getId())) {
-            plugin.sendMessage(player, Messages.RELIC_ACTIVE.replace("relic", def.getName()).toString());
-            return;
-        }
-
-        int seconds = def.getDurationSeconds() > 0
-                ? def.getDurationSeconds() : plugin.getConfigUtil().getRelicActivationSeconds();
-        if (seconds <= 0)
-            seconds = 60;
-
-        long expiry = System.currentTimeMillis() + seconds * 1000L;
-
-        activations.computeIfAbsent(uuid, k -> new HashMap<>()).put(def.getId(), expiry);
-
-        applyPassive(player);
-
-        RunManager.ActiveRun run = plugin.getRunManager().getActiveRun(uuid);
-        if (run != null) {
-            int bonus = runTimeBonus(def);
-            if (bonus > 0)
-                run.addTime(bonus);
-        }
-
-        refreshDisplay(player);
-
-        plugin.sendMessage(player, Messages.RELIC_ACTIVATED.replace("relic", def.getName()).toString());
-    }
-
-    /** True while the relic has a live, unexpired activation. */
-    public boolean isActivated(UUID uuid, String relicId) {
-        Map<String, Long> active = activations.get(uuid);
-        if (active == null)
-            return false;
-
-        Long expiry = active.get(relicId);
-        return expiry != null && expiry > System.currentTimeMillis();
-    }
-
     /**
-     * MiniMessage display label for a relic item: the definition name plus a
-     * live "<aqua>({n}s)</aqua>" suffix while the relic is active (the
-     * cooldown is the activation window itself), plain name otherwise.
+     * Starts the 1s expiry/display sweep and the particle pulse.
      */
-    public String displayName(UUID uuid, RelicDefinition def) {
-        if (!isActivated(uuid, def.getId()))
-            return def.getName();
-
-        long expiry = activations.get(uuid).get(def.getId());
-        long remaining = Math.max(0, (expiry - System.currentTimeMillis() + 999) / 1000);
-
-        return def.getName() + " <aqua>(" + remaining + "s)</aqua>";
-    }
-
-    /** The exact item shown in /loadout and granted during a run: state-aware name + equip lore. */
-    public ItemStack equippedItem(UUID uuid, RelicDefinition def) {
-        return RelicItemUtil.createItem(def, displayName(uuid, def), EQUIP_LORE);
-    }
-
-    /** Might be called from /extraction or admin give/remove; always considered fresh. */
-    public void deactivate(Player player) {
-        if (player == null)
-            return;
-
-        lastLabels.remove(player.getUniqueId());
-        activations.remove(player.getUniqueId());
-        applyPassive(player);
-    }
-
-    /** Drops activation state (used when a run ends and the player is offline). */
-    public void clearRun(UUID uuid) {
-        lastLabels.remove(uuid);
-        activations.remove(uuid);
-    }
-
-    /** Removes all activations for the given player, then strips their passives. */
-    public void deactivate(UUID uuid) {
-        Player player = Bukkit.getPlayer(uuid);
-        if (player != null)
-            deactivate(player);
-        else
-            clearRun(uuid);
+    public void start() {
+        stop();
+        task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 20L);
+        particleTask = Bukkit.getScheduler().runTaskTimer(plugin, this::spawnParticles,
+                20L, Math.max(1, plugin.getConfigUtil().getRelicParticleTicks()));
     }
 
     /**
@@ -218,7 +135,7 @@ public class RelicEffectManager {
                 applyPassive(player);
 
                 for (RelicDefinition def : expired)
-                    plugin.sendMessage(player, Messages.RELIC_EXPIRED.replace("relic", def.getName()).toString());
+                    plugin.sendMessage(player, Messages.RELIC_EXPIRED.replace("relic", def.name()));
             }
 
             // Repaint anywhere the relic item is visible so the display name
@@ -226,6 +143,73 @@ public class RelicEffectManager {
             if (player != null)
                 refreshDisplay(player);
         }
+    }
+
+    /**
+     * Emits each active relic's configured particle near the player. Only the
+     * (small) set of players with live activations is iterated; MUST run on the
+     * main thread (World#spawnParticle is not thread-safe).
+     */
+    private void spawnParticles() {
+        if (activations.isEmpty())
+            return;
+
+        for (UUID uuid : new ArrayList<>(activations.keySet())) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player == null || player.isDead())
+                continue;
+
+            PlayerData data = plugin.getPlayerDataManager().getLoaded(uuid);
+            List<RelicDefinition> defs = activeRelics(data);
+            if (defs.isEmpty())
+                continue;
+
+            Location loc = player.getLocation().add(0, 0.8, 0);
+
+            for (RelicDefinition def : defs) {
+                ParticleSpec spec = resolveParticle(def.particle());
+                if (spec == null)
+                    continue;
+
+                if (spec.data != null) {
+                    player.getWorld().spawnParticle(spec.particle, loc, 2,
+                            0.35, 0.15, 0.35, 0.01, spec.data);
+                } else {
+                    player.getWorld().spawnParticle(spec.particle, loc, 2,
+                            0.35, 0.15, 0.35, 0.01);
+                }
+            }
+        }
+    }
+
+    /**
+     * Recomputes and applies the passive effects for all currently-ACTIVATED
+     * relics (movement speed, max health, haste). Idempotent — call on
+     * activation, expiry and deactivation; un-activated relics contribute 0
+     * and any leftover modifiers are stripped.
+     */
+    public void applyPassive(Player player) {
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
+
+        double speedPercent = 0;
+        double maxHealth = 0;
+        double hastePercent = 0;
+
+        for (RelicDefinition def : activeRelics(data)) {
+            for (RelicEffect effect : def.effects()) {
+                switch (effect.type()) {
+                    case MOVEMENT_SPEED -> speedPercent += effect.value();
+                    case MAX_HEALTH -> maxHealth += effect.value();
+                    case MINING_SPEED -> hastePercent += effect.value();
+                    default -> {
+                    }
+                }
+            }
+        }
+
+        applyMovementSpeed(player, speedPercent);
+        applyMaxHealth(player, maxHealth);
+        applyHaste(player, hastePercent);
     }
 
     /**
@@ -244,7 +228,7 @@ public class RelicEffectManager {
 
         Set<String> relevant = new HashSet<>(lastLabels.getOrDefault(uuid, Map.of()).keySet());
         for (RelicDefinition def : activeRelics(data))
-            relevant.add(def.getId());
+            relevant.add(def.id());
 
         if (relevant.isEmpty())
             return;
@@ -279,59 +263,25 @@ public class RelicEffectManager {
             player.updateInventory();
     }
 
-    private boolean rewriteRelicItems(Inventory inv, RelicDefinition def, String label) {
-        boolean changed = false;
+    private List<RelicDefinition> activeRelics(PlayerData data) {
+        Map<String, Long> active = activations.get(data.getUuid());
 
-        for (int i = 0; i < inv.getSize(); i++) {
-            ItemStack item = inv.getItem(i);
-            if (!RelicItemUtil.isRelic(item))
+        if (active == null || active.isEmpty())
+            return List.of();
+
+        long now = System.currentTimeMillis();
+        List<RelicDefinition> result = new ArrayList<>(2);
+
+        for (Map.Entry<String, Long> relic : active.entrySet()) {
+            if (relic.getValue() <= now)
                 continue;
 
-            if (!def.getId().equalsIgnoreCase(RelicItemUtil.getId(item)))
-                continue;
-
-            inv.setItem(i, RelicItemUtil.createItem(def, label, EQUIP_LORE));
-            changed = true;
+            RelicDefinition def = plugin.getRelicManager().getDefinition(relic.getKey());
+            if (def != null)
+                result.add(def);
         }
 
-        return changed;
-    }
-
-    /**
-     * Emits each active relic's configured particle near the player. Only the
-     * (small) set of players with live activations is iterated; MUST run on the
-     * main thread (World#spawnParticle is not thread-safe).
-     */
-    private void spawnParticles() {
-        if (activations.isEmpty())
-            return;
-
-        for (UUID uuid : new ArrayList<>(activations.keySet())) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player == null || player.isDead())
-                continue;
-
-            PlayerData data = plugin.getPlayerDataManager().getLoaded(uuid);
-            List<RelicDefinition> defs = activeRelics(data);
-            if (defs.isEmpty())
-                continue;
-
-            Location loc = player.getLocation().add(0, 0.8, 0);
-
-            for (RelicDefinition def : defs) {
-                ParticleSpec spec = resolveParticle(def.getParticle());
-                if (spec == null)
-                    continue;
-
-                if (spec.data != null) {
-                    player.getWorld().spawnParticle(spec.particle, loc, 2,
-                            0.35, 0.15, 0.35, 0.01, spec.data);
-                } else {
-                    player.getWorld().spawnParticle(spec.particle, loc, 2,
-                            0.35, 0.15, 0.35, 0.01);
-                }
-            }
-        }
+        return result;
     }
 
     private ParticleSpec resolveParticle(String spec) {
@@ -370,39 +320,6 @@ public class RelicEffectManager {
         ParticleSpec parsed = new ParticleSpec(particle, data);
         particleCache.put(spec, parsed);
         return parsed;
-    }
-
-    private record ParticleSpec(Particle particle, Object data) {
-    }
-
-    /**
-     * Recomputes and applies the passive effects for all currently-ACTIVATED
-     * relics (movement speed, max health, haste). Idempotent — call on
-     * activation, expiry and deactivation; un-activated relics contribute 0
-     * and any leftover modifiers are stripped.
-     */
-    public void applyPassive(Player player) {
-        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
-
-        double speedPercent = 0;
-        double maxHealth = 0;
-        double hastePercent = 0;
-
-        for (RelicDefinition def : activeRelics(data)) {
-            for (RelicEffect effect : def.getEffects()) {
-                switch (effect.getType()) {
-                    case MOVEMENT_SPEED -> speedPercent += effect.getValue();
-                    case MAX_HEALTH -> maxHealth += effect.getValue();
-                    case MINING_SPEED -> hastePercent += effect.getValue();
-                    default -> {
-                    }
-                }
-            }
-        }
-
-        applyMovementSpeed(player, speedPercent);
-        applyMaxHealth(player, maxHealth);
-        applyHaste(player, hastePercent);
     }
 
     private void applyMovementSpeed(Player player, double percent) {
@@ -447,39 +364,139 @@ public class RelicEffectManager {
         player.addPotionEffect(new PotionEffect(PotionEffectType.HASTE, -1, amplifier, false, false, false));
     }
 
-    private List<RelicDefinition> activeRelics(PlayerData data) {
-        Map<String, Long> active = activations.get(data.getUuid());
+    /**
+     * MiniMessage display label for a relic item: the definition name plus a
+     * live "<aqua>({n}s)</aqua>" suffix while the relic is active (the
+     * cooldown is the activation window itself), plain name otherwise.
+     */
+    public String displayName(UUID uuid, RelicDefinition def) {
+        if (!isActivated(uuid, def.id()))
+            return def.name();
 
-        if (active == null || active.isEmpty())
-            return List.of();
+        long expiry = activations.get(uuid).get(def.id());
+        long remaining = Math.max(0, (expiry - System.currentTimeMillis() + 999) / 1000);
 
-        long now = System.currentTimeMillis();
-        List<RelicDefinition> result = new ArrayList<>(2);
+        return def.name() + " <aqua>(" + remaining + "s)</aqua>";
+    }
 
-        for (Map.Entry<String, Long> relic : active.entrySet()) {
-            if (relic.getValue() <= now)
+    private boolean rewriteRelicItems(Inventory inv, RelicDefinition def, String label) {
+        boolean changed = false;
+
+        for (int i = 0; i < inv.getSize(); i++) {
+            ItemStack item = inv.getItem(i);
+            if (!RelicItemUtil.isRelic(item))
                 continue;
 
-            RelicDefinition def = plugin.getRelicManager().getDefinition(relic.getKey());
-            if (def != null)
-                result.add(def);
+            if (!def.id().equalsIgnoreCase(RelicItemUtil.getId(item)))
+                continue;
+
+            inv.setItem(i, RelicItemUtil.createItem(def, label, EQUIP_LORE));
+            changed = true;
         }
 
-        return result;
+        return changed;
     }
 
-    private double sumEffect(PlayerData data, RelicEffectType type) {
+    /**
+     * True while the relic has a live, unexpired activation.
+     */
+    public boolean isActivated(UUID uuid, String relicId) {
+        Map<String, Long> active = activations.get(uuid);
+        if (active == null)
+            return false;
+
+        Long expiry = active.get(relicId);
+        return expiry != null && expiry > System.currentTimeMillis();
+    }
+
+    /**
+     * Activates an equipped relic for its (configurable) window and applies its effects.
+     */
+    public void activate(Player player, RelicDefinition def) {
+        UUID uuid = player.getUniqueId();
+
+        if (isActivated(uuid, def.id())) {
+            plugin.sendMessage(player, Messages.RELIC_ACTIVE.replace("relic", def.name()));
+            return;
+        }
+
+        int seconds = def.durationSeconds() > 0
+                ? def.durationSeconds() : plugin.getConfigUtil().getRelicActivationSeconds();
+        if (seconds <= 0)
+            seconds = 60;
+
+        long expiry = System.currentTimeMillis() + seconds * 1000L;
+
+        activations.computeIfAbsent(uuid, k -> new HashMap<>()).put(def.id(), expiry);
+
+        applyPassive(player);
+
+        RunManager.ActiveRun run = plugin.getRunManager().getActiveRun(uuid);
+        if (run != null) {
+            int bonus = runTimeBonus(def);
+            if (bonus > 0)
+                run.addTime(bonus);
+        }
+
+        refreshDisplay(player);
+
+        plugin.sendMessage(player, Messages.RELIC_ACTIVATED.replace("relic", def.name()));
+    }
+
+    /**
+     * RUN_TIME seconds contributed by a single relic (applied when it activates).
+     */
+    public int runTimeBonus(RelicDefinition def) {
         double total = 0;
 
-        for (RelicDefinition def : activeRelics(data))
-            for (RelicEffect effect : def.getEffects())
-                if (effect.getType() == type)
-                    total += effect.getValue();
+        for (RelicEffect effect : def.effects())
+            if (effect.type() == RelicEffectType.RUN_TIME)
+                total += effect.value();
 
-        return total;
+        return (int) total;
     }
 
-    /** Damage dealt multiplier vs extraction mobs (always {@code >= 0}, 1.0 = no bonus). */
+    /**
+     * The exact item shown in /loadout and granted during a run: state-aware name + equip lore.
+     */
+    public ItemStack equippedItem(UUID uuid, RelicDefinition def) {
+        return RelicItemUtil.createItem(def, displayName(uuid, def), EQUIP_LORE);
+    }
+
+    /**
+     * Removes all activations for the given player, then strips their passives.
+     */
+    public void deactivate(UUID uuid) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null)
+            deactivate(player);
+        else
+            clearRun(uuid);
+    }
+
+    /**
+     * Might be called from /extraction or admin give/remove; always considered fresh.
+     */
+    public void deactivate(Player player) {
+        if (player == null)
+            return;
+
+        lastLabels.remove(player.getUniqueId());
+        activations.remove(player.getUniqueId());
+        applyPassive(player);
+    }
+
+    /**
+     * Drops activation state (used when a run ends and the player is offline).
+     */
+    public void clearRun(UUID uuid) {
+        lastLabels.remove(uuid);
+        activations.remove(uuid);
+    }
+
+    /**
+     * Damage dealt multiplier vs extraction mobs (always {@code >= 0}, 1.0 = no bonus).
+     */
     public double damageDealtMultiplier(PlayerData data, double healthPercent) {
         double mult = 1.0
                 + sumEffect(data, RelicEffectType.DAMAGE_DEALT) / 100.0
@@ -487,55 +504,68 @@ public class RelicEffectManager {
         return Math.max(0, mult);
     }
 
-    /** Damage taken multiplier vs extraction mobs (1.0 = no reduction). */
-    public double damageTakenMultiplier(PlayerData data, double healthPercent) {
-        double reduction = sumEffect(data, RelicEffectType.DAMAGE_TAKEN)
-                + lowHpEffectValue(data, RelicEffectType.DAMAGE_TAKEN_LOW_HP, healthPercent);
-        return Math.max(0, 1.0 - reduction / 100.0);
-    }
-
-    /** Fall damage multiplier (1.0 = none, 0 = immune). */
-    public double fallDamageMultiplier(PlayerData data) {
-        double reduction = sumEffect(data, RelicEffectType.FALL_DAMAGE);
-        return Math.max(0, 1.0 - reduction / 100.0);
-    }
-
-    /** Extra rolls added to every cleared-area chest. */
-    public int chestRollBonus(PlayerData data) {
-        return (int) sumEffect(data, RelicEffectType.CHEST_ROLLS);
-    }
-
-    /** Non-zero only once the relic's activation RUN_TIME bonus applies (at activation). */
-    public int runTimeBonus(PlayerData data) {
-        return (int) sumEffect(data, RelicEffectType.RUN_TIME);
-    }
-
-    /** RUN_TIME seconds contributed by a single relic (applied when it activates). */
-    public int runTimeBonus(RelicDefinition def) {
+    private double sumEffect(PlayerData data, RelicEffectType type) {
         double total = 0;
 
-        for (RelicEffect effect : def.getEffects())
-            if (effect.getType() == RelicEffectType.RUN_TIME)
-                total += effect.getValue();
+        for (RelicDefinition def : activeRelics(data))
+            for (RelicEffect effect : def.effects())
+                if (effect.type() == type)
+                    total += effect.value();
 
-        return (int) total;
-    }
-
-    /** Bonus drop chance in percent for an extra loot roll on a mob/boss kill. */
-    public double bonusDropChancePercent(PlayerData data, boolean boss) {
-        return boss
-                ? sumEffect(data, RelicEffectType.BOSS_LOOT)
-                : sumEffect(data, RelicEffectType.MOB_LOOT);
+        return total;
     }
 
     private double lowHpEffectValue(PlayerData data, RelicEffectType type, double healthPercent) {
         double total = 0;
 
         for (RelicDefinition def : activeRelics(data))
-            for (RelicEffect effect : def.getEffects())
-                if (effect.getType() == type && healthPercent <= effect.getThreshold())
-                    total += effect.getValue();
+            for (RelicEffect effect : def.effects())
+                if (effect.type() == type && healthPercent <= effect.threshold())
+                    total += effect.value();
 
         return total;
+    }
+
+    /**
+     * Damage taken multiplier vs extraction mobs (1.0 = no reduction).
+     */
+    public double damageTakenMultiplier(PlayerData data, double healthPercent) {
+        double reduction = sumEffect(data, RelicEffectType.DAMAGE_TAKEN)
+                + lowHpEffectValue(data, RelicEffectType.DAMAGE_TAKEN_LOW_HP, healthPercent);
+        return Math.max(0, 1.0 - reduction / 100.0);
+    }
+
+    /**
+     * Fall damage multiplier (1.0 = none, 0 = immune).
+     */
+    public double fallDamageMultiplier(PlayerData data) {
+        double reduction = sumEffect(data, RelicEffectType.FALL_DAMAGE);
+        return Math.max(0, 1.0 - reduction / 100.0);
+    }
+
+    /**
+     * Extra rolls added to every cleared-area chest.
+     */
+    public int chestRollBonus(PlayerData data) {
+        return (int) sumEffect(data, RelicEffectType.CHEST_ROLLS);
+    }
+
+    /**
+     * Non-zero only once the relic's activation RUN_TIME bonus applies (at activation).
+     */
+    public int runTimeBonus(PlayerData data) {
+        return (int) sumEffect(data, RelicEffectType.RUN_TIME);
+    }
+
+    /**
+     * Bonus drop chance in percent for an extra loot roll on a mob/boss kill.
+     */
+    public double bonusDropChancePercent(PlayerData data, boolean boss) {
+        return boss
+                ? sumEffect(data, RelicEffectType.BOSS_LOOT)
+                : sumEffect(data, RelicEffectType.MOB_LOOT);
+    }
+
+    private record ParticleSpec(Particle particle, Object data) {
     }
 }

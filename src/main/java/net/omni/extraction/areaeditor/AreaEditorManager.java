@@ -528,9 +528,9 @@ public class AreaEditorManager {
             }
             case AreaEditorSession.PAGE_DROPS -> {
                 for (RelicDefinition def : plugin.getRelicManager().getDefinitions(RelicManager.KIND_CHARM))
-                    keys.add("RELIC:" + RelicManager.KIND_CHARM + ":" + def.getId());
+                    keys.add("RELIC:" + RelicManager.KIND_CHARM + ":" + def.id());
                 for (RelicDefinition def : plugin.getRelicManager().getDefinitions(RelicManager.KIND_ARTIFACT))
-                    keys.add("RELIC:" + RelicManager.KIND_ARTIFACT + ":" + def.getId());
+                    keys.add("RELIC:" + RelicManager.KIND_ARTIFACT + ":" + def.id());
             }
             case AreaEditorSession.PAGE_DROP_CHANCE -> {
                 if (session.getCurrentRelic() != null)
@@ -694,11 +694,11 @@ public class AreaEditorManager {
         if (def == null)
             return null;
 
-        String dropType = (RelicManager.KIND_ARTIFACT.equals(category) ? "ARTIFACT:" : "CHARM:") + def.getId();
+        String dropType = (RelicManager.KIND_ARTIFACT.equals(category) ? "ARTIFACT:" : "CHARM:") + def.id();
         boolean assigned = session.getAssignedRelics().contains(dropType);
 
         ItemStack item = new ItemStack(def.getMaterial());
-        List<String> lore = new ArrayList<>(def.getLore());
+        List<String> lore = new ArrayList<>(def.lore());
         lore.add(plugin.getChatRenderer().parse(assigned
                 ? "<green>Assigned — " + (int) session.getRelicChance(dropType) + "%</green>"
                 : "<gray>Not assigned</gray>"));
@@ -708,7 +708,7 @@ public class AreaEditorManager {
 
         item.editMeta(meta -> {
             plugin.getChatRenderer().setDisplayName(meta,
-                    (assigned ? "<green>✔ </green>" : "") + def.getName());
+                    (assigned ? "<green>✔ </green>" : "") + def.name());
             plugin.getChatRenderer().setLore(meta, lore);
         });
         return item;

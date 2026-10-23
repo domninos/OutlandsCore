@@ -89,6 +89,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private RelicManager relicManager;
     private RelicEffectManager relicEffectManager;
     private PackManager packManager;
+    private net.omni.extraction.shop.ShopManager shopManager;
     private WorldEventManager worldEventManager;
     private PartyManager partyManager;
     private PartyListener partyListener;
@@ -118,15 +119,8 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      -
      -
-     - add the possibility to increase the level of an area without recreating it
-       - add command /areas setlevel {area} {level}
-     -
-     -
-     - add a /extraction shop (/extshop) -> for food and potions,
-       unlocking enchantments, upgrading armor/weapons, purchasing passive upgrades
      -
      - add join / leave extraction messages
-     - add sounds (configurable)
      -
      - fix the basic events logic
       - only try event if a player is in /extraction
@@ -250,6 +244,8 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         this.packManager = new PackManager(this);
         packManager.init();
+
+        this.shopManager = new net.omni.extraction.shop.ShopManager(this);
 
         this.databaseManager = new DatabaseManager(this);
         this.playerDataManager = new PlayerDataManager(this);
@@ -535,6 +531,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public PackManager getPackManager() {
         return packManager;
+    }
+
+    public net.omni.extraction.shop.ShopManager getShopManager() {
+        return shopManager;
     }
 
     public PartyManager getPartyManager() {

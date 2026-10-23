@@ -29,8 +29,7 @@ public class ShopCommand implements CommandExecutor {
             return true;
         }
 
-        plugin.getBackpackManager().openShop(player);
-        plugin.sendMessage(player, Messages.SHOP_OPENED.toString());
+        plugin.getShopManager().openHub(player);
         return true;
     }
 

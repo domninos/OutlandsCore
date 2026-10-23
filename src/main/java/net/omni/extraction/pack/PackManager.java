@@ -57,6 +57,18 @@ public class PackManager {
         gui.setItem(13, optionItem);
     }
 
+    /**
+     * Re-reads the pack + config id, re-hosts, and re-offers the pack to every online player.
+     * Any content change flips the derived UUID so clients re-download instead of reusing a
+     * cached pack with the previous UUID.
+     */
+    public void reload() {
+        init();
+        if (packUrl != null)
+            for (Player player : Bukkit.getOnlinePlayers())
+                tryResourcePack(player);
+    }
+
     public void init() {
         File packFile = new File(plugin.getDataFolder(), "pack/ExtractionPack.zip");
         packFile.getParentFile().mkdirs();
@@ -94,10 +106,17 @@ public class PackManager {
         plugin.sendConsole("<green>Initialized ExtractionPack.zip! (" + packId + ")");
     }
 
-    /** Resolves the host clients download the pack from: config {@code pack.host} first, then
+    public void tryResourcePack(Player player) {
+        if (packUrl != null)
+            player.addResourcePack(packId, packUrl, null, "", true);
+    }
+
+    /**
+     * Resolves the host clients download the pack from: config {@code pack.host} first, then
      * the {@code server-ip} from server.properties. Returns null when neither is a usable
      * address — the pack is then not offered (plain text titles) with a loud warning, and is
-     * never silently served from localhost, which is unreachable for remote clients. */
+     * never silently served from localhost, which is unreachable for remote clients.
+     */
     private String resolveHost() {
         String configured = plugin.getConfigUtil().getPackHost();
         if (configured != null && !configured.trim().isEmpty())
@@ -111,16 +130,6 @@ public class PackManager {
                 + " (config.yml) is empty and server.properties server-ip isn't set. Set pack.host to your"
                 + " public IP or domain so clients can download the pack.");
         return null;
-    }
-
-    /** Re-reads the pack + config id, re-hosts, and re-offers the pack to every online player.
-     * Any content change flips the derived UUID so clients re-download instead of reusing a
-     * cached pack with the previous UUID. */
-    public void reload() {
-        init();
-        if (packUrl != null)
-            for (Player player : Bukkit.getOnlinePlayers())
-                tryResourcePack(player);
     }
 
     private UUID resolvePackId(byte[] fileBytes) {
@@ -141,6 +150,25 @@ public class PackManager {
         for (int i = 0; i < 8; i++)
             sb.append(String.format("%02x", hash[i]));
         return sb.toString();
+    }
+
+    private void startLocalHttpServer(File packFile) {
+        try {
+            this.server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("0.0.0.0"), httpPort), 0);
+            server.createContext("/packs/ExtractionPack.zip", exchange -> {
+                byte[] fileBytes = Files.readAllBytes(packFile.toPath());
+                exchange.sendResponseHeaders(200, fileBytes.length);
+                OutputStream os = exchange.getResponseBody();
+                os.write(fileBytes);
+                os.close();
+            });
+
+            server.setExecutor(null);
+            server.start();
+            plugin.getLogger().info("Successfully hosted ExtractionPack at: " + packUrl);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Failed to start local http server: " + e.getMessage());
+        }
     }
 
     private static UUID uuidFromSha256(byte[] fileBytes) {
@@ -164,34 +192,20 @@ public class PackManager {
         }
     }
 
-
-    private void startLocalHttpServer(File packFile) {
-        try {
-            this.server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("0.0.0.0"), httpPort), 0);
-            server.createContext("/packs/ExtractionPack.zip", exchange -> {
-                byte[] fileBytes = Files.readAllBytes(packFile.toPath());
-                exchange.sendResponseHeaders(200, fileBytes.length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(fileBytes);
-                os.close();
-            });
-
-            server.setExecutor(null);
-            server.start();
-            plugin.getLogger().info("Successfully hosted ExtractionPack at: " + packUrl);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to start local http server: " + e.getMessage());
-        }
+    /**
+     * Builds a GUI title: the bare texture glyph when the pack hosts it (pure-texture title,
+     * centered over the panel), otherwise the plain text title.
+     */
+    public String titleWithTexture(String plainTitle, String textureKey) {
+        String texture = guiTexture(textureKey);
+        return texture.isEmpty() ? plainTitle : texture;
     }
 
-    public void tryResourcePack(Player player) {
-        if (packUrl != null)
-            player.addResourcePack(packId, packUrl, null, "", true);
-    }
-
-    /** Returns the GUI's bare resource-pack texture glyph (config {@code pack.gui-textures}),
+    /**
+     * Returns the GUI's bare resource-pack texture glyph (config {@code pack.gui-textures}),
      * or an empty string when the pack isn't hosted or the key is unmapped. A lone-glyph title
-     * line is centered by the client, so pure-texture GUIs place their panel dead-center. */
+     * line is centered by the client, so pure-texture GUIs place their panel dead-center.
+     */
     public String guiTexture(String key) {
         if (packUrl == null)
             return "";
@@ -201,13 +215,6 @@ public class PackManager {
             return "";
 
         return decodeUnicode(raw);
-    }
-
-    /** Builds a GUI title: the bare texture glyph when the pack hosts it (pure-texture title,
-     * centered over the panel), otherwise the plain text title. */
-    public String titleWithTexture(String plainTitle, String textureKey) {
-        String texture = guiTexture(textureKey);
-        return texture.isEmpty() ? plainTitle : texture;
     }
 
     private static String decodeUnicode(String value) {
@@ -236,8 +243,10 @@ public class PackManager {
         player.openInventory(gui);
     }
 
-    /** Runtime diagnostic for {@code /extraction admin packinfo}: hosting state plus a read of the
-     * zip's font assets, so a never-applying pack becomes a checkable checklist. */
+    /**
+     * Runtime diagnostic for {@code /extraction admin packinfo}: hosting state plus a read of the
+     * zip's font assets, so a never-applying pack becomes a checkable checklist.
+     */
     public String diagnostics() {
         StringBuilder sb = new StringBuilder();
         sb.append("<dark_gray>▪▪▪ Resource Pack Diagnostics ▪▪▪</dark_gray>\n");

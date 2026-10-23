@@ -111,7 +111,7 @@ public class RelicManager {
         String key = id.toLowerCase(Locale.ROOT);
 
         for (RelicDefinition def : getDefinitions(category))
-            if (def.getId().equals(key))
+            if (def.id().equals(key))
                 return def;
 
         return null;
@@ -126,9 +126,9 @@ public class RelicManager {
      */
     public void grant(PlayerData data, RelicDefinition def) {
         if (def.isCharm())
-            data.addOwnedCharm(def.getId());
+            data.addOwnedCharm(def.id());
         else
-            data.addOwnedArtifact(def.getId());
+            data.addOwnedArtifact(def.id());
     }
 
     /**
@@ -137,12 +137,12 @@ public class RelicManager {
      */
     public boolean revoke(PlayerData data, RelicDefinition def) {
         boolean removed = def.isCharm()
-                ? data.removeOwnedCharm(def.getId())
-                : data.removeOwnedArtifact(def.getId());
+                ? data.removeOwnedCharm(def.id())
+                : data.removeOwnedArtifact(def.id());
 
-        if (def.isCharm() && def.getId().equalsIgnoreCase(data.getActiveCharm()))
+        if (def.isCharm() && def.id().equalsIgnoreCase(data.getActiveCharm()))
             data.setActiveCharm("");
-        else if (!def.isCharm() && def.getId().equalsIgnoreCase(data.getActiveArtifact()))
+        else if (!def.isCharm() && def.id().equalsIgnoreCase(data.getActiveArtifact()))
             data.setActiveArtifact("");
 
         return removed;
@@ -172,24 +172,24 @@ public class RelicManager {
         PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
 
         boolean alreadyKnown = def.isCharm()
-                ? data.ownsCharm(def.getId())
-                : data.ownsArtifact(def.getId());
+                ? data.ownsCharm(def.id())
+                : data.ownsArtifact(def.id());
 
         if (alreadyKnown) {
-            plugin.sendMessage(player, Messages.RELIC_ALREADY_OWNED.replace("relic", def.getName()));
+            plugin.sendMessage(player, Messages.RELIC_ALREADY_OWNED.replace("relic", def.name()));
             return;
         }
 
         item.setAmount(item.getAmount() - 1);
 
         if (def.isCharm())
-            data.addOwnedCharm(def.getId());
+            data.addOwnedCharm(def.id());
         else
-            data.addOwnedArtifact(def.getId());
+            data.addOwnedArtifact(def.id());
 
         plugin.getPlayerDataManager().savePlayerShared(player.getUniqueId());
 
-        plugin.sendMessage(player, Messages.RELIC_LEARNED.replace("relic", def.getName()));
+        plugin.sendMessage(player, Messages.RELIC_LEARNED.replace("relic", def.name()));
     }
 
     public RelicDefinition getDefinition(String id) {
@@ -199,11 +199,11 @@ public class RelicManager {
         String key = id.toLowerCase(Locale.ROOT);
 
         for (RelicDefinition def : charms)
-            if (def.getId().equals(key))
+            if (def.id().equals(key))
                 return def;
 
         for (RelicDefinition def : artifacts)
-            if (def.getId().equals(key))
+            if (def.id().equals(key))
                 return def;
 
         return null;
@@ -223,7 +223,7 @@ public class RelicManager {
 
         String equippedId = def.isCharm() ? data.getActiveCharm() : data.getActiveArtifact();
 
-        if (equippedId != null && equippedId.equals(def.getId())) {
+        if (equippedId != null && equippedId.equals(def.id())) {
             if (def.isCharm())
                 data.setActiveCharm("");
             else
@@ -231,19 +231,19 @@ public class RelicManager {
 
             plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
             plugin.getRelicEffectManager().applyPassive(player);
-            plugin.sendMessage(player, Messages.RELIC_UNEQUIPPED.replace("relic", def.getName()));
+            plugin.sendMessage(player, Messages.RELIC_UNEQUIPPED.replace("relic", def.name()));
         } else {
             boolean owns = def.isCharm()
-                    ? data.ownsCharm(def.getId())
-                    : data.ownsArtifact(def.getId());
+                    ? data.ownsCharm(def.id())
+                    : data.ownsArtifact(def.id());
 
             if (!owns) {
-                plugin.sendMessage(player, Messages.RELIC_NOT_OWNED.replace("relic", def.getName()));
+                plugin.sendMessage(player, Messages.RELIC_NOT_OWNED.replace("relic", def.name()));
             } else {
                 if (def.isCharm())
-                    data.setActiveCharm(def.getId());
+                    data.setActiveCharm(def.id());
                 else
-                    data.setActiveArtifact(def.getId());
+                    data.setActiveArtifact(def.id());
 
                 // Re-equipping restores the relic's loadout cell to its default
                 // (auto-displayed) state even if the player dragged it elsewhere.
@@ -254,7 +254,7 @@ public class RelicManager {
 
                 plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
                 plugin.getRelicEffectManager().applyPassive(player);
-                plugin.sendMessage(player, Messages.RELIC_EQUIPPED.replace("relic", def.getName()));
+                plugin.sendMessage(player, Messages.RELIC_EQUIPPED.replace("relic", def.name()));
             }
         }
 

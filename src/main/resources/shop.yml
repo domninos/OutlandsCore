@@ -1,0 +1,173 @@
+# Extraction Shop (/extshop)
+# The hub GUI with category buttons. Buying anything spends extraction tokens.
+shop-hub:
+  title: "<gradient:#00AAFF:#55FFFF>Extraction Shop</gradient>"
+  rows: 3
+  filler:
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+  # Hub buttons. `slot` is the raw inventory slot in the hub.
+  buttons:
+    consumables:
+      slot: 10
+      material: COOKED_BEEF
+      name: "<yellow><bold>Consumables</bold></yellow>"
+      lore:
+        - "<gray>Buy food and potions</gray>"
+        - "<gray>with extraction tokens.</gray>"
+        - "<gray>Click to open</gray>"
+    enchantments:
+      slot: 12
+      material: ENCHANTING_TABLE
+      name: "<light_purple><bold>Enchantments</bold></light_purple>"
+      lore:
+        - "<gray>Unlock enchantments for your</gray>"
+        - "<gray>armor and sword/axe/pickaxe.</gray>"
+        - "<gray>Click to open</gray>"
+    upgrades:
+      slot: 14
+      material: NETHERITE_SWORD
+      name: "<red><bold>Gear Upgrades</bold></red>"
+      lore:
+        - "<gray>Upgrade your armor and weapons</gray>"
+        - "<gray>with tokens or buy tiers.</gray>"
+        - "<gray>Click to open</gray>"
+    backpack:
+      slot: 16
+      material: CHEST
+      name: "<aqua><bold>Backpacks</bold></aqua>"
+      lore:
+        - "<gray>Buy bigger backpacks and</gray>"
+        - "<gray>extra pages.</gray>"
+        - "<gray>Click to open</gray>"
+    close:
+      slot: 22
+      material: BARRIER
+      name: "<red><bold>Close</bold></red>"
+      lore:
+        - "<gray>Close the shop</gray>"
+
+# Consumables category. Each entry is bought for `cost` tokens and the item is
+# granted to the player (overflow goes to /extraction storage).
+shop:
+  consumables:
+    title: "<gradient:#00AAFF:#55FFFF>Consumables</gradient>"
+    rows: 3
+    filler:
+      material: GRAY_STAINED_GLASS_PANE
+      name: " "
+    items:
+      bread:
+        slot: 10
+        material: BREAD
+        amount: 5
+        cost: 25
+        name: "<white>Bread <gray>x%amount%</gray></white>"
+        lore:
+          - "<gray>Restores hunger.</gray>"
+          - "<gold>Cost: %cost% tokens</gold>"
+          - "<gray>Click to buy</gray>"
+      cooked_beef:
+        slot: 12
+        material: COOKED_BEEF
+        amount: 10
+        cost: 50
+        name: "<white>Steak <gray>x%amount%</gray></white>"
+        lore:
+          - "<gray>A hearty meal.</gray>"
+          - "<gold>Cost: %cost% tokens</gold>"
+          - "<gray>Click to buy</gray>"
+      golden_apple:
+        slot: 14
+        material: GOLDEN_APPLE
+        amount: 3
+        cost: 120
+        name: "<gold>Golden Apple <gray>x%amount%</gray></gold>"
+        lore:
+          - "<gray>Regeneration on use.</gray>"
+          - "<gold>Cost: %cost% tokens</gold>"
+          - "<gray>Click to buy</gray>"
+      healing_potion:
+        slot: 16
+        material: POTION
+        amount: 3
+        potion_type: INSTANT_HEAL
+        potion_level: 2
+        cost: 100
+        name: "<red>Potion of Healing <gray>x%amount%</gray></red>"
+        lore:
+          - "<gray>Instant health II.</gray>"
+          - "<gold>Cost: %cost% tokens</gold>"
+          - "<gray>Click to buy</gray>"
+
+# Enchantment unlocks. Clicking an enchant opens a target picker showing only the
+# player's loadout items the enchant can go on (`targets` = loadout slot keys).
+# Buying applies the enchant IN PLACE to the chosen loadout item (persisted in
+# loadout_items). `level` is the enchantment level (1-5).
+enchantments:
+  title: "<gradient:#00AAFF:#55FFFF>Enchantments</gradient>"
+  rows: 4
+  filler:
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+  enchantments:
+    protection:
+      slot: 10
+      enchant: PROTECTION
+      level: 2
+      cost: 150
+      targets:
+        - armor_helmet
+        - armor_chestplate
+        - armor_leggings
+        - armor_boots
+      material: DIAMOND_CHESTPLATE
+      name: "<light_purple><bold>Protection II</bold></light_purple>"
+      lore:
+        - "<gray>Apply to a piece of armor.</gray>"
+        - "<gold>Cost: %cost% tokens</gold>"
+        - "<gray>Click to choose a target</gray>"
+    sharpness:
+      slot: 12
+      enchant: SHARPNESS
+      level: 3
+      cost: 200
+      targets:
+        - weapon
+      material: DIAMOND_SWORD
+      name: "<light_purple><bold>Sharpness III</bold></light_purple>"
+      lore:
+        - "<gray>Apply to a sword or axe.</gray>"
+        - "<gold>Cost: %cost% tokens</gold>"
+        - "<gray>Click to choose a target</gray>"
+    efficiency:
+      slot: 14
+      enchant: EFFICIENCY
+      level: 3
+      cost: 200
+      targets:
+        - tool
+      material: DIAMOND_PICKAXE
+      name: "<light_purple><bold>Efficiency III</bold></light_purple>"
+      lore:
+        - "<gray>Apply to a pickaxe.</gray>"
+        - "<gold>Cost: %cost% tokens</gold>"
+        - "<gray>Click to choose a target</gray>"
+    unbreaking:
+      slot: 16
+      enchant: UNBREAKING
+      level: 3
+      cost: 250
+      targets:
+        - armor_helmet
+        - armor_chestplate
+        - armor_leggings
+        - armor_boots
+        - weapon
+        - tool
+      material: ANVIL
+      name: "<light_purple><bold>Unbreaking III</bold></light_purple>"
+      lore:
+        - "<gray>Apply to armor or tools.</gray>"
+        - "<gold>Cost: %cost% tokens</gold>"
+        - "<gray>Click to choose a target</gray>"

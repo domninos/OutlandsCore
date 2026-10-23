@@ -148,6 +148,10 @@ class PartyChat {
         relayChat(player, party, player.getName(), message);
     }
 
+    private void send(Player player, Messages message) {
+        plugin.sendMessage(player, message.toString());
+    }
+
     private void relayChat(Player carrier, Party party, String senderName, String message) {
         if (!plugin.getConfigUtil().isPartyCrossServer())
             return;
@@ -161,7 +165,9 @@ class PartyChat {
         partyManager.forwardAll(carrier, payload);
     }
 
-    /** Handles a decoded {@code chat} relay payload routed here by {@link PartyManager#handleRelay}. */
+    /**
+     * Handles a decoded {@code chat} relay payload routed here by {@link PartyManager#handleRelay}.
+     */
     void handleRelay(JsonObject payload) {
         String line = plugin.getConfigUtil().getPartyChatFormat()
                 .replace("%player%", payload.get("senderName").getAsString())
@@ -172,9 +178,5 @@ class PartyChat {
             if (online != null)
                 plugin.sendMessage(online, line);
         }
-    }
-
-    private void send(Player player, Messages message) {
-        plugin.sendMessage(player, message.toString());
     }
 }

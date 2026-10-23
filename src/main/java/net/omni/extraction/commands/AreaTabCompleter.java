@@ -21,11 +21,11 @@ public class AreaTabCompleter implements TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
             "wand", "create", "rename", "resize", "update", "delete", "list", "info", "tp", "reset", "reload",
-            "mob", "addmob", "delmob", "setmob", "setchest");
+            "setlevel", "mob", "addmob", "delmob", "setmob", "setchest");
 
     private static final List<String> AREA_SUBCOMMANDS = List.of(
-            "wand", "delete", "info", "tp", "reset", "rename", "resize", "update", "addmob", "delmob", "setmob",
-            "setchest");
+            "wand", "delete", "info", "tp", "reset", "rename", "resize", "update", "setlevel", "addmob", "delmob",
+            "setmob", "setchest");
 
     private static final List<String> MOB_ACTIONS = List.of("create", "set", "remove", "list", "info");
 
@@ -83,6 +83,10 @@ public class AreaTabCompleter implements TabCompleter {
         }
 
         switch (sub) {
+            case "setlevel" -> {
+                if (args.length == 3) return filter(List.of("1", "5", "10", "20"), args[2]);
+                return List.of();
+            }
             case "addmob" -> {
                 return switch (args.length) {
                     case 3 -> filter(addmobSuggestions(), args[2]);

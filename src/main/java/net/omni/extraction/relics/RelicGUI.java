@@ -48,17 +48,17 @@ public final class RelicGUI {
         ChatRenderer renderer = plugin.getChatRenderer();
 
         boolean learned = def.isCharm()
-                ? data.ownsCharm(def.getId())
-                : data.ownsArtifact(def.getId());
+                ? data.ownsCharm(def.id())
+                : data.ownsArtifact(def.id());
 
         boolean equipped = def.isCharm()
-                ? def.getId().equals(data.getActiveCharm())
-                : def.getId().equals(data.getActiveArtifact());
+                ? def.id().equals(data.getActiveCharm())
+                : def.id().equals(data.getActiveArtifact());
 
         if (!learned)
             return placeholder(plugin, def);
 
-        Material material = Material.matchMaterial(def.getMaterialName());
+        Material material = Material.matchMaterial(def.materialName());
         if (material == null)
             material = Material.PAPER;
 
@@ -67,9 +67,9 @@ public final class RelicGUI {
         if (meta == null)
             return item;
 
-        renderer.setDisplayName(meta, def.getName());
+        renderer.setDisplayName(meta, def.name());
 
-        List<String> lore = new ArrayList<>(def.getLore());
+        List<String> lore = new ArrayList<>(def.lore());
 
         if (equipped) {
             lore.add("<green><bold>EQUIPPED</bold></green>");
@@ -96,11 +96,11 @@ public final class RelicGUI {
         if (meta == null)
             return item;
 
-        renderer.setDisplayName(meta, config.getRelicGuiPlaceholderName().replace("%relic%", def.getName()));
+        renderer.setDisplayName(meta, config.getRelicGuiPlaceholderName().replace("%relic%", def.name()));
 
         List<String> lore = new ArrayList<>();
         for (String line : config.getRelicGuiPlaceholderLore())
-            lore.add(line.replace("%relic%", def.getName()));
+            lore.add(line.replace("%relic%", def.name()));
 
         renderer.setLore(meta, lore);
         item.setItemMeta(meta);

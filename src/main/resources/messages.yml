@@ -57,6 +57,11 @@ backpack:
   unpack-overflow: "<red>Your inventory was full — %count% item(s) were dropped at your feet.</red>"
 shop:
   opened: "<gray>Opened the Extraction shop.</gray>"
+  purchased: "<green>Purchased <white>%item%</white> for <gold>%cost%</gold> tokens.</green>"
+  not-enough-tokens: "<red>You need <white>%cost%</white> tokens but only have <white>%tokens%</white>.</red>"
+  inventory-full: "<red>Your inventory is full. Dropped <white>%count%</white> item(s) at your feet.</red>"
+  no-eligible-target: "<red>No eligible loadout item found for that enchantment.</red>"
+  enchant-applied: "<green>Applied <white>%enchant%</white> to <white>%target%</white>.</green>"
 charms:
   no-perm: "<red>You do not have permission to open your charms.</red>"
   opened: "<gray>Opened your charms menu.</gray>"
@@ -99,6 +104,7 @@ area:
   already-exists: "<red>Area <white>%area%</white> already exists.</red>"
   teleported: "<green>Teleported to area <white>%area%</white>.</green>"
   reset: "<green>Reset area <white>%area%</white>.</green>"
+  level-set: "<green>Set area <white>%area%</white> level to <white>%level%</white>.</green>"
   reloaded: "<green>Reloaded all area files.</green>"
   hologram-set: "<green>Hologram position set for <white>%area%</white>.</green>"
   hologram-removed: "<gold>Hologram removed for <white>%area%</white>.</gold>"

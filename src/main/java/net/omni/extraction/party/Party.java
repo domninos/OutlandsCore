@@ -4,13 +4,15 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/** A single party roster, loaded from the database. Members are kept in join order. */
+/**
+ * A single party roster, loaded from the database. Members are kept in join order.
+ */
 public class Party {
 
     private final UUID id;
     private final long createdAt;
-    private UUID leader;
     private final Map<UUID, String> members = new LinkedHashMap<>();
+    private UUID leader;
 
     public Party(UUID id, UUID leader, long createdAt) {
         this.id = id;
@@ -63,7 +65,9 @@ public class Party {
         members.remove(uuid);
     }
 
-    /** UUID of the oldest member other than the given one, or {@code null} if none remain. */
+    /**
+     * UUID of the oldest member other than the given one, or {@code null} if none remain.
+     */
     public UUID firstMemberExcept(UUID uuid) {
         for (UUID member : members.keySet()) {
             if (!member.equals(uuid))

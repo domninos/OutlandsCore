@@ -318,6 +318,8 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   `false`). Shows the run/cooldown timer during a run or cooldown, overlays `+{n} tokens` on mob/boss kills.
 - Per-kill/per-boss tokens now payout live on death (`RunManager.awardKillTokens`) instead of at extract;
   extract pays base + per-event only. Wired through `AreaListener.onEntityDeath` + `AreaClearSession.bossMobs`.
+- `/areas setlevel {area} {level}` sets a stored per-area level override (0 = derive from spawns; override always wins).
+- Expanded `/extshop` (`/extshop`) opens a category hub (Consumables, Enchantments, Gear Upgrades, Backpack) from `shop.yml`; consumables bought with tokens drop leftovers at feet if inventory full; enchantments can be applied in-place to eligible loadout items (armor + sword/axe/pickaxe).
 - Multiple loot chest locations per area with optional per-chest loot table type (`AreaChestLocation`); wand
   CHEST add/remove-nearest; `/areas setchest`; legacy `loot.chest-location` migrates on load.
 - `PaperChatRenderer.toComponent` converts legacy `§` codes to MiniMessage tags so mixed placeholder/message

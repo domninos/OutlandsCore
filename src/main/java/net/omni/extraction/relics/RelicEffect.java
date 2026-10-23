@@ -6,27 +6,6 @@ package net.omni.extraction.relics;
  * the {@link RelicEffectType}. {@code threshold} is only used by the LOW_HP types
  * (health percentage the player must be below for the effect to apply).
  */
-public class RelicEffect {
+public record RelicEffect(RelicEffectType type, double value, double threshold) {
 
-    private final RelicEffectType type;
-    private final double value;
-    private final double threshold;
-
-    public RelicEffect(RelicEffectType type, double value, double threshold) {
-        this.type = type;
-        this.value = value;
-        this.threshold = threshold;
-    }
-
-    public RelicEffectType getType() {
-        return type;
-    }
-
-    public double getValue() {
-        return value;
-    }
-
-    public double getThreshold() {
-        return threshold;
-    }
 }

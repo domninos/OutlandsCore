@@ -192,7 +192,7 @@ public class AreaManager {
 
         int configuredMobs = 0;
         int configuredBosses = 0;
-        int level = 1;
+        int level = area.getLevel() > 0 ? area.getLevel() : 1;
 
         for (AreaSpawnDefinition definition : resolveSpawns(area)) {
             if (definition.isBoss())

@@ -39,7 +39,7 @@ public class AreaCommand implements CommandExecutor {
 
         if (args.length == 0) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage",
-                    "/areas {wand|create|rename|resize|update|delete|list|info|tp|reset|reload|mob|addmob|delmob|setmob|setchest}"));
+                    "/areas {wand|create|rename|resize|update|delete|list|info|tp|reset|reload|setlevel|mob|addmob|delmob|setmob|setchest}"));
             return true;
         }
 
@@ -54,6 +54,7 @@ public class AreaCommand implements CommandExecutor {
             case "info" -> handleInfo(sender, args);
             case "tp" -> handleTp(sender, args);
             case "reset" -> handleReset(sender, args);
+            case "setlevel" -> handleSetLevel(sender, args);
             case "reload" -> handleReload(sender);
             case "mob" -> handleMob(sender, args);
             case "addmob" -> handleAddMob(sender, args);
@@ -380,6 +381,48 @@ public class AreaCommand implements CommandExecutor {
         plugin.getAreaManager().save(area);
 
         plugin.sendMessage(sender, Messages.AREA_RESET.replace("area", area.getName()));
+        return true;
+    }
+
+    private boolean handleSetLevel(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas setlevel {area} {level}"));
+            return true;
+        }
+
+        AreaManager areaManager = plugin.getAreaManager();
+        Area area = areaManager.getArea(args[1]);
+
+        if (area == null) {
+            plugin.sendMessage(sender, Messages.AREA_NOT_FOUND.replace("area", args[1]));
+            return true;
+        }
+
+        if (areaManager.isLocked(area)) {
+            plugin.sendMessage(sender, Messages.AREA_EDIT_LOCKED.replace("area", area.getName()));
+            return true;
+        }
+
+        int level;
+
+        try {
+            level = Integer.parseInt(args[2]);
+        } catch (NumberFormatException e) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas setlevel {area} {level}"));
+            return true;
+        }
+
+        if (level < 1) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas setlevel {area} {level}"));
+            return true;
+        }
+
+        area.setLevel(level);
+        areaManager.markDirty(area);
+        areaManager.save(area);
+
+        plugin.sendMessage(sender, Messages.AREA_LEVEL_SET
+                .replace("area", area.getName(), "level", String.valueOf(level)));
         return true;
     }
 

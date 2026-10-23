@@ -47,6 +47,27 @@ public final class ConfigKeys {
     public static final String SHOP_GUI_TITLE = "shop-gui.title";
     public static final String SHOP_GUI_ROWS = "shop-gui.rows";
 
+    public static final String SHOP_HUB = "shop-hub";
+    public static final String SHOP_HUB_TITLE = "shop-hub.title";
+    public static final String SHOP_HUB_ROWS = "shop-hub.rows";
+    public static final String SHOP_HUB_FILLER_MATERIAL = "shop-hub.filler.material";
+    public static final String SHOP_HUB_FILLER_NAME = "shop-hub.filler.name";
+
+    public static final String SHOP = "shop";
+    public static final String SHOP_CONSUMABLES = "shop.consumables";
+    public static final String SHOP_CONSUMABLES_TITLE = "shop.consumables.title";
+    public static final String SHOP_CONSUMABLES_ROWS = "shop.consumables.rows";
+    public static final String SHOP_CONSUMABLES_FILLER_MATERIAL = "shop.consumables.filler.material";
+    public static final String SHOP_CONSUMABLES_FILLER_NAME = "shop.consumables.filler.name";
+    public static final String SHOP_CONSUMABLES_ITEMS = "shop.consumables.items";
+
+    public static final String ENCHANTMENTS = "enchantments";
+    public static final String ENCHANTMENTS_TITLE = "enchantments.title";
+    public static final String ENCHANTMENTS_ROWS = "enchantments.rows";
+    public static final String ENCHANTMENTS_FILLER_MATERIAL = "enchantments.filler.material";
+    public static final String ENCHANTMENTS_FILLER_NAME = "enchantments.filler.name";
+    public static final String ENCHANTMENTS_ENCHANTMENTS = "enchantments.enchantments";
+
     public static final String LOADOUT_DEFAULTS = "loadout.defaults";
 
     public static final String LOADOUT_ARMOR_HELMET = "loadout.armor.helmet.tiers";

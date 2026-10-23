@@ -51,6 +51,22 @@ public class ConfigUtil {
     private String shopGuiTitle;
     private int shopGuiRows;
 
+    private String shopHubTitle;
+    private int shopHubRows;
+    private String shopHubFillerMaterial;
+    private String shopHubFillerName;
+    private final Map<String, Map<String, Object>> shopHubButtons = new HashMap<>();
+    private String shopConsumablesTitle;
+    private int shopConsumablesRows;
+    private String shopConsumablesFillerMaterial;
+    private String shopConsumablesFillerName;
+    private final Map<String, Map<String, Object>> shopConsumables = new HashMap<>();
+    private String enchantmentsTitle;
+    private int enchantmentsRows;
+    private String enchantmentsFillerMaterial;
+    private String enchantmentsFillerName;
+    private final Map<String, Map<String, Object>> enchantmentDefinitions = new HashMap<>();
+
     private int relicActivationSeconds;
     private String relicParticle;
     private int relicParticleTicks;
@@ -335,6 +351,7 @@ public class ConfigUtil {
         loadContainers(savedDefaults);
         loadBackpack(savedDefaults);
         loadShopGui(savedDefaults);
+        loadShop(savedDefaults);
         loadRelicGui(savedDefaults);
         loadPack(savedDefaults);
 
@@ -826,6 +843,56 @@ public class ConfigUtil {
         this.shopGuiTitle = getAndDefaultString(ConfigKeys.SHOP_GUI_TITLE,
                 "<gradient:#00AAFF:#55FFFF>Extraction Shop</gradient>", savedDefaults);
         this.shopGuiRows = Math.clamp(getAndDefaultInt(ConfigKeys.SHOP_GUI_ROWS, 3, savedDefaults), 2, 6);
+    }
+
+    private void loadShop(AtomicInteger savedDefaults) {
+        this.shopHubTitle = getAndDefaultString(ConfigKeys.SHOP_HUB_TITLE,
+                "<gradient:#00AAFF:#55FFFF>Extraction Shop</gradient>", savedDefaults);
+        this.shopHubRows = Math.clamp(getAndDefaultInt(ConfigKeys.SHOP_HUB_ROWS, 3, savedDefaults), 2, 6);
+        this.shopHubFillerMaterial = getAndDefaultString(ConfigKeys.SHOP_HUB_FILLER_MATERIAL,
+                "GRAY_STAINED_GLASS_PANE", savedDefaults);
+        this.shopHubFillerName = getAndDefaultString(ConfigKeys.SHOP_HUB_FILLER_NAME, " ", savedDefaults);
+        loadSectionMap(ConfigKeys.SHOP_HUB + ".buttons", shopHubButtons);
+
+        this.shopConsumablesTitle = getAndDefaultString(ConfigKeys.SHOP_CONSUMABLES_TITLE,
+                "<gradient:#00AAFF:#55FFFF>Consumables</gradient>", savedDefaults);
+        this.shopConsumablesRows = Math.clamp(getAndDefaultInt(ConfigKeys.SHOP_CONSUMABLES_ROWS, 3, savedDefaults), 2, 6);
+        this.shopConsumablesFillerMaterial = getAndDefaultString(ConfigKeys.SHOP_CONSUMABLES_FILLER_MATERIAL,
+                "GRAY_STAINED_GLASS_PANE", savedDefaults);
+        this.shopConsumablesFillerName = getAndDefaultString(ConfigKeys.SHOP_CONSUMABLES_FILLER_NAME, " ", savedDefaults);
+        loadSectionMap(ConfigKeys.SHOP_CONSUMABLES_ITEMS, shopConsumables);
+
+        this.enchantmentsTitle = getAndDefaultString(ConfigKeys.ENCHANTMENTS_TITLE,
+                "<gradient:#00AAFF:#55FFFF>Enchantments</gradient>", savedDefaults);
+        this.enchantmentsRows = Math.clamp(getAndDefaultInt(ConfigKeys.ENCHANTMENTS_ROWS, 4, savedDefaults), 2, 6);
+        this.enchantmentsFillerMaterial = getAndDefaultString(ConfigKeys.ENCHANTMENTS_FILLER_MATERIAL,
+                "GRAY_STAINED_GLASS_PANE", savedDefaults);
+        this.enchantmentsFillerName = getAndDefaultString(ConfigKeys.ENCHANTMENTS_FILLER_NAME, " ", savedDefaults);
+        loadSectionMap(ConfigKeys.ENCHANTMENTS_ENCHANTMENTS, enchantmentDefinitions);
+    }
+
+    /** Reads a `section.<key>.<field>` map into the given target (keys lowercased). */
+    private void loadSectionMap(String path, Map<String, Map<String, Object>> target) {
+        target.clear();
+
+        ConfigurationSection section = configManager.forPath(path).getConfigurationSection(path);
+
+        if (section == null)
+            return;
+
+        for (String key : section.getKeys(false)) {
+            ConfigurationSection defSection = section.getConfigurationSection(key);
+
+            if (defSection == null)
+                continue;
+
+            Map<String, Object> values = new HashMap<>();
+
+            for (String valueKey : defSection.getKeys(false))
+                values.put(valueKey, defSection.get(valueKey));
+
+            target.put(key.toLowerCase(java.util.Locale.ROOT), values);
+        }
     }
 
     private void loadRelicGui(AtomicInteger savedDefaults) {
@@ -1932,6 +1999,66 @@ public class ConfigUtil {
 
     public int getShopGuiSize() {
         return shopGuiRows * 9;
+    }
+
+    public String getShopHubTitle() {
+        return shopHubTitle;
+    }
+
+    public int getShopHubSize() {
+        return shopHubRows * 9;
+    }
+
+    public String getShopHubFillerMaterial() {
+        return shopHubFillerMaterial;
+    }
+
+    public String getShopHubFillerName() {
+        return shopHubFillerName;
+    }
+
+    public Map<String, Map<String, Object>> getShopHubButtons() {
+        return shopHubButtons;
+    }
+
+    public String getShopConsumablesTitle() {
+        return shopConsumablesTitle;
+    }
+
+    public int getShopConsumablesSize() {
+        return shopConsumablesRows * 9;
+    }
+
+    public String getShopConsumablesFillerMaterial() {
+        return shopConsumablesFillerMaterial;
+    }
+
+    public String getShopConsumablesFillerName() {
+        return shopConsumablesFillerName;
+    }
+
+    public Map<String, Map<String, Object>> getShopConsumables() {
+        return shopConsumables;
+    }
+
+    public String getEnchantmentsTitle() {
+        return enchantmentsTitle;
+    }
+
+    public int getEnchantmentsSize() {
+        return enchantmentsRows * 9;
+    }
+
+    public String getEnchantmentsFillerMaterial() {
+        return enchantmentsFillerMaterial;
+    }
+
+    public String getEnchantmentsFillerName() {
+        return enchantmentsFillerName;
+    }
+
+    public Map<String, Map<String, Object>> getEnchantmentDefinitions() {
+        return enchantmentDefinitions;
     }
 
     public int getRelicActivationSeconds() {

@@ -71,35 +71,6 @@ public class MobResolver {
         return definition;
     }
 
-    public boolean isKnownMobId(String id) {
-        MobTemplateManager mobs = plugin.getMobTemplateManager();
-
-        if (mobs != null && mobs.exists(id))
-            return true;
-
-        return parseSpawnType(id) != null || isMythicId(id);
-    }
-
-    public int templateCount(String mobId) {
-        MobTemplate template = template(mobId);
-        return template == null ? 1 : template.getCount();
-    }
-
-    public boolean templateBoss(String mobId) {
-        MobTemplate template = template(mobId);
-        return template != null && template.isBoss();
-    }
-
-    public int templateLevel(String mobId) {
-        MobTemplate template = template(mobId);
-        return template == null ? 1 : template.getLevel();
-    }
-
-    public int templateRespawn(String mobId) {
-        MobTemplate template = template(mobId);
-        return template == null ? 0 : template.getRespawnSeconds();
-    }
-
     private MobTemplate template(String mobId) {
         MobTemplateManager mobs = plugin.getMobTemplateManager();
         return mobs == null ? null : mobs.get(mobId);
@@ -130,5 +101,34 @@ public class MobResolver {
         } catch (Throwable e) {
             return false;
         }
+    }
+
+    public boolean isKnownMobId(String id) {
+        MobTemplateManager mobs = plugin.getMobTemplateManager();
+
+        if (mobs != null && mobs.exists(id))
+            return true;
+
+        return parseSpawnType(id) != null || isMythicId(id);
+    }
+
+    public int templateCount(String mobId) {
+        MobTemplate template = template(mobId);
+        return template == null ? 1 : template.getCount();
+    }
+
+    public boolean templateBoss(String mobId) {
+        MobTemplate template = template(mobId);
+        return template != null && template.isBoss();
+    }
+
+    public int templateLevel(String mobId) {
+        MobTemplate template = template(mobId);
+        return template == null ? 1 : template.getLevel();
+    }
+
+    public int templateRespawn(String mobId) {
+        MobTemplate template = template(mobId);
+        return template == null ? 0 : template.getRespawnSeconds();
     }
 }

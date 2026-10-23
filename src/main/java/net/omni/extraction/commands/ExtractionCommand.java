@@ -434,7 +434,7 @@ public class ExtractionCommand implements CommandExecutor {
             return true;
         }
 
-        String relicName = def.getName();
+        String relicName = def.name();
 
         plugin.getPlayerDataManager().loadPlayer(target.getUniqueId(), () -> {
             PlayerData data = plugin.getPlayerDataManager().getLoaded(target.getUniqueId());
