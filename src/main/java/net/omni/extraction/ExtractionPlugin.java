@@ -20,7 +20,13 @@ import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.gui.GUIManager;
 import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.integration.ExternalPluginManager;
+import net.omni.extraction.listeners.BackpackGUIListener;
+import net.omni.extraction.listeners.EnchantGUIListener;
+import net.omni.extraction.listeners.LoadoutGUIListener;
 import net.omni.extraction.listeners.PlayerListener;
+import net.omni.extraction.listeners.RelicGUIListener;
+import net.omni.extraction.listeners.ShopGUIListener;
+import net.omni.extraction.listeners.UpgradeGUIListener;
 import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutManager;
 import net.omni.extraction.util.LootItemUtil;
@@ -362,6 +368,12 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     private void registerListeners() {
         new PlayerListener(this).register();
+        new ShopGUIListener(this).register();
+        new EnchantGUIListener(this).register();
+        new UpgradeGUIListener(this).register();
+        new LoadoutGUIListener(this).register();
+        new RelicGUIListener(this).register();
+        new BackpackGUIListener(this).register();
         new AreaWandListener(this).register();
         new AreaListener(this).register();
         areaSelectionVisualizer.register();

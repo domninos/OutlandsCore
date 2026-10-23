@@ -325,6 +325,13 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   views through `ShopGUI`; after a successful consumable purchase, enchant apply (no longer closes), or `/upgrade`
   purchase the cached shop inventory is refreshed in place. `ShopGUI` stores the eligible target-cell list so enchant
   clicks map to the right loadout cell without rescanning.
+- GUI listeners split out of `PlayerListener` (which now only handles non-GUI events): `listeners/ShopGUIListener`
+  (shop hub + consumables + backpack upgrade shop), `listeners/EnchantGUIListener` (enchant list + target menu),
+  `listeners/UpgradeGUIListener` (upgrade GUI, token drag path, purchase confirm), `listeners/LoadoutGUIListener`
+  (loadout click/drag/close sync), `listeners/RelicGUIListener`, `listeners/BackpackGUIListener`. Each owns its
+  holder dispatch for `InventoryClickEvent`/`InventoryDragEvent` and (where needed) `InventoryCloseEvent`, with
+  `(ExtractionPlugin)` ctor + `register()` wired in `ExtractionPlugin.registerListeners()`.
+  `ShopGUI.getTargetCellForSlot(rawSlot)` is the single source for the enchant target-slot map.
 - Utility package: `util/StringUtils` holds `capitalize`/`toRoman`/`stripTags`; `LootItemUtil`, `MessageUtil`,
   `RelicItemUtil`, and `UpgradeTokenUtil` live in `net.omni.extraction.util` (stateful `ConfigUtil` stays in `config/`).
 - Multiple loot chest locations per area with optional per-chest loot table type (`AreaChestLocation`); wand

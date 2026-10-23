@@ -56,6 +56,13 @@ public class ShopGUI {
         return targetCells.get(index);
     }
 
+    public int getTargetCellForSlot(int rawSlot) {
+        for (int i = 0; i < TARGET_SLOTS.length; i++) {
+            if (TARGET_SLOTS[i] == rawSlot) return getTargetCell(i);
+        }
+        return -1;
+    }
+
     public void open(Player player, ShopView view) {
         this.view = view;
         this.enchantKey = null;
