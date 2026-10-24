@@ -39,6 +39,9 @@ commands:
   artifacts:
     description: Open your artifacts menu
     aliases: [extartifacts]
+  drone:
+    description: Activate or return from drone mode
+    aliases: [dronemode]
 
 permissions:
   extraction.*:
@@ -59,7 +62,10 @@ permissions:
     description: Allows managing Extraction areas
     default: op
   extraction.play:
-    description: Allows entering Extraction
+    description: Allows entering extraction
+    default: true
+  extraction.drone:
+    description: Allows using the drone system
     default: true
   extraction.bypass.cooldown:
     description: Bypass the run cooldown

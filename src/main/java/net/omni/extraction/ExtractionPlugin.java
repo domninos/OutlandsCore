@@ -15,42 +15,33 @@ import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.config.ExtractionConfig;
 import net.omni.extraction.data.DatabaseManager;
 import net.omni.extraction.data.PlayerDataManager;
+import net.omni.extraction.drone.DroneCommand;
+import net.omni.extraction.drone.DroneManager;
 import net.omni.extraction.gameplay.CooldownManager;
 import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.gui.GUIManager;
 import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.integration.ExternalPluginManager;
-import net.omni.extraction.listeners.BackpackGUIListener;
-import net.omni.extraction.listeners.CompassGUIListener;
-import net.omni.extraction.listeners.EnchantGUIListener;
-import net.omni.extraction.listeners.LoadoutGUIListener;
-import net.omni.extraction.listeners.PlayerListener;
-import net.omni.extraction.listeners.RelicGUIListener;
-import net.omni.extraction.listeners.ShopGUIListener;
-import net.omni.extraction.listeners.UpgradeGUIListener;
+import net.omni.extraction.listeners.*;
 import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutManager;
-import net.omni.extraction.util.LootItemUtil;
 import net.omni.extraction.loot.LootResolver;
 import net.omni.extraction.loot.LootTableManager;
 import net.omni.extraction.managers.ExtractionManager;
 import net.omni.extraction.managers.MessagesManager;
 import net.omni.extraction.managers.TokenManager;
-import net.omni.extraction.util.MessageUtil;
 import net.omni.extraction.mobs.MobResolver;
 import net.omni.extraction.mobs.MobTemplateManager;
 import net.omni.extraction.pack.PackManager;
 import net.omni.extraction.party.PartyListener;
 import net.omni.extraction.party.PartyManager;
 import net.omni.extraction.relics.RelicEffectManager;
-import net.omni.extraction.util.RelicItemUtil;
 import net.omni.extraction.relics.RelicListener;
 import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.scoreboard.ScoreboardListener;
 import net.omni.extraction.scoreboard.ScoreboardManager;
 import net.omni.extraction.upgrade.UpgradeManager;
-import net.omni.extraction.util.UpgradeTokenUtil;
-import net.omni.extraction.util.PacketGlow;
+import net.omni.extraction.util.*;
 import net.omni.extraction.worldevent.WorldEventListener;
 import net.omni.extraction.worldevent.WorldEventManager;
 import org.bukkit.Bukkit;
@@ -100,6 +91,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private WorldEventManager worldEventManager;
     private PartyManager partyManager;
     private PartyListener partyListener;
+    private DroneManager droneManager;
 
 
     /*
@@ -166,6 +158,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (droneManager != null) {
+            droneManager.stop();
+        }
+
         playerDataManager.onDisable();
 
         if (scoreboardManager != null)
@@ -294,6 +290,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.relicManager.reload();
         this.relicEffectManager = new RelicEffectManager(this);
 
+        droneManager = new DroneManager(this);
+        droneManager.start();
+
         registerCommands();
         registerListeners();
 
@@ -365,6 +364,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new ShopCommand(this).register();
         new CharmsCommand(this).register();
         new ArtifactsCommand(this).register();
+        new DroneCommand(this, droneManager).register();
     }
 
     private void registerListeners() {
