@@ -197,10 +197,16 @@ party:
   chat-mode-on: "<green>Party chat mode enabled. All chat messages are sent to your party.</green>"
   chat-mode-off: "<gray>Party chat mode disabled.</gray>"
   chat-mode-state: "<gray>Party chat mode: <white>%state%</white>.</gray>"
+# Command help
 help:
-  header: "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"
-  footer: "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"
+  header: "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"
+  footer: "<dark_gray>▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪▪</dark_gray>"
   title: "  <gradient:#00AAFF:#55FFFF><bold>Extraction</bold></gradient>"
+  categories-header: "<gray>Categories — click one to view its commands:</gray>"
+  category-title: "  <gradient:#00AAFF:#55FFFF><bold>Extraction</bold></gradient> <dark_gray>-</dark_gray> <white>%category%</white>"
+  category-line: "  <dark_gray>▪</dark_gray> %category%"
+  category-hover: "<gray>View %category% commands</gray>"
+  back-hint: "<gray>Tip: click a category to jump straight to it.</gray>"
 events:
   status-header: "<gray>World Events (<white>%count%</white>):</gray>"
   status-entry: "<gray> - <white>%event%</white> <dark_gray>»</dark_gray> <white>%state%</white></gray>"
@@ -247,12 +253,4 @@ loot-editor:
   saved-chest: "<green>Chest loot saved (<white>%entries%</white> entr%s%).</green>"
   item-rejected: "<red>That item cannot be turned into a loot entry.</red>"
   opened: "<green>Editing loot table <white>%table%</white>. The table saves when you close the menu.</green>"
-
-# Command help
-help:
-  categories-header: "<gray>Categories — click one to view its commands:</gray>"
-  category-title: "  <gradient:#00AAFF:#55FFFF><bold>Extraction</bold></gradient> <dark_gray>-</dark_gray> <white>%category%</white>"
-  category-line: "  <dark_gray>▪</dark_gray> %category%"
-  category-hover: "<gray>View %category% commands</gray>"
-  back-hint: "<gray>Tip: click a category to jump straight to it.</gray>"
 

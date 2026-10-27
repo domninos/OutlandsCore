@@ -2,7 +2,6 @@ package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.Permissions;
-import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.worldevent.WorldEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -36,14 +35,6 @@ public class ExtractionTabCompleter implements TabCompleter {
                 subcommands.add("admin");
                 subcommands.add("reload");
                 subcommands.add("events");
-                subcommands.add("settokens");
-                subcommands.add("givetokens");
-                subcommands.add("giveupgrade");
-                subcommands.add("forceextract");
-                subcommands.add("setspawn");
-                subcommands.add("setlobby");
-                subcommands.add("artifacts");
-                subcommands.add("charms");
             }
 
             List<String> completions = new ArrayList<>();
@@ -54,7 +45,8 @@ public class ExtractionTabCompleter implements TabCompleter {
         if (args.length == 2) {
             if (args[0].equalsIgnoreCase("help")) {
                 return StringUtil.copyPartialMatches(args[1],
-                        List.of("general", "run", "economy", "admin", "events", "party"), new ArrayList<>());
+                        List.of("general", "run", "economy", "admin", "events", "party",
+                                "areas", "charms", "artifacts"), new ArrayList<>());
             }
 
             if (args[0].equalsIgnoreCase("party")) {
@@ -65,7 +57,8 @@ public class ExtractionTabCompleter implements TabCompleter {
 
             if (args[0].equalsIgnoreCase("admin") && sender.hasPermission(Permissions.ADMIN)) {
                 return StringUtil.copyPartialMatches(args[1],
-                        List.of("addhologram", "sethologram", "delhologram", "packinfo", "migratedb"), new ArrayList<>());
+                        List.of("setspawn", "setlobby", "addhologram", "sethologram", "delhologram",
+                                "packinfo", "migratedb"), new ArrayList<>());
             }
 
             if (args[0].equalsIgnoreCase("events") && sender.hasPermission(Permissions.ADMIN)) {
@@ -73,15 +66,7 @@ public class ExtractionTabCompleter implements TabCompleter {
                         List.of("status", "list", "start", "stop", "route"), new ArrayList<>());
             }
 
-            if (sender.hasPermission(Permissions.ADMIN)
-                    && (args[0].equalsIgnoreCase("artifacts") || args[0].equalsIgnoreCase("charms"))) {
-                return StringUtil.copyPartialMatches(args[1], List.of("give", "remove"), new ArrayList<>());
-            }
-
-            return switch (args[0].toLowerCase()) {
-                case "settokens", "givetokens", "giveupgrade", "forceextract" -> null;
-                default -> Collections.emptyList();
-            };
+            return Collections.emptyList();
         }
 
         if (args.length == 3
@@ -157,33 +142,6 @@ public class ExtractionTabCompleter implements TabCompleter {
         }
 
         if (args.length == 3
-                && args[0].equalsIgnoreCase("artifacts")
-                && sender.hasPermission(Permissions.ADMIN)) {
-            List<String> ids = plugin.getRelicManager().getDefinitions(RelicManager.KIND_ARTIFACT).stream()
-                    .map(def -> def.id())
-                    .toList();
-            return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
-        }
-
-        if (args.length == 3
-                && args[0].equalsIgnoreCase("charms")
-                && sender.hasPermission(Permissions.ADMIN)) {
-            List<String> ids = plugin.getRelicManager().getDefinitions(RelicManager.KIND_CHARM).stream()
-                    .map(def -> def.id())
-                    .toList();
-            return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
-        }
-
-        if (args.length == 4
-                && (args[0].equalsIgnoreCase("artifacts") || args[0].equalsIgnoreCase("charms"))
-                && sender.hasPermission(Permissions.ADMIN)) {
-            List<String> playerNames = Bukkit.getOnlinePlayers().stream()
-                    .map(player -> player.getName())
-                    .toList();
-            return StringUtil.copyPartialMatches(args[3], playerNames, new ArrayList<>());
-        }
-
-        if (args.length == 3
                 && (args[1].equalsIgnoreCase("addhologram")
                 || args[1].equalsIgnoreCase("sethologram")
                 || args[1].equalsIgnoreCase("delhologram"))
@@ -192,13 +150,6 @@ public class ExtractionTabCompleter implements TabCompleter {
                     .map(area -> area.getName())
                     .toList();
             return StringUtil.copyPartialMatches(args[2], areaNames, new ArrayList<>());
-        }
-
-        if (args.length == 3 && args[0].equalsIgnoreCase("giveupgrade")) {
-            List<String> tokenKeys = new ArrayList<>(plugin.getConfigUtil().getUpgradeTokenDefinitions().keySet());
-            List<String> completions = new ArrayList<>();
-            StringUtil.copyPartialMatches(args[2], tokenKeys, completions);
-            return completions;
         }
 
         return Collections.emptyList();

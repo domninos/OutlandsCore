@@ -2,15 +2,12 @@ package net.omni.extraction.commands;
 
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.area.Area;
-import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.Permissions;
+import net.omni.extraction.area.Area;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.looteditor.LootEditorHolder;
 import net.omni.extraction.util.MessageUtil;
 import net.omni.extraction.messages.Messages;
-import net.omni.extraction.relics.RelicDefinition;
-import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.upgrade.UpgradeConfirmHolder;
 import net.omni.extraction.upgrade.UpgradeGuiHolder;
 import net.omni.extraction.worldevent.EventInstance;
@@ -19,7 +16,6 @@ import net.omni.extraction.worldevent.WorldEventManager;
 import net.omni.extraction.worldevent.WorldEventManager.EventStartResult;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -27,11 +23,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
 import org.jspecify.annotations.NonNull;
 
 import java.util.List;
-import java.util.Map;
 
 public class ExtractionCommand implements CommandExecutor {
 
@@ -61,14 +55,6 @@ public class ExtractionCommand implements CommandExecutor {
             case "loadout" -> handleLoadout(sender);
             case "shop" -> handleShop(sender);
             case "tokens" -> handleTokens(sender);
-            case "settokens" -> handleSetTokens(sender, args);
-            case "givetokens" -> handleGiveTokens(sender, args);
-            case "giveupgrade" -> handleGiveUpgrade(sender, args);
-            case "forceextract" -> handleForceExtract(sender, args);
-            case "setspawn" -> handleSetSpawn(sender);
-            case "setlobby" -> handleSetLobby(sender);
-            case "artifacts" -> handleRelicAdmin(sender, args, RelicManager.KIND_ARTIFACT);
-            case "charms" -> handleRelicAdmin(sender, args, RelicManager.KIND_CHARM);
             case "events" -> handleEvents(sender, args);
             case "party" -> partyCommand.handle(sender, args);
             case "admin" -> handleAdmin(sender, args);
@@ -110,9 +96,12 @@ public class ExtractionCommand implements CommandExecutor {
     private static final String CATEGORY_ADMIN = "admin";
     private static final String CATEGORY_EVENTS = "events";
     private static final String CATEGORY_PARTY = "party";
+    private static final String CATEGORY_AREAS = "areas";
+    private static final String CATEGORY_CHARMS = "charms";
+    private static final String CATEGORY_ARTIFACTS = "artifacts";
     private static final List<String> HELP_CATEGORIES = List.of(
-            CATEGORY_GENERAL, CATEGORY_RUN, CATEGORY_ECONOMY,
-            CATEGORY_ADMIN, CATEGORY_EVENTS, CATEGORY_PARTY);
+            CATEGORY_GENERAL, CATEGORY_RUN, CATEGORY_ECONOMY, CATEGORY_ADMIN,
+            CATEGORY_EVENTS, CATEGORY_PARTY, CATEGORY_AREAS, CATEGORY_CHARMS, CATEGORY_ARTIFACTS);
 
     private void sendHelp(CommandSender sender, String category) {
         if (category != null) {
@@ -121,8 +110,7 @@ public class ExtractionCommand implements CommandExecutor {
                 return;
             }
 
-            if ((category.equals(CATEGORY_ADMIN) || category.equals(CATEGORY_EVENTS))
-                    && !sender.hasPermission(Permissions.ADMIN)) {
+            if (!canSeeCategory(sender, category)) {
                 plugin.sendMessage(sender, Messages.NO_PERMS.toString());
                 return;
             }
@@ -137,20 +125,24 @@ public class ExtractionCommand implements CommandExecutor {
         help.append(Messages.HELP_CATEGORIES_HEADER).append("\n");
 
         for (String cat : HELP_CATEGORIES) {
-            if (cat.equals(CATEGORY_ADMIN) || cat.equals(CATEGORY_EVENTS)) {
-                if (!sender.hasPermission(Permissions.ADMIN))
-                    continue;
-            } else if (cat.equals(CATEGORY_PARTY) && !sender.hasPermission(Permissions.PARTY)) {
-                continue;
-            }
-
-            help.append(categoryLine(cat));
+            if (canSeeCategory(sender, cat))
+                help.append(categoryLine(cat));
         }
 
         help.append("\n").append(Messages.HELP_BACK_HINT);
         help.append("\n").append(Messages.HELP_FOOTER);
 
         sender.sendMessage(MiniMessage.miniMessage().deserialize(help.toString()));
+    }
+
+    private boolean canSeeCategory(CommandSender sender, String category) {
+        return switch (category) {
+            case CATEGORY_ADMIN, CATEGORY_EVENTS -> sender.hasPermission(Permissions.ADMIN);
+            case CATEGORY_PARTY -> sender.hasPermission(Permissions.PARTY);
+            case CATEGORY_AREAS -> sender.hasPermission(Permissions.AREAS);
+            case CATEGORY_CHARMS, CATEGORY_ARTIFACTS -> sender.hasPermission(Permissions.PLAY);
+            default -> true;
+        };
     }
 
     private String categoryLine(String category) {
@@ -179,6 +171,8 @@ public class ExtractionCommand implements CommandExecutor {
                 MessageUtil.append("extraction", "Enter Extraction / extract when inside", help);
                 MessageUtil.append("extract", "Extract from Extraction early", help);
                 MessageUtil.append("extraction loadout", "View your loadout", help);
+                if (sender.hasPermission(Permissions.ADMIN))
+                    MessageUtil.append("extract force {player}", "Force extract a player", help);
             }
             case CATEGORY_ECONOMY -> {
                 MessageUtil.append("extraction shop", "Open the shop hub", help);
@@ -186,15 +180,17 @@ public class ExtractionCommand implements CommandExecutor {
                 MessageUtil.append("upgrade", "Upgrade your gear with tokens", help);
                 MessageUtil.append("charms", "View your charms", help);
                 MessageUtil.append("artifacts", "View your artifacts", help);
+                if (sender.hasPermission(Permissions.ADMIN)) {
+                    help.append("\n  <dark_gray>Admin:</dark_gray>\n");
+                    MessageUtil.append("tokens set {player} {amount}", "Set a player's token balance", help);
+                    MessageUtil.append("tokens give {player} {amount}", "Give tokens to a player", help);
+                    MessageUtil.append("upgrade give {player} {token}", "Give an upgrade token", help);
+                }
             }
             case CATEGORY_ADMIN -> {
                 MessageUtil.append("extraction reload", "Reloads the config files and messages.yml", help);
-                MessageUtil.append("extraction settokens {player} {amount}", "Set a player's token balance", help);
-                MessageUtil.append("extraction givetokens {player} {amount}", "Give tokens to a player", help);
-                MessageUtil.append("extraction giveupgrade {player} {token}", "Give an upgrade token", help);
-                MessageUtil.append("extraction forceextract {player}", "Force extract a player", help);
-                MessageUtil.append("extraction setspawn", "Set the Extraction entry spawn", help);
-                MessageUtil.append("extraction setlobby", "Set the lobby spawn (where joiners spawn)", help);
+                MessageUtil.append("extraction admin setspawn", "Set the Extraction entry spawn", help);
+                MessageUtil.append("extraction admin setlobby", "Set the lobby spawn (where joiners spawn)", help);
                 MessageUtil.append("extraction admin addhologram {area}", "Place the area hologram at your feet", help);
                 MessageUtil.append("extraction admin sethologram {area}", "Move the area hologram to your eye level", help);
                 MessageUtil.append("extraction admin delhologram {area}", "Remove the area hologram", help);
@@ -216,6 +212,41 @@ public class ExtractionCommand implements CommandExecutor {
                 MessageUtil.append("extraction party disband", "Disband the party (leader)", help);
                 MessageUtil.append("extraction party list", "List party members", help);
                 MessageUtil.append("extraction party chat on|off", "Toggle party chat mode", help);
+            }
+            case CATEGORY_AREAS -> {
+                MessageUtil.append("/areas wand [name] [mode]", "Get (or configure) the area wand", help);
+                MessageUtil.append("/areas create {name}", "Create an area from your wand corners", help);
+                MessageUtil.append("/areas rename {old} {new}", "Rename an area", help);
+                MessageUtil.append("/areas resize {name}", "Resize an area to new corners", help);
+                MessageUtil.append("/areas update {name}", "Re-detect a resized area", help);
+                MessageUtil.append("/areas delete {name}", "Delete an area", help);
+                MessageUtil.append("/areas list", "List all areas", help);
+                MessageUtil.append("/areas info {name}", "Show area details", help);
+                MessageUtil.append("/areas tp {name}", "Teleport to an area", help);
+                MessageUtil.append("/areas reset {name}", "Reset an area's clear state", help);
+                MessageUtil.append("/areas setlevel {area} {level}", "Set the mob level (0 = derive)", help);
+                MessageUtil.append("/areas mob {create|set|remove|list|info}", "Manage mob templates", help);
+                MessageUtil.append("/areas addmob {area} {mob} [count] [boss] [level] [respawn]", "Add a spawn to an area", help);
+                MessageUtil.append("/areas delmob {area} {mob}", "Remove a spawn from an area", help);
+                MessageUtil.append("/areas setmob {area} {mob} {field} {value}", "Edit a spawn", help);
+                MessageUtil.append("/areas setchest {area} {index} {type|key|remove} [key]", "Edit a loot chest", help);
+                MessageUtil.append("/areas reload", "Reload all area files", help);
+            }
+            case CATEGORY_CHARMS -> {
+                MessageUtil.append("charms", "View your charms", help);
+                if (sender.hasPermission(Permissions.ADMIN)) {
+                    help.append("\n  <dark_gray>Admin:</dark_gray>\n");
+                    MessageUtil.append("charms give {id} {player}", "Grant a charm (online or offline)", help);
+                    MessageUtil.append("charms remove {id} {player}", "Revoke a charm (online or offline)", help);
+                }
+            }
+            case CATEGORY_ARTIFACTS -> {
+                MessageUtil.append("artifacts", "View your artifacts", help);
+                if (sender.hasPermission(Permissions.ADMIN)) {
+                    help.append("\n  <dark_gray>Admin:</dark_gray>\n");
+                    MessageUtil.append("artifacts give {id} {player}", "Grant an artifact (online or offline)", help);
+                    MessageUtil.append("artifacts remove {id} {player}", "Revoke an artifact (online or offline)", help);
+                }
             }
         }
 
@@ -331,128 +362,6 @@ public class ExtractionCommand implements CommandExecutor {
         return true;
     }
 
-    private boolean handleSetTokens(CommandSender sender, String[] args) {
-        if (!sender.hasPermission(Permissions.ADMIN)) {
-            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
-            return true;
-        }
-
-        if (args.length < 3) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction settokens {player} {amount}"));
-            return true;
-        }
-
-        Player target = Bukkit.getPlayer(args[1]);
-        if (target == null) {
-            plugin.sendMessage(sender, Messages.PLAYER_NOT_FOUND.replace("player", args[1]));
-            return true;
-        }
-
-        try {
-            int amount = Integer.parseInt(args[2]);
-            plugin.getTokenManager().setTokens(target.getUniqueId(), amount);
-            plugin.sendMessage(sender, Messages.ADMIN_SET_TOKENS.replace(
-                    "player", target.getName(),
-                    "amount", String.valueOf(amount)));
-        } catch (NumberFormatException e) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction settokens {player} {amount}"));
-        }
-
-        return true;
-    }
-
-    private boolean handleGiveTokens(CommandSender sender, String[] args) {
-        if (!sender.hasPermission(Permissions.ADMIN)) {
-            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
-            return true;
-        }
-
-        if (args.length < 3) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction givetokens {player} {amount}"));
-            return true;
-        }
-
-        Player target = Bukkit.getPlayer(args[1]);
-        if (target == null) {
-            plugin.sendMessage(sender, Messages.PLAYER_NOT_FOUND.replace("player", args[1]));
-            return true;
-        }
-
-        try {
-            int amount = Integer.parseInt(args[2]);
-            plugin.getTokenManager().addTokens(target.getUniqueId(), amount);
-            plugin.sendMessage(sender, Messages.ADMIN_GIVE_TOKENS.replace(
-                    "player", target.getName(),
-                    "amount", String.valueOf(amount)));
-        } catch (NumberFormatException e) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction givetokens {player} {amount}"));
-        }
-
-        return true;
-    }
-
-    private boolean handleGiveUpgrade(CommandSender sender, String[] args) {
-        if (!sender.hasPermission(Permissions.ADMIN)) {
-            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
-            return true;
-        }
-
-        if (args.length < 3) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction giveupgrade {player} {token_key}"));
-            return true;
-        }
-
-        Player target = Bukkit.getPlayer(args[1]);
-        if (target == null) {
-            plugin.sendMessage(sender, Messages.PLAYER_NOT_FOUND.replace("player", args[1]));
-            return true;
-        }
-
-        String tokenKey = args[2].toLowerCase();
-        Map<String, Map<String, Object>> tokenDefs = plugin.getConfigUtil().getUpgradeTokenDefinitions();
-        if (!tokenDefs.containsKey(tokenKey)) {
-            plugin.sendMessage(sender, Messages.UNKNOWN_COMMAND.toString());
-            return true;
-        }
-
-        ItemStack tokenItem = plugin.getUpgradeManager().createUpgradeTokenItem(tokenKey);
-        if (tokenItem != null) {
-            if (!target.getInventory().addItem(tokenItem).isEmpty())
-                target.getWorld().dropItemNaturally(target.getLocation(), tokenItem);
-
-            plugin.sendMessage(sender, Messages.ADMIN_GIVE_UPGRADE.replace(
-                    "player", target.getName(),
-                    "token", tokenKey));
-        }
-
-        return true;
-    }
-
-    private boolean handleForceExtract(CommandSender sender, String[] args) {
-        if (!sender.hasPermission(Permissions.ADMIN)) {
-            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
-            return true;
-        }
-        if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction forceextract {player}"));
-            return true;
-        }
-
-        Player target = Bukkit.getPlayer(args[1]);
-        if (target == null) {
-            plugin.sendMessage(sender, Messages.PLAYER_NOT_FOUND.replace("player", args[1]));
-            return true;
-        }
-
-        boolean success = plugin.getRunManager().extractPlayer(target.getUniqueId());
-        if (success)
-            plugin.sendMessage(sender, Messages.ADMIN_FORCE_EXTRACT.replace("player", target.getName()));
-        else
-            plugin.sendMessage(sender, Messages.EXTRACT_NOT_IN.toString());
-
-        return true;
-    }
-
     private boolean handleSetSpawn(CommandSender sender) {
         if (!sender.hasPermission(Permissions.ADMIN)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
@@ -482,72 +391,6 @@ public class ExtractionCommand implements CommandExecutor {
 
         plugin.getConfigUtil().setLobbyLocation(player.getLocation());
         plugin.sendMessage(sender, Messages.ADMIN_SET_LOBBY.replace("world", player.getWorld().getName()));
-        return true;
-    }
-
-    private boolean handleRelicAdmin(CommandSender sender, String[] args, String category) {
-        if (!sender.hasPermission(Permissions.ADMIN)) {
-            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
-            return true;
-        }
-
-        if (args.length < 4) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage",
-                    "/extraction " + category + " {give|remove} {id} {player}"));
-            return true;
-        }
-
-        String action = args[1].toLowerCase();
-        if (!action.equals("give") && !action.equals("remove")) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage",
-                    "/extraction " + category + " {give|remove} {id} {player}"));
-            return true;
-        }
-
-        RelicDefinition def = plugin.getRelicManager().getDefinition(category, args[2]);
-        if (def == null) {
-            plugin.sendMessage(sender, Messages.RELIC_NOT_FOUND.replace(
-                    "kind", category,
-                    "relic", args[2].toLowerCase()));
-            return true;
-        }
-
-        OfflinePlayer target = Bukkit.getOfflinePlayer(args[3]);
-        if (!target.hasPlayedBefore() && target.getPlayer() == null) {
-            plugin.sendMessage(sender, Messages.PLAYER_NOT_FOUND.replace("player", args[3]));
-            return true;
-        }
-
-        String relicName = def.name();
-
-        plugin.getPlayerDataManager().loadPlayer(target.getUniqueId(), () -> {
-            PlayerData data = plugin.getPlayerDataManager().getLoaded(target.getUniqueId());
-
-            if (action.equals("give")) {
-                plugin.getRelicManager().grant(data, def);
-                plugin.sendMessage(sender, Messages.RELIC_GIVEN.replace(
-                        "relic", relicName,
-                        "player", target.getName()));
-            } else {
-                if (!plugin.getRelicManager().revoke(data, def)) {
-                    plugin.sendMessage(sender, Messages.RELIC_NOT_OWNED_BY.replace(
-                            "relic", relicName,
-                            "player", target.getName()));
-                    return;
-                }
-
-                plugin.sendMessage(sender, Messages.RELIC_REMOVED.replace(
-                        "relic", relicName,
-                        "player", target.getName()));
-
-                Player online = target.getPlayer();
-                if (online != null)
-                    plugin.getRelicEffectManager().applyPassive(online);
-            }
-
-            plugin.getPlayerDataManager().savePlayerNow(target.getUniqueId());
-        });
-
         return true;
     }
 
@@ -754,6 +597,12 @@ public class ExtractionCommand implements CommandExecutor {
         }
 
         String action = args[1].toLowerCase();
+
+        if (action.equals("setspawn"))
+            return handleSetSpawn(sender);
+
+        if (action.equals("setlobby"))
+            return handleSetLobby(sender);
 
         if (action.equals("packinfo")) {
             sender.sendMessage(MessageUtil.parse(plugin.getPackManager().diagnostics()));
