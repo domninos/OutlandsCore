@@ -5,6 +5,7 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Bee;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.UUID;
 
@@ -19,6 +20,7 @@ public class DroneSession {
     private final Npc bodyNpc;
     private final String npcId;
     private final Bee mount;
+    private BukkitTask task;
     private double battery;
     private boolean active;
 
@@ -72,6 +74,15 @@ public class DroneSession {
     /** The visible drone body the pilot rides; other players and mobs can hit it. */
     public Bee getMount() {
         return mount;
+    }
+
+    /** Per-session scheduler task (movement + battery + hum); null until activate() starts it. */
+    public BukkitTask getTask() {
+        return task;
+    }
+
+    public void setTask(BukkitTask task) {
+        this.task = task;
     }
 
     public double getBattery() {

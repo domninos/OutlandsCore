@@ -759,7 +759,9 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   first entry. `DatabaseManager.PLAYER_COLUMNS` gained the column (index 19) with `CREATE TABLE` + `ensureColumn`
   migrations for existing MySQL/SQLite tables. Messages `compass.tracking`/`compass.no-target`.
 - **Drone mode** (`/drone`, `/drone return|stop|exit`; perm `extraction.drone`): `managers/DroneManager` (sessions,
-  battery BossBar task draining 1%/s, recall/stop), `drone/DroneSession` (body location/yaw/pitch, original
+  per-session scheduler task — movement + battery + hum in ONE runnable created in `activate` and cancelled in
+  `cleanupSession`, so **no drone task exists while nobody is flying**; battery drains `1%/s` proportionally to
+  `update-ticks`, hum every 2s wall-clock per session; recall/stop), `drone/DroneSession` (body location/yaw/pitch, original
   GameMode, body marker, mount, battery), `commands/DroneCommand` (conventions: jspecify `@NonNull`,
   `plugin.sendMessage` + `Messages`, perm guard `extraction.drone`, NO `§`), `drone/listener/DroneListener`
   (quit/world-change/respawn recall + `EntityDismountEvent` guard blocking vanilla shift-dismount while

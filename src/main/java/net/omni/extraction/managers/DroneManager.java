@@ -34,9 +34,9 @@ public class DroneManager {
     private static final double DRAIN_PER_SECOND = 1.0;
 
     /**
-     * How often (in battery-task runs, 1s each) the idle motor hum plays.
+     * Wall-clock interval between idle motor hums.
      */
-    private static final int HUM_EVERY_TICKS = 2;
+    private static final long HUM_INTERVAL_MS = 2000;
 
     /**
      * Blocks moved per movement tick (20/s while a key is held).
@@ -57,11 +57,9 @@ public class DroneManager {
     private final Map<UUID, Long> lastMoveSound = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> prevAscend = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> prevDescend = new ConcurrentHashMap<>();
-    private BukkitTask batteryTask;
-    private BukkitTask moveTask;
-    private int humCounter;
+    private final Map<UUID, Long> lastHum = new ConcurrentHashMap<>();
     /**
-     * Config drone.update-ticks: movement-task period; per-step distance scales by it.
+     * Config drone.update-ticks: per-session task period; per-step distance scales by it.
      */
     private int updateTicks = 1;
 
@@ -74,69 +72,119 @@ public class DroneManager {
         DroneListener listener = new DroneListener(this);
         Bukkit.getPluginManager().registerEvents(listener, plugin);
 
-        batteryTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickBattery, 20L, 20L);
         this.updateTicks = Math.max(1, plugin.getConfigUtil().getDroneUpdateTicks());
-        moveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickMovement, updateTicks, updateTicks);
     }
 
     /**
-     * Per-tick movement: polls {@link Player#getCurrentInput()} (Paper 1.21.3+ —
-     * the 1.21.2+ input packet is a bitfield ProtocolLib cannot read, and the
-     * client only sends it on key CHANGES anyway, so polling the cached state
-     * is the reliable path). Direction follows the pilot's full look direction
-     * (yaw + pitch — 3D flight); collision block-scans so the drone bumps into
-     * walls instead of phasing.
+     * Per-session tick (runs every {@link #updateTicks} on the main thread; the
+     * task is created in {@link #activate} and cancelled in {@link #cleanupSession},
+     * so no drone task exists while nobody is flying). Handles, in order:
+     * offline cleanup, the stranded-rider guard, battery drain + boss bar, the
+     * idle motor hum, empty-battery recall, and movement.
+     *
+     * <p>Movement polls {@link Player#getCurrentInput()} (Paper 1.21.3+ â€” the
+     * 1.21.2+ input packet is a bitfield ProtocolLib cannot read, and the client
+     * only sends it on key CHANGES anyway, so polling the cached state is the
+     * reliable path). Direction follows the pilot's full look direction (yaw +
+     * pitch â€” 3D flight); collision block-scans so the drone bumps into walls
+     * instead of phasing.
      */
-    private void tickMovement() {
-        if (sessions.isEmpty()) {
+    private void tickSession(DroneSession session) {
+        UUID uuid = session.getPlayerId();
+        Player player = Bukkit.getPlayer(uuid);
+
+        if (player == null || !player.isOnline()) {
+            cleanupSession(session);
+            sessions.remove(uuid);
+            bossBars.remove(uuid);
             return;
         }
 
-        for (Map.Entry<UUID, DroneSession> entry : sessions.entrySet()) {
-            UUID uuid = entry.getKey();
-            DroneSession session = entry.getValue();
-            Player player = Bukkit.getPlayer(uuid);
-
-            if (player == null || !player.isOnline()) {
-                continue;
-            }
-
-            Bee mount = session.getMount();
-            if (mount == null || !mount.isValid() || player.getVehicle() != mount) {
-                continue;
-            }
-
-            Input input = player.getCurrentInput();
-            boolean forward = input.isForward();
-            boolean backward = input.isBackward();
-            boolean left = input.isLeft();
-            boolean right = input.isRight();
-            boolean ascend = input.isJump();
-            boolean descend = input.isSneak();
-
-            if (!forward && !backward && !left && !right && !ascend && !descend) {
-                playInputSound(player, session, false, false, false);
-                continue;
-            }
-
-            boolean horizontal = forward || backward || left || right;
-
-            Location current = mount.getLocation();
-            Location pilotLoc = player.getLocation();
-            double speed = (input.isSprint() ? BOOST_SPEED : SPEED) * updateTicks;
-
-            // 3D look-direction flight: the drone goes where the pilot looks
-            // (pitch included). calculateFlightMovement already sets yaw/pitch.
-            Location nextLoc = DronePhysics.calculateFlightMovement(current, pilotLoc.getYaw(), pilotLoc.getPitch(),
-                    forward, backward, left, right, ascend, descend, speed);
-
-            Location safeLoc = DronePhysics.checkCollision(current.getWorld(), current, nextLoc);
-
-            // Teleporting the mount carries the pilot (passenger) with it.
-            mount.teleport(safeLoc);
-
-            playInputSound(player, session, ascend, descend, horizontal);
+        // Stranded-rider guard: if the pilot somehow left the mount, pull them back.
+        if (player.getVehicle() != session.getMount()) {
+            plugin.sendMessage(player, Messages.DRONE_LINK_LOST.toString());
+            recall(player);
+            return;
         }
+
+        // Battery: proportional to the task period so the drain stays 1%/s.
+        session.drainBattery(DRAIN_PER_SECOND * updateTicks / 20.0);
+        double battery = session.getBattery();
+
+        BossBar bar = bossBars.get(uuid);
+        if (bar != null) {
+            float progress = (float) (battery / 100.0);
+            bar.progress(Math.clamp(progress, 0.0f, 1.0f));
+            if (battery > 50) {
+                bar.color(BossBar.Color.GREEN);
+                bar.name(Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.GREEN));
+            } else if (battery > 20) {
+                bar.color(BossBar.Color.YELLOW);
+                bar.name(Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.YELLOW));
+            } else {
+                bar.color(BossBar.Color.RED);
+                bar.name(Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.RED));
+            }
+        }
+
+        long now = System.currentTimeMillis();
+        Long lastHum = this.lastHum.get(uuid);
+
+        if (lastHum == null || now - lastHum >= HUM_INTERVAL_MS) {
+            this.lastHum.put(uuid, now);
+            DroneSounds.hum(session.getMount().getLocation());
+        }
+
+        if (session.isEmptyBattery()) {
+            plugin.sendMessage(player, Messages.DRONE_BATTERY_DEPLETED.toString());
+            recall(player);
+            return;
+        }
+
+        tickMovement(session, player);
+    }
+
+    /**
+     * Movement for one session: polls {@link Player#getCurrentInput()} and
+     * flies the drone where the pilot looks (3D, pitch included).
+     */
+    private void tickMovement(DroneSession session, Player player) {
+        Bee mount = session.getMount();
+
+        if (mount == null || !mount.isValid() || player.getVehicle() != mount) {
+            return;
+        }
+
+        Input input = player.getCurrentInput();
+        boolean forward = input.isForward();
+        boolean backward = input.isBackward();
+        boolean left = input.isLeft();
+        boolean right = input.isRight();
+        boolean ascend = input.isJump();
+        boolean descend = input.isSneak();
+
+        if (!forward && !backward && !left && !right && !ascend && !descend) {
+            playInputSound(player, session, false, false, false);
+            return;
+        }
+
+        boolean horizontal = forward || backward || left || right;
+
+        Location current = mount.getLocation();
+        Location pilotLoc = player.getLocation();
+        double speed = (input.isSprint() ? BOOST_SPEED : SPEED) * updateTicks;
+
+        // 3D look-direction flight: the drone goes where the pilot looks
+        // (pitch included). calculateFlightMovement already sets yaw/pitch.
+        Location nextLoc = DronePhysics.calculateFlightMovement(current, pilotLoc.getYaw(), pilotLoc.getPitch(),
+                forward, backward, left, right, ascend, descend, speed);
+
+        Location safeLoc = DronePhysics.checkCollision(current.getWorld(), current, nextLoc);
+
+        // Teleporting the mount carries the pilot (passenger) with it.
+        mount.teleport(safeLoc);
+
+        playInputSound(player, session, ascend, descend, horizontal);
     }
 
     /**
@@ -169,60 +217,6 @@ public class DroneManager {
             if (last == null || now - last >= MOVE_SOUND_COOLDOWN_MS) {
                 lastMoveSound.put(uuid, now);
                 DroneSounds.move(loc);
-            }
-        }
-    }
-
-    private void tickBattery() {
-        humCounter++;
-
-        for (Map.Entry<UUID, DroneSession> entry : sessions.entrySet()) {
-            UUID uuid = entry.getKey();
-            DroneSession session = entry.getValue();
-            Player player = Bukkit.getPlayer(uuid);
-
-            if (player == null || !player.isOnline()) {
-                if (session != null) {
-                    cleanupSession(session);
-                }
-                sessions.remove(uuid);
-                bossBars.remove(uuid);
-                continue;
-            }
-
-            // Stranded-rider guard: if the pilot somehow left the mount, pull them back.
-            if (player.getVehicle() != session.getMount()) {
-                plugin.sendMessage(player, Messages.DRONE_LINK_LOST.toString());
-                recall(player);
-                continue;
-            }
-
-            session.drainBattery(DRAIN_PER_SECOND);
-            double battery = session.getBattery();
-
-            BossBar bar = bossBars.get(uuid);
-            if (bar != null) {
-                float progress = (float) (battery / 100.0);
-                bar.progress(Math.max(0.0f, Math.min(1.0f, progress)));
-                if (battery > 50) {
-                    bar.color(BossBar.Color.GREEN);
-                    bar.name(Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.GREEN));
-                } else if (battery > 20) {
-                    bar.color(BossBar.Color.YELLOW);
-                    bar.name(Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.YELLOW));
-                } else {
-                    bar.color(BossBar.Color.RED);
-                    bar.name(Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.RED));
-                }
-            }
-
-            if (humCounter % HUM_EVERY_TICKS == 0) {
-                DroneSounds.hum(session.getMount().getLocation());
-            }
-
-            if (session.isEmptyBattery()) {
-                plugin.sendMessage(player, Messages.DRONE_BATTERY_DEPLETED.toString());
-                recall(player);
             }
         }
     }
@@ -261,16 +255,6 @@ public class DroneManager {
             }
         }
         sessions.clear();
-
-        if (batteryTask != null) {
-            batteryTask.cancel();
-            batteryTask = null;
-        }
-
-        if (moveTask != null) {
-            moveTask.cancel();
-            moveTask = null;
-        }
 
         bossBars.clear();
     }
@@ -317,6 +301,8 @@ public class DroneManager {
         }
 
         DroneUtil.applyPilotInvisibility(plugin, player);
+
+        session.setTask(Bukkit.getScheduler().runTaskTimer(plugin, () -> tickSession(session), updateTicks, updateTicks));
 
         BossBar bar = BossBar.bossBar(Component.text("Drone Battery: 100%")
                 .color(NamedTextColor.GREEN), 1.0f, BossBar.Color.GREEN, BossBar.Overlay.PROGRESS);
@@ -376,6 +362,7 @@ public class DroneManager {
             cleanupSession(session);
             sessions.remove(session.getPlayerId());
             bossBars.remove(session.getPlayerId());
+            lastHum.remove(session.getPlayerId());
         }
     }
 
@@ -393,9 +380,21 @@ public class DroneManager {
         sessions.remove(player.getUniqueId());
         bossBars.remove(player.getUniqueId());
         lowHpWarnings.remove(player.getUniqueId());
+        lastHum.remove(player.getUniqueId());
     }
 
     private void cleanupSession(DroneSession session) {
+        BukkitTask task = session.getTask();
+
+        if (task != null) {
+            session.setTask(null);
+
+            try {
+                task.cancel();
+            } catch (Exception ignored) {
+            }
+        }
+
         DroneUtil.removeEntitySafe(session.getBodyMarker());
         fancyNpcHook.removeBodyNpc(session.getBodyNpc());
         DroneUtil.removeEntitySafe(session.getMount());
@@ -428,6 +427,7 @@ public class DroneManager {
         }
 
         lowHpWarnings.remove(player.getUniqueId());
+        lastHum.remove(player.getUniqueId());
 
         try {
             if (player.getVehicle() != null) {
