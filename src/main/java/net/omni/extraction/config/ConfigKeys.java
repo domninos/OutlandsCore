@@ -235,6 +235,29 @@ public final class ConfigKeys {
     public static final String AREA_EDITOR_DROP_REMOVE_MATERIAL = "area-editor.drop-remove-material";
     public static final String AREA_EDITOR_DROP_REMOVE_NAME = "area-editor.drop-remove-name";
 
+    public static final String LOOT_EDITOR_TITLE = "loot-editor.title";
+    public static final String LOOT_EDITOR_FILLER_MATERIAL = "loot-editor.filler-material";
+    public static final String LOOT_EDITOR_FILLER_NAME = "loot-editor.filler-name";
+    public static final String LOOT_EDITOR_INFO_MATERIAL = "loot-editor.info-material";
+    public static final String LOOT_EDITOR_INFO_NAME = "loot-editor.info-name";
+    public static final String LOOT_EDITOR_INFO_LORE = "loot-editor.info-lore";
+    public static final String LOOT_EDITOR_SAVE_MATERIAL = "loot-editor.save-material";
+    public static final String LOOT_EDITOR_SAVE_NAME = "loot-editor.save-name";
+    public static final String LOOT_EDITOR_SAVE_LORE = "loot-editor.save-lore";
+    public static final String LOOT_EDITOR_REMOVE_MATERIAL = "loot-editor.remove-material";
+    public static final String LOOT_EDITOR_REMOVE_NAME = "loot-editor.remove-name";
+    public static final String LOOT_EDITOR_REMOVE_LORE = "loot-editor.remove-lore";
+    public static final String LOOT_EDITOR_ENTRY_LORE = "loot-editor.entry-lore";
+    public static final String LOOT_EDITOR_INCREMENTS = "loot-editor.increments";
+    public static final String LOOT_EDITOR_AMOUNT_MATERIAL = "loot-editor.amount-material";
+    public static final String LOOT_EDITOR_AMOUNT_NAME = "loot-editor.amount-name";
+    public static final String LOOT_EDITOR_WEIGHT_MATERIAL = "loot-editor.weight-material";
+    public static final String LOOT_EDITOR_WEIGHT_NAME = "loot-editor.weight-name";
+    public static final String LOOT_EDITOR_MIN_LEVEL_MATERIAL = "loot-editor.min-level-material";
+    public static final String LOOT_EDITOR_MIN_LEVEL_NAME = "loot-editor.min-level-name";
+    public static final String LOOT_EDITOR_MAX_LEVEL_MATERIAL = "loot-editor.max-level-material";
+    public static final String LOOT_EDITOR_MAX_LEVEL_NAME = "loot-editor.max-level-name";
+
     public static final String ACTIONBAR = "actionbar";
     public static final String ACTIONBAR_ENABLED = "actionbar.enabled";
     public static final String ACTIONBAR_UPDATE_TICKS = "actionbar.update-ticks";
@@ -280,6 +303,7 @@ public final class ConfigKeys {
     public static final String PACK_GUI_BACKPACK = "pack.gui-textures.backpack";
     public static final String PACK_GUI_BACKPACK_SHOP = "pack.gui-textures.backpack-shop";
     public static final String PACK_GUI_AREA_EDITOR = "pack.gui-textures.area-editor";
+    public static final String PACK_GUI_LOOT_EDITOR = "pack.gui-textures.loot-editor";
 
     public static final String MESSAGES_PREFIX = "messages.prefix";
 }

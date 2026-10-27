@@ -16,6 +16,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.Locale;
+
 public class AreaWandListener implements Listener {
 
     private final ExtractionPlugin plugin;
@@ -149,7 +151,7 @@ public class AreaWandListener implements Listener {
 
     private void handleChest(Player player, Action action, Block block, AreaManager areaManager,
                              ItemStack item, boolean sneaking, PlayerInteractEvent event) {
-        if (action != Action.LEFT_CLICK_BLOCK) return;
+        if (action != Action.LEFT_CLICK_BLOCK && action != Action.RIGHT_CLICK_BLOCK) return;
         if (block == null) return;
 
         event.setCancelled(true);
@@ -182,7 +184,29 @@ public class AreaWandListener implements Listener {
             return;
         }
 
+        if (action == Action.RIGHT_CLICK_BLOCK) {
+            plugin.getLootEditorManager().open(player, resolveTableId(area, block));
+            return;
+        }
+
         plugin.getAreaEditorManager().openChestEditor(player, area, block.getLocation());
+    }
+
+    /** The chest's own loot table, else the area's default one, else a table named after the area. */
+    private String resolveTableId(Area area, Block block) {
+        for (AreaChestLocation chest : area.getChestLocations()) {
+            Location loc = chest.getLocation();
+
+            if (loc.getBlockX() == block.getX() && loc.getBlockY() == block.getY()
+                    && loc.getBlockZ() == block.getZ()
+                    && chest.getLootType() != null && !chest.getLootType().isBlank())
+                return chest.getLootType();
+        }
+
+        if (area.getLootTable() != null && !area.getLootTable().isBlank())
+            return area.getLootTable();
+
+        return area.getName().toLowerCase(Locale.ROOT);
     }
 
     private Area resolveArea(AreaManager areaManager, Player player, ItemStack item) {

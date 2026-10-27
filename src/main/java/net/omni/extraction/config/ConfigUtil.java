@@ -102,6 +102,28 @@ public class ConfigUtil {
 
     private String editorTitle;
     private int editorRows;
+    private String lootEditorTitle;
+    private String lootEditorFillerMaterial;
+    private String lootEditorFillerName;
+    private String lootEditorInfoMaterial;
+    private String lootEditorInfoName;
+    private List<String> lootEditorInfoLore;
+    private String lootEditorSaveMaterial;
+    private String lootEditorSaveName;
+    private List<String> lootEditorSaveLore;
+    private String lootEditorRemoveMaterial;
+    private String lootEditorRemoveName;
+    private List<String> lootEditorRemoveLore;
+    private List<String> lootEditorEntryLore;
+    private List<Integer> lootEditorIncrements;
+    private String lootEditorAmountMaterial;
+    private String lootEditorAmountName;
+    private String lootEditorWeightMaterial;
+    private String lootEditorWeightName;
+    private String lootEditorMinLevelMaterial;
+    private String lootEditorMinLevelName;
+    private String lootEditorMaxLevelMaterial;
+    private String lootEditorMaxLevelName;
     private final Map<String, String> guiTextures = new HashMap<>();
     private String packId = "";
     private String packHost = "";
@@ -371,6 +393,7 @@ public class ConfigUtil {
         loadShop(savedDefaults);
         loadCompass(savedDefaults);
         loadRelicGui(savedDefaults);
+        loadLootEditor(savedDefaults);
         loadPack(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
@@ -1008,6 +1031,63 @@ public class ConfigUtil {
                 "<gray>Find it by looting chests or killing mobs in areas.</gray>"), savedDefaults);
     }
 
+    private void loadLootEditor(AtomicInteger savedDefaults) {
+        this.lootEditorTitle = getAndDefaultString(ConfigKeys.LOOT_EDITOR_TITLE,
+                "<gradient:#FFAA00:#FFD700>Loot Table Editor</gradient>", savedDefaults);
+        this.lootEditorFillerMaterial = getAndDefaultString(ConfigKeys.LOOT_EDITOR_FILLER_MATERIAL,
+                "GRAY_STAINED_GLASS_PANE", savedDefaults);
+        this.lootEditorFillerName = getAndDefaultString(ConfigKeys.LOOT_EDITOR_FILLER_NAME, " ", savedDefaults);
+        this.lootEditorInfoMaterial = getAndDefaultString(ConfigKeys.LOOT_EDITOR_INFO_MATERIAL, "BOOK", savedDefaults);
+        this.lootEditorInfoName = getAndDefaultString(ConfigKeys.LOOT_EDITOR_INFO_NAME,
+                "<yellow>Loot Table: %table%</yellow>", savedDefaults);
+        this.lootEditorInfoLore = getAndDefaultStringList(ConfigKeys.LOOT_EDITOR_INFO_LORE, List.of(
+                "<gray>Drop items into the empty slots</gray>",
+                "<gray>to add loot entries.</gray>",
+                "<gray>Left-click an entry to edit it,</gray>",
+                "<gray>right-click to remove it.</gray>",
+                "<gray>Closes and saves automatically.</gray>"), savedDefaults);
+        this.lootEditorSaveMaterial = getAndDefaultString(ConfigKeys.LOOT_EDITOR_SAVE_MATERIAL,
+                "LIME_DYE", savedDefaults);
+        this.lootEditorSaveName = getAndDefaultString(ConfigKeys.LOOT_EDITOR_SAVE_NAME,
+                "<green>Save & Close</green>", savedDefaults);
+        this.lootEditorSaveLore = getAndDefaultStringList(ConfigKeys.LOOT_EDITOR_SAVE_LORE, List.of(
+                "<gray>Saves the loot table to</gray>",
+                "<gray>loot_tables.yml.</gray>"), savedDefaults);
+        this.lootEditorRemoveMaterial = getAndDefaultString(ConfigKeys.LOOT_EDITOR_REMOVE_MATERIAL,
+                "RED_WOOL", savedDefaults);
+        this.lootEditorRemoveName = getAndDefaultString(ConfigKeys.LOOT_EDITOR_REMOVE_NAME,
+                "<red>Remove Entry</red>", savedDefaults);
+        this.lootEditorRemoveLore = getAndDefaultStringList(ConfigKeys.LOOT_EDITOR_REMOVE_LORE, List.of(
+                "<gray>Deletes this entry and</gray>",
+                "<gray>returns to the table.</gray>"), savedDefaults);
+        this.lootEditorEntryLore = getAndDefaultStringList(ConfigKeys.LOOT_EDITOR_ENTRY_LORE, List.of(
+                "<gray>Type: <white>%type%</white></gray>",
+                "<gray>Amount: <white>%amount%</white></gray>",
+                "<gray>Weight: <white>%weight%</white></gray>",
+                "<gray>Level: <white>%min-level%-%max-level%</white></gray>",
+                "",
+                "<yellow>Left-click to edit</yellow>",
+                "<red>Right-click to remove</red>"), savedDefaults);
+        this.lootEditorIncrements = loadIntList(ConfigKeys.LOOT_EDITOR_INCREMENTS,
+                List.of(1, 5, 10), savedDefaults);
+        this.lootEditorAmountMaterial = getAndDefaultString(ConfigKeys.LOOT_EDITOR_AMOUNT_MATERIAL,
+                "GOLD_INGOT", savedDefaults);
+        this.lootEditorAmountName = getAndDefaultString(ConfigKeys.LOOT_EDITOR_AMOUNT_NAME,
+                "<yellow>Amount: %value%</yellow>", savedDefaults);
+        this.lootEditorWeightMaterial = getAndDefaultString(ConfigKeys.LOOT_EDITOR_WEIGHT_MATERIAL,
+                "FEATHER", savedDefaults);
+        this.lootEditorWeightName = getAndDefaultString(ConfigKeys.LOOT_EDITOR_WEIGHT_NAME,
+                "<yellow>Weight: %value%</yellow>", savedDefaults);
+        this.lootEditorMinLevelMaterial = getAndDefaultString(ConfigKeys.LOOT_EDITOR_MIN_LEVEL_MATERIAL,
+                "EXPERIENCE_BOTTLE", savedDefaults);
+        this.lootEditorMinLevelName = getAndDefaultString(ConfigKeys.LOOT_EDITOR_MIN_LEVEL_NAME,
+                "<yellow>Min Level: %value%</yellow>", savedDefaults);
+        this.lootEditorMaxLevelMaterial = getAndDefaultString(ConfigKeys.LOOT_EDITOR_MAX_LEVEL_MATERIAL,
+                "EXPERIENCE_BOTTLE", savedDefaults);
+        this.lootEditorMaxLevelName = getAndDefaultString(ConfigKeys.LOOT_EDITOR_MAX_LEVEL_NAME,
+                "<yellow>Max Level: %value%</yellow>", savedDefaults);
+    }
+
     private void loadPack(AtomicInteger savedDefaults) {
         guiTextures.put("pack-menu", getAndDefaultString(ConfigKeys.PACK_GUI_PACK_MENU,
                 "\\uE001", savedDefaults));
@@ -1027,6 +1107,8 @@ public class ConfigUtil {
                 "\\uE008", savedDefaults));
         guiTextures.put("area-editor", getAndDefaultString(ConfigKeys.PACK_GUI_AREA_EDITOR,
                 "\\uE009", savedDefaults));
+        guiTextures.put("loot-editor", getAndDefaultString(ConfigKeys.PACK_GUI_LOOT_EDITOR,
+                "\\uE00A", savedDefaults));
         this.packId = getAndDefaultString(ConfigKeys.PACK_ID, "", savedDefaults);
         this.packHost = getAndDefaultString(ConfigKeys.PACK_HOST, "", savedDefaults);
     }
@@ -1579,6 +1661,94 @@ public class ConfigUtil {
 
     public String getAreaEditorDecrementIconName() {
         return editorDecrementIconName;
+    }
+
+    public String getLootEditorTitle() {
+        return lootEditorTitle;
+    }
+
+    public String getLootEditorFillerMaterial() {
+        return lootEditorFillerMaterial;
+    }
+
+    public String getLootEditorFillerName() {
+        return lootEditorFillerName;
+    }
+
+    public String getLootEditorInfoMaterial() {
+        return lootEditorInfoMaterial;
+    }
+
+    public String getLootEditorInfoName() {
+        return lootEditorInfoName;
+    }
+
+    public List<String> getLootEditorInfoLore() {
+        return lootEditorInfoLore;
+    }
+
+    public String getLootEditorSaveMaterial() {
+        return lootEditorSaveMaterial;
+    }
+
+    public String getLootEditorSaveName() {
+        return lootEditorSaveName;
+    }
+
+    public List<String> getLootEditorSaveLore() {
+        return lootEditorSaveLore;
+    }
+
+    public String getLootEditorRemoveMaterial() {
+        return lootEditorRemoveMaterial;
+    }
+
+    public String getLootEditorRemoveName() {
+        return lootEditorRemoveName;
+    }
+
+    public List<String> getLootEditorRemoveLore() {
+        return lootEditorRemoveLore;
+    }
+
+    public List<String> getLootEditorEntryLore() {
+        return lootEditorEntryLore;
+    }
+
+    public List<Integer> getLootEditorIncrements() {
+        return lootEditorIncrements;
+    }
+
+    public String getLootEditorAmountMaterial() {
+        return lootEditorAmountMaterial;
+    }
+
+    public String getLootEditorAmountName() {
+        return lootEditorAmountName;
+    }
+
+    public String getLootEditorWeightMaterial() {
+        return lootEditorWeightMaterial;
+    }
+
+    public String getLootEditorWeightName() {
+        return lootEditorWeightName;
+    }
+
+    public String getLootEditorMinLevelMaterial() {
+        return lootEditorMinLevelMaterial;
+    }
+
+    public String getLootEditorMinLevelName() {
+        return lootEditorMinLevelName;
+    }
+
+    public String getLootEditorMaxLevelMaterial() {
+        return lootEditorMaxLevelMaterial;
+    }
+
+    public String getLootEditorMaxLevelName() {
+        return lootEditorMaxLevelName;
     }
 
     public String getAreaEditorCountIconMaterial() {

@@ -239,7 +239,16 @@ public enum Messages {
     DRONE_BATTERY_DEPLETED("drone.battery-depleted", "<red>Drone battery depleted! Returning...</red>"),
     DRONE_LINK_LOST("drone.link-lost", "<red>Your drone link was lost. Returning...</red>"),
     DRONE_DESTROYED("drone.destroyed", "<red>Your drone was destroyed! Returning to your body...</red>"),
-    DRONE_INTEGRITY_LOW("drone.integrity-low", "<red>WARNING: Drone integrity low!</red>");
+    DRONE_INTEGRITY_LOW("drone.integrity-low", "<red>WARNING: Drone integrity low!</red>"),
+
+    LOOT_EDITOR_SAVED("loot-editor.saved", "<green>Loot table <white>%table%</white> saved (<white>%entries%</white> entr%s%).</green>"),
+    LOOT_EDITOR_ITEM_REJECTED("loot-editor.item-rejected", "<red>That item cannot be turned into a loot entry.</red>"),
+    LOOT_EDITOR_OPENED("loot-editor.opened", "<green>Editing loot table <white>%table%</white>. The table saves when you close the menu.</green>"),
+    HELP_CATEGORIES_HEADER("help.categories-header", "<gray>Categories — click one to view its commands:</gray>"),
+    HELP_CATEGORY_TITLE("help.category-title", "  <gradient:#00AAFF:#55FFFF><bold>Extraction</bold></gradient> <dark_gray>-</dark_gray> <white>%category%</white>"),
+    HELP_CATEGORY_LINE("help.category-line", "  <dark_gray>▪</dark_gray> %category%"),
+    HELP_CATEGORY_HOVER("help.category-hover", "<gray>View %category% commands</gray>"),
+    HELP_BACK_HINT("help.back-hint", "<gray>Tip: click a category to jump straight to it.</gray>");
 
     private final String path;
     private final Object defaultVal;

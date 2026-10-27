@@ -279,6 +279,52 @@ pack:
     backpack: "\uE007"
     backpack-shop: "\uE008"
     area-editor: "\uE009"
+    loot-editor: "\uE00A"
+
+# Loot Table Editor GUI (opened by right-clicking a container with the areas
+# wand in chest/loot mode). Entries dumped into the GUI are saved as a table in
+# loot_tables.yml.
+loot-editor:
+  title: "<gradient:#FFAA00:#FFD700>Loot Table Editor</gradient>"
+  filler-material: GRAY_STAINED_GLASS_PANE
+  filler-name: " "
+  info-material: BOOK
+  info-name: "<yellow>Loot Table: %table%</yellow>"
+  info-lore:
+    - "<gray>Drop items into the empty slots</gray>"
+    - "<gray>to add loot entries.</gray>"
+    - "<gray>Left-click an entry to edit it,</gray>"
+    - "<gray>right-click to remove it.</gray>"
+    - "<gray>Closes and saves automatically.</gray>"
+  save-material: LIME_DYE
+  save-name: "<green>Save & Close</green>"
+  save-lore:
+    - "<gray>Saves the loot table to</gray>"
+    - "<gray>loot_tables.yml.</gray>"
+  remove-material: RED_WOOL
+  remove-name: "<red>Remove Entry</red>"
+  remove-lore:
+    - "<gray>Deletes this entry and</gray>"
+    - "<gray>returns to the table.</gray>"
+  # Lore template shown under each entry in the table view.
+  entry-lore:
+    - "<gray>Type: <white>%type%</white></gray>"
+    - "<gray>Amount: <white>%amount%</white></gray>"
+    - "<gray>Weight: <white>%weight%</white></gray>"
+    - "<gray>Level: <white>%min-level%-%max-level%</white></gray>"
+    - ""
+    - "<yellow>Left-click to edit</yellow>"
+    - "<red>Right-click to remove</red>"
+  # Click increments offered on the per-entry editor page.
+  increments: [1, 5, 10]
+  amount-material: GOLD_INGOT
+  amount-name: "<yellow>Amount: %value%</yellow>"
+  weight-material: FEATHER
+  weight-name: "<yellow>Weight: %value%</yellow>"
+  min-level-material: EXPERIENCE_BOTTLE
+  min-level-name: "<yellow>Min Level: %value%</yellow>"
+  max-level-material: EXPERIENCE_BOTTLE
+  max-level-name: "<yellow>Max Level: %value%</yellow>"
 
 # Drone mode (/drone). The pilot rides a visible drone body (a Bee with AI off,
 # re-skin it via the resource pack's bee entity texture) that other players and

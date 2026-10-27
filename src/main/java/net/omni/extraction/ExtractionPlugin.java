@@ -5,6 +5,9 @@ import com.google.gson.GsonBuilder;
 import net.omni.extraction.area.*;
 import net.omni.extraction.areaeditor.AreaEditorListener;
 import net.omni.extraction.areaeditor.AreaEditorManager;
+import net.omni.extraction.looteditor.LootEditorManager;
+import net.omni.extraction.looteditor.LootEditorHolder;
+import net.omni.extraction.looteditor.LootEditorListener;
 import net.omni.extraction.backpack.BackpackManager;
 import net.omni.extraction.chat.ActionBarManager;
 import net.omni.extraction.chat.ChatRenderer;
@@ -79,6 +82,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private ActionBarManager actionBarManager;
     private GUIManager guiManager;
     private AreaEditorManager areaEditorManager;
+    private LootEditorManager lootEditorManager;
     private HologramManager hologramManager;
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
@@ -114,7 +118,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         - when doing /extraction, make sure to give the artifact/charm item for them to right click it to where the loadout slot is. then, the placeholder item should have the "Drop item here" removed, as it is just a placeholder. so now, if player SHIFT + left/right click the placeholder, open the artifact or charm gui depending on which they shift clicked.
         - disable despawning of mobs on events
      -
-     -
+     - block damage/breaks/looting/interacting while in drone mode
      -
      -
      -
@@ -202,6 +206,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         if (areaEditorManager != null)
             areaEditorManager.clearAll();
 
+        if (lootEditorManager != null)
+            lootEditorManager.clearAll();
+
         extractionManager.flush();
 
         if (partyListener != null)
@@ -281,6 +288,7 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         this.lootTableManager = new LootTableManager(this);
         this.lootTableManager.load();
+        this.lootEditorManager = new LootEditorManager(this);
 
         this.worldEventManager = new WorldEventManager(this);
 
@@ -381,6 +389,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new WorldEventListener(this).register();
         new ScoreboardListener(this).register();
         new AreaEditorListener(this).register();
+        new LootEditorListener(this).register();
         new RelicListener(this).register();
 
         this.partyListener = new PartyListener(this);
@@ -511,6 +520,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public AreaEditorManager getAreaEditorManager() {
         return areaEditorManager;
+    }
+
+    public LootEditorManager getLootEditorManager() {
+        return lootEditorManager;
     }
 
     public HologramManager getHologramManager() {

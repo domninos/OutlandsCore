@@ -97,6 +97,11 @@ public class LootTableManager {
         return tables.size();
     }
 
+    /** Registers (or replaces) a table in the in-memory registry; call {@link #save()} to persist. */
+    public void put(LootTable table) {
+        tables.put(table.getName().toLowerCase(Locale.ROOT), table);
+    }
+
     public String randomUpgradeKey(Random random) {
         List<String> keys = new ArrayList<>(plugin.getConfigUtil().getUpgradeTokenDefinitions().keySet());
 

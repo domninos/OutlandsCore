@@ -6,6 +6,7 @@ import net.omni.extraction.area.Area;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.Permissions;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
+import net.omni.extraction.looteditor.LootEditorHolder;
 import net.omni.extraction.util.MessageUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.relics.RelicDefinition;
@@ -29,6 +30,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.jspecify.annotations.NonNull;
 
+import java.util.List;
 import java.util.Map;
 
 public class ExtractionCommand implements CommandExecutor {
@@ -47,7 +49,7 @@ public class ExtractionCommand implements CommandExecutor {
             return handleEnter(sender);
 
         if (args[0].equalsIgnoreCase("help")) {
-            sendHelp(sender);
+            sendHelp(sender, args.length >= 2 ? args[1].toLowerCase() : null);
             return true;
         }
 
@@ -102,44 +104,124 @@ public class ExtractionCommand implements CommandExecutor {
         return true;
     }
 
-    private void sendHelp(CommandSender sender) {
+    private static final String CATEGORY_GENERAL = "general";
+    private static final String CATEGORY_RUN = "run";
+    private static final String CATEGORY_ECONOMY = "economy";
+    private static final String CATEGORY_ADMIN = "admin";
+    private static final String CATEGORY_EVENTS = "events";
+    private static final String CATEGORY_PARTY = "party";
+    private static final List<String> HELP_CATEGORIES = List.of(
+            CATEGORY_GENERAL, CATEGORY_RUN, CATEGORY_ECONOMY,
+            CATEGORY_ADMIN, CATEGORY_EVENTS, CATEGORY_PARTY);
+
+    private void sendHelp(CommandSender sender, String category) {
+        if (category != null) {
+            if (!HELP_CATEGORIES.contains(category)) {
+                sendHelp(sender, null);
+                return;
+            }
+
+            if ((category.equals(CATEGORY_ADMIN) || category.equals(CATEGORY_EVENTS))
+                    && !sender.hasPermission(Permissions.ADMIN)) {
+                plugin.sendMessage(sender, Messages.NO_PERMS.toString());
+                return;
+            }
+
+            sendCategory(sender, category);
+            return;
+        }
+
         StringBuilder help = new StringBuilder();
         help.append(Messages.HELP_HEADER).append("\n");
         help.append(Messages.HELP_TITLE).append("\n\n");
+        help.append(Messages.HELP_CATEGORIES_HEADER).append("\n");
 
-        if (sender.hasPermission(Permissions.PLAY)) {
-            MessageUtil.append("extraction", "Enter Extraction", help);
-            MessageUtil.append("extract", "Extract from Extraction early", help);
-            MessageUtil.append("extraction loadout", "View your loadout", help);
-            MessageUtil.append("extraction shop", "Buy backpack upgrades", help);
-            MessageUtil.append("extraction tokens", "Check your token balance", help);
-            MessageUtil.append("tokens", "Check your token balance", help);
-            MessageUtil.append("upgrade", "Upgrade your armor", help);
+        for (String cat : HELP_CATEGORIES) {
+            if (cat.equals(CATEGORY_ADMIN) || cat.equals(CATEGORY_EVENTS)) {
+                if (!sender.hasPermission(Permissions.ADMIN))
+                    continue;
+            } else if (cat.equals(CATEGORY_PARTY) && !sender.hasPermission(Permissions.PARTY)) {
+                continue;
+            }
+
+            help.append(categoryLine(cat));
         }
 
-        if (sender.hasPermission(Permissions.ADMIN)) {
-            help.append("\n  <dark_gray>Admin Commands:</dark_gray>\n");
-            MessageUtil.append("extraction reload", "Reloads the config files and messages.yml", help);
-            MessageUtil.append("extraction settokens {player} {amount}", "Set a player's token balance", help);
-            MessageUtil.append("extraction givetokens {player} {amount}", "Give tokens to a player", help);
-            MessageUtil.append("extraction giveupgrade {player} {token}", "Give an upgrade token", help);
-            MessageUtil.append("extraction charms give/remove {id} {player}", "Grant or revoke a charm (online or offline)", help);
-            MessageUtil.append("extraction artifacts give/remove {id} {player}", "Grant or revoke an artifact (online or offline)", help);
-            MessageUtil.append("extraction forceextract {player}", "Force extract a player", help);
-            MessageUtil.append("extraction setspawn", "Set the Extraction entry spawn", help);
-            MessageUtil.append("extraction setlobby", "Set the lobby spawn (where joiners spawn)", help);
-            MessageUtil.append("extraction admin addhologram {area}", "Place the area hologram at your feet", help);
-            MessageUtil.append("extraction admin sethologram {area}", "Move the area hologram to your eye level", help);
-            MessageUtil.append("extraction admin delhologram {area}", "Remove the area hologram", help);
-            MessageUtil.append("extraction admin packinfo", "Dump resource pack hosting diagnostics", help);
-            MessageUtil.append("extraction events status", "List world-event definitions and their state", help);
-            MessageUtil.append("extraction events start {event}", "Force-start a world event", help);
-            MessageUtil.append("extraction events stop [event|all]", "Stop the running world event(s)", help);
+        help.append("\n").append(Messages.HELP_BACK_HINT);
+        help.append("\n").append(Messages.HELP_FOOTER);
+
+        sender.sendMessage(MiniMessage.miniMessage().deserialize(help.toString()));
+    }
+
+    private String categoryLine(String category) {
+        String label = category.substring(0, 1).toUpperCase() + category.substring(1);
+
+        return Messages.HELP_CATEGORY_LINE.replace("category",
+                "<click:run_command:'/extraction help " + category + "'><hover:show_text:'"
+                        + Messages.HELP_CATEGORY_HOVER.replace("category", label)
+                        + "'>" + label + "</hover></click>") + "\n";
+    }
+
+    private void sendCategory(CommandSender sender, String category) {
+        StringBuilder help = new StringBuilder();
+        help.append(Messages.HELP_HEADER).append("\n");
+        help.append(Messages.HELP_CATEGORY_TITLE.replace("category",
+                category.substring(0, 1).toUpperCase() + category.substring(1))).append("\n\n");
+
+        switch (category) {
+            case CATEGORY_GENERAL -> {
+                MessageUtil.append("extraction help", "Show the categorized command list", help);
+                MessageUtil.append("extraction about", "About this plugin", help);
+                if (sender.hasPermission(Permissions.DRONE))
+                    MessageUtil.append("drone [return]", "Enter (or leave) drone mode", help);
+            }
+            case CATEGORY_RUN -> {
+                MessageUtil.append("extraction", "Enter Extraction / extract when inside", help);
+                MessageUtil.append("extract", "Extract from Extraction early", help);
+                MessageUtil.append("extraction loadout", "View your loadout", help);
+            }
+            case CATEGORY_ECONOMY -> {
+                MessageUtil.append("extraction shop", "Open the shop hub", help);
+                MessageUtil.append("extraction tokens", "Check your token balance", help);
+                MessageUtil.append("upgrade", "Upgrade your gear with tokens", help);
+                MessageUtil.append("charms", "View your charms", help);
+                MessageUtil.append("artifacts", "View your artifacts", help);
+            }
+            case CATEGORY_ADMIN -> {
+                MessageUtil.append("extraction reload", "Reloads the config files and messages.yml", help);
+                MessageUtil.append("extraction settokens {player} {amount}", "Set a player's token balance", help);
+                MessageUtil.append("extraction givetokens {player} {amount}", "Give tokens to a player", help);
+                MessageUtil.append("extraction giveupgrade {player} {token}", "Give an upgrade token", help);
+                MessageUtil.append("extraction forceextract {player}", "Force extract a player", help);
+                MessageUtil.append("extraction setspawn", "Set the Extraction entry spawn", help);
+                MessageUtil.append("extraction setlobby", "Set the lobby spawn (where joiners spawn)", help);
+                MessageUtil.append("extraction admin addhologram {area}", "Place the area hologram at your feet", help);
+                MessageUtil.append("extraction admin sethologram {area}", "Move the area hologram to your eye level", help);
+                MessageUtil.append("extraction admin delhologram {area}", "Remove the area hologram", help);
+                MessageUtil.append("extraction admin packinfo", "Dump resource pack hosting diagnostics", help);
+                MessageUtil.append("extraction admin migratedb", "Copy local SQLite data into the active MySQL backend", help);
+            }
+            case CATEGORY_EVENTS -> {
+                MessageUtil.append("extraction events status", "List world-event definitions and their state", help);
+                MessageUtil.append("extraction events start {event}", "Force-start a world event", help);
+                MessageUtil.append("extraction events stop [event|all]", "Stop the running world event(s)", help);
+                MessageUtil.append("extraction events route {event} {start|end|clear|show|wand}", "Edit a convoy route", help);
+            }
+            case CATEGORY_PARTY -> {
+                MessageUtil.append("extraction party create", "Create a party", help);
+                MessageUtil.append("extraction party invite {player}", "Invite a player", help);
+                MessageUtil.append("extraction party join {leader}", "Join a party", help);
+                MessageUtil.append("extraction party leave", "Leave your party", help);
+                MessageUtil.append("extraction party kick {player}", "Kick a member (leader)", help);
+                MessageUtil.append("extraction party disband", "Disband the party (leader)", help);
+                MessageUtil.append("extraction party list", "List party members", help);
+                MessageUtil.append("extraction party chat on|off", "Toggle party chat mode", help);
+            }
         }
 
         help.append("\n").append(Messages.HELP_FOOTER);
 
-        sender.sendMessage(MessageUtil.parse(help.toString()));
+        sender.sendMessage(MiniMessage.miniMessage().deserialize(help.toString()));
     }
 
     private boolean handleAbout(CommandSender sender) {
@@ -207,7 +289,8 @@ public class ExtractionCommand implements CommandExecutor {
                 Inventory top = player.getOpenInventory().getTopInventory();
                 if (top.getHolder() instanceof LoadoutGuiHolder
                         || top.getHolder() instanceof UpgradeGuiHolder
-                        || top.getHolder() instanceof UpgradeConfirmHolder)
+                        || top.getHolder() instanceof UpgradeConfirmHolder
+                        || top.getHolder() instanceof LootEditorHolder)
                     player.closeInventory();
             }
         }
@@ -475,8 +558,7 @@ public class ExtractionCommand implements CommandExecutor {
         }
 
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction events {status|list|start {event}|stop [event]}"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction help events"));
             return true;
         }
 
@@ -557,7 +639,7 @@ public class ExtractionCommand implements CommandExecutor {
             }
             case "route" -> handleRoute(sender, args);
             default -> plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction events {status|list|start {event}|stop [event]|route {event} {start|end|clear|show|wand}}"));
+                    .replace("usage", "/extraction help events"));
         }
 
         return true;
@@ -667,8 +749,7 @@ public class ExtractionCommand implements CommandExecutor {
         }
 
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction admin {addhologram|sethologram|delhologram} {area} | packinfo | migratedb"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction help admin"));
             return true;
         }
 
@@ -685,13 +766,13 @@ public class ExtractionCommand implements CommandExecutor {
 
         if (args.length < 3) {
             plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction admin {addhologram|sethologram|delhologram} {area}"));
+                    .replace("usage", "/extraction admin addhologram {area}"));
             return true;
         }
 
         if (!action.equals("addhologram") && !action.equals("sethologram") && !action.equals("delhologram")) {
             plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction admin {addhologram|sethologram|delhologram} {area} | packinfo | migratedb"));
+                    .replace("usage", "/extraction help admin"));
             return true;
         }
 
