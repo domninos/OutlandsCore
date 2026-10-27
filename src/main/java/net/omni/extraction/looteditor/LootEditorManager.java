@@ -163,16 +163,16 @@ public class LootEditorManager {
 
         renderField(inventory, config, LootEditorSession.SLOT_AMOUNT_DEC, LootEditorSession.SLOT_AMOUNT,
                 LootEditorSession.SLOT_AMOUNT_INC, entry.getAmount(),
-                config.getLootEditorAmountMaterial(), config.getLootEditorAmountName(), increments, "amount");
+                config.getLootEditorAmountMaterial(), config.getLootEditorAmountName(), increments);
         renderField(inventory, config, LootEditorSession.SLOT_WEIGHT_DEC, LootEditorSession.SLOT_WEIGHT,
                 LootEditorSession.SLOT_WEIGHT_INC, entry.getWeight(),
-                config.getLootEditorWeightMaterial(), config.getLootEditorWeightName(), increments, "weight");
+                config.getLootEditorWeightMaterial(), config.getLootEditorWeightName(), increments);
         renderField(inventory, config, LootEditorSession.SLOT_MIN_LEVEL_DEC, LootEditorSession.SLOT_MIN_LEVEL,
                 LootEditorSession.SLOT_MIN_LEVEL_INC, entry.getMinLevel(),
-                config.getLootEditorMinLevelMaterial(), config.getLootEditorMinLevelName(), increments, "min-level");
+                config.getLootEditorMinLevelMaterial(), config.getLootEditorMinLevelName(), increments);
         renderField(inventory, config, LootEditorSession.SLOT_MAX_LEVEL_DEC, LootEditorSession.SLOT_MAX_LEVEL,
                 LootEditorSession.SLOT_MAX_LEVEL_INC, entry.getMaxLevel(),
-                config.getLootEditorMaxLevelMaterial(), config.getLootEditorMaxLevelName(), increments, "max-level");
+                config.getLootEditorMaxLevelMaterial(), config.getLootEditorMaxLevelName(), increments);
 
         ItemStack preview = entryIcon(session, entry, List.of());
         ItemMeta meta = preview.getItemMeta();
@@ -185,14 +185,14 @@ public class LootEditorManager {
 
     private void renderField(Inventory inventory, ConfigUtil config, int decSlot, int valueSlot, int incSlot,
                              int value, String material, String nameTemplate,
-                             List<Integer> increments, String placeholder) {
+                             List<Integer> increments) {
         int smallest = smallestIncrement(increments);
         inventory.setItem(decSlot, item(config.getAreaEditorDecrementIconMaterial(),
                 config.getAreaEditorDecrementIconName()
                         .replace("%value%", String.valueOf(smallest)),
                 List.of("<gray>Right-click to subtract the largest step.</gray>")));
         inventory.setItem(valueSlot, item(material,
-                nameTemplate.replace("%" + placeholder + "%", String.valueOf(value)),
+                nameTemplate.replace("%value%", String.valueOf(value)),
                 List.of()));
         inventory.setItem(incSlot, item(config.getAreaEditorIncrementIconMaterial(),
                 config.getAreaEditorIncrementIconName()

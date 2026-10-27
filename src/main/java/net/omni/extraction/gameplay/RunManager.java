@@ -229,6 +229,8 @@ public class RunManager {
                     player.getWorld().dropItemNaturally(player.getLocation(), bag);
             }
 
+            plugin.getCorpseManager().spawnCorpse(uuid, player.getName(), player.getLocation());
+
             player.getInventory().clear();
             player.getInventory().setArmorContents(null);
             plugin.sendMessage(player, Messages.RUN_DEATH.toString());

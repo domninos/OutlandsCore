@@ -331,6 +331,15 @@ loot-editor:
   max-level-material: EXPERIENCE_BOTTLE
   max-level-name: "<yellow>Max Level: %value%</yellow>"
 
+# Run-death corpses: a player-skinned NPC left at the death spot (FancyNpcs;
+# falls back to an ArmorStand when FancyNpcs is missing). The lying pose is
+# applied best-effort — FancyNpcs builds without a pose attribute spawn the
+# body standing.
+corpse:
+  enabled: true
+  despawn-seconds: 60
+  name-format: "<red>☠ %player%</red>"
+
 # Drone mode (/drone). The pilot rides a visible drone body (a Bee with AI off,
 # re-skin it via the resource pack's bee entity texture) that other players and
 # mobs can hit; if it dies, the pilot is forcibly returned to their body.

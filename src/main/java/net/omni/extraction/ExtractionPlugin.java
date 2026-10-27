@@ -8,6 +8,8 @@ import net.omni.extraction.areaeditor.AreaEditorManager;
 import net.omni.extraction.looteditor.LootEditorManager;
 import net.omni.extraction.looteditor.LootEditorHolder;
 import net.omni.extraction.looteditor.LootEditorListener;
+import net.omni.extraction.managers.CorpseManager;
+import net.omni.extraction.integration.FancyNpcHook;
 import net.omni.extraction.backpack.BackpackManager;
 import net.omni.extraction.chat.ActionBarManager;
 import net.omni.extraction.chat.ChatRenderer;
@@ -83,6 +85,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private GUIManager guiManager;
     private AreaEditorManager areaEditorManager;
     private LootEditorManager lootEditorManager;
+    private CorpseManager corpseManager;
     private HologramManager hologramManager;
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
@@ -200,6 +203,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         if (worldEventManager != null)
             worldEventManager.shutdown();
 
+        if (corpseManager != null)
+            corpseManager.shutdown();
+
         if (guiManager != null)
             guiManager.clearAll();
 
@@ -299,6 +305,8 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         droneManager = new DroneManager(this);
         droneManager.start();
+
+        corpseManager = new CorpseManager(this, new FancyNpcHook(this));
 
         registerCommands();
         registerListeners();
@@ -524,6 +532,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public LootEditorManager getLootEditorManager() {
         return lootEditorManager;
+    }
+
+    public CorpseManager getCorpseManager() {
+        return corpseManager;
     }
 
     public HologramManager getHologramManager() {

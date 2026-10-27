@@ -127,6 +127,9 @@ public class ConfigUtil {
     private String lootEditorMinLevelName;
     private String lootEditorMaxLevelMaterial;
     private String lootEditorMaxLevelName;
+    private boolean corpseEnabled;
+    private int corpseDespawnSeconds;
+    private String corpseNameFormat;
     private final Map<String, String> guiTextures = new HashMap<>();
     private String packId = "";
     private String packHost = "";
@@ -397,6 +400,7 @@ public class ConfigUtil {
         loadCompass(savedDefaults);
         loadRelicGui(savedDefaults);
         loadLootEditor(savedDefaults);
+        loadCorpse(savedDefaults);
         loadPack(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
@@ -1098,6 +1102,13 @@ public class ConfigUtil {
                 "<yellow>Max Level: %value%</yellow>", savedDefaults);
     }
 
+    private void loadCorpse(AtomicInteger savedDefaults) {
+        this.corpseEnabled = getAndDefaultBoolean(ConfigKeys.CORPSE_ENABLED, true, savedDefaults);
+        this.corpseDespawnSeconds = Math.max(1, getAndDefaultInt(ConfigKeys.CORPSE_DESPAWN_SECONDS, 60, savedDefaults));
+        this.corpseNameFormat = getAndDefaultString(ConfigKeys.CORPSE_NAME_FORMAT,
+                "<red>☠ %player%</red>", savedDefaults);
+    }
+
     private void loadPack(AtomicInteger savedDefaults) {
         guiTextures.put("pack-menu", getAndDefaultString(ConfigKeys.PACK_GUI_PACK_MENU,
                 "\\uE001", savedDefaults));
@@ -1771,6 +1782,18 @@ public class ConfigUtil {
 
     public String getLootEditorMaxLevelName() {
         return lootEditorMaxLevelName;
+    }
+
+    public boolean isCorpseEnabled() {
+        return corpseEnabled;
+    }
+
+    public int getCorpseDespawnSeconds() {
+        return corpseDespawnSeconds;
+    }
+
+    public String getCorpseNameFormat() {
+        return corpseNameFormat;
     }
 
     public String getAreaEditorCountIconMaterial() {

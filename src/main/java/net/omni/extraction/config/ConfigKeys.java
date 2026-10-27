@@ -308,5 +308,10 @@ public final class ConfigKeys {
     public static final String PACK_GUI_AREA_EDITOR = "pack.gui-textures.area-editor";
     public static final String PACK_GUI_LOOT_EDITOR = "pack.gui-textures.loot-editor";
 
+    public static final String CORPSE = "corpse";
+    public static final String CORPSE_ENABLED = "corpse.enabled";
+    public static final String CORPSE_DESPAWN_SECONDS = "corpse.despawn-seconds";
+    public static final String CORPSE_NAME_FORMAT = "corpse.name-format";
+
     public static final String MESSAGES_PREFIX = "messages.prefix";
 }
