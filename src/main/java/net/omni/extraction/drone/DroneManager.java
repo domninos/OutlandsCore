@@ -2,6 +2,9 @@ package net.omni.extraction.drone;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
+import de.oliver.fancynpcs.api.FancyNpcsPlugin;
+import de.oliver.fancynpcs.api.Npc;
+import de.oliver.fancynpcs.api.NpcData;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -25,6 +28,7 @@ import org.joml.Vector3f;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class DroneManager {
 
@@ -101,10 +105,28 @@ public class DroneManager {
         } catch (Exception ignored) {
         }
 
+        removeBodyNpc(session.getBodyNpc());
+
         try {
             if (session.getDroneEntity() != null && session.getDroneEntity().isValid()) {
                 session.getDroneEntity().remove();
             }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void removeBodyNpc(Npc bodyNpc) {
+        if (bodyNpc == null) {
+            return;
+        }
+
+        try {
+            bodyNpc.removeForAll();
+        } catch (Exception ignored) {
+        }
+
+        try {
+            FancyNpcsPlugin.get().getNpcManager().removeNpc(bodyNpc);
         } catch (Exception ignored) {
         }
     }
@@ -187,12 +209,27 @@ public class DroneManager {
         Location bodyLoc = player.getLocation().clone();
         GameMode originalMode = player.getGameMode();
 
-        ArmorStand bodyMarker = (ArmorStand) bodyLoc.getWorld().spawnEntity(bodyLoc, EntityType.ARMOR_STAND);
-        bodyMarker.setVisible(false);
-        bodyMarker.setGravity(false);
-        bodyMarker.setInvulnerable(true);
-        bodyMarker.setMarker(true);
-        bodyMarker.setCustomNameVisible(false);
+        ArmorStand bodyMarker = null;
+        Npc bodyNpc = null;
+        String npcId = null;
+
+        if (canUseFancyNpcs()) {
+            npcId = "drone_" + player.getName().toLowerCase() + "_" + ThreadLocalRandom.current().nextInt(1000, 9999);
+            bodyNpc = spawnBodyNpc(player, bodyLoc, npcId);
+
+            if (bodyNpc == null) {
+                npcId = null;
+            }
+        }
+
+        if (bodyNpc == null) {
+            bodyMarker = (ArmorStand) bodyLoc.getWorld().spawnEntity(bodyLoc, EntityType.ARMOR_STAND);
+            bodyMarker.setVisible(false);
+            bodyMarker.setGravity(false);
+            bodyMarker.setInvulnerable(true);
+            bodyMarker.setMarker(true);
+            bodyMarker.setCustomNameVisible(false);
+        }
 
         Location droneLoc = bodyLoc.clone().add(0, 1.6, 0);
         ItemDisplay drone = (ItemDisplay) droneLoc.getWorld().spawnEntity(droneLoc, EntityType.ITEM_DISPLAY);
@@ -208,7 +245,7 @@ public class DroneManager {
         transformation.getRightRotation().set(new AxisAngle4f(0, 0, 0, 1));
         drone.setTransformation(transformation);
 
-        DroneSession session = new DroneSession(player.getUniqueId(), bodyLoc, originalMode, bodyMarker, drone);
+        DroneSession session = new DroneSession(player.getUniqueId(), bodyLoc, originalMode, bodyMarker, bodyNpc, npcId, drone);
         sessions.put(player.getUniqueId(), session);
 
         player.setGameMode(GameMode.SPECTATOR);
@@ -224,6 +261,48 @@ public class DroneManager {
 
     public boolean isInDrone(Player player) {
         return sessions.containsKey(player.getUniqueId());
+    }
+
+    /** FancyNpcs must be enabled AND its npcs loaded (docs: not before ~10s after startup). */
+    private boolean canUseFancyNpcs() {
+        if (!Bukkit.getPluginManager().isPluginEnabled("FancyNpcs")) {
+            return false;
+        }
+
+        try {
+            return FancyNpcsPlugin.get().getNpcManager().isLoaded();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Spawns a player-skinned FancyNpcs NPC of the player at the body location.
+     * The NPC is runtime-only (saveToFile=false) and removed on recall. Returns
+     * null when creation fails, in which case the caller falls back to an
+     * invisible ArmorStand marker.
+     */
+    private Npc spawnBodyNpc(Player player, Location bodyLoc, String npcId) {
+        try {
+            NpcData data = new NpcData(npcId, player.getUniqueId(), bodyLoc);
+            data.setSkin(player.getName());
+            data.setDisplayName(player.getName());
+            data.setShowInTab(false);
+            data.setCollidable(false);
+            data.setTurnToPlayer(false);
+            data.setSpawnEntity(true);
+
+            Npc npc = FancyNpcsPlugin.get().getNpcAdapter().apply(data);
+            npc.setSaveToFile(false);
+            FancyNpcsPlugin.get().getNpcManager().registerNpc(npc);
+            npc.create();
+            npc.spawnForAll();
+            return npc;
+        } catch (Exception e) {
+            plugin.getLogger().warning("Could not spawn FancyNpcs drone body for " + player.getName()
+                    + ", falling back to armor stand marker: " + e.getMessage());
+            return null;
+        }
     }
 
     public void handleDisconnect(Player player) {

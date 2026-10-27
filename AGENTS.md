@@ -758,6 +758,21 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   cache-only `getLoaded` + `savePlayerShared`, immediate on MySQL): `AreaManager.checkPlayerAreas` marks the area on
   first entry. `DatabaseManager.PLAYER_COLUMNS` gained the column (index 19) with `CREATE TABLE` + `ensureColumn`
   migrations for existing MySQL/SQLite tables. Messages `compass.tracking`/`compass.no-target`.
+- **Drone mode** (`/drone`, `/drone return|stop|exit`; perm `extraction.drone`): `drone/DroneManager` (sessions,
+  battery BossBar task draining 1%/s, recall/stop), `drone/DroneSession` (body location/yaw/pitch, original
+  GameMode, body marker, drone entity, battery), `drone/DroneCommand`, `drone/listener/DroneListener`
+  (quit/world-change/respawn recall), `drone/packet/DroneInputAdapter` (ProtocolLib `STEER_VEHICLE` listener —
+  WASD/Space input → `DronePhysics.calculateMovement` + `checkCollision` ray-trace collision, teleport applied
+  on the main thread), `drone/util/DronePhysics` (movement vectors + solid-block ray-trace — the drone bumps
+  into walls, never phases). **Body avatar = FancyNpcs NPC** (when FancyNpcs is enabled AND its npc manager
+  `isLoaded()` — the documented no-register-in-first-10s rule): player-skinned (`setSkin(player.getName())`),
+  display name = player name, `saveToFile=false`, `showInTab=false`, `collidable=false`, runtime-only, removed
+  (`removeForAll` + `NpcManager.removeNpc`) on recall/disconnect/shutdown. Fallback (FancyNpcs missing/unloaded
+  or creation failed): invisible ArmorStand marker (legacy behavior). **Drone vehicle = real `ItemDisplay`**
+  (spectator camera target + smooth teleport; FancyNpcs NPCs are packet-only — no Entity handle, no teleport
+  API — so an NPC can never be the controlled vehicle). **No reflection anywhere** (ZNPCsPlus leftovers
+  removed; FancyNpcs used via direct `de.oliver.fancynpcs.api` imports). Dependency: `de.oliver:FancyNpcs:2.9.2`
+  provided + repo `repo.fancyinnovations.com/releases`; `plugin.yml` softdepends `FancyNpcs`.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

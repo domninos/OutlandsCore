@@ -10,6 +10,8 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.drone.DroneManager;
 import net.omni.extraction.drone.DroneSession;
 import net.omni.extraction.drone.util.DronePhysics;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 public class DroneInputAdapter extends PacketAdapter {
@@ -35,6 +37,18 @@ public class DroneInputAdapter extends PacketAdapter {
             return;
         }
 
+        Entity npcEntity = session.getDroneEntity();
+
+        if (npcEntity == null || !npcEntity.isValid()) {
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (droneManager.isInDrone(player)) {
+                    droneManager.recall(player);
+                }
+            });
+            event.setCancelled(true);
+            return;
+        }
+
         PacketContainer packet = event.getPacket();
         StructureModifier<Float> floats = packet.getFloat();
         StructureModifier<Boolean> booleans = packet.getBooleans();
@@ -48,18 +62,13 @@ public class DroneInputAdapter extends PacketAdapter {
         boolean moveBackward = forward < 0;
         boolean moveLeft = sideways > 0;
         boolean moveRight = sideways < 0;
+        boolean moveUp = jump;
         boolean moveDown = false;
 
         double speed = 0.5;
-        var droneEntity = session.getDroneEntity();
-        if (droneEntity == null || !droneEntity.isValid()) {
-            droneManager.recall(player);
-            event.setCancelled(true);
-            return;
-        }
 
-        var currentLoc = droneEntity.getLocation();
-        var nextLoc = DronePhysics.calculateMovement(currentLoc, currentLoc.getYaw(), currentLoc.getPitch(), moveForward, moveBackward, moveLeft, moveRight, jump, moveDown, speed);
+        var currentLoc = npcEntity.getLocation();
+        var nextLoc = DronePhysics.calculateMovement(currentLoc, currentLoc.getYaw(), currentLoc.getPitch(), moveForward, moveBackward, moveLeft, moveRight, moveUp, moveDown, speed);
         nextLoc.setYaw(currentLoc.getYaw());
         nextLoc.setPitch(currentLoc.getPitch());
 
@@ -68,8 +77,9 @@ public class DroneInputAdapter extends PacketAdapter {
         safeLoc.setPitch(currentLoc.getPitch());
 
         final var targetLoc = safeLoc.clone();
-        final var targetEntity = droneEntity;
-        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+        final var targetEntity = npcEntity;
+
+        Bukkit.getScheduler().runTask(plugin, () -> {
             if (!droneManager.isInDrone(player)) {
                 return;
             }
@@ -77,20 +87,24 @@ public class DroneInputAdapter extends PacketAdapter {
             if (currentSession == null || !currentSession.isActive()) {
                 return;
             }
-            if (currentSession.getDroneEntity() != targetEntity || !targetEntity.isValid()) {
+            if (targetEntity == null || !targetEntity.isValid()) {
                 return;
             }
             targetEntity.teleport(targetLoc);
-            if (droneManager.isInDrone(player)) {
-                try {
+            try {
+                if (droneManager.isInDrone(player)) {
                     player.setSpectatorTarget(targetEntity);
-                } catch (Exception ignored) {
                 }
+            } catch (Exception ignored) {
             }
         });
 
         if (unmount) {
-            droneManager.recall(player);
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (droneManager.isInDrone(player)) {
+                    droneManager.recall(player);
+                }
+            });
         }
 
         event.setCancelled(true);

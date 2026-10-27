@@ -1,9 +1,10 @@
 package net.omni.extraction.drone;
 
+import de.oliver.fancynpcs.api.Npc;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Player;
 
 import java.util.UUID;
 
@@ -14,21 +15,30 @@ public class DroneSession {
     private final float bodyYaw;
     private final float bodyPitch;
     private final GameMode originalGameMode;
-    private final Entity bodyMarker;
+    private final ArmorStand bodyMarker;
+    private final Npc bodyNpc;
+    private final String npcId;
     private final Entity droneEntity;
     private double battery;
     private boolean active;
 
-    public DroneSession(UUID playerId, Location bodyLocation, GameMode originalGameMode, Entity bodyMarker, Entity droneEntity) {
+    public DroneSession(UUID playerId, Location bodyLocation, GameMode originalGameMode, ArmorStand bodyMarker, Npc bodyNpc, String npcId, Entity droneEntity) {
         this.playerId = playerId;
         this.bodyLocation = bodyLocation.clone();
         this.bodyYaw = bodyLocation.getYaw();
         this.bodyPitch = bodyLocation.getPitch();
         this.originalGameMode = originalGameMode;
         this.bodyMarker = bodyMarker;
+        this.bodyNpc = bodyNpc;
+        this.npcId = npcId;
         this.droneEntity = droneEntity;
         this.battery = 100.0;
         this.active = true;
+    }
+
+    /** Constructor for drone sessions without an NPC (the drone entity is the vehicle). */
+    public DroneSession(UUID playerId, Location bodyLocation, GameMode originalGameMode, ArmorStand bodyMarker, Entity droneEntity) {
+        this(playerId, bodyLocation, originalGameMode, bodyMarker, null, null, droneEntity);
     }
 
     public UUID getPlayerId() {
@@ -51,8 +61,16 @@ public class DroneSession {
         return originalGameMode;
     }
 
-    public Entity getBodyMarker() {
+    public ArmorStand getBodyMarker() {
         return bodyMarker;
+    }
+
+    public Npc getBodyNpc() {
+        return bodyNpc;
+    }
+
+    public String getNpcId() {
+        return npcId;
     }
 
     public Entity getDroneEntity() {
@@ -77,10 +95,6 @@ public class DroneSession {
 
     public void setActive(boolean active) {
         this.active = active;
-    }
-
-    public boolean isLowBattery() {
-        return battery <= 10.0;
     }
 
     public boolean isEmptyBattery() {
