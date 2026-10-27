@@ -51,6 +51,7 @@ public class ConfigUtil {
 
     private String shopGuiTitle;
     private int shopGuiRows;
+    private int droneMaxHealth = 40;
 
     private String shopHubTitle;
     private int shopHubRows;
@@ -393,6 +394,8 @@ public class ConfigUtil {
         this.partyBroadcastJoinLeave = getAndDefaultBoolean(ConfigKeys.PARTY_BROADCAST_JOIN_LEAVE, true, savedDefaults);
         this.partyChatFormat = getAndDefaultString(ConfigKeys.PARTY_CHAT_FORMAT,
                 "<gray>[Party]</gray> <white>%player%</white> <dark_gray>»</dark_gray> <white>%message%</white>", savedDefaults);
+
+        this.droneMaxHealth = Math.max(1, getAndDefaultInt(ConfigKeys.DRONE_MAX_HEALTH, 40, savedDefaults));
 
         configManager.saveDirty();
 
@@ -2144,6 +2147,10 @@ public class ConfigUtil {
 
     public String getShopHubTitle() {
         return shopHubTitle;
+    }
+
+    public int getDroneMaxHealth() {
+        return droneMaxHealth;
     }
 
     public int getShopHubSize() {

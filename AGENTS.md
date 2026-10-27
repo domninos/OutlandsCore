@@ -760,19 +760,30 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   migrations for existing MySQL/SQLite tables. Messages `compass.tracking`/`compass.no-target`.
 - **Drone mode** (`/drone`, `/drone return|stop|exit`; perm `extraction.drone`): `drone/DroneManager` (sessions,
   battery BossBar task draining 1%/s, recall/stop), `drone/DroneSession` (body location/yaw/pitch, original
-  GameMode, body marker, drone entity, battery), `drone/DroneCommand`, `drone/listener/DroneListener`
+  GameMode, body marker, mount, battery), `drone/DroneCommand`, `drone/listener/DroneListener`
   (quit/world-change/respawn recall), `drone/packet/DroneInputAdapter` (ProtocolLib `STEER_VEHICLE` listener —
-  WASD/Space input → `DronePhysics.calculateMovement` + `checkCollision` ray-trace collision, teleport applied
-  on the main thread), `drone/util/DronePhysics` (movement vectors + solid-block ray-trace — the drone bumps
-  into walls, never phases). **Body avatar = FancyNpcs NPC** (when FancyNpcs is enabled AND its npc manager
-  `isLoaded()` — the documented no-register-in-first-10s rule): player-skinned (`setSkin(player.getName())`),
-  display name = player name, `saveToFile=false`, `showInTab=false`, `collidable=false`, runtime-only, removed
-  (`removeForAll` + `NpcManager.removeNpc`) on recall/disconnect/shutdown. Fallback (FancyNpcs missing/unloaded
-  or creation failed): invisible ArmorStand marker (legacy behavior). **Drone vehicle = real `ItemDisplay`**
-  (spectator camera target + smooth teleport; FancyNpcs NPCs are packet-only — no Entity handle, no teleport
-  API — so an NPC can never be the controlled vehicle). **No reflection anywhere** (ZNPCsPlus leftovers
-  removed; FancyNpcs used via direct `de.oliver.fancynpcs.api` imports). Dependency: `de.oliver:FancyNpcs:2.9.2`
-  provided + repo `repo.fancyinnovations.com/releases`; `plugin.yml` softdepends `FancyNpcs`.
+  works because the pilot RIDES the mount; WASD/Space/Sneak input → `DronePhysics.calculateMovement` +
+  `checkCollision` ray-trace collision, teleport applied on the main thread), `drone/util/DronePhysics`
+  (movement vectors + solid-block ray-trace — the drone bumps into walls, never phases), `drone/DroneSounds`
+  (move/ascend/descend/hurt/destroyed Breeze cues + `BLOCK_BEACON_AMBIENT` idle hum every ~2s; mount is
+  silent so vanilla sounds don't pollute). **Drone body = visible `Bee` mount** the pilot actually rides
+  (`addPassenger` — passengers follow mount teleports): AI off, no gravity, persistent, NOT invulnerable,
+  silent, `Attribute.MAX_HEALTH` = `drone.max-health` (default 40, config.yml `drone:` section) healed on
+  spawn. Re-skin it to look like a drone by replacing the bee entity texture in the hosted resource pack
+  (global to all bees). Mount damage/death: `DroneListener` `EntityTargetEvent` redirects hostiles targeting
+  the hidden pilot onto the mount (mobs follow + hit the drone), `EntityDamageEvent` → hurt sound + low-HP
+  warning (throttled 3s), `EntityDeathEvent` → "drone destroyed" + forced recall. **Pilot invisibility**:
+  infinite INVISIBILITY (no particles) + `hidePlayer` from every other viewer, restored on recall. Movement:
+  direction = pilot look-yaw, Space = ascend, **Sneak = descend** (never dismounts), sprint-forward ≥1.5 =
+  ~1.8× boost, move whoosh throttled 400ms; exit = `/drone return` / battery empty / drone death / quit /
+  world-change / respawn; battery task recalls a pilot whose `getVehicle() != mount` (stranded guard).
+  **Body avatar = FancyNpcs NPC** (when FancyNpcs is enabled AND its npc manager `isLoaded()` — the documented
+  no-register-in-first-10s rule): player-skinned (`setSkin(player.getName())`), display name = player name,
+  `saveToFile=false`, `showInTab=false`, `collidable=false`, runtime-only, removed (`removeForAll` +
+  `NpcManager.removeNpc`) on recall/disconnect/shutdown. Fallback (FancyNpcs missing/unloaded or creation
+  failed): invisible ArmorStand marker (legacy behavior). **No reflection anywhere** (FancyNpcs used via
+  direct `de.oliver.fancynpcs.api` imports). Dependency: `de.oliver:FancyNpcs:2.9.2` provided + repo
+  `repo.fancyinnovations.com/releases`; `plugin.yml` softdepends `FancyNpcs`.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

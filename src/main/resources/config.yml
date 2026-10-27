@@ -279,3 +279,10 @@ pack:
     backpack: "\uE007"
     backpack-shop: "\uE008"
     area-editor: "\uE009"
+
+# Drone mode (/drone). The pilot rides a visible drone body (a Bee with AI off,
+# re-skin it via the resource pack's bee entity texture) that other players and
+# mobs can hit; if it dies, the pilot is forcibly returned to their body.
+drone:
+  # Max health of the drone body.
+  max-health: 40

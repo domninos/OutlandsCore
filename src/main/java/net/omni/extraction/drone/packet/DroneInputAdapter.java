@@ -9,15 +9,34 @@ import com.comphenix.protocol.reflect.StructureModifier;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.drone.DroneManager;
 import net.omni.extraction.drone.DroneSession;
+import net.omni.extraction.drone.DroneSounds;
 import net.omni.extraction.drone.util.DronePhysics;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Entity;
+import org.bukkit.Location;
+import org.bukkit.entity.Bee;
 import org.bukkit.entity.Player;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DroneInputAdapter extends PacketAdapter {
 
+    /** Blocks moved per input packet (~20 packets/s while a key is held). */
+    private static final double SPEED = 0.45;
+    private static final double BOOST_SPEED = 0.8;
+
+    /** Boost trigger: clients send a larger forward value while sprinting. */
+    private static final float BOOST_THRESHOLD = 1.5f;
+
+    /** Minimum ms between movement whoosh sounds per pilot. */
+    private static final long MOVE_SOUND_COOLDOWN_MS = 400;
+
     private final ExtractionPlugin plugin;
     private final DroneManager droneManager;
+    private final Map<UUID, Long> lastMoveSound = new ConcurrentHashMap<>();
+    private final Map<UUID, Boolean> prevAscend = new ConcurrentHashMap<>();
+    private final Map<UUID, Boolean> prevDescend = new ConcurrentHashMap<>();
 
     public DroneInputAdapter(ExtractionPlugin plugin, DroneManager droneManager) {
         super(plugin, ListenerPriority.NORMAL, PacketType.Play.Client.STEER_VEHICLE);
@@ -37,9 +56,8 @@ public class DroneInputAdapter extends PacketAdapter {
             return;
         }
 
-        Entity npcEntity = session.getDroneEntity();
-
-        if (npcEntity == null || !npcEntity.isValid()) {
+        Bee mount = session.getMount();
+        if (mount == null || !mount.isValid()) {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (droneManager.isInDrone(player)) {
                     droneManager.recall(player);
@@ -56,57 +74,93 @@ public class DroneInputAdapter extends PacketAdapter {
         float sideways = floats.size() > 0 ? floats.read(0) : 0.0f;
         float forward = floats.size() > 1 ? floats.read(1) : 0.0f;
         boolean jump = booleans.size() > 0 && booleans.read(0);
-        boolean unmount = booleans.size() > 1 && booleans.read(1);
+        boolean sneak = booleans.size() > 1 && booleans.read(1);
 
         boolean moveForward = forward > 0;
         boolean moveBackward = forward < 0;
         boolean moveLeft = sideways > 0;
         boolean moveRight = sideways < 0;
+
+        // Sneak while riding is the descend key; the drone never dismounts on it.
         boolean moveUp = jump;
-        boolean moveDown = false;
+        boolean moveDown = sneak;
+        boolean moving = moveForward || moveBackward || moveLeft || moveRight || moveUp || moveDown;
 
-        double speed = 0.5;
+        // The drone flies where the pilot looks: free-look yaw while riding.
+        Location current = mount.getLocation();
+        float yaw = player.getLocation().getYaw();
 
-        var currentLoc = npcEntity.getLocation();
-        var nextLoc = DronePhysics.calculateMovement(currentLoc, currentLoc.getYaw(), currentLoc.getPitch(), moveForward, moveBackward, moveLeft, moveRight, moveUp, moveDown, speed);
-        nextLoc.setYaw(currentLoc.getYaw());
-        nextLoc.setPitch(currentLoc.getPitch());
+        if (moving) {
+            double speed = forward >= BOOST_THRESHOLD ? BOOST_SPEED : SPEED;
+            Location nextLoc = DronePhysics.calculateMovement(current, yaw, current.getPitch(),
+                    moveForward, moveBackward, moveLeft, moveRight, moveUp, moveDown, speed);
+            nextLoc.setYaw(current.getYaw());
+            nextLoc.setPitch(current.getPitch());
 
-        var safeLoc = DronePhysics.checkCollision(currentLoc.getWorld(), currentLoc, nextLoc);
-        safeLoc.setYaw(currentLoc.getYaw());
-        safeLoc.setPitch(currentLoc.getPitch());
+            Location safeLoc = DronePhysics.checkCollision(current.getWorld(), current, nextLoc);
+            safeLoc.setYaw(current.getYaw());
+            safeLoc.setPitch(current.getPitch());
 
-        final var targetLoc = safeLoc.clone();
-        final var targetEntity = npcEntity;
+            final Location targetLoc = safeLoc.clone();
+            final Bee targetMount = mount;
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            if (!droneManager.isInDrone(player)) {
-                return;
-            }
-            DroneSession currentSession = droneManager.getSession(player);
-            if (currentSession == null || !currentSession.isActive()) {
-                return;
-            }
-            if (targetEntity == null || !targetEntity.isValid()) {
-                return;
-            }
-            targetEntity.teleport(targetLoc);
-            try {
-                if (droneManager.isInDrone(player)) {
-                    player.setSpectatorTarget(targetEntity);
-                }
-            } catch (Exception ignored) {
-            }
-        });
+            playInputSound(player, session, moveUp, moveDown, jump, sneak);
 
-        if (unmount) {
             Bukkit.getScheduler().runTask(plugin, () -> {
-                if (droneManager.isInDrone(player)) {
-                    droneManager.recall(player);
+                if (!droneManager.isInDrone(player)) {
+                    return;
                 }
+
+                DroneSession currentSession = droneManager.getSession(player);
+                if (currentSession == null || !currentSession.isActive()) {
+                    return;
+                }
+
+                if (targetMount == null || !targetMount.isValid()) {
+                    return;
+                }
+
+                // Teleporting the mount carries the pilot (passenger) with it.
+                targetMount.teleport(targetLoc);
             });
+        } else {
+            playInputSound(player, session, moveUp, moveDown, jump, sneak);
         }
 
         event.setCancelled(true);
+    }
+
+    /**
+     * Plays the ascend/descend cues on key edges and the movement whoosh on a
+     * short cooldown so held keys do not spam the sound.
+     */
+    private void playInputSound(Player player, DroneSession session, boolean ascend, boolean descend,
+                                boolean jump, boolean sneak) {
+        UUID uuid = player.getUniqueId();
+        Location loc = session.getMount() != null ? session.getMount().getLocation() : player.getLocation();
+
+        boolean wasAscend = Boolean.TRUE.equals(prevAscend.get(uuid));
+        boolean wasDescend = Boolean.TRUE.equals(prevDescend.get(uuid));
+
+        if (ascend && !wasAscend && jump) {
+            DroneSounds.ascend(loc);
+        }
+
+        if (descend && !wasDescend && sneak) {
+            DroneSounds.descend(loc);
+        }
+
+        prevAscend.put(uuid, ascend);
+        prevDescend.put(uuid, descend);
+
+        if (ascend || descend) {
+            long now = System.currentTimeMillis();
+            Long last = lastMoveSound.get(uuid);
+
+            if (last == null || now - last >= MOVE_SOUND_COOLDOWN_MS) {
+                lastMoveSound.put(uuid, now);
+                DroneSounds.move(loc);
+            }
+        }
     }
 }

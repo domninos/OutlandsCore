@@ -32,7 +32,7 @@ public class DroneCommand implements CommandExecutor {
                 return true;
             }
             if (droneManager.activate(player)) {
-                player.sendMessage("§aDrone activated! Use WASD to move, Space to ascend, and /drone return or sneak to exit.");
+                player.sendMessage("§aDrone activated! WASD to move, Space to ascend, Sneak to descend, /drone return to exit.");
             } else {
                 player.sendMessage("§cFailed to activate drone.");
             }

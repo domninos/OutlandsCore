@@ -4,7 +4,7 @@ import de.oliver.fancynpcs.api.Npc;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Entity;
+import org.bukkit.entity.Bee;
 
 import java.util.UUID;
 
@@ -18,11 +18,12 @@ public class DroneSession {
     private final ArmorStand bodyMarker;
     private final Npc bodyNpc;
     private final String npcId;
-    private final Entity droneEntity;
+    private final Bee mount;
     private double battery;
     private boolean active;
 
-    public DroneSession(UUID playerId, Location bodyLocation, GameMode originalGameMode, ArmorStand bodyMarker, Npc bodyNpc, String npcId, Entity droneEntity) {
+    public DroneSession(UUID playerId, Location bodyLocation, GameMode originalGameMode,
+                        ArmorStand bodyMarker, Npc bodyNpc, String npcId, Bee mount) {
         this.playerId = playerId;
         this.bodyLocation = bodyLocation.clone();
         this.bodyYaw = bodyLocation.getYaw();
@@ -31,14 +32,9 @@ public class DroneSession {
         this.bodyMarker = bodyMarker;
         this.bodyNpc = bodyNpc;
         this.npcId = npcId;
-        this.droneEntity = droneEntity;
+        this.mount = mount;
         this.battery = 100.0;
         this.active = true;
-    }
-
-    /** Constructor for drone sessions without an NPC (the drone entity is the vehicle). */
-    public DroneSession(UUID playerId, Location bodyLocation, GameMode originalGameMode, ArmorStand bodyMarker, Entity droneEntity) {
-        this(playerId, bodyLocation, originalGameMode, bodyMarker, null, null, droneEntity);
     }
 
     public UUID getPlayerId() {
@@ -73,8 +69,9 @@ public class DroneSession {
         return npcId;
     }
 
-    public Entity getDroneEntity() {
-        return droneEntity;
+    /** The visible drone body the pilot rides; other players and mobs can hit it. */
+    public Bee getMount() {
+        return mount;
     }
 
     public double getBattery() {
