@@ -45,7 +45,7 @@ public class PetsGUIListener implements Listener {
         if (rawSlot < 0 || rawSlot >= size)
             return;
 
-        if (rawSlot == PetsGUI.SLOT_SHOP) {
+        if (rawSlot == PetsGUI.shopSlot(size)) {
             plugin.getShopManager().openPets(player);
             return;
         }

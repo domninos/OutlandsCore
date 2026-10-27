@@ -19,10 +19,12 @@ import java.util.List;
  */
 public final class PetsGUI {
 
-    /** Slot of the "open shop" button in the bottom row. */
-    public static final int SLOT_SHOP = 49;
-
     private PetsGUI() {
+    }
+
+    /** Center of the bottom row — the layout matches the area-editor nav info slot. */
+    public static int shopSlot(int inventorySize) {
+        return inventorySize - 5;
     }
 
     public static Inventory build(ExtractionPlugin plugin, Player player, PlayerData data) {
@@ -49,7 +51,7 @@ public final class PetsGUI {
         for (int slot = contentSize; slot < size; slot++)
             inv.setItem(slot, filler(renderer, config.getPetsGuiFillerMaterial(), config.getPetsGuiFillerName()));
 
-        inv.setItem(SLOT_SHOP, shopButton(plugin));
+        inv.setItem(shopSlot(size), shopButton(plugin));
 
         return inv;
     }
