@@ -33,6 +33,9 @@ commands:
     aliases: [upgrades]
   extshop:
     description: Open the extraction shop
+  pets:
+    description: View and equip your pets
+    aliases: [pet]
   charms:
     description: Open your charms menu
     aliases: [extcharms]

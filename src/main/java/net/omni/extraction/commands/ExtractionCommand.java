@@ -180,6 +180,7 @@ public class ExtractionCommand implements CommandExecutor {
                 MessageUtil.append("upgrade", "Upgrade your gear with tokens", help);
                 MessageUtil.append("charms", "View your charms", help);
                 MessageUtil.append("artifacts", "View your artifacts", help);
+                MessageUtil.append("pets", "View and equip your pets", help);
                 if (sender.hasPermission(Permissions.ADMIN)) {
                     help.append("\n  <dark_gray>Admin:</dark_gray>\n");
                     MessageUtil.append("tokens set {player} {amount}", "Set a player's token balance", help);
@@ -299,6 +300,7 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getActionBarManager().reload();
         plugin.getHologramManager().reload();
         plugin.getLootTableManager().reload();
+        plugin.getPetManager().reload();
         plugin.getRelicManager().reload();
         plugin.getRelicEffectManager().reload();
         plugin.getPackManager().reload();

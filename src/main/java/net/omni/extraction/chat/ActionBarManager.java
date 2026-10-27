@@ -63,10 +63,16 @@ public class ActionBarManager {
     }
 
     public void showTokens(UUID uuid, int amount) {
+        showTokens(uuid, amount, null);
+    }
+
+    /** Optional note (e.g. a pet boost tag) appended to the token overlay. */
+    public void showTokens(UUID uuid, int amount, String note) {
         long expire = System.currentTimeMillis()
                 + plugin.getConfigUtil().getActionbarKillFeedbackTicks() * 50L;
 
-        String text = MessageUtil.parse(Messages.ACTIONBAR_KILL_TOKENS.replace("amount", String.valueOf(amount)));
+        String text = MessageUtil.parse(Messages.ACTIONBAR_KILL_TOKENS.replace("amount", String.valueOf(amount))
+                + (note == null || note.isEmpty() ? "" : " " + note));
         overlays.put(uuid, new Overlay(text, expire));
     }
 

@@ -130,6 +130,24 @@ public class ConfigUtil {
     private boolean corpseEnabled;
     private int corpseDespawnSeconds;
     private String corpseNameFormat;
+    private String petsGuiTitle;
+    private int petsGuiRows;
+    private String petsGuiFillerMaterial;
+    private String petsGuiFillerName;
+    private List<String> petsGuiEquippedLore;
+    private List<String> petsGuiUnequippedLore;
+    private String petsGuiMysteryMaterial;
+    private String petsGuiMysteryName;
+    private List<String> petsGuiMysteryLore;
+    private List<String> petsGuiBoostLore;
+    private String petsGuiShopMaterial;
+    private String petsGuiShopName;
+    private List<String> petsGuiShopLore;
+    private String petsShopTitle;
+    private String petsShopFillerMaterial;
+    private String petsShopFillerName;
+    private List<String> petsShopBuyLore;
+    private List<String> petsShopOwnedLore;
     private final Map<String, String> guiTextures = new HashMap<>();
     private String packId = "";
     private String packHost = "";
@@ -401,6 +419,7 @@ public class ConfigUtil {
         loadRelicGui(savedDefaults);
         loadLootEditor(savedDefaults);
         loadCorpse(savedDefaults);
+        loadPetsGui(savedDefaults);
         loadPack(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
@@ -1109,6 +1128,47 @@ public class ConfigUtil {
                 "<red>☠ %player%</red>", savedDefaults);
     }
 
+    private void loadPetsGui(AtomicInteger savedDefaults) {
+        this.petsGuiTitle = getAndDefaultString(ConfigKeys.PETS_GUI_TITLE,
+                "<gradient:#FFAA00:#FFFF55>Your Pets</gradient>", savedDefaults);
+        this.petsGuiRows = Math.clamp(getAndDefaultInt(ConfigKeys.PETS_GUI_ROWS, 4, savedDefaults), 3, 6);
+        this.petsGuiFillerMaterial = getAndDefaultString(ConfigKeys.PETS_GUI_FILLER_MATERIAL,
+                "GRAY_STAINED_GLASS_PANE", savedDefaults);
+        this.petsGuiFillerName = getAndDefaultString(ConfigKeys.PETS_GUI_FILLER_NAME, " ", savedDefaults);
+        this.petsGuiEquippedLore = getAndDefaultStringList(ConfigKeys.PETS_GUI_EQUIPPED_LORE, List.of(
+                "<green><bold>EQUIPPED</bold></green>",
+                "<gray>Click to unequip</gray>"), savedDefaults);
+        this.petsGuiUnequippedLore = getAndDefaultStringList(ConfigKeys.PETS_GUI_UNEQUIPPED_LORE, List.of(
+                "<yellow>Click to equip</yellow>"), savedDefaults);
+        this.petsGuiMysteryMaterial = getAndDefaultString(ConfigKeys.PETS_GUI_MYSTERY_MATERIAL,
+                "BLACK_STAINED_GLASS_PANE", savedDefaults);
+        this.petsGuiMysteryName = getAndDefaultString(ConfigKeys.PETS_GUI_MYSTERY_NAME,
+                "<dark_gray>???</dark_gray>", savedDefaults);
+        this.petsGuiMysteryLore = getAndDefaultStringList(ConfigKeys.PETS_GUI_MYSTERY_LORE, List.of(
+                "<gray>You don't own this pet yet.</gray>",
+                "<gray>Buy it in /extshop.</gray>"), savedDefaults);
+        this.petsGuiBoostLore = getAndDefaultStringList(ConfigKeys.PETS_GUI_BOOST_LORE, List.of(
+                "<gray>Token boost: <green>+%boost%%</green></gray>"), savedDefaults);
+        this.petsGuiShopMaterial = getAndDefaultString(ConfigKeys.PETS_GUI_SHOP_MATERIAL,
+                "GOLD_NUGGET", savedDefaults);
+        this.petsGuiShopName = getAndDefaultString(ConfigKeys.PETS_GUI_SHOP_NAME,
+                "<yellow>Buy pets at /extshop</yellow>", savedDefaults);
+        this.petsGuiShopLore = getAndDefaultStringList(ConfigKeys.PETS_GUI_SHOP_LORE, List.of(
+                "<gray>Purchase new companions</gray>",
+                "<gray>with extraction tokens.</gray>",
+                "<gray>Click to open the shop</gray>"), savedDefaults);
+        this.petsShopTitle = getAndDefaultString(ConfigKeys.PETS_SHOP_TITLE,
+                "<gradient:#FFAA00:#FFFF55>Pets</gradient>", savedDefaults);
+        this.petsShopFillerMaterial = getAndDefaultString(ConfigKeys.PETS_SHOP_FILLER_MATERIAL,
+                "GRAY_STAINED_GLASS_PANE", savedDefaults);
+        this.petsShopFillerName = getAndDefaultString(ConfigKeys.PETS_SHOP_FILLER_NAME, " ", savedDefaults);
+        this.petsShopBuyLore = getAndDefaultStringList(ConfigKeys.PETS_SHOP_BUY_LORE, List.of(
+                "<gold>Cost: %cost% tokens</gold>",
+                "<gray>Click to buy</gray>"), savedDefaults);
+        this.petsShopOwnedLore = getAndDefaultStringList(ConfigKeys.PETS_SHOP_OWNED_LORE, List.of(
+                "<green>Owned</green>"), savedDefaults);
+    }
+
     private void loadPack(AtomicInteger savedDefaults) {
         guiTextures.put("pack-menu", getAndDefaultString(ConfigKeys.PACK_GUI_PACK_MENU,
                 "\\uE001", savedDefaults));
@@ -1794,6 +1854,78 @@ public class ConfigUtil {
 
     public String getCorpseNameFormat() {
         return corpseNameFormat;
+    }
+
+    public String getPetsGuiTitle() {
+        return petsGuiTitle;
+    }
+
+    public int getPetsGuiRows() {
+        return petsGuiRows;
+    }
+
+    public String getPetsGuiFillerMaterial() {
+        return petsGuiFillerMaterial;
+    }
+
+    public String getPetsGuiFillerName() {
+        return petsGuiFillerName;
+    }
+
+    public List<String> getPetsGuiEquippedLore() {
+        return petsGuiEquippedLore;
+    }
+
+    public List<String> getPetsGuiUnequippedLore() {
+        return petsGuiUnequippedLore;
+    }
+
+    public String getPetsGuiMysteryMaterial() {
+        return petsGuiMysteryMaterial;
+    }
+
+    public String getPetsGuiMysteryName() {
+        return petsGuiMysteryName;
+    }
+
+    public List<String> getPetsGuiMysteryLore() {
+        return petsGuiMysteryLore;
+    }
+
+    public List<String> getPetsGuiBoostLore() {
+        return petsGuiBoostLore;
+    }
+
+    public String getPetsGuiShopMaterial() {
+        return petsGuiShopMaterial;
+    }
+
+    public String getPetsGuiShopName() {
+        return petsGuiShopName;
+    }
+
+    public List<String> getPetsGuiShopLore() {
+        return petsGuiShopLore;
+    }
+
+    public String getPetsShopTitle() {
+        return petsShopTitle;
+    }
+
+    public String getPetsShopFillerMaterial() {
+        return petsShopFillerMaterial;
+    }
+
+    public String getPetsShopFillerName() {
+        return petsShopFillerName;
+    }
+
+    public List<String> getPetsShopBuyLore() {
+        return petsShopBuyLore;
+    }
+
+    public List<String> getPetsShopOwnedLore() {
+        return petsShopOwnedLore;
     }
 
     public String getAreaEditorCountIconMaterial() {

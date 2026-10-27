@@ -7,6 +7,7 @@ import net.omni.extraction.backpack.BackpackShopGUI;
 import net.omni.extraction.backpack.BackpackShopHolder;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.shop.ConsumablesHolder;
+import net.omni.extraction.shop.PetsShopHolder;
 import net.omni.extraction.shop.ShopHolder;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -54,6 +55,14 @@ public class ShopGUIListener implements Listener {
             return;
         }
 
+        if (event.getView().getTopInventory().getHolder() instanceof PetsShopHolder) {
+            event.setCancelled(true);
+            if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER) {
+                plugin.getShopManager().purchasePet(player, event.getRawSlot());
+            }
+            return;
+        }
+
         if (event.getView().getTopInventory().getHolder() instanceof BackpackShopHolder) {
             event.setCancelled(true);
             handleBackpackShopClick(player, event);
@@ -69,7 +78,8 @@ public class ShopGUIListener implements Listener {
 
         if (holder instanceof ShopHolder
                 || holder instanceof ConsumablesHolder
-                || holder instanceof BackpackShopHolder) {
+                || holder instanceof BackpackShopHolder
+                || holder instanceof PetsShopHolder) {
             event.setCancelled(true);
         }
     }
@@ -102,6 +112,11 @@ public class ShopGUIListener implements Listener {
             player.closeInventory();
             PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
             plugin.getGuiManager().openUpgrade(player, data);
+            return;
+        }
+
+        if (name.contains("pet")) {
+            plugin.getShopManager().openPets(player);
             return;
         }
 

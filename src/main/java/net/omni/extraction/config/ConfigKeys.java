@@ -313,5 +313,24 @@ public final class ConfigKeys {
     public static final String CORPSE_DESPAWN_SECONDS = "corpse.despawn-seconds";
     public static final String CORPSE_NAME_FORMAT = "corpse.name-format";
 
+    public static final String PETS_GUI_TITLE = "pets-gui.title";
+    public static final String PETS_GUI_ROWS = "pets-gui.rows";
+    public static final String PETS_GUI_FILLER_MATERIAL = "pets-gui.filler-material";
+    public static final String PETS_GUI_FILLER_NAME = "pets-gui.filler-name";
+    public static final String PETS_GUI_EQUIPPED_LORE = "pets-gui.equipped-lore";
+    public static final String PETS_GUI_UNEQUIPPED_LORE = "pets-gui.unequipped-lore";
+    public static final String PETS_GUI_MYSTERY_MATERIAL = "pets-gui.mystery-material";
+    public static final String PETS_GUI_MYSTERY_NAME = "pets-gui.mystery-name";
+    public static final String PETS_GUI_MYSTERY_LORE = "pets-gui.mystery-lore";
+    public static final String PETS_GUI_BOOST_LORE = "pets-gui.boost-lore";
+    public static final String PETS_GUI_SHOP_MATERIAL = "pets-gui.shop-material";
+    public static final String PETS_GUI_SHOP_NAME = "pets-gui.shop-name";
+    public static final String PETS_GUI_SHOP_LORE = "pets-gui.shop-lore";
+    public static final String PETS_SHOP_TITLE = "pets-gui.shop-title";
+    public static final String PETS_SHOP_FILLER_MATERIAL = "pets-gui.shop-filler-material";
+    public static final String PETS_SHOP_FILLER_NAME = "pets-gui.shop-filler-name";
+    public static final String PETS_SHOP_BUY_LORE = "pets-gui.shop-buy-lore";
+    public static final String PETS_SHOP_OWNED_LORE = "pets-gui.shop-owned-lore";
+
     public static final String MESSAGES_PREFIX = "messages.prefix";
 }

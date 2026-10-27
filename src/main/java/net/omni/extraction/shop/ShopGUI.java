@@ -100,6 +100,8 @@ public class ShopGUI {
                     plugin.getPackManager().titleWithTexture(config.getEnchantmentsTitle(), "relics-charms"));
             case ENCHANT_TARGETS -> inventory = renderer.createInventory(new EnchantTargetHolder(enchantKey), 27,
                     plugin.getPackManager().titleWithTexture("<light_purple>Choose Target</light_purple>", "relics-charms"));
+            case PETS -> inventory = renderer.createInventory(new PetsShopHolder(), config.getPetsGuiRows() * 9,
+                    plugin.getPackManager().titleWithTexture(config.getPetsShopTitle(), "backpack-shop"));
         }
 
         populate(player);
@@ -114,6 +116,46 @@ public class ShopGUI {
             case CONSUMABLES -> populateConsumables(renderer);
             case ENCHANTS -> populateEnchants(renderer);
             case ENCHANT_TARGETS -> populateTargets(player, renderer);
+            case PETS -> populatePets(player, renderer);
+        }
+    }
+
+    /** Pet shop: one icon per pet definition, in definition order. */
+    private void populatePets(Player player, ChatRenderer renderer) {
+        ConfigUtil config = plugin.getConfigUtil();
+        fillFiller(renderer, config.getPetsShopFillerMaterial(), config.getPetsShopFillerName());
+
+        ShopManager shop = plugin.getShopManager();
+        net.omni.extraction.data.PlayerData data =
+                plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
+
+        int size = inventory.getSize();
+        java.util.List<net.omni.extraction.pets.PetDefinition> definitions =
+                plugin.getPetManager().getDefinitions();
+
+        for (int i = 0; i < definitions.size() && i < size - 9; i++) {
+            net.omni.extraction.pets.PetDefinition def = definitions.get(i);
+            boolean owned = data.ownsPet(def.id());
+
+            Material mat = Material.matchMaterial(def.icon());
+            if (mat == null || !mat.isItem()) mat = Material.PAPER;
+
+            ItemStack item = new ItemStack(mat);
+            ItemMeta meta = item.getItemMeta();
+            if (meta == null) continue;
+
+            renderer.setDisplayName(meta, def.name());
+
+            java.util.List<String> lore = new ArrayList<>();
+            for (String line : def.lore()) lore.add(line);
+            for (String line : config.getPetsGuiBoostLore())
+                lore.add(line.replace("%boost%", String.valueOf(def.boostPercent())));
+            for (String line : owned ? config.getPetsShopOwnedLore() : config.getPetsShopBuyLore())
+                lore.add(line.replace("%cost%", String.valueOf(def.cost())));
+
+            renderer.setLore(meta, lore);
+            item.setItemMeta(meta);
+            inventory.setItem(i, item);
         }
     }
 
@@ -126,6 +168,7 @@ public class ShopGUI {
         placeButton(renderer, buttons, "enchantments");
         placeButton(renderer, buttons, "upgrades");
         placeButton(renderer, buttons, "backpack");
+        placeButton(renderer, buttons, "pets");
         placeButton(renderer, buttons, "close");
     }
 

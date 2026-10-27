@@ -120,6 +120,53 @@ public class ShopManager {
         plugin.getGuiManager().openShop(player, ShopView.ENCHANTS);
     }
 
+    public void openPets(Player player) {
+        plugin.getGuiManager().openShop(player, ShopView.PETS);
+    }
+
+    /** Buys the pet whose icon sits at {@code rawSlot} in the pets shop view. */
+    public void purchasePet(Player player, int rawSlot) {
+        if (rawSlot < 0)
+            return;
+
+        java.util.List<net.omni.extraction.pets.PetDefinition> definitions =
+                plugin.getPetManager().getDefinitions();
+
+        if (rawSlot >= definitions.size())
+            return;
+
+        net.omni.extraction.pets.PetDefinition def = definitions.get(rawSlot);
+        TokenManager tokens = plugin.getTokenManager();
+        net.omni.extraction.data.PlayerData data =
+                plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
+
+        if (data.ownsPet(def.id())) {
+            plugin.sendMessage(player, Messages.RELIC_ALREADY_OWNED.replace("relic", def.name()));
+            return;
+        }
+
+        if (def.cost() > 0 && !tokens.hasTokens(player.getUniqueId(), def.cost())) {
+            plugin.sendMessage(player, Messages.SHOP_NOT_ENOUGH_TOKENS
+                    .replace("cost", String.valueOf(def.cost()))
+                    .replace("tokens", String.valueOf(tokens.getTokens(player.getUniqueId()))));
+            return;
+        }
+
+        if (def.cost() > 0) {
+            tokens.removeTokens(player.getUniqueId(), def.cost());
+            plugin.sendMessage(player, Messages.TOKENS_SPENT.replace("amount", String.valueOf(def.cost())));
+        }
+
+        plugin.getPetManager().grant(data, def);
+        plugin.getPlayerDataManager().savePlayerShared(player.getUniqueId());
+
+        plugin.sendMessage(player, Messages.PETS_PURCHASED
+                .replace("pet", def.name())
+                .replace("cost", String.valueOf(def.cost())));
+
+        plugin.getGuiManager().refreshShop(player);
+    }
+
     public void openEnchantTargets(Player player, String enchantKey) {
         Map<String, Object> def = plugin.getConfigUtil().getEnchantmentDefinitions().get(enchantKey.toLowerCase(Locale.ROOT));
         if (def == null) {

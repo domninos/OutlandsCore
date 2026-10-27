@@ -1,5 +1,39 @@
 # Extraction Shop (/extshop)
 # The hub GUI with category buttons. Buying anything spends extraction tokens.
+# pets-gui configures both the /pets selector and the Pets shop view.
+pets-gui:
+  title: "<gradient:#FFAA00:#FFFF55>Your Pets</gradient>"
+  rows: 4
+  filler:
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+  equipped-lore:
+    - "<green><bold>EQUIPPED</bold></green>"
+    - "<gray>Click to unequip</gray>"
+  unequipped-lore:
+    - "<yellow>Click to equip</yellow>"
+  mystery-material: BLACK_STAINED_GLASS_PANE
+  mystery-name: "<dark_gray>???</dark_gray>"
+  mystery-lore:
+    - "<gray>You don't own this pet yet.</gray>"
+    - "<gray>Buy it in /extshop.</gray>"
+  boost-lore:
+    - "<gray>Token boost: <green>+%boost%%</green></gray>"
+  shop-material: GOLD_NUGGET
+  shop-name: "<yellow>Buy pets at /extshop</yellow>"
+  shop-lore:
+    - "<gray>Purchase new companions</gray>"
+    - "<gray>with extraction tokens.</gray>"
+    - "<gray>Click to open the shop</gray>"
+  shop-title: "<gradient:#FFAA00:#FFFF55>Pets</gradient>"
+  shop-filler-material: GRAY_STAINED_GLASS_PANE
+  shop-filler-name: " "
+  shop-buy-lore:
+    - "<gold>Cost: %cost% tokens</gold>"
+    - "<gray>Click to buy</gray>"
+  shop-owned-lore:
+    - "<green>Owned</green>"
+
 shop-hub:
   title: "<gradient:#00AAFF:#55FFFF>Extraction Shop</gradient>"
   rows: 3
@@ -39,6 +73,14 @@ shop-hub:
       lore:
         - "<gray>Buy bigger backpacks and</gray>"
         - "<gray>extra pages.</gray>"
+        - "<gray>Click to open</gray>"
+    pets:
+      slot: 20
+      material: ALLAY_SPAWN_EGG
+      name: "<light_purple><bold>Pets</bold></light_purple>"
+      lore:
+        - "<gray>Token-boosting companions that</gray>"
+        - "<gray>follow you during a run.</gray>"
         - "<gray>Click to open</gray>"
     close:
       slot: 22

@@ -27,7 +27,7 @@ public class DatabaseManager {
             "last_kill_count", "last_event_count", "last_boss_count", "extra_time_seconds",
             "return_location", "pre_run_inventory", "pre_run_armor", "pending_return",
             "owned_charms", "owned_artifacts", "active_charm", "active_artifact",
-            "discovered_areas"
+            "discovered_areas", "owned_pets", "active_pet"
     };
 
     private final ExtractionPlugin plugin;
@@ -298,9 +298,13 @@ public class DatabaseManager {
                     + "owned_artifacts LONGTEXT, "
                     + "active_charm VARCHAR(255) DEFAULT '', "
                     + "active_artifact VARCHAR(255) DEFAULT '', "
-                    + "discovered_areas LONGTEXT)"
+                    + "discovered_areas LONGTEXT, "
+                    + "owned_pets LONGTEXT, "
+                    + "active_pet VARCHAR(255) DEFAULT '')"
                     + tableSuffix());
             ensureColumn(stmt, playerDataTable(), "discovered_areas", "LONGTEXT");
+            ensureColumn(stmt, playerDataTable(), "owned_pets", "LONGTEXT");
+            ensureColumn(stmt, playerDataTable(), "active_pet", "VARCHAR(255) DEFAULT ''");
             return;
         }
 
@@ -324,7 +328,9 @@ public class DatabaseManager {
                         owned_artifacts TEXT DEFAULT '[]',
                         active_charm TEXT DEFAULT '',
                         active_artifact TEXT DEFAULT '',
-                        discovered_areas TEXT DEFAULT '[]'
+                        discovered_areas TEXT DEFAULT '[]',
+                        owned_pets TEXT DEFAULT '[]',
+                        active_pet TEXT DEFAULT ''
                     )
                 """);
         try {
@@ -390,6 +396,10 @@ public class DatabaseManager {
 
         ensureColumn(stmt, playerDataTable(), "discovered_areas",
                 dialect == Dialect.MYSQL ? "LONGTEXT" : "TEXT DEFAULT '[]'");
+        ensureColumn(stmt, playerDataTable(), "owned_pets",
+                dialect == Dialect.MYSQL ? "LONGTEXT" : "TEXT DEFAULT '[]'");
+        ensureColumn(stmt, playerDataTable(), "active_pet",
+                dialect == Dialect.MYSQL ? "VARCHAR(255) DEFAULT ''" : "TEXT DEFAULT ''");
     }
 
     private void createPartyTables(Statement stmt) throws SQLException {

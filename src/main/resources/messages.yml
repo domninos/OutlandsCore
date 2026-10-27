@@ -207,6 +207,15 @@ help:
   category-line: "  <dark_gray>▪</dark_gray> %category%"
   category-hover: "<gray>View %category% commands</gray>"
   back-hint: "<gray>Tip: click a category to jump straight to it.</gray>"
+
+# Pets (/pets)
+pets:
+  not-owned: "<red>You don't own <white>%pet%</white> yet — buy it in <white>/extshop</white>.</red>"
+  equipped: "<green>Equipped pet <white>%pet%</white> — token boost <white>+%boost%%</white>.</green>"
+  unequipped: "<gray>Pet <white>%pet%</white> unequipped.</gray>"
+  run-boost: "<green>Pet <white>%pet%</white> is boosting your tokens by <white>+%boost%%</white> this run.</green>"
+  boost-note: "<gray>(<white>%pet%</white>: +<white>%boost%%</white>)</gray>"
+  purchased: "<green>You bought the pet <white>%pet%</white> for <white>%cost%</white> tokens!</green>"
 events:
   status-header: "<gray>World Events (<white>%count%</white>):</gray>"
   status-entry: "<gray> - <white>%event%</white> <dark_gray>»</dark_gray> <white>%state%</white></gray>"

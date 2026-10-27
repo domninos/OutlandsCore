@@ -247,11 +247,21 @@ public class PlayerListener implements Listener {
         if (LootItemUtil.isTokenItem(item)) {
             int amount = LootItemUtil.getTokenAmount(item);
 
+            boolean inRun = plugin.getRunManager().isPlayerInRun(player.getUniqueId());
+            net.omni.extraction.data.PlayerData pd = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
+            int boosted = inRun ? plugin.getPetManager().applyBoost(pd, amount) : amount;
+
             event.setCancelled(true);
-            plugin.getTokenManager().addTokens(player.getUniqueId(), amount);
+            plugin.getTokenManager().addTokens(player.getUniqueId(), boosted);
             LootItemUtil.consumeOne(item);
 
-            plugin.sendMessage(player, Messages.LOOT_TOKENS.replace("amount", String.valueOf(amount)));
+            String note = boosted != amount && pd != null
+                    ? buildPetBoostNote(pd) : "";
+            plugin.sendMessage(player, Messages.LOOT_TOKENS.replace("amount", String.valueOf(boosted)) + note);
+
+            if (boosted != amount)
+                plugin.getActionBarManager().showTokens(player.getUniqueId(), boosted, note);
+
             return;
         }
 
@@ -333,6 +343,14 @@ public class PlayerListener implements Listener {
         LootItemUtil.consumeOne(item);
 
         plugin.sendMessage(player, Messages.LOOT_TIME_BANKED.replace("time", String.valueOf(minutes)));
+    }
+
+    private String buildPetBoostNote(net.omni.extraction.data.PlayerData data) {
+        net.omni.extraction.pets.PetDefinition pet = plugin.getPetManager().getActive(data);
+        if (pet == null || pet.boostPercent() <= 0)
+            return "";
+        return Messages.PETS_BOOST_NOTE.replace("pet", pet.name())
+                .replace("boost", String.valueOf(pet.boostPercent()));
     }
 
     @EventHandler

@@ -4,5 +4,6 @@ public enum ShopView {
     HUB,
     CONSUMABLES,
     ENCHANTS,
-    ENCHANT_TARGETS
+    ENCHANT_TARGETS,
+    PETS
 }

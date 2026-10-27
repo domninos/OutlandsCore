@@ -1,0 +1,45 @@
+# Extraction Pets (/pets)
+# Each top-level key is a pet id. Pets are companions that follow you during a
+# run and boost the tokens you receive. Buy them in /extshop (Pets category),
+# equip them in /pets — one pet per run.
+#
+# entity-type: any org.bukkit.entity.EntityType (small entities look best)
+# name:        MiniMessage display name (also used as the entity's custom name)
+# icon:        menu icon material
+# lore:        description lines (MiniMessage)
+# boost-percent: token boost while equipped (25 = +25% tokens)
+# cost:        purchase price in tokens (extshop)
+# particle:    optional ambient particle name (reserved for future use)
+
+mochi:
+  entity-type: ALLAY
+  name: "<light_purple>Mochi</light_purple>"
+  icon: ALLAY_SPAWN_EGG
+  lore:
+    - "<gray>A tiny allay that gathers spare</gray>"
+    - "<gray>tokens for you.</gray>"
+  boost-percent: 25
+  cost: 500
+  particle: END_ROD
+
+buzz:
+  entity-type: BEE
+  name: "<yellow>Buzz</yellow>"
+  icon: BEE_SPAWN_EGG
+  lore:
+    - "<gray>An industrious bee that collects</gray>"
+    - "<gray>every dropped token.</gray>"
+  boost-percent: 40
+  cost: 1200
+  particle: CAMPFIRE_COSY_SMOKE
+
+ember:
+  entity-type: BLAZE
+  name: "<red>Ember</red>"
+  icon: BLAZE_SPAWN_EGG
+  lore:
+    - "<gray>A smouldering blaze that melts</gray>"
+    - "<gray>tokens out of the rubble.</gray>"
+  boost-percent: 60
+  cost: 2500
+  particle: FLAME

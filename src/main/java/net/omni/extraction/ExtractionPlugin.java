@@ -5,11 +5,6 @@ import com.google.gson.GsonBuilder;
 import net.omni.extraction.area.*;
 import net.omni.extraction.areaeditor.AreaEditorListener;
 import net.omni.extraction.areaeditor.AreaEditorManager;
-import net.omni.extraction.looteditor.LootEditorManager;
-import net.omni.extraction.looteditor.LootEditorHolder;
-import net.omni.extraction.looteditor.LootEditorListener;
-import net.omni.extraction.managers.CorpseManager;
-import net.omni.extraction.integration.FancyNpcHook;
 import net.omni.extraction.backpack.BackpackManager;
 import net.omni.extraction.chat.ActionBarManager;
 import net.omni.extraction.chat.ChatRenderer;
@@ -25,20 +20,21 @@ import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.gui.GUIManager;
 import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.integration.ExternalPluginManager;
+import net.omni.extraction.integration.FancyNpcHook;
 import net.omni.extraction.listeners.*;
 import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutManager;
 import net.omni.extraction.loot.LootResolver;
 import net.omni.extraction.loot.LootTableManager;
-import net.omni.extraction.managers.DroneManager;
-import net.omni.extraction.managers.ExtractionManager;
-import net.omni.extraction.managers.MessagesManager;
-import net.omni.extraction.managers.TokenManager;
+import net.omni.extraction.looteditor.LootEditorListener;
+import net.omni.extraction.looteditor.LootEditorManager;
+import net.omni.extraction.managers.*;
 import net.omni.extraction.mobs.MobResolver;
 import net.omni.extraction.mobs.MobTemplateManager;
 import net.omni.extraction.pack.PackManager;
 import net.omni.extraction.party.PartyListener;
 import net.omni.extraction.party.PartyManager;
+import net.omni.extraction.pets.PetManager;
 import net.omni.extraction.relics.RelicEffectManager;
 import net.omni.extraction.relics.RelicListener;
 import net.omni.extraction.relics.RelicManager;
@@ -86,6 +82,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private AreaEditorManager areaEditorManager;
     private LootEditorManager lootEditorManager;
     private CorpseManager corpseManager;
+    private PetManager petManager;
     private HologramManager hologramManager;
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
@@ -121,16 +118,10 @@ public final class ExtractionPlugin extends JavaPlugin {
         - when doing /extraction, make sure to give the artifact/charm item for them to right click it to where the loadout slot is. then, the placeholder item should have the "Drop item here" removed, as it is just a placeholder. so now, if player SHIFT + left/right click the placeholder, open the artifact or charm gui depending on which they shift clicked.
         - disable despawning of mobs on events
      -
-     - block damage/breaks/looting/interacting while in drone mode
-     -
-     -
      -
      - add join / leave extraction messages
      -
-     - fix the basic events logic
-      - only try event if a player is in /extraction
-      - fix chances
-     - fix compass -> set area and event location pool
+     - drone custom entity model for texture
      -
 
      */
@@ -140,14 +131,6 @@ public final class ExtractionPlugin extends JavaPlugin {
     TODO v2
      - add API
      -
-     -
-     - If they die before extracting:
-        They immediately leave Outlands.
-        All loot collected during that run is lost.
-        No extraction rewards are granted.
-     -
-     -
-     - passive
      -
         Artifact of the Explorer
         Nearby undiscovered areas appear on the compass/map
@@ -206,6 +189,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         if (corpseManager != null)
             corpseManager.shutdown();
 
+        if (petManager != null)
+            petManager.shutdown();
+
         if (guiManager != null)
             guiManager.clearAll();
 
@@ -235,10 +221,6 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        getLogger().info("Enabled Extraction v" + getPluginMeta().getVersion()
-                + " (jar: " + getFile().getName() + ", last-modified: "
-                + java.time.Instant.ofEpochMilli(getFile().lastModified()) + ")");
-
         initChatRenderer();
 
         migrateLegacyRelicFiles();
@@ -307,6 +289,10 @@ public final class ExtractionPlugin extends JavaPlugin {
         droneManager.start();
 
         corpseManager = new CorpseManager(this, new FancyNpcHook(this));
+
+        petManager = new PetManager(this);
+        petManager.reload();
+        petManager.start();
 
         registerCommands();
         registerListeners();
@@ -380,6 +366,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new CharmsCommand(this).register();
         new ArtifactsCommand(this).register();
         new DroneCommand(this, droneManager).register();
+        new PetsCommand(this).register();
     }
 
     private void registerListeners() {
@@ -398,6 +385,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new ScoreboardListener(this).register();
         new AreaEditorListener(this).register();
         new LootEditorListener(this).register();
+        new PetsGUIListener(this).register();
         new RelicListener(this).register();
 
         this.partyListener = new PartyListener(this);
@@ -510,10 +498,6 @@ public final class ExtractionPlugin extends JavaPlugin {
         return areaClearManager;
     }
 
-    public AreaSelectionVisualizer getAreaSelectionVisualizer() {
-        return areaSelectionVisualizer;
-    }
-
     public ScoreboardManager getScoreboardManager() {
         return scoreboardManager;
     }
@@ -536,6 +520,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public CorpseManager getCorpseManager() {
         return corpseManager;
+    }
+
+    public PetManager getPetManager() {
+        return petManager;
     }
 
     public HologramManager getHologramManager() {
@@ -569,7 +557,6 @@ public final class ExtractionPlugin extends JavaPlugin {
     public DroneManager getDroneManager() {
         return droneManager;
     }
-
 
     public PackManager getPackManager() {
         return packManager;

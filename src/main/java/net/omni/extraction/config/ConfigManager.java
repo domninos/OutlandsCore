@@ -29,7 +29,7 @@ public class ConfigManager {
         register("upgrades.yml", "upgrade-gui", "upgrade-confirm");
         register("areas.yml", "areas", "area-editor");
         register("party.yml", "party");
-        register("shop.yml", "shop-hub", "shop", "enchantments");
+        register("shop.yml", "shop-hub", "shop", "enchantments", "pets-gui");
         register("compass.yml", "compass");
     }
 

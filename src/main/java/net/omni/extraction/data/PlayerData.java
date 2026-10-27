@@ -24,9 +24,11 @@ public class PlayerData {
     private boolean pendingDeathRestore;
     private Set<String> ownedCharms;
     private Set<String> ownedArtifacts;
+    private Set<String> ownedPets;
     private Set<String> discoveredAreas;
     private String activeCharm;
     private String activeArtifact;
+    private String activePet;
     private boolean dirty;
     private boolean loaded;
     private transient Runnable dirtyListener;
@@ -49,9 +51,11 @@ public class PlayerData {
         this.pendingDeathRestore = false;
         this.ownedCharms = new HashSet<>();
         this.ownedArtifacts = new HashSet<>();
+        this.ownedPets = new HashSet<>();
         this.discoveredAreas = new HashSet<>();
         this.activeCharm = "";
         this.activeArtifact = "";
+        this.activePet = "";
         this.dirty = false;
         this.loaded = false;
     }
@@ -118,9 +122,11 @@ public class PlayerData {
         copy.pendingDeathRestore = pendingDeathRestore;
         copy.ownedCharms = new HashSet<>(ownedCharms);
         copy.ownedArtifacts = new HashSet<>(ownedArtifacts);
+        copy.ownedPets = new HashSet<>(ownedPets);
         copy.discoveredAreas = new HashSet<>(discoveredAreas);
         copy.activeCharm = activeCharm;
         copy.activeArtifact = activeArtifact;
+        copy.activePet = activePet;
         copy.dirty = false;
         copy.loaded = true;
 
@@ -460,6 +466,51 @@ public class PlayerData {
         String next = activeArtifact == null ? "" : activeArtifact;
         if (!next.equals(this.activeArtifact)) {
             this.activeArtifact = next;
+            markDirty();
+        }
+    }
+
+    public Set<String> getOwnedPets() {
+        return ownedPets;
+    }
+
+    public void setOwnedPets(java.util.Collection<String> owned) {
+        this.ownedPets = owned == null ? new HashSet<>() : new HashSet<>(owned);
+        markDirty();
+    }
+
+    public boolean ownsPet(String id) {
+        return id != null && ownedPets.contains(id.toLowerCase(java.util.Locale.ROOT));
+    }
+
+    public void addOwnedPet(String id) {
+        if (id == null)
+            return;
+
+        if (ownedPets.add(id.toLowerCase(java.util.Locale.ROOT)))
+            markDirty();
+    }
+
+    public boolean removeOwnedPet(String id) {
+        if (id == null)
+            return false;
+
+        if (ownedPets.remove(id.toLowerCase(java.util.Locale.ROOT))) {
+            markDirty();
+            return true;
+        }
+
+        return false;
+    }
+
+    public String getActivePet() {
+        return activePet;
+    }
+
+    public void setActivePet(String activePet) {
+        String next = activePet == null ? "" : activePet;
+        if (!next.equals(this.activePet)) {
+            this.activePet = next;
             markDirty();
         }
     }

@@ -198,6 +198,17 @@ public class PlayerDataManager {
                 data.setDiscoveredAreas(ids);
         }
 
+        String ownedPetsJson = rs.getString("owned_pets");
+        if (ownedPetsJson != null && !ownedPetsJson.isEmpty() && !ownedPetsJson.equals("[]")) {
+            List<String> ids = plugin.getGson().fromJson(ownedPetsJson, new TypeToken<List<String>>() {
+            }.getType());
+
+            if (ids != null)
+                data.setOwnedPets(ids);
+        }
+
+        data.setActivePet(rs.getString("active_pet"));
+
         List<ItemStack> loadedItems = data.getLoadoutItems();
         Map<String, Integer> loadedTiers = data.getLoadoutTiers();
 
@@ -389,6 +400,8 @@ public class PlayerDataManager {
         ps.setString(17, data.getActiveCharm());
         ps.setString(18, data.getActiveArtifact());
         ps.setString(19, plugin.getGson().toJson(data.getDiscoveredAreas()));
+        ps.setString(20, plugin.getGson().toJson(data.getOwnedPets()));
+        ps.setString(21, data.getActivePet());
     }
 
     /**

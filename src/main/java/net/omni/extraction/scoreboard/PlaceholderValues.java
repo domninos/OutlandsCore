@@ -71,6 +71,14 @@ public final class PlaceholderValues {
                 yield area != null ? area.getState().name() : "";
             }
             case "party" -> plugin.getPartyManager().getPartyPlaceholder(player.getUniqueId());
+            case "pet" -> {
+                net.omni.extraction.pets.PetDefinition pet =
+                        plugin.getPetManager().getActive(data);
+                yield pet != null ? pet.name() : "";
+            }
+            case "pet_boost" -> {
+                yield String.valueOf(plugin.getPetManager().getBoostPercent(data));
+            }
             case "ip" -> plugin.getConfigUtil().getScoreboardServerIp();
             case "clock" -> clockValue(plugin);
             default -> {

@@ -249,7 +249,14 @@ public enum Messages {
     HELP_CATEGORY_TITLE("help.category-title", "  <gradient:#00AAFF:#55FFFF><bold>Extraction</bold></gradient> <dark_gray>-</dark_gray> <white>%category%</white>"),
     HELP_CATEGORY_LINE("help.category-line", "  <dark_gray>▪</dark_gray> %category%"),
     HELP_CATEGORY_HOVER("help.category-hover", "<gray>View %category% commands</gray>"),
-    HELP_BACK_HINT("help.back-hint", "<gray>Tip: click a category to jump straight to it.</gray>");
+    HELP_BACK_HINT("help.back-hint", "<gray>Tip: click a category to jump straight to it.</gray>"),
+
+    PETS_NOT_OWNED("pets.not-owned", "<red>You don't own <white>%pet%</white> yet — buy it in <white>/extshop</white>.</red>"),
+    PETS_EQUIPPED("pets.equipped", "<green>Equipped pet <white>%pet%</white> — token boost <white>+%boost%%</white>.</green>"),
+    PETS_UNEQUIPPED("pets.unequipped", "<gray>Pet <white>%pet%</white> unequipped.</gray>"),
+    PETS_RUN_BOOST("pets.run-boost", "<green>Pet <white>%pet%</white> is boosting your tokens by <white>+%boost%%</white> this run.</green>"),
+    PETS_BOOST_NOTE("pets.boost-note", "<gray>(<white>%pet%</white>: +<white>%boost%%</white>)</gray>"),
+    PETS_PURCHASED("pets.purchased", "<green>You bought the pet <white>%pet%</white> for <white>%cost%</white> tokens!</green>");
 
     private final String path;
     private final Object defaultVal;
