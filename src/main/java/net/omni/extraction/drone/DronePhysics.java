@@ -1,4 +1,4 @@
-package net.omni.extraction.drone.util;
+package net.omni.extraction.drone;
 
 import org.bukkit.Location;
 import org.bukkit.Material;

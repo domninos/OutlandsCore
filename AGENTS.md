@@ -792,11 +792,14 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   direction = pilot look-yaw, Space = ascend, **Sneak = descend** (never dismounts), sprint-forward ≥1.5 =
   ~1.8× boost, move whoosh throttled 400ms; exit = `/drone return` / battery empty / drone death / quit /
   world-change / respawn; battery task recalls a pilot whose `getVehicle() != mount` (stranded guard).
-  **Body avatar = FancyNpcs NPC** (when FancyNpcs is enabled AND its npc manager `isLoaded()` — the documented
-  no-register-in-first-10s rule): player-skinned (`setSkin(player.getName())`), display name = player name,
-  `saveToFile=false`, `showInTab=false`, `collidable=false`, runtime-only, removed (`removeForAll` +
-  `NpcManager.removeNpc`) on recall/disconnect/shutdown. Fallback (FancyNpcs missing/unloaded or creation
-  failed): invisible ArmorStand marker (legacy behavior). **No reflection anywhere** (FancyNpcs used via
+  **Body avatar = FancyNpcs NPC** (all FancyNpcs interaction lives in `integration/FancyNpcHook` —
+  `isAvailable()` guard, `spawnBodyNpc`, `removeBodyNpc`; the manager stays NPC-free): player-skinned
+  (`setSkin(player.getName())`), display name = player name, `saveToFile=false`, `showInTab=false`,
+  `collidable=false`, runtime-only, removed (`removeForAll` + `NpcManager.removeNpc`) on
+  recall/disconnect/shutdown with WARNING logs on failures. Fallback (FancyNpcs missing/unloaded or creation
+  failed): invisible ArmorStand marker (legacy behavior). Stateless drone helpers (bee-mount spawn +
+  config max-health, body marker, pilot invisibility apply/restore, `removeEntitySafe`) live in
+  `util/DroneUtil`; `drone/DroneSounds` remains the drone-owned sound util. **No reflection anywhere** (FancyNpcs used via
   direct `de.oliver.fancynpcs.api` imports). Dependency: `de.oliver:FancyNpcs:2.9.2` provided + repo
   `repo.fancyinnovations.com/releases`; `plugin.yml` softdepends `FancyNpcs`.
 
