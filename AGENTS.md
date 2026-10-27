@@ -762,13 +762,17 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   battery BossBar task draining 1%/s, recall/stop), `drone/DroneSession` (body location/yaw/pitch, original
   GameMode, body marker, mount, battery), `commands/DroneCommand` (conventions: jspecify `@NonNull`,
   `plugin.sendMessage` + `Messages`, perm guard `extraction.drone`, NO `§`), `drone/listener/DroneListener`
-  (quit/world-change/respawn recall), `drone/packet/DroneInputAdapter` (ProtocolLib `STEER_VEHICLE` listener —
-  works because the pilot RIDES the mount; WASD/Space/Sneak input → `DronePhysics.calculateMovement` +
-  `checkCollision` ray-trace collision, teleport applied on the main thread), `drone/util/DronePhysics`
+  (quit/world-change/respawn recall + `EntityDismountEvent` guard blocking vanilla shift-dismount while
+  piloting — recall-initiated and dead-mount dismounts pass), `drone/util/DronePhysics`
   (movement vectors + solid-block ray-trace — the drone bumps into walls, never phases), `util/DroneSounds`
   (drone-owned static sound util: move/ascend/descend/hurt/destroyed Breeze cues + `BLOCK_BEACON_AMBIENT`
   idle hum every ~2s; mount is silent so vanilla sounds don't pollute). All drone player-facing text lives in
-  `Messages` (`drone.*`) + `messages.yml`. **Drone body = visible `Bee` mount** the pilot actually rides
+  `Messages` (`drone.*`) + `messages.yml`. **Movement input = `Player#getCurrentInput()`** (`org.bukkit.Input`,
+  Paper 1.21.3+) polled by a per-tick task in `DroneManager` (`tickMovement`, runTaskTimer 1L) — NOT packets:
+  the 1.21.2+ input packet is a 7-boolean bitfield ProtocolLib cannot read (its `StructureModifier<Float>`
+  returns nothing, open issue #3299), and clients only send it on key CHANGES anyway, so packet steering was
+  silently dead (the "mounted but can't move" bug). `drone/packet/` was deleted; ProtocolLib remains in
+  plugin.yml softdepend for `util/PacketGlow` only. **Drone body = visible `Bee` mount** the pilot actually rides
   (`addPassenger` — passengers follow mount teleports): AI off, no gravity, persistent, NOT invulnerable,
   silent, `Attribute.MAX_HEALTH` = `drone.max-health` (default 40, config.yml `drone:` section) healed on
   spawn. Re-skin it to look like a drone by replacing the bee entity texture in the hosted resource pack

@@ -1,7 +1,5 @@
 package net.omni.extraction.managers;
 
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
 import de.oliver.fancynpcs.api.FancyNpcsPlugin;
 import de.oliver.fancynpcs.api.Npc;
 import de.oliver.fancynpcs.api.NpcData;
@@ -11,11 +9,12 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.drone.DroneSession;
 import net.omni.extraction.drone.listener.DroneListener;
-import net.omni.extraction.drone.packet.DroneInputAdapter;
+import net.omni.extraction.drone.util.DronePhysics;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.DroneSounds;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Input;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -40,13 +39,23 @@ public class DroneManager {
     /** How often (in battery-task runs, 1s each) the idle motor hum plays. */
     private static final int HUM_EVERY_TICKS = 2;
 
+    /** Blocks moved per movement tick (20/s while a key is held). */
+    private static final double SPEED = 0.45;
+    private static final double BOOST_SPEED = 0.8;
+
+    /** Minimum ms between movement whoosh sounds per pilot. */
+    private static final long MOVE_SOUND_COOLDOWN_MS = 400;
+
     private final ExtractionPlugin plugin;
     private final Map<UUID, DroneSession> sessions = new ConcurrentHashMap<>();
     private final Map<UUID, BossBar> bossBars = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lowHpWarnings = new ConcurrentHashMap<>();
-    private DroneInputAdapter inputAdapter;
+    private final Map<UUID, Long> lastMoveSound = new ConcurrentHashMap<>();
+    private final Map<UUID, Boolean> prevAscend = new ConcurrentHashMap<>();
+    private final Map<UUID, Boolean> prevDescend = new ConcurrentHashMap<>();
     private DroneListener listener;
     private BukkitTask batteryTask;
+    private BukkitTask moveTask;
     private int humCounter;
 
     public DroneManager(ExtractionPlugin plugin) {
@@ -54,16 +63,102 @@ public class DroneManager {
     }
 
     public void start() {
-        if (Bukkit.getPluginManager().isPluginEnabled("ProtocolLib")) {
-            ProtocolManager pm = ProtocolLibrary.getProtocolManager();
-            inputAdapter = new DroneInputAdapter(plugin, this);
-            pm.addPacketListener(inputAdapter);
-        }
-
         listener = new DroneListener(this, plugin);
         Bukkit.getPluginManager().registerEvents(listener, plugin);
 
         batteryTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickBattery, 20L, 20L);
+        moveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickMovement, 1L, 1L);
+    }
+
+    /**
+     * Per-tick movement: polls {@link Player#getCurrentInput()} (Paper 1.21.3+ —
+     * the 1.21.2+ input packet is a bitfield ProtocolLib cannot read, and the
+     * client only sends it on key CHANGES anyway, so polling the cached state
+     * is the reliable path). Direction follows the pilot's look-yaw; collision
+     * is ray-traced so the drone bumps into walls instead of phasing.
+     */
+    private void tickMovement() {
+        for (Map.Entry<UUID, DroneSession> entry : sessions.entrySet()) {
+            UUID uuid = entry.getKey();
+            DroneSession session = entry.getValue();
+            Player player = Bukkit.getPlayer(uuid);
+
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+
+            Bee mount = session.getMount();
+            if (mount == null || !mount.isValid() || player.getVehicle() != mount) {
+                continue;
+            }
+
+            Input input = player.getCurrentInput();
+            boolean forward = input.isForward();
+            boolean backward = input.isBackward();
+            boolean left = input.isLeft();
+            boolean right = input.isRight();
+            boolean ascend = input.isJump();
+            boolean descend = input.isSneak();
+
+            if (!forward && !backward && !left && !right && !ascend && !descend) {
+                playInputSound(player, session, false, false, false);
+                continue;
+            }
+
+            boolean horizontal = forward || backward || left || right;
+
+            Location current = mount.getLocation();
+            float yaw = player.getLocation().getYaw();
+            double speed = input.isSprint() ? BOOST_SPEED : SPEED;
+
+            Location nextLoc = DronePhysics.calculateMovement(current, yaw, current.getPitch(),
+                    forward, backward, left, right, ascend, descend, speed);
+            nextLoc.setYaw(current.getYaw());
+            nextLoc.setPitch(current.getPitch());
+
+            Location safeLoc = DronePhysics.checkCollision(current.getWorld(), current, nextLoc);
+            safeLoc.setYaw(current.getYaw());
+            safeLoc.setPitch(current.getPitch());
+
+            // Teleporting the mount carries the pilot (passenger) with it.
+            mount.teleport(safeLoc);
+
+            playInputSound(player, session, ascend, descend, horizontal);
+        }
+    }
+
+    /**
+     * Plays the ascend/descend cues on key edges and the movement whoosh on a
+     * short cooldown so held keys do not spam the sound.
+     */
+    private void playInputSound(Player player, DroneSession session,
+                                boolean ascend, boolean descend, boolean horizontal) {
+        UUID uuid = player.getUniqueId();
+        Location loc = session.getMount() != null ? session.getMount().getLocation() : player.getLocation();
+
+        boolean wasAscend = Boolean.TRUE.equals(prevAscend.get(uuid));
+        boolean wasDescend = Boolean.TRUE.equals(prevDescend.get(uuid));
+
+        if (ascend && !wasAscend) {
+            DroneSounds.ascend(loc);
+        }
+
+        if (descend && !wasDescend) {
+            DroneSounds.descend(loc);
+        }
+
+        prevAscend.put(uuid, ascend);
+        prevDescend.put(uuid, descend);
+
+        if (ascend || descend || horizontal) {
+            long now = System.currentTimeMillis();
+            Long last = lastMoveSound.get(uuid);
+
+            if (last == null || now - last >= MOVE_SOUND_COOLDOWN_MS) {
+                lastMoveSound.put(uuid, now);
+                DroneSounds.move(loc);
+            }
+        }
     }
 
     private void tickBattery() {
@@ -203,14 +298,6 @@ public class DroneManager {
     }
 
     public void stop() {
-        if (inputAdapter != null) {
-            try {
-                ProtocolLibrary.getProtocolManager().removePacketListener(inputAdapter);
-            } catch (Exception ignored) {
-            }
-            inputAdapter = null;
-        }
-
         for (UUID uuid : sessions.keySet()) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null) {
@@ -227,6 +314,11 @@ public class DroneManager {
         if (batteryTask != null) {
             batteryTask.cancel();
             batteryTask = null;
+        }
+
+        if (moveTask != null) {
+            moveTask.cancel();
+            moveTask = null;
         }
 
         bossBars.clear();

@@ -11,6 +11,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityDismountEvent;
 import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -76,6 +77,31 @@ public class DroneListener implements Listener {
         } else {
             event.setCancelled(true);
         }
+    }
+
+    /**
+     * Sneak is the descend key, so vanilla's shift-dismount is blocked while
+     * piloting. Dismounts we initiate ourselves are not affected (recall
+     * removes the session before leaveVehicle), and a dying drone always
+     * ejects its pilot so nobody can be trapped on a corpse.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onDismount(EntityDismountEvent event) {
+        if (!(event.getEntity() instanceof Player player) || !droneManager.isInDrone(player)) {
+            return;
+        }
+
+        DroneSession session = droneManager.getSession(player);
+
+        if (session == null || session.getMount() == null || event.getDismounted() != session.getMount()) {
+            return;
+        }
+
+        if (session.getMount().isDead() || !session.getMount().isValid()) {
+            return;
+        }
+
+        event.setCancelled(true);
     }
 
     /** Drone damage is real; the silent mount gets explicit hurt cues + low-HP warning. */
