@@ -4,7 +4,6 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 import java.util.HashSet;
@@ -29,69 +28,112 @@ public class DronePhysics {
         NON_SOLID.add(Material.TALL_SEAGRASS);
     }
 
-    public static Location calculateMovement(Location current, float yaw, float pitch, boolean forward, boolean backward, boolean left, boolean right, boolean up, boolean down, double speed) {
-        Vector direction = new Vector();
+    public static Location calculateFlightMovement(Location current, float yaw, float pitch, boolean forward, boolean backward, boolean left, boolean right, boolean up, boolean down, double speed) {
+        double x = 0.0;
+        double y = 0.0;
+        double z = 0.0;
 
         double yawRad = Math.toRadians(yaw);
-        double sin = Math.sin(yawRad);
-        double cos = Math.cos(yawRad);
+        double pitchRad = Math.toRadians(pitch);
+
+        double sinYaw = Math.sin(yawRad);
+        double cosYaw = Math.cos(yawRad);
+        double sinPitch = Math.sin(pitchRad);
+        double cosPitch = Math.cos(pitchRad);
+
+        // Forward/Backward vector components based on 3D look direction (yaw & pitch)
+        double dirX = -sinYaw * cosPitch;
+        double dirY = -sinPitch;
+        double dirZ = cosYaw * cosPitch;
 
         if (forward) {
-            direction.add(new Vector(-sin, 0, cos));
+            x += dirX;
+            y += dirY;
+            z += dirZ;
         }
         if (backward) {
-            direction.add(new Vector(sin, 0, -cos));
+            x -= dirX;
+            y -= dirY;
+            z -= dirZ;
         }
+
+        // Strafing (Left/Right) remains horizontal relative to yaw view
         if (left) {
-            direction.add(new Vector(-cos, 0, -sin));
+            x += cosYaw;
+            z += sinYaw;
         }
         if (right) {
-            direction.add(new Vector(cos, 0, sin));
+            x -= cosYaw;
+            z -= sinYaw;
         }
+
+        // Absolute vertical overrides if needed (e.g., Space/Shift keys)
         if (up) {
-            direction.add(new Vector(0, 1, 0));
+            y += 1.0;
         }
         if (down) {
-            direction.add(new Vector(0, -1, 0));
+            y -= 1.0;
         }
 
-        if (direction.length() > 0) {
-            direction.normalize().multiply(speed);
+        // Normalize and scale to maintain constant speed across diagonals
+        double lengthSq = (x * x) + (y * y) + (z * z);
+        if (lengthSq > 1e-7) {
+            double invLength = speed / Math.sqrt(lengthSq);
+            x *= invLength;
+            y *= invLength;
+            z *= invLength;
         }
 
-        Location next = current.clone().add(direction);
-        return next;
+        return new Location(
+                current.getWorld(),
+                current.getX() + x,
+                current.getY() + y,
+                current.getZ() + z,
+                yaw,
+                pitch
+        );
     }
 
+    /**
+     * Cheap swept collision check: marches the (sub-block) segment in small
+     * increments and stops at the last safe sample. World#rayTraceBlocks walked
+     * full block collision shapes every tick per moving drone and dominated the
+     * server-thread profile — plain chunk lookups + a material check are orders
+     * of magnitude cheaper while keeping the drone bump-into-walls behavior.
+     */
     public static Location checkCollision(World world, Location from, Location to) {
         if (from.equals(to)) {
             return to;
         }
 
-        Vector direction = to.toVector().subtract(from.toVector());
-        double distance = direction.length();
+        Vector delta = to.toVector().subtract(from.toVector());
+        double distance = delta.length();
 
         if (distance == 0) {
             return to;
         }
 
-        direction.normalize();
+        double step = 0.25;
+        int samples = (int) Math.ceil(distance / step);
+        double increment = distance / samples;
 
-        RayTraceResult result = world.rayTraceBlocks(from, direction, distance, org.bukkit.FluidCollisionMode.NEVER, true);
+        Vector unit = delta.clone().normalize();
+        Vector safePos = from.toVector();
 
-        if (result != null && result.getHitBlock() != null) {
-            Block hitBlock = result.getHitBlock();
-            if (isSolid(hitBlock)) {
-                Vector hitPos = result.getHitPosition();
-                Vector normal = result.getHitBlockFace() != null ? result.getHitBlockFace().getDirection() : new Vector(0, 1, 0);
-                Location safe = hitPos.toLocation(world).subtract(normal.multiply(0.01));
-                safe.setYaw(to.getYaw());
-                safe.setPitch(to.getPitch());
-                return safe;
+        for (int i = 1; i <= samples; i++) {
+            Vector samplePos = from.toVector().add(unit.clone().multiply(increment * i));
+
+            if (isSolid(world.getBlockAt(samplePos.getBlockX(), samplePos.getBlockY(), samplePos.getBlockZ()))) {
+                break;
             }
+
+            safePos = samplePos;
         }
 
-        return to;
+        Location safe = safePos.toLocation(world);
+        safe.setYaw(to.getYaw());
+        safe.setPitch(to.getPitch());
+        return safe;
     }
 
     public static boolean isSolid(Block block) {
@@ -104,14 +146,22 @@ public class DronePhysics {
     }
 
     public static boolean isPathBlocked(World world, Location from, Location to) {
-        Vector direction = to.toVector().subtract(from.toVector());
-        double distance = direction.length();
+        Vector delta = to.toVector().subtract(from.toVector());
+        double distance = delta.length();
         if (distance == 0) return false;
-        direction.normalize();
-        RayTraceResult result = world.rayTraceBlocks(from, direction, distance, org.bukkit.FluidCollisionMode.NEVER, true);
-        if (result != null && result.getHitBlock() != null) {
-            return isSolid(result.getHitBlock());
+
+        Vector unit = delta.clone().normalize();
+        int samples = (int) Math.ceil(distance / 0.25);
+        double increment = distance / samples;
+
+        for (int i = 1; i <= samples; i++) {
+            Vector samplePos = from.toVector().add(unit.clone().multiply(increment * i));
+
+            if (isSolid(world.getBlockAt(samplePos.getBlockX(), samplePos.getBlockY(), samplePos.getBlockZ()))) {
+                return true;
+            }
         }
+
         return false;
     }
 }

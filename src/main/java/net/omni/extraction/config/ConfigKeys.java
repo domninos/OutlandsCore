@@ -163,6 +163,7 @@ public final class ConfigKeys {
     public static final String PARTY_CHAT_FORMAT = "party.chat-format";
 
     public static final String DRONE_MAX_HEALTH = "drone.max-health";
+    public static final String DRONE_UPDATE_TICKS = "drone.update-ticks";
 
     public static final String AREAS_AUTO_SAVE_SECONDS = "areas.auto-save-seconds";
     public static final String AREAS_STATE_CHECK_SECONDS = "areas.state-check-seconds";

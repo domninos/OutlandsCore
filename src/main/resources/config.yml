@@ -286,3 +286,8 @@ pack:
 drone:
   # Max health of the drone body.
   max-health: 40
+  # Movement task period in ticks. 1 = every tick (smooth, 20Hz). Raise (e.g. 2)
+  # to halve the per-drone server-thread cost at the cost of slightly chunkier
+  # control; per-step distance scales automatically so the speed stays the same.
+  # Read at server start - changing this needs a restart.
+  update-ticks: 1

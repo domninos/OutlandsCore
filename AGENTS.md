@@ -768,11 +768,20 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   (drone-owned static sound util: move/ascend/descend/hurt/destroyed Breeze cues + `BLOCK_BEACON_AMBIENT`
   idle hum every ~2s; mount is silent so vanilla sounds don't pollute). All drone player-facing text lives in
   `Messages` (`drone.*`) + `messages.yml`. **Movement input = `Player#getCurrentInput()`** (`org.bukkit.Input`,
-  Paper 1.21.3+) polled by a per-tick task in `DroneManager` (`tickMovement`, runTaskTimer 1L) — NOT packets:
+  Paper 1.21.3+) polled by a per-tick task in `DroneManager` (`tickMovement`) — NOT packets:
   the 1.21.2+ input packet is a 7-boolean bitfield ProtocolLib cannot read (its `StructureModifier<Float>`
   returns nothing, open issue #3299), and clients only send it on key CHANGES anyway, so packet steering was
   silently dead (the "mounted but can't move" bug). `drone/packet/` was deleted; ProtocolLib remains in
-  plugin.yml softdepend for `util/PacketGlow` only. **Drone body = visible `Bee` mount** the pilot actually rides
+  plugin.yml softdepend for `util/PacketGlow` only. **3D flight**:
+  `DronePhysics.calculateFlightMovement` (user-authored) flies where the pilot LOOKS — yaw **and pitch**
+  (`Player#getLocation()` read once per tick for both) — with horizontal strafe and absolute Space/Sneak
+  vertical; primitives-only math (no Vector/clone allocations). **Collision = cheap swept block-scan**
+  (`DronePhysics.checkCollision` marches the sub-block segment in 0.25 steps via `getBlockAt` + material
+  `isSolid` — `World#rayTraceBlocks` walked collision shapes per tick per moving drone and dominated the
+  spark server-thread profile ~2%); A/D strafing direction fixed (left = `(cos,0,sin)` — Minecraft yaw is
+  clockwise). **`drone.update-ticks`** (default 1; read at start, needs restart) scales the movement-task
+  period AND per-step distance, trading 10Hz chunkier control for half the per-drone thread cost;
+  `tickMovement` early-exits when no sessions are active (idle = no-op). **Drone body = visible `Bee` mount** the pilot actually rides
   (`addPassenger` — passengers follow mount teleports): AI off, no gravity, persistent, NOT invulnerable,
   silent, `Attribute.MAX_HEALTH` = `drone.max-health` (default 40, config.yml `drone:` section) healed on
   spawn. Re-skin it to look like a drone by replacing the bee entity texture in the hosted resource pack

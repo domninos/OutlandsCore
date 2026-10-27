@@ -1,6 +1,5 @@
 package net.omni.extraction.drone.listener;
 
-import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.drone.DroneSession;
 import net.omni.extraction.managers.DroneManager;
 import org.bukkit.entity.Entity;
@@ -20,11 +19,9 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 public class DroneListener implements Listener {
 
     private final DroneManager droneManager;
-    private final ExtractionPlugin plugin;
 
-    public DroneListener(DroneManager droneManager, ExtractionPlugin plugin) {
+    public DroneListener(DroneManager droneManager) {
         this.droneManager = droneManager;
-        this.plugin = plugin;
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -104,7 +101,9 @@ public class DroneListener implements Listener {
         event.setCancelled(true);
     }
 
-    /** Drone damage is real; the silent mount gets explicit hurt cues + low-HP warning. */
+    /**
+     * Drone damage is real; the silent mount gets explicit hurt cues + low-HP warning.
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
         DroneSession session = droneManager.getSessionByMount(event.getEntity());
@@ -114,7 +113,9 @@ public class DroneListener implements Listener {
         }
     }
 
-    /** A destroyed drone forcibly recalls the pilot to their body. */
+    /**
+     * A destroyed drone forcibly recalls the pilot to their body.
+     */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onEntityDeath(EntityDeathEvent event) {
         DroneSession session = droneManager.getSessionByMount(event.getEntity());

@@ -52,6 +52,7 @@ public class ConfigUtil {
     private String shopGuiTitle;
     private int shopGuiRows;
     private int droneMaxHealth = 40;
+    private int droneUpdateTicks = 1;
 
     private String shopHubTitle;
     private int shopHubRows;
@@ -396,6 +397,7 @@ public class ConfigUtil {
                 "<gray>[Party]</gray> <white>%player%</white> <dark_gray>»</dark_gray> <white>%message%</white>", savedDefaults);
 
         this.droneMaxHealth = Math.max(1, getAndDefaultInt(ConfigKeys.DRONE_MAX_HEALTH, 40, savedDefaults));
+        this.droneUpdateTicks = Math.max(1, getAndDefaultInt(ConfigKeys.DRONE_UPDATE_TICKS, 1, savedDefaults));
 
         configManager.saveDirty();
 
@@ -2151,6 +2153,10 @@ public class ConfigUtil {
 
     public int getDroneMaxHealth() {
         return droneMaxHealth;
+    }
+
+    public int getDroneUpdateTicks() {
+        return droneUpdateTicks;
     }
 
     public int getShopHubSize() {

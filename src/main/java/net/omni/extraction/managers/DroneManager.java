@@ -57,27 +57,35 @@ public class DroneManager {
     private BukkitTask batteryTask;
     private BukkitTask moveTask;
     private int humCounter;
+    /** Config drone.update-ticks: movement-task period; per-step distance scales by it. */
+    private int updateTicks = 1;
 
     public DroneManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
     }
 
     public void start() {
-        listener = new DroneListener(this, plugin);
+        listener = new DroneListener(this);
         Bukkit.getPluginManager().registerEvents(listener, plugin);
 
         batteryTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickBattery, 20L, 20L);
-        moveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickMovement, 1L, 1L);
+        this.updateTicks = Math.max(1, plugin.getConfigUtil().getDroneUpdateTicks());
+        moveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickMovement, updateTicks, updateTicks);
     }
 
     /**
      * Per-tick movement: polls {@link Player#getCurrentInput()} (Paper 1.21.3+ —
      * the 1.21.2+ input packet is a bitfield ProtocolLib cannot read, and the
      * client only sends it on key CHANGES anyway, so polling the cached state
-     * is the reliable path). Direction follows the pilot's look-yaw; collision
-     * is ray-traced so the drone bumps into walls instead of phasing.
+     * is the reliable path). Direction follows the pilot's full look direction
+     * (yaw + pitch — 3D flight); collision block-scans so the drone bumps into
+     * walls instead of phasing.
      */
     private void tickMovement() {
+        if (sessions.isEmpty()) {
+            return;
+        }
+
         for (Map.Entry<UUID, DroneSession> entry : sessions.entrySet()) {
             UUID uuid = entry.getKey();
             DroneSession session = entry.getValue();
@@ -108,17 +116,15 @@ public class DroneManager {
             boolean horizontal = forward || backward || left || right;
 
             Location current = mount.getLocation();
-            float yaw = player.getLocation().getYaw();
-            double speed = input.isSprint() ? BOOST_SPEED : SPEED;
+            Location pilotLoc = player.getLocation();
+            double speed = (input.isSprint() ? BOOST_SPEED : SPEED) * updateTicks;
 
-            Location nextLoc = DronePhysics.calculateMovement(current, yaw, current.getPitch(),
+            // 3D look-direction flight: the drone goes where the pilot looks
+            // (pitch included). calculateFlightMovement already sets yaw/pitch.
+            Location nextLoc = DronePhysics.calculateFlightMovement(current, pilotLoc.getYaw(), pilotLoc.getPitch(),
                     forward, backward, left, right, ascend, descend, speed);
-            nextLoc.setYaw(current.getYaw());
-            nextLoc.setPitch(current.getPitch());
 
             Location safeLoc = DronePhysics.checkCollision(current.getWorld(), current, nextLoc);
-            safeLoc.setYaw(current.getYaw());
-            safeLoc.setPitch(current.getPitch());
 
             // Teleporting the mount carries the pilot (passenger) with it.
             mount.teleport(safeLoc);
