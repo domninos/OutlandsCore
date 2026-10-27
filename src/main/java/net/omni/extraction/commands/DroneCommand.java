@@ -1,6 +1,7 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.Permissions;
 import net.omni.extraction.managers.DroneManager;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.command.Command;
@@ -27,7 +28,7 @@ public class DroneCommand implements CommandExecutor {
             return true;
         }
 
-        if (!player.hasPermission("extraction.drone")) {
+        if (!player.hasPermission(Permissions.DRONE)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }

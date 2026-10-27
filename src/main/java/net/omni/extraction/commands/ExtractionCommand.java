@@ -4,6 +4,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.data.PlayerData;
+import net.omni.extraction.Permissions;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.util.MessageUtil;
 import net.omni.extraction.messages.Messages;
@@ -82,7 +83,7 @@ public class ExtractionCommand implements CommandExecutor {
             return true;
         }
 
-        if (!player.hasPermission("extraction.play")) {
+        if (!player.hasPermission(Permissions.PLAY)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
@@ -106,7 +107,7 @@ public class ExtractionCommand implements CommandExecutor {
         help.append(Messages.HELP_HEADER).append("\n");
         help.append(Messages.HELP_TITLE).append("\n\n");
 
-        if (sender.hasPermission("extraction.play")) {
+        if (sender.hasPermission(Permissions.PLAY)) {
             MessageUtil.append("extraction", "Enter Extraction", help);
             MessageUtil.append("extract", "Extract from Extraction early", help);
             MessageUtil.append("extraction loadout", "View your loadout", help);
@@ -116,7 +117,7 @@ public class ExtractionCommand implements CommandExecutor {
             MessageUtil.append("upgrade", "Upgrade your armor", help);
         }
 
-        if (sender.hasPermission("extraction.admin")) {
+        if (sender.hasPermission(Permissions.ADMIN)) {
             help.append("\n  <dark_gray>Admin Commands:</dark_gray>\n");
             MessageUtil.append("extraction reload", "Reloads the config files and messages.yml", help);
             MessageUtil.append("extraction settokens {player} {amount}", "Set a player's token balance", help);
@@ -162,7 +163,7 @@ public class ExtractionCommand implements CommandExecutor {
     }
 
     private boolean handleReload(CommandSender sender) {
-        if (!sender.hasPermission("extraction.admin")) {
+        if (!sender.hasPermission(Permissions.ADMIN)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
@@ -226,7 +227,7 @@ public class ExtractionCommand implements CommandExecutor {
             return true;
         }
 
-        if (!player.hasPermission("extraction.play")) {
+        if (!player.hasPermission(Permissions.PLAY)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
@@ -248,7 +249,7 @@ public class ExtractionCommand implements CommandExecutor {
     }
 
     private boolean handleSetTokens(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("extraction.admin")) {
+        if (!sender.hasPermission(Permissions.ADMIN)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
@@ -278,7 +279,7 @@ public class ExtractionCommand implements CommandExecutor {
     }
 
     private boolean handleGiveTokens(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("extraction.admin")) {
+        if (!sender.hasPermission(Permissions.ADMIN)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
@@ -308,7 +309,7 @@ public class ExtractionCommand implements CommandExecutor {
     }
 
     private boolean handleGiveUpgrade(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("extraction.admin")) {
+        if (!sender.hasPermission(Permissions.ADMIN)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
@@ -345,7 +346,7 @@ public class ExtractionCommand implements CommandExecutor {
     }
 
     private boolean handleForceExtract(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("extraction.admin")) {
+        if (!sender.hasPermission(Permissions.ADMIN)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
@@ -370,7 +371,7 @@ public class ExtractionCommand implements CommandExecutor {
     }
 
     private boolean handleSetSpawn(CommandSender sender) {
-        if (!sender.hasPermission("extraction.admin")) {
+        if (!sender.hasPermission(Permissions.ADMIN)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
@@ -386,7 +387,7 @@ public class ExtractionCommand implements CommandExecutor {
     }
 
     private boolean handleSetLobby(CommandSender sender) {
-        if (!sender.hasPermission("extraction.admin")) {
+        if (!sender.hasPermission(Permissions.ADMIN)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
@@ -402,7 +403,7 @@ public class ExtractionCommand implements CommandExecutor {
     }
 
     private boolean handleRelicAdmin(CommandSender sender, String[] args, String category) {
-        if (!sender.hasPermission("extraction.admin")) {
+        if (!sender.hasPermission(Permissions.ADMIN)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
@@ -468,7 +469,7 @@ public class ExtractionCommand implements CommandExecutor {
     }
 
     private boolean handleEvents(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("extraction.admin")) {
+        if (!sender.hasPermission(Permissions.ADMIN)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
@@ -660,7 +661,7 @@ public class ExtractionCommand implements CommandExecutor {
     }
 
     private boolean handleAdmin(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("extraction.admin")) {
+        if (!sender.hasPermission(Permissions.ADMIN)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }

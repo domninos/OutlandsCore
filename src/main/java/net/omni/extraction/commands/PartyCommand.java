@@ -1,6 +1,7 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.Permissions;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -23,7 +24,7 @@ public class PartyCommand {
             return true;
         }
 
-        if (!sender.hasPermission("extraction.party")) {
+        if (!sender.hasPermission(Permissions.PARTY)) {
             plugin.sendMessage(sender, Messages.PARTY_NO_PERM.toString());
             return true;
         }

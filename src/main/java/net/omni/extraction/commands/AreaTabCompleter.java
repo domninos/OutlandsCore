@@ -1,6 +1,7 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.Permissions;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.area.AreaMobReference;
 import net.omni.extraction.integration.MythicMobsProvider;
@@ -64,7 +65,7 @@ public class AreaTabCompleter implements TabCompleter {
     @Override
     public List<String> onTabComplete(@NonNull CommandSender sender, @NonNull Command command,
                                       @NonNull String label, @NonNull String[] args) {
-        if (!sender.hasPermission("extraction.areas"))
+        if (!sender.hasPermission(Permissions.AREAS))
             return List.of();
 
         if (args.length == 1)

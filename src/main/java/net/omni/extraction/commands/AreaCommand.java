@@ -1,6 +1,7 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.Permissions;
 import net.omni.extraction.area.*;
 import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.integration.MythicMobsProvider;
@@ -32,7 +33,7 @@ public class AreaCommand implements CommandExecutor {
     @Override
     public boolean onCommand(@NonNull CommandSender sender, @NonNull Command command,
                              @NonNull String label, @NonNull String[] args) {
-        if (!sender.hasPermission("extraction.areas")) {
+        if (!sender.hasPermission(Permissions.AREAS)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }

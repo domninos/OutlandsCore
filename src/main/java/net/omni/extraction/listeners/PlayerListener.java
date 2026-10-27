@@ -1,6 +1,7 @@
 package net.omni.extraction.listeners;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.Permissions;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.loadout.LoadoutManager;
@@ -341,7 +342,7 @@ public class PlayerListener implements Listener {
         if (!player.getWorld().getName().equalsIgnoreCase(plugin.getConfigUtil().getWorldName()))
             return false;
 
-        if (player.hasPermission("extraction.admin"))
+        if (player.hasPermission(Permissions.ADMIN))
             return false;
 
         if (plugin.getAreaManager().isWand(player.getInventory().getItemInMainHand()))

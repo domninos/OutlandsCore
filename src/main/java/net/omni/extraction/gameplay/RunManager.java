@@ -1,6 +1,7 @@
 package net.omni.extraction.gameplay;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.Permissions;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.managers.TokenManager;
@@ -51,7 +52,7 @@ public class RunManager {
             return false;
         }
 
-        if (cooldownManager.isOnCooldown(uuid) && !player.hasPermission("extraction.bypass.cooldown")) {
+        if (cooldownManager.isOnCooldown(uuid) && !player.hasPermission(Permissions.BYPASS_COOLDOWN)) {
             String time = cooldownManager.getCooldownFormatted(uuid);
             plugin.sendMessage(player, Messages.RUN_COOLDOWN.replace("time", time));
             return false;

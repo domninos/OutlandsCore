@@ -1,6 +1,7 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.Permissions;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -35,7 +36,7 @@ public abstract class RelicCommand implements CommandExecutor {
             return true;
         }
 
-        if (!player.hasPermission("extraction.play")) {
+        if (!player.hasPermission(Permissions.PLAY)) {
             plugin.sendMessage(player, noPermission.toString());
             return true;
         }

@@ -1,6 +1,7 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.Permissions;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -24,7 +25,7 @@ public class ExtractCommand implements CommandExecutor {
             return true;
         }
 
-        if (!player.hasPermission("extraction.play")) {
+        if (!player.hasPermission(Permissions.PLAY)) {
             plugin.sendMessage(sender, Messages.NO_PERMS.toString());
             return true;
         }
