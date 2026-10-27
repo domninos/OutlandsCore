@@ -229,7 +229,17 @@ public enum Messages {
     EVENTS_ROUTE_SHOW_EMPTY("events.route-show-empty", "<gray>Convoy <white>%event%</white> uses its default route (event origin → extraction spawn).</gray>"),
     EVENTS_ROUTE_WAND_ARM("events.route-wand-arm", "<green>Wand armed for convoy <white>%event%</white>. Left-click = start anchor, right-click = end anchor.</green>"),
     EVENTS_ROUTE_WAND_NONE("events.route-wand-none", "<red>Your wand is not armed for a convoy — run <white>/extraction events route {event} wand</white> first.</red>"),
-    EVENTS_ROUTE_NEEDS_PLAYER("events.route-needs-player", "<red>Only players can set convoy anchors.</red>");
+    EVENTS_ROUTE_NEEDS_PLAYER("events.route-needs-player", "<red>Only players can set convoy anchors.</red>"),
+    DRONE_ALREADY_ACTIVE("drone.already-active", "<red>You are already in drone mode. Use <white>/drone return</white> to exit.</red>"),
+    DRONE_ACTIVATED("drone.activated", "<green>Drone activated! WASD to move, Space to ascend, Sneak to descend, <white>/drone return</white> to exit.</green>"),
+    DRONE_ACTIVATE_FAILED("drone.activate-failed", "<red>Failed to activate drone.</red>"),
+    DRONE_NOT_ACTIVE("drone.not-active", "<red>You are not in drone mode.</red>"),
+    DRONE_RETURNED("drone.returned", "<green>Returned to your body.</green>"),
+    DRONE_RECALL_FAILED("drone.recall-failed", "<red>Failed to recall.</red>"),
+    DRONE_BATTERY_DEPLETED("drone.battery-depleted", "<red>Drone battery depleted! Returning...</red>"),
+    DRONE_LINK_LOST("drone.link-lost", "<red>Your drone link was lost. Returning...</red>"),
+    DRONE_DESTROYED("drone.destroyed", "<red>Your drone was destroyed! Returning to your body...</red>"),
+    DRONE_INTEGRITY_LOW("drone.integrity-low", "<red>WARNING: Drone integrity low!</red>");
 
     private final String path;
     private final Object defaultVal;

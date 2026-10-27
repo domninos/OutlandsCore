@@ -227,3 +227,16 @@ events:
   route-wand-arm: "<green>Wand armed for convoy <white>%event%</white>. Left-click = start anchor, right-click = end anchor.</green>"
   route-wand-none: "<red>Your wand is not armed for a convoy — run <white>/extraction events route {event} wand</white> first.</red>"
   route-needs-player: "<red>Only players can set convoy anchors.</red>"
+
+# Drone mode (/drone)
+drone:
+  already-active: "<red>You are already in drone mode. Use <white>/drone return</white> to exit.</red>"
+  activated: "<green>Drone activated! WASD to move, Space to ascend, Sneak to descend, <white>/drone return</white> to exit.</green>"
+  activate-failed: "<red>Failed to activate drone.</red>"
+  not-active: "<red>You are not in drone mode.</red>"
+  returned: "<green>Returned to your body.</green>"
+  recall-failed: "<red>Failed to recall.</red>"
+  battery-depleted: "<red>Drone battery depleted! Returning...</red>"
+  link-lost: "<red>Your drone link was lost. Returning...</red>"
+  destroyed: "<red>Your drone was destroyed! Returning to your body...</red>"
+  integrity-low: "<red>WARNING: Drone integrity low!</red>"

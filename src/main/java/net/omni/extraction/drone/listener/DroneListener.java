@@ -1,8 +1,8 @@
 package net.omni.extraction.drone.listener;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.drone.DroneManager;
 import net.omni.extraction.drone.DroneSession;
+import net.omni.extraction.managers.DroneManager;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;

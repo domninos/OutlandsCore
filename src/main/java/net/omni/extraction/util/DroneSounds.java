@@ -1,4 +1,4 @@
-package net.omni.extraction.drone;
+package net.omni.extraction.util;
 
 import org.bukkit.Location;
 import org.bukkit.Sound;

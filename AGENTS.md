@@ -758,15 +758,17 @@ placeholders — the method adds the `%...%` wrapping itself, keeping keys consi
   cache-only `getLoaded` + `savePlayerShared`, immediate on MySQL): `AreaManager.checkPlayerAreas` marks the area on
   first entry. `DatabaseManager.PLAYER_COLUMNS` gained the column (index 19) with `CREATE TABLE` + `ensureColumn`
   migrations for existing MySQL/SQLite tables. Messages `compass.tracking`/`compass.no-target`.
-- **Drone mode** (`/drone`, `/drone return|stop|exit`; perm `extraction.drone`): `drone/DroneManager` (sessions,
+- **Drone mode** (`/drone`, `/drone return|stop|exit`; perm `extraction.drone`): `managers/DroneManager` (sessions,
   battery BossBar task draining 1%/s, recall/stop), `drone/DroneSession` (body location/yaw/pitch, original
-  GameMode, body marker, mount, battery), `drone/DroneCommand`, `drone/listener/DroneListener`
+  GameMode, body marker, mount, battery), `commands/DroneCommand` (conventions: jspecify `@NonNull`,
+  `plugin.sendMessage` + `Messages`, perm guard `extraction.drone`, NO `§`), `drone/listener/DroneListener`
   (quit/world-change/respawn recall), `drone/packet/DroneInputAdapter` (ProtocolLib `STEER_VEHICLE` listener —
   works because the pilot RIDES the mount; WASD/Space/Sneak input → `DronePhysics.calculateMovement` +
   `checkCollision` ray-trace collision, teleport applied on the main thread), `drone/util/DronePhysics`
-  (movement vectors + solid-block ray-trace — the drone bumps into walls, never phases), `drone/DroneSounds`
-  (move/ascend/descend/hurt/destroyed Breeze cues + `BLOCK_BEACON_AMBIENT` idle hum every ~2s; mount is
-  silent so vanilla sounds don't pollute). **Drone body = visible `Bee` mount** the pilot actually rides
+  (movement vectors + solid-block ray-trace — the drone bumps into walls, never phases), `util/DroneSounds`
+  (drone-owned static sound util: move/ascend/descend/hurt/destroyed Breeze cues + `BLOCK_BEACON_AMBIENT`
+  idle hum every ~2s; mount is silent so vanilla sounds don't pollute). All drone player-facing text lives in
+  `Messages` (`drone.*`) + `messages.yml`. **Drone body = visible `Bee` mount** the pilot actually rides
   (`addPassenger` — passengers follow mount teleports): AI off, no gravity, persistent, NOT invulnerable,
   silent, `Attribute.MAX_HEALTH` = `drone.max-health` (default 40, config.yml `drone:` section) healed on
   spawn. Re-skin it to look like a drone by replacing the bee entity texture in the hosted resource pack

@@ -1,4 +1,4 @@
-package net.omni.extraction.drone;
+package net.omni.extraction.managers;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
@@ -9,8 +9,11 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.drone.DroneSession;
 import net.omni.extraction.drone.listener.DroneListener;
 import net.omni.extraction.drone.packet.DroneInputAdapter;
+import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.DroneSounds;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -82,7 +85,7 @@ public class DroneManager {
 
             // Stranded-rider guard: if the pilot somehow left the mount, pull them back.
             if (player.getVehicle() != session.getMount()) {
-                player.sendMessage(Component.text("Your drone link was lost. Returning...").color(NamedTextColor.RED));
+                plugin.sendMessage(player, Messages.DRONE_LINK_LOST.toString());
                 recall(player);
                 continue;
             }
@@ -111,7 +114,7 @@ public class DroneManager {
             }
 
             if (session.isEmptyBattery()) {
-                player.sendMessage(Component.text("Drone battery depleted! Returning...").color(NamedTextColor.RED));
+                plugin.sendMessage(player, Messages.DRONE_BATTERY_DEPLETED.toString());
                 recall(player);
             }
         }
@@ -132,6 +135,11 @@ public class DroneManager {
                 session.getMount().remove();
             }
         } catch (Exception ignored) {
+        }
+
+        if (session.getNpcId() != null) {
+            plugin.getLogger().info("Removed drone session for " + session.getPlayerId()
+                    + " (npc: " + session.getNpcId() + ")");
         }
     }
 
@@ -272,7 +280,8 @@ public class DroneManager {
 
         applyPilotInvisibility(player);
 
-        BossBar bar = BossBar.bossBar(Component.text("Drone Battery: 100%").color(NamedTextColor.GREEN), 1.0f, BossBar.Color.GREEN, BossBar.Overlay.PROGRESS);
+        BossBar bar = BossBar.bossBar(Component.text("Drone Battery: 100%")
+                .color(NamedTextColor.GREEN), 1.0f, BossBar.Color.GREEN, BossBar.Overlay.PROGRESS);
         player.showBossBar(bar);
         bossBars.put(player.getUniqueId(), bar);
 
@@ -365,7 +374,7 @@ public class DroneManager {
 
             if (last == null || now - last > 3000) {
                 lowHpWarnings.put(session.getPlayerId(), now);
-                player.sendMessage(Component.text("WARNING: Drone integrity low!").color(NamedTextColor.RED));
+                plugin.sendMessage(player, Messages.DRONE_INTEGRITY_LOW.toString());
             }
         }
     }
@@ -383,7 +392,7 @@ public class DroneManager {
         }
 
         if (player != null) {
-            player.sendMessage(Component.text("Your drone was destroyed! Returning to your body...").color(NamedTextColor.RED));
+            plugin.sendMessage(player, Messages.DRONE_DESTROYED.toString());
             recall(player);
         } else {
             cleanupSession(session);
@@ -441,12 +450,24 @@ public class DroneManager {
 
         try {
             bodyNpc.removeForAll();
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            plugin.getLogger().warning("Could not remove drone body NPC " + sessionNpcName(bodyNpc)
+                    + " from players: " + e.getMessage());
         }
 
         try {
             FancyNpcsPlugin.get().getNpcManager().removeNpc(bodyNpc);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            plugin.getLogger().warning("Could not unregister drone body NPC " + sessionNpcName(bodyNpc)
+                    + ": " + e.getMessage());
+        }
+    }
+
+    private String sessionNpcName(Npc bodyNpc) {
+        try {
+            return bodyNpc.getData().getName();
+        } catch (Exception e) {
+            return "?";
         }
     }
 
