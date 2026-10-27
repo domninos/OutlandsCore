@@ -2,11 +2,13 @@ package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.Permissions;
+import net.omni.extraction.party.Party;
 import net.omni.extraction.worldevent.WorldEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 
 import java.util.ArrayList;
@@ -89,14 +91,14 @@ public class ExtractionTabCompleter implements TabCompleter {
                 && (args[1].equalsIgnoreCase("kick") || args[1].equalsIgnoreCase("join"))) {
             List<String> names = new ArrayList<>();
 
-            if (sender instanceof org.bukkit.entity.Player player) {
-                net.omni.extraction.party.Party party = plugin.getPartyManager().loadPartyOfPlayer(player.getUniqueId());
+            if (sender instanceof Player player) {
+                Party party = plugin.getPartyManager().loadPartyOfPlayer(player.getUniqueId());
 
                 if (party != null)
                     names.addAll(party.getMembers().values());
             }
 
-            names.addAll(Bukkit.getOnlinePlayers().stream().map(org.bukkit.entity.Player::getName).toList());
+            names.addAll(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
             return StringUtil.copyPartialMatches(args[2], names, new ArrayList<>());
         }
 

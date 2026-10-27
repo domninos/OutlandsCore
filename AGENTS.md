@@ -34,6 +34,12 @@ Parse messages with `Messages#replace(...)` — varargs pairs of `key-without-pe
 `Messages.AREA_LIST_ENTRY.replace("area", name, "state", state)`. **Never** `String#replace` for message
 placeholders — the method adds the `%...%` wrapping itself, keeping keys consistent with `messages.yml`.
 
+### Imports
+Always declare imports at the top of the file — never use fully-qualified class names inline (write
+`PlayerData pd = ...` with `import net.omni.extraction.data.PlayerData;`, not
+`net.omni.extraction.data.PlayerData pd = ...`). Same for static calls and field types. When touching
+existing code that has inline qualified names, convert them to imports.
+
 ### Integrations
 - Use direct plugin APIs only — do **not** introduce reflection.
 - Integration dependencies are `provided`; guard their use so a missing plugin does not crash the server.

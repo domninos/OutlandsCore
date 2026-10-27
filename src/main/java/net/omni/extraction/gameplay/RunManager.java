@@ -6,6 +6,7 @@ import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.managers.TokenManager;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.pets.PetDefinition;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -109,7 +110,7 @@ public class RunManager {
 
         plugin.sendMessage(player, Messages.RUN_ENTERED.toString());
 
-        net.omni.extraction.pets.PetDefinition pet = plugin.getPetManager().getActive(data);
+        PetDefinition pet = plugin.getPetManager().getActive(data);
         if (pet != null && pet.boostPercent() > 0)
             plugin.sendMessage(player, Messages.PETS_RUN_BOOST
                     .replace("pet", pet.name())
@@ -179,7 +180,7 @@ public class RunManager {
     }
 
     private String extractBoostNote(PlayerData data, int rawBase) {
-        net.omni.extraction.pets.PetDefinition pet = plugin.getPetManager().getActive(data);
+        PetDefinition pet = plugin.getPetManager().getActive(data);
         if (pet == null || pet.boostPercent() <= 0)
             return "";
         return Messages.PETS_BOOST_NOTE.replace("pet", pet.name())
@@ -420,7 +421,7 @@ public class RunManager {
         tokenManager.addTokens(uuid, boosted);
 
         if (boosted != amount) {
-            net.omni.extraction.pets.PetDefinition pet = plugin.getPetManager().getActive(data);
+            PetDefinition pet = plugin.getPetManager().getActive(data);
             String note = pet == null ? null : Messages.PETS_BOOST_NOTE
                     .replace("pet", pet.name())
                     .replace("boost", String.valueOf(pet.boostPercent()));

@@ -7,6 +7,9 @@ import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutSlot;
 import net.omni.extraction.managers.TokenManager;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.pets.PetDefinition;
+import net.omni.extraction.relics.RelicDefinition;
+import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.upgrade.UpgradeTier;
 import net.omni.extraction.util.StringUtils;
 import org.bukkit.Material;
@@ -129,15 +132,14 @@ public class ShopManager {
         if (rawSlot < 0)
             return;
 
-        java.util.List<net.omni.extraction.pets.PetDefinition> definitions =
-                plugin.getPetManager().getDefinitions();
+        List<PetDefinition> definitions = plugin.getPetManager().getDefinitions();
 
         if (rawSlot >= definitions.size())
             return;
 
-        net.omni.extraction.pets.PetDefinition def = definitions.get(rawSlot);
+        PetDefinition def = definitions.get(rawSlot);
         TokenManager tokens = plugin.getTokenManager();
-        net.omni.extraction.data.PlayerData data =
+        PlayerData data =
                 plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
 
         if (data.ownsPet(def.id())) {
@@ -211,10 +213,10 @@ public class ShopManager {
         LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, cell);
         if (slot == null) return null;
         if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT) {
-            String kind = slot == LoadoutSlot.CHARM ? net.omni.extraction.relics.RelicManager.KIND_CHARM : net.omni.extraction.relics.RelicManager.KIND_ARTIFACT;
+            String kind = slot == LoadoutSlot.CHARM ? RelicManager.KIND_CHARM : RelicManager.KIND_ARTIFACT;
             String id = slot == LoadoutSlot.CHARM ? data.getActiveCharm() : data.getActiveArtifact();
             if (id == null || id.isBlank()) return null;
-            net.omni.extraction.relics.RelicDefinition def = plugin.getRelicManager().getDefinition(kind, id);
+            RelicDefinition def = plugin.getRelicManager().getDefinition(kind, id);
             return def == null ? null : plugin.getRelicEffectManager().equippedItem(data.getUuid(), def);
         }
         if (slot == LoadoutSlot.OFFHAND) {

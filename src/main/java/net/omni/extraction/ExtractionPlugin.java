@@ -40,6 +40,7 @@ import net.omni.extraction.relics.RelicListener;
 import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.scoreboard.ScoreboardListener;
 import net.omni.extraction.scoreboard.ScoreboardManager;
+import net.omni.extraction.shop.ShopManager;
 import net.omni.extraction.upgrade.UpgradeManager;
 import net.omni.extraction.util.*;
 import net.omni.extraction.worldevent.WorldEventListener;
@@ -90,7 +91,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private RelicManager relicManager;
     private RelicEffectManager relicEffectManager;
     private PackManager packManager;
-    private net.omni.extraction.shop.ShopManager shopManager;
+    private ShopManager shopManager;
     private WorldEventManager worldEventManager;
     private PartyManager partyManager;
     private PartyListener partyListener;
@@ -242,7 +243,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.packManager = new PackManager(this);
         packManager.init();
 
-        this.shopManager = new net.omni.extraction.shop.ShopManager(this);
+        this.shopManager = new ShopManager(this);
 
         this.databaseManager = new DatabaseManager(this);
         this.playerDataManager = new PlayerDataManager(this);
@@ -562,7 +563,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         return packManager;
     }
 
-    public net.omni.extraction.shop.ShopManager getShopManager() {
+    public ShopManager getShopManager() {
         return shopManager;
     }
 

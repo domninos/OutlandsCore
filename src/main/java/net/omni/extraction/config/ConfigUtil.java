@@ -1,6 +1,7 @@
 package net.omni.extraction.config;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.area.AreaChestLocation;
 import net.omni.extraction.compass.CompassIcon;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -967,7 +968,7 @@ public class ConfigUtil {
                 "SHULKER_BOX"
         ), savedDefaults);
 
-        net.omni.extraction.area.AreaChestLocation.refreshContainers(containers);
+        AreaChestLocation.refreshContainers(containers);
     }
 
     private void loadBackpack(AtomicInteger savedDefaults) {

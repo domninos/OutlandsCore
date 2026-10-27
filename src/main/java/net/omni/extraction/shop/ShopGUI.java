@@ -5,6 +5,7 @@ import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.pets.PetDefinition;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -126,15 +127,15 @@ public class ShopGUI {
         fillFiller(renderer, config.getPetsShopFillerMaterial(), config.getPetsShopFillerName());
 
         ShopManager shop = plugin.getShopManager();
-        net.omni.extraction.data.PlayerData data =
+        PlayerData data =
                 plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
 
         int size = inventory.getSize();
-        java.util.List<net.omni.extraction.pets.PetDefinition> definitions =
+        List<PetDefinition> definitions =
                 plugin.getPetManager().getDefinitions();
 
         for (int i = 0; i < definitions.size() && i < size - 9; i++) {
-            net.omni.extraction.pets.PetDefinition def = definitions.get(i);
+            PetDefinition def = definitions.get(i);
             boolean owned = data.ownsPet(def.id());
 
             Material mat = Material.matchMaterial(def.icon());
@@ -146,7 +147,7 @@ public class ShopGUI {
 
             renderer.setDisplayName(meta, def.name());
 
-            java.util.List<String> lore = new ArrayList<>();
+            List<String> lore = new ArrayList<>();
             for (String line : def.lore()) lore.add(line);
             for (String line : config.getPetsGuiBoostLore())
                 lore.add(line.replace("%boost%", String.valueOf(def.boostPercent())));

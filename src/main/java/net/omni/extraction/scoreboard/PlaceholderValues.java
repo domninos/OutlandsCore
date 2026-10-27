@@ -6,6 +6,7 @@ import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.managers.TokenManager;
+import net.omni.extraction.pets.PetDefinition;
 import org.bukkit.entity.Player;
 
 import java.time.ZoneId;
@@ -72,7 +73,7 @@ public final class PlaceholderValues {
             }
             case "party" -> plugin.getPartyManager().getPartyPlaceholder(player.getUniqueId());
             case "pet" -> {
-                net.omni.extraction.pets.PetDefinition pet =
+                PetDefinition pet =
                         plugin.getPetManager().getActive(data);
                 yield pet != null ? pet.name() : "";
             }

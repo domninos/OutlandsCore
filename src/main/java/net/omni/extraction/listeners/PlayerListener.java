@@ -6,6 +6,7 @@ import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.loadout.LoadoutManager;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.pets.PetDefinition;
 import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.util.LootItemUtil;
 import net.omni.extraction.util.RelicItemUtil;
@@ -248,7 +249,7 @@ public class PlayerListener implements Listener {
             int amount = LootItemUtil.getTokenAmount(item);
 
             boolean inRun = plugin.getRunManager().isPlayerInRun(player.getUniqueId());
-            net.omni.extraction.data.PlayerData pd = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
+            PlayerData pd = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
             int boosted = inRun ? plugin.getPetManager().applyBoost(pd, amount) : amount;
 
             event.setCancelled(true);
@@ -345,8 +346,8 @@ public class PlayerListener implements Listener {
         plugin.sendMessage(player, Messages.LOOT_TIME_BANKED.replace("time", String.valueOf(minutes)));
     }
 
-    private String buildPetBoostNote(net.omni.extraction.data.PlayerData data) {
-        net.omni.extraction.pets.PetDefinition pet = plugin.getPetManager().getActive(data);
+    private String buildPetBoostNote(PlayerData data) {
+        PetDefinition pet = plugin.getPetManager().getActive(data);
         if (pet == null || pet.boostPercent() <= 0)
             return "";
         return Messages.PETS_BOOST_NOTE.replace("pet", pet.name())
