@@ -60,12 +60,17 @@ public class LootEditorListener implements Listener {
         if (!(event.getInventory().getHolder() instanceof LootEditorHolder))
             return;
 
-        for (int slot : event.getRawSlots()) {
-            if (slot < LootEditorSession.SIZE) {
-                event.setCancelled(true);
-                return;
-            }
+        if (!(event.getWhoClicked() instanceof Player player))
+            return;
+
+        LootEditorSession session = plugin.getLootEditorManager().getSession(player);
+
+        if (session == null) {
+            event.setCancelled(true);
+            return;
         }
+
+        plugin.getLootEditorManager().handleDrag(player, session, event);
     }
 
     @EventHandler

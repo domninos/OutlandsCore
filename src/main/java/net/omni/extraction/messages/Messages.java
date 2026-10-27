@@ -242,6 +242,7 @@ public enum Messages {
     DRONE_INTEGRITY_LOW("drone.integrity-low", "<red>WARNING: Drone integrity low!</red>"),
 
     LOOT_EDITOR_SAVED("loot-editor.saved", "<green>Loot table <white>%table%</white> saved (<white>%entries%</white> entr%s%).</green>"),
+    LOOT_EDITOR_SAVED_CHEST("loot-editor.saved-chest", "<green>Chest loot saved (<white>%entries%</white> entr%s%).</green>"),
     LOOT_EDITOR_ITEM_REJECTED("loot-editor.item-rejected", "<red>That item cannot be turned into a loot entry.</red>"),
     LOOT_EDITOR_OPENED("loot-editor.opened", "<green>Editing loot table <white>%table%</white>. The table saves when you close the menu.</green>"),
     HELP_CATEGORIES_HEADER("help.categories-header", "<gray>Categories — click one to view its commands:</gray>"),

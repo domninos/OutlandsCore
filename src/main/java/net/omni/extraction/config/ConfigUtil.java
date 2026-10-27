@@ -111,6 +111,9 @@ public class ConfigUtil {
     private String lootEditorSaveMaterial;
     private String lootEditorSaveName;
     private List<String> lootEditorSaveLore;
+    private String lootEditorSaveChestMaterial;
+    private String lootEditorSaveChestName;
+    private List<String> lootEditorSaveChestLore;
     private String lootEditorRemoveMaterial;
     private String lootEditorRemoveName;
     private List<String> lootEditorRemoveLore;
@@ -1053,6 +1056,13 @@ public class ConfigUtil {
         this.lootEditorSaveLore = getAndDefaultStringList(ConfigKeys.LOOT_EDITOR_SAVE_LORE, List.of(
                 "<gray>Saves the loot table to</gray>",
                 "<gray>loot_tables.yml.</gray>"), savedDefaults);
+        this.lootEditorSaveChestMaterial = getAndDefaultString(ConfigKeys.LOOT_EDITOR_SAVE_CHEST_MATERIAL,
+                "CHEST", savedDefaults);
+        this.lootEditorSaveChestName = getAndDefaultString(ConfigKeys.LOOT_EDITOR_SAVE_CHEST_NAME,
+                "<green>Save to Chest</green>", savedDefaults);
+        this.lootEditorSaveChestLore = getAndDefaultStringList(ConfigKeys.LOOT_EDITOR_SAVE_CHEST_LORE, List.of(
+                "<gray>Applies these entries only to</gray>",
+                "<gray>this loot chest (own table).</gray>"), savedDefaults);
         this.lootEditorRemoveMaterial = getAndDefaultString(ConfigKeys.LOOT_EDITOR_REMOVE_MATERIAL,
                 "RED_WOOL", savedDefaults);
         this.lootEditorRemoveName = getAndDefaultString(ConfigKeys.LOOT_EDITOR_REMOVE_NAME,
@@ -1697,6 +1707,18 @@ public class ConfigUtil {
 
     public List<String> getLootEditorSaveLore() {
         return lootEditorSaveLore;
+    }
+
+    public String getLootEditorSaveChestMaterial() {
+        return lootEditorSaveChestMaterial;
+    }
+
+    public String getLootEditorSaveChestName() {
+        return lootEditorSaveChestName;
+    }
+
+    public List<String> getLootEditorSaveChestLore() {
+        return lootEditorSaveChestLore;
     }
 
     public String getLootEditorRemoveMaterial() {

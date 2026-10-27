@@ -2,6 +2,7 @@ package net.omni.extraction.area;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.hologram.HologramManager;
+import net.omni.extraction.looteditor.LootEditorManager;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.worldevent.WorldEventManager;
 import org.bukkit.Bukkit;
@@ -16,8 +17,6 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Locale;
-
 public class AreaWandListener implements Listener {
 
     private final ExtractionPlugin plugin;
@@ -26,7 +25,7 @@ public class AreaWandListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) return;
 
@@ -185,28 +184,11 @@ public class AreaWandListener implements Listener {
         }
 
         if (action == Action.RIGHT_CLICK_BLOCK) {
-            plugin.getLootEditorManager().open(player, resolveTableId(area, block));
+            plugin.getLootEditorManager().open(player, LootEditorManager.resolveTableId(area, block.getLocation()));
             return;
         }
 
         plugin.getAreaEditorManager().openChestEditor(player, area, block.getLocation());
-    }
-
-    /** The chest's own loot table, else the area's default one, else a table named after the area. */
-    private String resolveTableId(Area area, Block block) {
-        for (AreaChestLocation chest : area.getChestLocations()) {
-            Location loc = chest.getLocation();
-
-            if (loc.getBlockX() == block.getX() && loc.getBlockY() == block.getY()
-                    && loc.getBlockZ() == block.getZ()
-                    && chest.getLootType() != null && !chest.getLootType().isBlank())
-                return chest.getLootType();
-        }
-
-        if (area.getLootTable() != null && !area.getLootTable().isBlank())
-            return area.getLootTable();
-
-        return area.getName().toLowerCase(Locale.ROOT);
     }
 
     private Area resolveArea(AreaManager areaManager, Player player, ItemStack item) {

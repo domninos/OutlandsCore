@@ -8,6 +8,7 @@ import net.omni.extraction.areaeditor.AreaEditorSession.Mode;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.integration.MythicMobsProvider;
 import net.omni.extraction.loot.LootTable;
+import net.omni.extraction.looteditor.LootEditorManager;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.mobs.MobTemplate;
@@ -351,27 +352,52 @@ public class AreaEditorManager {
         Area area = session.getArea();
         Location location = session.getTargetLocation();
 
-        Material containerType = AreaChestLocation.isSupported(location.getBlock().getType())
-                ? location.getBlock().getType()
-                : AreaChestLocation.DEFAULT_CONTAINER;
+        AreaChestLocation existing = findChestAt(area, location);
+        AreaChestLocation target;
 
-        if (!area.addChestLocation(location, lootType, containerType)) {
-            plugin.sendMessage(player, Messages.AREA_CHEST_EXISTS.toString());
-            close(player);
-            return;
+        if (existing != null) {
+            // Re-picking on an already-registered chest just rebinds its table.
+            existing.setLootType(lootType);
+            target = existing;
+        } else {
+            Material containerType = AreaChestLocation.isSupported(location.getBlock().getType())
+                    ? location.getBlock().getType()
+                    : AreaChestLocation.DEFAULT_CONTAINER;
+
+            if (!area.addChestLocation(location, lootType, containerType)) {
+                plugin.sendMessage(player, Messages.AREA_CHEST_EXISTS.toString());
+                close(player);
+                return;
+            }
+
+            target = area.getChestLocations().get(area.getChestLocations().size() - 1);
         }
 
         plugin.getAreaManager().markDirty(area);
-
-        AreaChestLocation added = area.getChestLocations().get(area.getChestLocations().size() - 1);
-        plugin.getHologramManager().updateChestHologram(area, added);
+        plugin.getHologramManager().updateChestHologram(area, target);
 
         plugin.sendMessage(player, Messages.AREA_CHEST_SET.replace(
                 "x", String.valueOf(location.getBlockX()),
                 "y", String.valueOf(location.getBlockY()),
                 "z", String.valueOf(location.getBlockZ())));
 
-        close(player);
+        String tableId = lootType != null && !lootType.isBlank()
+                ? lootType
+                : LootEditorManager.resolveTableId(area, location);
+
+        plugin.getLootEditorManager().open(player, area, target, tableId);
+    }
+
+    private AreaChestLocation findChestAt(Area area, Location location) {
+        for (AreaChestLocation chest : area.getChestLocations()) {
+            Location loc = chest.getLocation();
+
+            if (loc.getBlockX() == location.getBlockX() && loc.getBlockY() == location.getBlockY()
+                    && loc.getBlockZ() == location.getBlockZ())
+                return chest;
+        }
+
+        return null;
     }
 
     private void confirmSpawn(Player player, AreaEditorSession session) {

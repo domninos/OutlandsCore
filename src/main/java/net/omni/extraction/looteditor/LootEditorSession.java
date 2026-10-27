@@ -1,5 +1,7 @@
 package net.omni.extraction.looteditor;
 
+import net.omni.extraction.area.Area;
+import net.omni.extraction.area.AreaChestLocation;
 import net.omni.extraction.loot.LootEntry;
 
 import java.util.ArrayList;
@@ -16,6 +18,7 @@ public class LootEditorSession {
     public static final int TABLE_CONTENT_END = 44;
     public static final int SLOT_BACK = 45;
     public static final int SLOT_SAVE = 49;
+    public static final int SLOT_SAVE_CHEST = 51;
     /** Entry editor: field rows (decrement, value, increment). */
     public static final int SLOT_AMOUNT_DEC = 19;
     public static final int SLOT_AMOUNT = 20;
@@ -34,13 +37,34 @@ public class LootEditorSession {
 
     private final String tableId;
     private final List<LootEntry> entries;
+    private final Area area;
+    private final AreaChestLocation chest;
     private int page = PAGE_TABLE;
     private int editingIndex = -1;
     private boolean rendering;
+    private boolean savedToChest;
 
     public LootEditorSession(String tableId, List<LootEntry> entries) {
+        this(tableId, entries, null, null);
+    }
+
+    public LootEditorSession(String tableId, List<LootEntry> entries, Area area, AreaChestLocation chest) {
         this.tableId = tableId;
         this.entries = new ArrayList<>(entries);
+        this.area = area;
+        this.chest = chest;
+    }
+
+    public Area getArea() {
+        return area;
+    }
+
+    public AreaChestLocation getChest() {
+        return chest;
+    }
+
+    public boolean hasChestTarget() {
+        return area != null && chest != null;
     }
 
     public String getTableId() {
@@ -79,5 +103,13 @@ public class LootEditorSession {
 
     public void setRendering(boolean rendering) {
         this.rendering = rendering;
+    }
+
+    public boolean isSavedToChest() {
+        return savedToChest;
+    }
+
+    public void setSavedToChest(boolean savedToChest) {
+        this.savedToChest = savedToChest;
     }
 }

@@ -244,6 +244,7 @@ drone:
 # Loot Table Editor GUI
 loot-editor:
   saved: "<green>Loot table <white>%table%</white> saved (<white>%entries%</white> entr%s%).</green>"
+  saved-chest: "<green>Chest loot saved (<white>%entries%</white> entr%s%).</green>"
   item-rejected: "<red>That item cannot be turned into a loot entry.</red>"
   opened: "<green>Editing loot table <white>%table%</white>. The table saves when you close the menu.</green>"
 

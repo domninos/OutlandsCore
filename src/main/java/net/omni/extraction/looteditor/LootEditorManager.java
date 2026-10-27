@@ -1,14 +1,18 @@
 package net.omni.extraction.looteditor;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.area.Area;
+import net.omni.extraction.area.AreaChestLocation;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.LootItemUtil;
 import net.omni.extraction.util.StringUtils;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -16,6 +20,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -31,6 +36,10 @@ public class LootEditorManager {
     }
 
     public void open(Player player, String tableId) {
+        open(player, null, null, tableId);
+    }
+
+    public void open(Player player, Area area, AreaChestLocation chest, String tableId) {
         if (tableId == null || tableId.isBlank())
             return;
 
@@ -39,10 +48,30 @@ public class LootEditorManager {
                 ? new ArrayList<>(existing.getEntries())
                 : List.of();
 
-        LootEditorSession session = new LootEditorSession(tableId, entries);
+        LootEditorSession session = new LootEditorSession(tableId, entries, area, chest);
         sessions.put(player.getUniqueId(), session);
         plugin.sendMessage(player, Messages.LOOT_EDITOR_OPENED.replace("table", tableId));
         render(player, session);
+    }
+
+    /**
+     * The chest's own loot table, else the area's default one, else a table
+     * named after the area. Shared by the wand right-click and the chest picker.
+     */
+    public static String resolveTableId(Area area, Location location) {
+        for (AreaChestLocation chest : area.getChestLocations()) {
+            Location loc = chest.getLocation();
+
+            if (loc.getBlockX() == location.getBlockX() && loc.getBlockY() == location.getBlockY()
+                    && loc.getBlockZ() == location.getBlockZ()
+                    && chest.getLootType() != null && !chest.getLootType().isBlank())
+                return chest.getLootType();
+        }
+
+        if (area.getLootTable() != null && !area.getLootTable().isBlank())
+            return area.getLootTable();
+
+        return area.getName().toLowerCase(Locale.ROOT);
     }
 
     public LootEditorSession getSession(Player player) {
@@ -88,6 +117,11 @@ public class LootEditorManager {
         inventory.setItem(4, info);
         inventory.setItem(LootEditorSession.SLOT_SAVE, item(config.getLootEditorSaveMaterial(),
                 config.getLootEditorSaveName(), config.getLootEditorSaveLore()));
+
+        if (session.hasChestTarget())
+            inventory.setItem(LootEditorSession.SLOT_SAVE_CHEST, item(config.getLootEditorSaveChestMaterial(),
+                    config.getLootEditorSaveChestName(), config.getLootEditorSaveChestLore()));
+
         inventory.setItem(LootEditorSession.SLOT_BACK, item(
                 plugin.getConfigUtil().getAreaEditorNavBackMaterial(),
                 plugin.getConfigUtil().getAreaEditorNavBackName(), List.of()));
@@ -224,6 +258,11 @@ public class LootEditorManager {
             return false;
         }
 
+        if (rawSlot == LootEditorSession.SLOT_SAVE_CHEST && session.hasChestTarget()) {
+            saveToChest(player, session);
+            return false;
+        }
+
         if (rawSlot < LootEditorSession.TABLE_CONTENT_START || rawSlot > LootEditorSession.TABLE_CONTENT_END)
             return false;
 
@@ -342,6 +381,10 @@ public class LootEditorManager {
     }
 
     private LootEntry toEntry(ItemStack item) {
+        return toEntry(item, item == null ? 1 : Math.max(1, item.getAmount()));
+    }
+
+    private LootEntry toEntry(ItemStack item, int amountOverride) {
         if (item == null || item.getType().isAir())
             return null;
 
@@ -357,7 +400,7 @@ public class LootEditorManager {
             return keyId == null || keyId.isBlank() ? null : entry("KEY:" + keyId, 1);
         }
 
-        return entry(item.getType().name(), Math.max(1, item.getAmount()));
+        return entry(item.getType().name(), amountOverride);
     }
 
     private LootEntry entry(String type, int amount) {
@@ -381,12 +424,106 @@ public class LootEditorManager {
         plugin.getLootTableManager().save();
     }
 
+    /** Saves the entries into a chest-specific table and binds the chest to it. */
+    public void saveToChest(Player player, LootEditorSession session) {
+        AreaChestLocation chest = session.getChest();
+
+        if (chest == null || session.getArea() == null)
+            return;
+
+        String tableId = chestTableName(chest);
+        LootTable table = plugin.getLootTableManager().get(tableId);
+
+        if (table == null) {
+            table = new LootTable(tableId);
+            plugin.getLootTableManager().put(table);
+        }
+
+        table.getEntries().clear();
+        table.getEntries().addAll(session.getEntries());
+        plugin.getLootTableManager().save();
+
+        chest.setLootType(tableId);
+        plugin.getAreaManager().save(session.getArea());
+        plugin.getHologramManager().updateChestHologram(session.getArea(), chest);
+
+        session.setSavedToChest(true);
+
+        int count = session.getEntries().size();
+        plugin.sendMessage(player, Messages.LOOT_EDITOR_SAVED_CHEST.replace(
+                "entries", String.valueOf(count),
+                "s", count == 1 ? "y" : "ies"));
+
+        player.closeInventory();
+    }
+
+    private String chestTableName(AreaChestLocation chest) {
+        Location loc = chest.getLocation();
+        return ("chest_" + loc.getWorld().getName() + "_" + loc.getBlockX() + "_" + loc.getBlockY()
+                + "_" + loc.getBlockZ()).toLowerCase(Locale.ROOT);
+    }
+
+    /** Drag support: items dragged from the player inventory into free content slots become entries. */
+    public void handleDrag(Player player, LootEditorSession session, InventoryDragEvent event) {
+        if (session.getPage() != LootEditorSession.PAGE_TABLE) {
+            event.setCancelled(true);
+            return;
+        }
+
+        for (int slot : event.getRawSlots()) {
+            if (slot >= LootEditorSession.SIZE)
+                continue;
+
+            if (slot < LootEditorSession.TABLE_CONTENT_START || slot > LootEditorSession.TABLE_CONTENT_END) {
+                event.setCancelled(true);
+                return;
+            }
+
+            if (slot - LootEditorSession.TABLE_CONTENT_START < session.getEntries().size()) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+
+        ItemStack cursor = event.getCursor();
+
+        if (cursor == null || cursor.getType().isAir())
+            return;
+
+        int total = 0;
+
+        for (Map.Entry<Integer, ItemStack> e : event.getNewItems().entrySet())
+            if (e.getKey() >= LootEditorSession.TABLE_CONTENT_START
+                    && e.getKey() <= LootEditorSession.TABLE_CONTENT_END
+                    && e.getValue() != null && !e.getValue().getType().isAir())
+                total += e.getValue().getAmount();
+
+        if (total <= 0)
+            return;
+
+        LootEntry entry = toEntry(cursor, total);
+
+        if (entry == null) {
+            plugin.sendMessage(player, Messages.LOOT_EDITOR_ITEM_REJECTED.toString());
+            return;
+        }
+
+        event.setCancelled(true);
+        session.getEntries().add(entry);
+        event.setCursor(null);
+        render(player, session);
+    }
+
     /** Called from the close listener; ignores the synthetic close fired by re-renders. */
     public void handleClose(Player player, LootEditorSession session) {
         if (session.isRendering())
             return;
 
         sessions.remove(player.getUniqueId());
+
+        if (session.isSavedToChest())
+            return; // Save to Chest already persisted the entries; nothing more to do.
+
         save(session);
 
         int count = session.getEntries().size();

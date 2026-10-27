@@ -5,14 +5,22 @@ import net.omni.extraction.managers.DroneManager;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityDismountEvent;
 import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 
@@ -123,5 +131,66 @@ public class DroneListener implements Listener {
         if (session != null) {
             droneManager.handleMountDestroyed(session);
         }
+    }
+
+    /**
+     * While piloting, the player is a camera: no attacking (direct hits or
+     * projectiles), no breaking, placing, or interacting. HIGH priority runs
+     * before the wand/area listeners so a piloting admin can't use the wand.
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPilotAttack(EntityDamageByEntityEvent event) {
+        if (isDroneAction(event.getDamager())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPilotBlockBreak(BlockBreakEvent event) {
+        if (droneManager.isInDrone(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPilotBlockPlace(BlockPlaceEvent event) {
+        if (droneManager.isInDrone(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPilotInteract(PlayerInteractEvent event) {
+        if (!droneManager.isInDrone(event.getPlayer())) {
+            return;
+        }
+
+        if (event.getAction() != Action.PHYSICAL || event.getClickedBlock() != null) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPilotInteractEntity(PlayerInteractEntityEvent event) {
+        if (droneManager.isInDrone(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPilotInteractAtEntity(PlayerInteractAtEntityEvent event) {
+        if (droneManager.isInDrone(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
+    private boolean isDroneAction(Entity damager) {
+        if (damager instanceof Player player && droneManager.isInDrone(player)) {
+            return true;
+        }
+
+        return damager instanceof Projectile projectile
+                && projectile.getShooter() instanceof Player shooter
+                && droneManager.isInDrone(shooter);
     }
 }

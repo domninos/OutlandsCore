@@ -244,6 +244,9 @@ public final class ConfigKeys {
     public static final String LOOT_EDITOR_SAVE_MATERIAL = "loot-editor.save-material";
     public static final String LOOT_EDITOR_SAVE_NAME = "loot-editor.save-name";
     public static final String LOOT_EDITOR_SAVE_LORE = "loot-editor.save-lore";
+    public static final String LOOT_EDITOR_SAVE_CHEST_MATERIAL = "loot-editor.save-chest-material";
+    public static final String LOOT_EDITOR_SAVE_CHEST_NAME = "loot-editor.save-chest-name";
+    public static final String LOOT_EDITOR_SAVE_CHEST_LORE = "loot-editor.save-chest-lore";
     public static final String LOOT_EDITOR_REMOVE_MATERIAL = "loot-editor.remove-material";
     public static final String LOOT_EDITOR_REMOVE_NAME = "loot-editor.remove-name";
     public static final String LOOT_EDITOR_REMOVE_LORE = "loot-editor.remove-lore";

@@ -301,6 +301,11 @@ loot-editor:
   save-lore:
     - "<gray>Saves the loot table to</gray>"
     - "<gray>loot_tables.yml.</gray>"
+  save-chest-material: CHEST
+  save-chest-name: "<green>Save to Chest</green>"
+  save-chest-lore:
+    - "<gray>Applies these entries only to</gray>"
+    - "<gray>this loot chest (own table).</gray>"
   remove-material: RED_WOOL
   remove-name: "<red>Remove Entry</red>"
   remove-lore:
