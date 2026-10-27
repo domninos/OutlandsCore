@@ -113,7 +113,7 @@ public class TokensCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(@NonNull CommandSender sender, @NonNull Command command, @NonNull String alias, @NonNull String[] args) {
         if (args.length == 1 && sender.hasPermission(Permissions.ADMIN))
-            return StringUtil.copyPartialMatches(args[1], List.of("set", "give"), new ArrayList<>());
+            return StringUtil.copyPartialMatches(args[0], List.of("set", "give"), new ArrayList<>());
 
         if (args.length == 2 && sender.hasPermission(Permissions.ADMIN)
                 && (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("give"))) {

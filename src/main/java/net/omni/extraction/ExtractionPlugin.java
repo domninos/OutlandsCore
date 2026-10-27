@@ -123,6 +123,8 @@ public final class ExtractionPlugin extends JavaPlugin {
      - add join / leave extraction messages
      -
      - drone custom entity model for texture
+     - make sure pets are not damageable
+     - add /areas help, remove extra /
      -
 
      */

@@ -33,6 +33,11 @@ Parse messages with `Messages#replace(...)` — varargs pairs of `key-without-pe
 `Messages.USAGE.replace("usage", "/areas rename {old} {new}")` or
 `Messages.AREA_LIST_ENTRY.replace("area", name, "state", state)`. **Never** `String#replace` for message
 placeholders — the method adds the `%...%` wrapping itself, keeping keys consistent with `messages.yml`.
+Always pass ALL placeholders in one varargs call (`Messages.X.replace(key1, value1, key2, value2)`) — if a
+message ever renders with a literal `%key%` left in it, the replace call for that key was wrong or missing.
+Exception: non-Messages config-string templates (e.g. `loot-editor.*-name` lore/name templates from
+`ConfigUtil`) have no `%...%` auto-wrapping — those need a direct `.replace("%key%", value)` for each
+placeholder they define.
 
 ### Imports
 Always declare imports at the top of the file — never use fully-qualified class names inline (write
