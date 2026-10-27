@@ -25,9 +25,11 @@ public class AreaWandListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) return;
+
+        if (plugin.getDroneManager().isInDrone(event.getPlayer())) return;
 
         ItemStack item = event.getItem();
         AreaManager areaManager = plugin.getAreaManager();

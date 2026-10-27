@@ -566,6 +566,10 @@ public final class ExtractionPlugin extends JavaPlugin {
         return worldEventManager;
     }
 
+    public DroneManager getDroneManager() {
+        return droneManager;
+    }
+
 
     public PackManager getPackManager() {
         return packManager;

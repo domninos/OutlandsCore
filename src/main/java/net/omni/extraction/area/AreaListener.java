@@ -54,8 +54,10 @@ public class AreaListener implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler
     public void onInteract(PlayerInteractEvent event) {
+        if (plugin.getDroneManager().isInDrone(event.getPlayer())) return;
+
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK)
             return;
 

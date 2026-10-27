@@ -135,31 +135,33 @@ public class DroneListener implements Listener {
 
     /**
      * While piloting, the player is a camera: no attacking (direct hits or
-     * projectiles), no breaking, placing, or interacting. HIGH priority runs
-     * before the wand/area listeners so a piloting admin can't use the wand.
+     * projectiles), no breaking, placing, or interacting. LOWEST priority runs
+     * before the wand/area listeners; those also hold explicit drone guards
+     * (PlayerInteractEvent air clicks count as "cancelled" in Bukkit, so
+     * cancellation alone cannot be relied on).
      */
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPilotAttack(EntityDamageByEntityEvent event) {
         if (isDroneAction(event.getDamager())) {
             event.setCancelled(true);
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPilotBlockBreak(BlockBreakEvent event) {
         if (droneManager.isInDrone(event.getPlayer())) {
             event.setCancelled(true);
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPilotBlockPlace(BlockPlaceEvent event) {
         if (droneManager.isInDrone(event.getPlayer())) {
             event.setCancelled(true);
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPilotInteract(PlayerInteractEvent event) {
         if (!droneManager.isInDrone(event.getPlayer())) {
             return;
@@ -170,14 +172,14 @@ public class DroneListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPilotInteractEntity(PlayerInteractEntityEvent event) {
         if (droneManager.isInDrone(event.getPlayer())) {
             event.setCancelled(true);
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPilotInteractAtEntity(PlayerInteractAtEntityEvent event) {
         if (droneManager.isInDrone(event.getPlayer())) {
             event.setCancelled(true);

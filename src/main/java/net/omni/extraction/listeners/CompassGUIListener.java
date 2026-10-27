@@ -31,8 +31,10 @@ public class CompassGUIListener implements Listener {
         org.bukkit.Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
+        if (plugin.getDroneManager().isInDrone(event.getPlayer())) return;
+
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK)
             return;
 
