@@ -18,10 +18,12 @@ import org.bukkit.util.Vector;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -37,6 +39,7 @@ public class PetManager {
     private final ExtractionPlugin plugin;
     private final Map<String, PetDefinition> pets = new LinkedHashMap<>();
     private final Map<UUID, Entity> activeEntities = new HashMap<>();
+    private final Set<UUID> petEntityIds = new HashSet<>();
     private BukkitTask followTask;
 
     public PetManager(ExtractionPlugin plugin) {
@@ -159,6 +162,12 @@ public class PetManager {
             removePet(uuid);
 
         activeEntities.clear();
+        petEntityIds.clear();
+    }
+
+    /** True when the entity is one of the live cosmetic pet entities. */
+    public boolean isPet(Entity entity) {
+        return entity != null && petEntityIds.contains(entity.getUniqueId());
     }
 
     private void tickFollow() {
@@ -171,6 +180,7 @@ public class PetManager {
                     continue;
 
                 // Despawned (chunk unload etc.) — respawn at the owner.
+                petEntityIds.remove(pet.getUniqueId());
                 activeEntities.remove(entry.getKey());
                 spawnPet(owner);
                 continue;
@@ -232,6 +242,7 @@ public class PetManager {
         } catch (Exception ignored) {
         }
 
+        petEntityIds.add(entity.getUniqueId());
         activeEntities.put(player.getUniqueId(), entity);
     }
 
@@ -240,6 +251,8 @@ public class PetManager {
 
         if (entity == null)
             return;
+
+        petEntityIds.remove(entity.getUniqueId());
 
         try {
             if (entity.isValid())

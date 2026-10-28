@@ -119,14 +119,11 @@ public final class ExtractionPlugin extends JavaPlugin {
      - fix
         - artifacts/charms should automatically replace the placeholder on /loadout when equipped.
         - when doing /extraction, make sure to give the artifact/charm item for them to right click it to where the loadout slot is. then, the placeholder item should have the "Drop item here" removed, as it is just a placeholder. so now, if player SHIFT + left/right click the placeholder, open the artifact or charm gui depending on which they shift clicked.
-        - disable despawning of mobs on events
      -
      -
      - add join / leave extraction messages
      -
      - drone custom entity model for texture
-     - make sure pets are not damageable
-     - add /areas help, remove extra /
      -
 
      */
@@ -397,6 +394,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new AreaEditorListener(this).register();
         new LootEditorListener(this).register();
         new PetsGUIListener(this).register();
+        new PetListener(this).register();
         new RelicListener(this).register();
 
         this.partyListener = new PartyListener(this);
