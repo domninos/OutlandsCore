@@ -6,6 +6,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class LootTableManager {
@@ -13,11 +16,13 @@ public class LootTableManager {
     private final ExtractionPlugin plugin;
     private final File file;
     private final Map<String, LootTable> tables;
+    private final Map<String, LootTable> defaults;
 
     public LootTableManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
         this.file = new File(plugin.getDataFolder(), "loot_tables.yml");
         this.tables = new TreeMap<>();
+        this.defaults = new TreeMap<>();
     }
 
     public void reload() {
@@ -31,52 +36,86 @@ public class LootTableManager {
             plugin.saveResource("loot_tables.yml", false);
 
         YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+        parseTables(config, tables);
+        loadBundledDefaults();
 
+        plugin.sendConsole("<green>Loaded " + tables.size() + " loot table(s).</green>");
+    }
+
+    private void parseTables(YamlConfiguration config, Map<String, LootTable> target) {
         for (String id : config.getKeys(false)) {
             ConfigurationSection section = config.getConfigurationSection(id);
 
             if (section == null)
                 continue;
 
-            LootTable table = new LootTable(id);
-            table.setItemsPerChest(section.getInt("items-per-chest", -1));
-            table.setIconMaterial(section.getString("icon"));
-            table.setDisplayName(section.getString("display-name"));
-            if (section.contains("lore"))
-                table.setLore(section.getStringList("lore"));
-            if (section.contains("hologram"))
-                table.setHologram(section.getStringList("hologram"));
+            target.put(id.toLowerCase(Locale.ROOT), parseTable(id, section));
+        }
+    }
 
-            for (Map<?, ?> map : section.getMapList("entries")) {
-                Object type = map.get("type");
+    private LootTable parseTable(String id, ConfigurationSection section) {
+        LootTable table = new LootTable(id);
+        table.setItemsPerChest(section.getInt("items-per-chest", -1));
+        table.setIconMaterial(section.getString("icon"));
+        table.setDisplayName(section.getString("display-name"));
+        if (section.contains("lore"))
+            table.setLore(section.getStringList("lore"));
+        if (section.contains("hologram"))
+            table.setHologram(section.getStringList("hologram"));
 
-                if (type == null)
-                    continue;
+        for (Map<?, ?> map : section.getMapList("entries")) {
+            Object type = map.get("type");
 
-                LootEntry entry = new LootEntry();
-                entry.setType(String.valueOf(type));
+            if (type == null)
+                continue;
 
-                Object amount = map.get("amount");
-                Object weight = map.get("weight");
-                Object minLevel = map.get("min-level");
-                Object maxLevel = map.get("max-level");
+            LootEntry entry = new LootEntry();
+            entry.setType(String.valueOf(type));
 
-                if (amount instanceof Number number)
-                    entry.setAmount(Math.max(1, number.intValue()));
-                if (weight instanceof Number number)
-                    entry.setWeight(Math.max(1, number.intValue()));
-                if (minLevel instanceof Number number)
-                    entry.setMinLevel(Math.max(0, number.intValue()));
-                if (maxLevel instanceof Number number)
-                    entry.setMaxLevel(Math.max(0, number.intValue()));
+            Object amount = map.get("amount");
+            Object weight = map.get("weight");
+            Object minLevel = map.get("min-level");
+            Object maxLevel = map.get("max-level");
 
-                table.getEntries().add(entry);
-            }
+            if (amount instanceof Number number)
+                entry.setAmount(Math.max(1, number.intValue()));
+            if (weight instanceof Number number)
+                entry.setWeight(Math.max(1, number.intValue()));
+            if (minLevel instanceof Number number)
+                entry.setMinLevel(Math.max(0, number.intValue()));
+            if (maxLevel instanceof Number number)
+                entry.setMaxLevel(Math.max(0, number.intValue()));
 
-            tables.put(id.toLowerCase(Locale.ROOT), table);
+            table.getEntries().add(entry);
         }
 
-        plugin.sendConsole("<green>Loaded " + tables.size() + " loot table(s).</green>");
+        return table;
+    }
+
+    /** Caches the table definitions shipped in the plugin jar for the reset action. */
+    private void loadBundledDefaults() {
+        defaults.clear();
+
+        try (InputStream stream = plugin.getResource("loot_tables.yml")) {
+            if (stream == null)
+                return;
+
+            YamlConfiguration config = YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(stream, StandardCharsets.UTF_8));
+            parseTables(config, defaults);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Failed to read bundled loot_tables.yml defaults: " + e.getMessage());
+        }
+    }
+
+    /** True when the bundled loot_tables.yml declares a default for the table id. */
+    public boolean hasDefault(String id) {
+        return id != null && defaults.containsKey(id.toLowerCase(Locale.ROOT));
+    }
+
+    /** The bundled default table, or null when the id has no shipped default. */
+    public LootTable getDefault(String id) {
+        return id == null ? null : defaults.get(id.toLowerCase(Locale.ROOT));
     }
 
     public LootTable get(String id) {

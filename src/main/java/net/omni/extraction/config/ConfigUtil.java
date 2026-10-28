@@ -118,6 +118,9 @@ public class ConfigUtil {
     private String lootEditorRemoveMaterial;
     private String lootEditorRemoveName;
     private List<String> lootEditorRemoveLore;
+    private String lootEditorResetMaterial;
+    private String lootEditorResetName;
+    private List<String> lootEditorResetLore;
     private List<String> lootEditorEntryLore;
     private List<Integer> lootEditorIncrements;
     private String lootEditorAmountMaterial;
@@ -149,6 +152,10 @@ public class ConfigUtil {
     private String petsShopFillerName;
     private List<String> petsShopBuyLore;
     private List<String> petsShopOwnedLore;
+    private int petFollowUpdateTicks = 10;
+    private double petFollowSpeed = 6.0;
+    private double petFollowRange = 2.5;
+    private double petFollowTeleportRange = 20.0;
     private final Map<String, String> guiTextures = new HashMap<>();
     private String packId = "";
     private String packHost = "";
@@ -1103,6 +1110,15 @@ public class ConfigUtil {
         this.lootEditorRemoveLore = getAndDefaultStringList(ConfigKeys.LOOT_EDITOR_REMOVE_LORE, List.of(
                 "<gray>Deletes this entry and</gray>",
                 "<gray>returns to the table.</gray>"), savedDefaults);
+        this.lootEditorResetMaterial = getAndDefaultString(ConfigKeys.LOOT_EDITOR_RESET_MATERIAL,
+                "HOPPER", savedDefaults);
+        this.lootEditorResetName = getAndDefaultString(ConfigKeys.LOOT_EDITOR_RESET_NAME,
+                "<red>Reset to Defaults</red>", savedDefaults);
+        this.lootEditorResetLore = getAndDefaultStringList(ConfigKeys.LOOT_EDITOR_RESET_LORE, List.of(
+                "<gray>Restores this table's entries</gray>",
+                "<gray>to the bundled loot_tables.yml default.</gray>",
+                "",
+                "<yellow>Shift-click to confirm</yellow>"), savedDefaults);
         this.lootEditorEntryLore = getAndDefaultStringList(ConfigKeys.LOOT_EDITOR_ENTRY_LORE, List.of(
                 "<gray>Type: <white>%type%</white></gray>",
                 "<gray>Amount: <white>%amount%</white></gray>",
@@ -1177,6 +1193,14 @@ public class ConfigUtil {
                 "<gray>Click to buy</gray>"), savedDefaults);
         this.petsShopOwnedLore = getAndDefaultStringList(ConfigKeys.PETS_SHOP_OWNED_LORE, List.of(
                 "<green>Owned</green>"), savedDefaults);
+        this.petFollowUpdateTicks = Math.max(1,
+                getAndDefaultInt(ConfigKeys.PET_FOLLOW_UPDATE_TICKS, 10, savedDefaults));
+        this.petFollowSpeed = Math.max(0.1,
+                getAndDefaultDouble(ConfigKeys.PET_FOLLOW_SPEED, 6.0, savedDefaults));
+        this.petFollowRange = Math.max(1.0,
+                getAndDefaultDouble(ConfigKeys.PET_FOLLOW_RANGE, 2.5, savedDefaults));
+        this.petFollowTeleportRange = Math.max(this.petFollowRange + 1.0,
+                getAndDefaultDouble(ConfigKeys.PET_FOLLOW_TELEPORT_RANGE, 20.0, savedDefaults));
     }
 
     private void loadPack(AtomicInteger savedDefaults) {
@@ -1814,6 +1838,18 @@ public class ConfigUtil {
         return lootEditorRemoveLore;
     }
 
+    public String getLootEditorResetMaterial() {
+        return lootEditorResetMaterial;
+    }
+
+    public String getLootEditorResetName() {
+        return lootEditorResetName;
+    }
+
+    public List<String> getLootEditorResetLore() {
+        return lootEditorResetLore;
+    }
+
     public List<String> getLootEditorEntryLore() {
         return lootEditorEntryLore;
     }
@@ -1936,6 +1972,22 @@ public class ConfigUtil {
 
     public List<String> getPetsShopOwnedLore() {
         return petsShopOwnedLore;
+    }
+
+    public int getPetFollowUpdateTicks() {
+        return petFollowUpdateTicks;
+    }
+
+    public double getPetFollowSpeed() {
+        return petFollowSpeed;
+    }
+
+    public double getPetFollowRange() {
+        return petFollowRange;
+    }
+
+    public double getPetFollowTeleportRange() {
+        return petFollowTeleportRange;
     }
 
     public String getAreaEditorCountIconMaterial() {

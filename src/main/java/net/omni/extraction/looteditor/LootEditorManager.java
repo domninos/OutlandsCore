@@ -126,6 +126,10 @@ public class LootEditorManager {
                 plugin.getConfigUtil().getAreaEditorNavBackMaterial(),
                 plugin.getConfigUtil().getAreaEditorNavBackName(), List.of()));
 
+        if (plugin.getLootTableManager().hasDefault(session.getTableId()))
+            inventory.setItem(LootEditorSession.SLOT_RESET, item(config.getLootEditorResetMaterial(),
+                    config.getLootEditorResetName(), config.getLootEditorResetLore()));
+
         for (int slot = 0; slot < LootEditorSession.SIZE; slot++)
             if (inventory.getItem(slot) == null)
                 inventory.setItem(slot, filler);
@@ -245,16 +249,28 @@ public class LootEditorManager {
     public boolean handleClick(Player player, LootEditorSession session, int rawSlot, ItemStack cursor,
                                boolean rightClick, boolean shiftClick) {
         if (session.getPage() == LootEditorSession.PAGE_TABLE)
-            return handleTableClick(player, session, rawSlot, cursor, rightClick);
+            return handleTableClick(player, session, rawSlot, cursor, rightClick, shiftClick);
 
         handleEntryClick(player, session, rawSlot, rightClick, shiftClick);
         return false;
     }
 
     private boolean handleTableClick(Player player, LootEditorSession session, int rawSlot, ItemStack cursor,
-                                     boolean rightClick) {
+                                     boolean rightClick, boolean shiftClick) {
         if (rawSlot == LootEditorSession.SLOT_BACK || rawSlot == LootEditorSession.SLOT_SAVE) {
             player.closeInventory();
+            return false;
+        }
+
+        if (rawSlot == LootEditorSession.SLOT_RESET) {
+            if (!plugin.getLootTableManager().hasDefault(session.getTableId()))
+                return false;
+
+            if (shiftClick)
+                resetToDefaults(player, session);
+            else
+                plugin.sendMessage(player, Messages.LOOT_EDITOR_RESET_CONFIRM.toString());
+
             return false;
         }
 
@@ -294,6 +310,32 @@ public class LootEditorManager {
         session.getEntries().add(entry);
         render(player, session);
         return true;
+    }
+
+    /** Restores the working entries from the bundled loot_tables.yml default. */
+    private void resetToDefaults(Player player, LootEditorSession session) {
+        LootTable defaults = plugin.getLootTableManager().getDefault(session.getTableId());
+
+        if (defaults == null) {
+            plugin.sendMessage(player, Messages.LOOT_EDITOR_RESET_NONE.replace(
+                    "table", session.getTableId()));
+            return;
+        }
+
+        session.getEntries().clear();
+
+        for (LootEntry entry : defaults.getEntries())
+            session.getEntries().add(entry.copy());
+
+        session.setEditingIndex(-1);
+
+        int count = session.getEntries().size();
+        plugin.sendMessage(player, Messages.LOOT_EDITOR_RESET.replace(
+                "table", session.getTableId(),
+                "entries", String.valueOf(count),
+                "s", count == 1 ? "y" : "ies"));
+
+        render(player, session);
     }
 
     /** Shift-click from the player inventory dumps the whole stack as an entry. */

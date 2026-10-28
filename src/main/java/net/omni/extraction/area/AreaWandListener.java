@@ -65,11 +65,11 @@ public class AreaWandListener implements Listener {
             }
             case SPAWN -> handleSpawn(player, action, block, areaManager, item, sneaking, event);
             case CHEST -> handleChest(player, action, block, areaManager, item, sneaking, event);
-            case CONVOY -> handleConvoy(player, action, event);
+            case CONVOY -> handleConvoy(player, action, block, event);
         }
     }
 
-    private void handleConvoy(Player player, Action action, PlayerInteractEvent event) {
+    private void handleConvoy(Player player, Action action, Block block, PlayerInteractEvent event) {
         boolean left = action == Action.LEFT_CLICK_BLOCK || action == Action.LEFT_CLICK_AIR;
         boolean right = action == Action.RIGHT_CLICK_BLOCK || action == Action.RIGHT_CLICK_AIR;
 
@@ -95,16 +95,22 @@ public class AreaWandListener implements Listener {
             return;
         }
 
+        // Clicked block = top of that block (route code adds 0.5 to X/Z); air
+        // clicks still fall back to the player's feet.
+        Location location = block != null
+                ? block.getLocation().add(0, 1, 0)
+                : player.getLocation();
+
         String point = left ? "start" : "end";
-        manager.setConvoyPoint(eventId, point, player.getLocation());
+        manager.setConvoyPoint(eventId, point, location);
 
         plugin.sendMessage(player, Messages.EVENTS_ROUTE_SET.replace(
                 "event", manager.getEvent(eventId).getDisplayName(),
                 "point", point,
-                "location", player.getWorld().getName() + " "
-                        + player.getLocation().getBlockX() + " "
-                        + player.getLocation().getBlockY() + " "
-                        + player.getLocation().getBlockZ()));
+                "location", location.getWorld().getName() + " "
+                        + location.getBlockX() + " "
+                        + location.getBlockY() + " "
+                        + location.getBlockZ()));
     }
 
     private void sendPos(Player player, Messages message, Location location) {

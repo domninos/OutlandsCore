@@ -59,4 +59,14 @@ public class LootEntry {
     public boolean isAvailableAt(int level) {
         return (minLevel <= 0 || level >= minLevel) && (maxLevel <= 0 || level <= maxLevel);
     }
+
+    public LootEntry copy() {
+        LootEntry copy = new LootEntry();
+        copy.setType(type);
+        copy.setAmount(amount);
+        copy.setWeight(weight);
+        copy.setMinLevel(minLevel);
+        copy.setMaxLevel(maxLevel);
+        return copy;
+    }
 }

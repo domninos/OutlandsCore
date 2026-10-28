@@ -311,6 +311,15 @@ loot-editor:
   remove-lore:
     - "<gray>Deletes this entry and</gray>"
     - "<gray>returns to the table.</gray>"
+  # Shift-click icon that restores the table's entries from the bundled
+  # loot_tables.yml default. Hidden for tables with no shipped default.
+  reset-material: HOPPER
+  reset-name: "<red>Reset to Defaults</red>"
+  reset-lore:
+    - "<gray>Restores this table's entries</gray>"
+    - "<gray>to the bundled loot_tables.yml default.</gray>"
+    - ""
+    - "<yellow>Shift-click to confirm</yellow>"
   # Lore template shown under each entry in the table view.
   entry-lore:
     - "<gray>Type: <white>%type%</white></gray>"
@@ -351,3 +360,16 @@ drone:
   # control; per-step distance scales automatically so the speed stays the same.
   # Read at server start - changing this needs a restart.
   update-ticks: 1
+
+# Equipped pet follow behaviour. The pet trails behind its owner and smoothly
+# walks toward the follow point; a long stray snaps it back.
+pet-follow:
+  # Movement task period in ticks. 10 = twice per second (cheap). Per-step
+  # distance scales so the pet still moves at the configured speed.
+  update-ticks: 10
+  # Movement speed in blocks per second.
+  speed: 6.0
+  # Distance (blocks) the pet may drift from its follow point before moving.
+  follow-range: 2.5
+  # Distance (blocks) beyond which the pet teleports to the owner instead.
+  teleport-range: 20.0

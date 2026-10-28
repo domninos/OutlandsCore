@@ -271,4 +271,7 @@ loot-editor:
   saved-chest: "<green>Chest loot saved (<white>%entries%</white> entr%s%).</green>"
   item-rejected: "<red>That item cannot be turned into a loot entry.</red>"
   opened: "<green>Editing loot table <white>%table%</white>. The table saves when you close the menu.</green>"
+  reset: "<green>Reset loot table <white>%table%</white> to its bundled default (<white>%entries%</white> entr%s%).</green>"
+  reset-confirm: "<yellow>Shift-click the reset icon to confirm.</yellow>"
+  reset-none: "<red>No bundled default exists for loot table <white>%table%</white>.</red>"
 

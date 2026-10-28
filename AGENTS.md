@@ -843,6 +843,21 @@ via `Math.sqrt` of the squared value only when needed.
   `AreaManager.checkPlayerAreas`). When nothing is visible the new `compass.hidden.material/name` item shows.
   The bundled `artifacts.yml` explorer definition carries the effect (`value: 150`); activation uses the
   normal relic window (global default 60s unless a `duration:` is added).
+- Convoy route wand anchors use the **clicked block's top** (`block.getLocation().add(0, 1, 0)`; air clicks
+  fall back to the player's feet) instead of the player's eye/feet location, so start/end land exactly on the
+  block you aim at. The route code still adds 0.5 to X/Z before sampling.
+- Loot table editor reset: `LootTableManager` caches the bundled jar `loot_tables.yml` (`hasDefault`/`getDefault`),
+  `LootEntry.copy()` clones entries, and the table view shows a `loot-editor.reset-*` icon at `SLOT_RESET` (47)
+  only for tables with a shipped default. Plain click sends `loot-editor.reset-confirm`; **shift-click** replaces
+  the working entries with the bundled default (`loot-editor.reset`, `%entries%`/`%s%`), leaving table metadata
+  (icon/lore/hologram/items-per-chest) untouched. Chest-specific `chest_*` tables have no default and hide the
+  icon (defensive `loot-editor.reset-none`).
+- Pet follow is hybrid and config-driven (`pet-follow.update-ticks` default 10, `speed` 6.0, `follow-range` 2.5,
+  `teleport-range` 20.0). `PetManager` caches a `PetSession` (owner `Player` + `Entity`) per player instead of
+  resolving `Bukkit.getPlayer` every tick, iterates a snapshot (no CME while respawning/removing), steps the pet
+  toward its follow point, and snaps it on world change / long stray. `PetListener` also snaps the pet one tick
+  after `PlayerTeleportEvent` (MONITOR) via `PetManager.snapToOwner`. `reload()` restarts the follow task so an
+  interval change applies immediately.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

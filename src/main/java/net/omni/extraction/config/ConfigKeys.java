@@ -253,6 +253,9 @@ public final class ConfigKeys {
     public static final String LOOT_EDITOR_REMOVE_MATERIAL = "loot-editor.remove-material";
     public static final String LOOT_EDITOR_REMOVE_NAME = "loot-editor.remove-name";
     public static final String LOOT_EDITOR_REMOVE_LORE = "loot-editor.remove-lore";
+    public static final String LOOT_EDITOR_RESET_MATERIAL = "loot-editor.reset-material";
+    public static final String LOOT_EDITOR_RESET_NAME = "loot-editor.reset-name";
+    public static final String LOOT_EDITOR_RESET_LORE = "loot-editor.reset-lore";
     public static final String LOOT_EDITOR_ENTRY_LORE = "loot-editor.entry-lore";
     public static final String LOOT_EDITOR_INCREMENTS = "loot-editor.increments";
     public static final String LOOT_EDITOR_AMOUNT_MATERIAL = "loot-editor.amount-material";
@@ -334,6 +337,11 @@ public final class ConfigKeys {
     public static final String PETS_SHOP_FILLER_NAME = "pets-gui.shop-filler-name";
     public static final String PETS_SHOP_BUY_LORE = "pets-gui.shop-buy-lore";
     public static final String PETS_SHOP_OWNED_LORE = "pets-gui.shop-owned-lore";
+
+    public static final String PET_FOLLOW_UPDATE_TICKS = "pet-follow.update-ticks";
+    public static final String PET_FOLLOW_SPEED = "pet-follow.speed";
+    public static final String PET_FOLLOW_RANGE = "pet-follow.follow-range";
+    public static final String PET_FOLLOW_TELEPORT_RANGE = "pet-follow.teleport-range";
 
     public static final String MESSAGES_PREFIX = "messages.prefix";
 }

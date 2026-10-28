@@ -17,6 +17,7 @@ public class LootEditorSession {
     public static final int TABLE_CONTENT_START = 9;
     public static final int TABLE_CONTENT_END = 44;
     public static final int SLOT_BACK = 45;
+    public static final int SLOT_RESET = 47;
     public static final int SLOT_SAVE = 49;
     public static final int SLOT_SAVE_CHEST = 51;
     /** Entry editor: field rows (decrement, value, increment). */

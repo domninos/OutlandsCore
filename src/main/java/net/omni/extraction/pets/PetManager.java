@@ -33,12 +33,19 @@ import java.util.UUID;
  */
 public class PetManager {
 
-    /** Follow behaviour: teleport the pet when it strays further than this. */
-    private static final double FOLLOW_DISTANCE = 3.0;
+    private static final class PetSession {
+        private final Player owner;
+        private Entity pet;
+
+        private PetSession(Player owner, Entity pet) {
+            this.owner = owner;
+            this.pet = pet;
+        }
+    }
 
     private final ExtractionPlugin plugin;
     private final Map<String, PetDefinition> pets = new LinkedHashMap<>();
-    private final Map<UUID, Entity> activeEntities = new HashMap<>();
+    private final Map<UUID, PetSession> activeEntities = new HashMap<>();
     private final Set<UUID> petEntityIds = new HashSet<>();
     private BukkitTask followTask;
 
@@ -47,13 +54,19 @@ public class PetManager {
     }
 
     public void reload() {
+        boolean wasRunning = followTask != null;
+
+        stop();
         pets.clear();
         loadFile();
 
         // Re-sync live entities (despawn everything, respawn equipped pets
         // for players currently in a run).
-        for (UUID uuid : new HashMap<>(activeEntities).keySet())
+        for (UUID uuid : new ArrayList<>(activeEntities.keySet()))
             removePet(uuid);
+
+        if (wasRunning)
+            start();
 
         for (Player player : Bukkit.getOnlinePlayers())
             if (plugin.getRunManager().isPlayerInRun(player.getUniqueId()))
@@ -142,10 +155,10 @@ public class PetManager {
     // Entity lifecycle
 
     public void start() {
-        if (followTask != null)
-            return;
+        stop();
 
-        followTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickFollow, 1L, 1L);
+        long ticks = Math.max(1, plugin.getConfigUtil().getPetFollowUpdateTicks());
+        followTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickFollow, ticks, ticks);
     }
 
     public void stop() {
@@ -158,7 +171,7 @@ public class PetManager {
     public void shutdown() {
         stop();
 
-        for (UUID uuid : new HashMap<>(activeEntities).keySet())
+        for (UUID uuid : new ArrayList<>(activeEntities.keySet()))
             removePet(uuid);
 
         activeEntities.clear();
@@ -170,33 +183,76 @@ public class PetManager {
         return entity != null && petEntityIds.contains(entity.getUniqueId());
     }
 
+    /** True when the player currently has a live pet session. */
+    public boolean hasPet(UUID uuid) {
+        return uuid != null && activeEntities.containsKey(uuid);
+    }
+
     private void tickFollow() {
-        for (Map.Entry<UUID, Entity> entry : activeEntities.entrySet()) {
-            Entity pet = entry.getValue();
+        if (activeEntities.isEmpty())
+            return;
 
-            if (pet == null || !pet.isValid()) {
-                Player owner = Bukkit.getPlayer(entry.getKey());
-                if (owner == null || !plugin.getRunManager().isPlayerInRun(owner.getUniqueId()))
-                    continue;
+        double speed = plugin.getConfigUtil().getPetFollowSpeed();
+        int interval = Math.max(1, plugin.getConfigUtil().getPetFollowUpdateTicks());
+        double step = Math.max(0.1, speed * interval / 20.0);
+        double followSq = plugin.getConfigUtil().getPetFollowRange();
+        double teleportSq = plugin.getConfigUtil().getPetFollowTeleportRange();
+        followSq *= followSq;
+        teleportSq *= teleportSq;
 
-                // Despawned (chunk unload etc.) — respawn at the owner.
-                petEntityIds.remove(pet.getUniqueId());
-                activeEntities.remove(entry.getKey());
-                spawnPet(owner);
-                continue;
-            }
+        List<Player> respawn = new ArrayList<>();
 
-            Player owner = Bukkit.getPlayer(entry.getKey());
+        // Snapshot: spawn/remove below mutates the backing map.
+        for (Map.Entry<UUID, PetSession> entry : new ArrayList<>(activeEntities.entrySet())) {
+            PetSession session = entry.getValue();
+            Player owner = session.owner;
+            Entity pet = session.pet;
 
             if (owner == null || !owner.isOnline()
                     || !plugin.getRunManager().isPlayerInRun(owner.getUniqueId())) {
+                removePet(entry.getKey());
                 continue;
             }
 
-            if (!pet.getWorld().equals(owner.getWorld())
-                    || pet.getLocation().distanceSquared(owner.getLocation()) > FOLLOW_DISTANCE * FOLLOW_DISTANCE) {
-                pet.teleport(behind(owner));
+            if (pet == null || !pet.isValid()) {
+                // Despawned (chunk unload etc.) — respawn at the owner.
+                removePet(entry.getKey());
+                respawn.add(owner);
+                continue;
             }
+
+            Location target = behind(owner);
+            Location petLocation = pet.getLocation();
+
+            if (!pet.getWorld().equals(owner.getWorld())
+                    || petLocation.distanceSquared(target) > teleportSq) {
+                pet.teleport(target);
+                continue;
+            }
+
+            if (petLocation.distanceSquared(target) <= followSq)
+                continue;
+
+            // Smooth step toward the follow point; snap when the remaining
+            // distance is shorter than one step.
+            Vector direction = target.toVector().subtract(petLocation.toVector());
+            double length = direction.length();
+
+            if (length <= step) {
+                pet.teleport(target);
+                continue;
+            }
+
+            direction.multiply(step / length);
+            Location next = petLocation.clone().add(direction);
+            next.setYaw(target.getYaw());
+            next.setPitch(target.getPitch());
+            pet.teleport(next);
+        }
+
+        for (Player owner : respawn) {
+            if (owner.isOnline() && plugin.getRunManager().isPlayerInRun(owner.getUniqueId()))
+                spawnPet(owner);
         }
     }
 
@@ -204,6 +260,16 @@ public class PetManager {
         Location loc = player.getLocation().clone();
         Vector back = loc.getDirection().setY(0).normalize().multiply(-1.2);
         return loc.add(back).add(0, 0.5, 0);
+    }
+
+    /** Snaps the player's live pet to them after a teleport (called a tick later). */
+    public void snapToOwner(Player player) {
+        PetSession session = player == null ? null : activeEntities.get(player.getUniqueId());
+
+        if (session == null || session.pet == null || !session.pet.isValid())
+            return;
+
+        session.pet.teleport(behind(player));
     }
 
     /** Spawns (or replaces) the equipped pet entity for a player in a run. */
@@ -243,11 +309,16 @@ public class PetManager {
         }
 
         petEntityIds.add(entity.getUniqueId());
-        activeEntities.put(player.getUniqueId(), entity);
+        activeEntities.put(player.getUniqueId(), new PetSession(player, entity));
     }
 
     public void removePet(UUID uuid) {
-        Entity entity = activeEntities.remove(uuid);
+        PetSession session = activeEntities.remove(uuid);
+
+        if (session == null)
+            return;
+
+        Entity entity = session.pet;
 
         if (entity == null)
             return;
