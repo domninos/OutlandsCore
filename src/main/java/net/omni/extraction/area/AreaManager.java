@@ -349,7 +349,11 @@ public class AreaManager {
             if (area != null) {
                 playerAreas.put(uuid, current);
                 plugin.getPlayerDataManager().markAreaDiscovered(uuid, area.getName());
-                plugin.getAreaClearManager().onPlayerEnter(player, area);
+
+                // Admin mode ignores area clears entirely.
+                if (!plugin.getAdminModeManager().isAdmin(uuid))
+                    plugin.getAreaClearManager().onPlayerEnter(player, area);
+
                 Bukkit.getPluginManager().callEvent(new PlayerEnterAreaEvent(player, area));
             } else
                 playerAreas.remove(uuid);
@@ -381,6 +385,9 @@ public class AreaManager {
                     continue;
 
                 if (plugin.getRunManager().isPlayerInRun(uuid))
+                    continue;
+
+                if (plugin.getAdminModeManager().isAdmin(uuid))
                     continue;
 
                 plugin.getAreaClearManager().onPlayerEnter(player, area);

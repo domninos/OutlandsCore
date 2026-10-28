@@ -21,8 +21,8 @@ public class AreaTabCompleter implements TabCompleter {
 
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "wand", "create", "rename", "resize", "update", "delete", "list", "info", "tp", "reset", "reload",
-            "setlevel", "mob", "addmob", "delmob", "setmob", "setchest");
+            "help", "wand", "create", "rename", "resize", "update", "delete", "list", "info", "tp", "reset",
+            "reload", "setlevel", "mob", "addmob", "delmob", "setmob", "setchest");
 
     private static final List<String> AREA_SUBCOMMANDS = List.of(
             "wand", "delete", "info", "tp", "reset", "rename", "resize", "update", "setlevel", "addmob", "delmob",
@@ -72,6 +72,9 @@ public class AreaTabCompleter implements TabCompleter {
             return filter(SUBCOMMANDS, args[0]);
 
         String sub = args[0].toLowerCase(Locale.ROOT);
+
+        if (sub.equals("help"))
+            return filter(List.of("setup", "mobs", "loot", "utility"), args.length >= 2 ? args[1] : "");
 
         if (sub.equals("mob"))
             return tabMob(args);
