@@ -14,6 +14,7 @@ import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
 import net.omni.extraction.worldevent.WorldEventManager;
 import net.omni.extraction.worldevent.WorldEventManager.EventStartResult;
+import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -25,6 +26,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.jspecify.annotations.NonNull;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ExtractionCommand implements CommandExecutor {
@@ -441,7 +443,7 @@ public class ExtractionCommand implements CommandExecutor {
             case "start" -> {
                 if (args.length < 3) {
                     plugin.sendMessage(sender, Messages.USAGE
-                            .replace("usage", "/extraction events start {event} [random|mutatorId...]"));
+                            .replace("usage", "/extraction events start {event} [random|mutator...]"));
                     return true;
                 }
 
@@ -453,7 +455,8 @@ public class ExtractionCommand implements CommandExecutor {
                     return true;
                 }
 
-                EventStartResult result = manager.startEvent(event.getId(), true);
+                List<MutatorType> forced = parseMutators(sender, args);
+                EventStartResult result = manager.startEvent(event.getId(), true, forced);
                 sendStartResult(sender, result, event);
             }
             case "stop" -> {
@@ -559,8 +562,42 @@ public class ExtractionCommand implements CommandExecutor {
         }
     }
 
-    private String locString(Location location) {
-        String world = location.getWorld() == null ? "?" : location.getWorld().getName();
+    /**
+     * Parses the trailing args of {@code events start {event} [random|mutator...]}
+     * into a forced mutator list. {@code random} (explicit) and no args both mean
+     * the default weighted roll; unknown type names warn and are skipped.
+     */
+    private List<MutatorType> parseMutators(CommandSender sender, String[] args) {
+        if (args.length < 4)
+            return List.of();
+
+        List<MutatorType> forced = new ArrayList<>();
+
+        for (int i = 3; i < args.length; i++) {
+            String raw = args[i];
+
+            if (raw.equalsIgnoreCase("random"))
+                continue;
+
+            MutatorType type = MutatorType.fromString(raw);
+
+            if (type == null) {
+                plugin.sendMessage(sender, Messages.EVENTS_MUTATOR_SKIPPED.replace("mutator", raw));
+                continue;
+            }
+
+            forced.add(type);
+        }
+
+        if (!forced.isEmpty())
+            plugin.sendMessage(sender, Messages.EVENTS_MUTATORS_FORCED.replace(
+                    "mutators", forced.stream().map(Enum::name)
+                            .collect(java.util.stream.Collectors.joining(", "))));
+
+        return forced;
+    }
+
+    private String locString(Location location) {        String world = location.getWorld() == null ? "?" : location.getWorld().getName();
         return world + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ();
     }
 
@@ -593,8 +630,14 @@ public class ExtractionCommand implements CommandExecutor {
             return true;
         }
 
+        // Bare /extraction admin toggles admin mode.
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/extraction help admin"));
+            if (!(sender instanceof Player player)) {
+                plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
+                return true;
+            }
+
+            plugin.getAdminModeManager().toggle(player);
             return true;
         }
 

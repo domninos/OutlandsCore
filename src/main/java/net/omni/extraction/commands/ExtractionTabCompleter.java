@@ -112,6 +112,17 @@ public class ExtractionTabCompleter implements TabCompleter {
             return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
         }
 
+        if (args.length >= 4
+                && args[0].equalsIgnoreCase("events")
+                && args[1].equalsIgnoreCase("start")
+                && sender.hasPermission(Permissions.ADMIN)) {
+            List<String> suggestions = new ArrayList<>(java.util.Arrays.asList("random", "DOUBLE_LOOT",
+                    "ELITE_ENEMIES", "NIGHTFALL", "EXPLOSIVE_DEATHS", "NO_REGENERATION"));
+            suggestions.removeAll(java.util.Arrays.stream(args, 3, args.length)
+                    .map(String::toUpperCase).toList());
+            return StringUtil.copyPartialMatches(args[args.length - 1], suggestions, new ArrayList<>());
+        }
+
         if (args.length == 3
                 && args[0].equalsIgnoreCase("events")
                 && args[1].equalsIgnoreCase("stop")

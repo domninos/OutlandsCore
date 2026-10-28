@@ -142,6 +142,10 @@ public class WorldEventListener implements Listener {
                 || !plugin.getConfigUtil().getWorldName().equalsIgnoreCase(player.getWorld().getName()))
             return;
 
+        // Admin mode ignores area-triggered events.
+        if (plugin.getAdminModeManager().isAdmin(player.getUniqueId()))
+            return;
+
         manager.tryTriggerOnAreaEntry(area);
     }
 

@@ -207,6 +207,17 @@ public class WorldEventManager {
     }
 
     public EventStartResult startEvent(String id, boolean force) {
+        return startEvent(id, force, List.of());
+    }
+
+    /**
+     * Starts an event with an optional forced mutator list (admin
+     * {@code /extraction events start {event} [random|mutatorType...]}). A
+     * non-empty {@code forcedMutators} picks the event's first matching mutator
+     * definition per requested type, bypassing the weighted roll, the
+     * mutators-max-selected cap, conditions and the enabled flag.
+     */
+    public EventStartResult startEvent(String id, boolean force, List<MutatorType> forcedMutators) {
         WorldEvent event = config.getEvent(id);
         if (event == null)
             return EventStartResult.NOT_FOUND;
@@ -220,7 +231,7 @@ public class WorldEventManager {
         if (!force && !enabled)
             return EventStartResult.DISABLED;
 
-        EventInstance instance = spawnEvent(event, null);
+        EventInstance instance = spawnEvent(event, null, forcedMutators);
         if (instance == null)
             return EventStartResult.NO_SPAWNS;
 
@@ -321,6 +332,10 @@ public class WorldEventManager {
     }
 
     private EventInstance spawnEvent(WorldEvent event, Location origin) {
+        return spawnEvent(event, origin, List.of());
+    }
+
+    private EventInstance spawnEvent(WorldEvent event, Location origin, List<MutatorType> forcedMutators) {
         if (origin == null)
             origin = ctx.spawner().pickOrigin(event);
 
@@ -350,7 +365,9 @@ public class WorldEventManager {
         instance.setBoundArea(stormArea);
 
         // Apply mutators
-        List<Mutator> selectedMutators = selectMutators(event, instance, origin);
+        List<Mutator> selectedMutators = forcedMutators.isEmpty()
+                ? selectMutators(event, instance, origin)
+                : selectForcedMutators(event, forcedMutators);
         instance.applyMutators(selectedMutators);
         if (!selectedMutators.isEmpty() && event.isNightfallActive(instance)) {
             World w = origin.getWorld();
@@ -455,6 +472,24 @@ public class WorldEventManager {
                 }
             }
         }
+        return selected;
+    }
+
+    /** Forced selection: first matching mutator definition per requested type, no rolls/caps/conditions. */
+    private List<Mutator> selectForcedMutators(WorldEvent event, List<MutatorType> forced) {
+        List<Mutator> selected = new ArrayList<>();
+
+        for (MutatorType type : forced) {
+            if (type == null || selected.stream().anyMatch(m -> m.type() == type))
+                continue;
+
+            for (Mutator m : event.getMutators())
+                if (m.type() == type) {
+                    selected.add(m);
+                    break;
+                }
+        }
+
         return selected;
     }
 

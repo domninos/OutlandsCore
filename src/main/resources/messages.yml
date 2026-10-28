@@ -165,6 +165,12 @@ admin:
   migrate-started: "<gray>Starting SQLite → MySQL migration...</gray>"
   migrated: "<green>Migrated <white>%count%</white> player row(s) to MySQL.</green>"
   migrate-failed: "<red>Migration failed. Check the console for details.</red>"
+  mode-on: "<green>Admin mode enabled — creative, area clears and area events ignored. Run <white>/extraction admin</white> again to exit.</green>"
+  mode-off: "<green>Admin mode disabled — inventory and gamemode restored.</green>"
+  mode-blocked-run: "<red>You cannot enter admin mode while inside a run — extract first.</red>"
+  mode-blocked-drone: "<red>You cannot enter admin mode while piloting a drone.</red>"
+  help-title: "  <gradient:#00AAFF:#55FFFF><bold>Areas</bold></gradient>"
+  help-category-title: "  <gradient:#00AAFF:#55FFFF><bold>Areas</bold></gradient> <dark_gray>-</dark_gray> <white>%category%</white>"
 party:
   usage: "<red>Usage: %usage%</red>"
   no-perm: "<red>You do not have permission to use the party system.</red>"
@@ -216,6 +222,7 @@ pets:
   run-boost: "<green>Pet <white>%pet%</white> is boosting your tokens by <white>+%boost%%</white> this run.</green>"
   boost-note: "<gray>(<white>%pet%</white>: +<white>%boost%%</white>)</gray>"
   purchased: "<green>You bought the pet <white>%pet%</white> for <white>%cost%</white> tokens!</green>"
+
 events:
   status-header: "<gray>World Events (<white>%count%</white>):</gray>"
   status-entry: "<gray> - <white>%event%</white> <dark_gray>»</dark_gray> <white>%state%</white></gray>"
@@ -242,6 +249,8 @@ events:
   route-wand-arm: "<green>Wand armed for convoy <white>%event%</white>. Left-click = start anchor, right-click = end anchor.</green>"
   route-wand-none: "<red>Your wand is not armed for a convoy — run <white>/extraction events route {event} wand</white> first.</red>"
   route-needs-player: "<red>Only players can set convoy anchors.</red>"
+  mutators-forced: "<gray>Forced mutators: <white>%mutators%</white>.</gray>"
+  mutator-skipped: "<yellow>Unknown mutator <white>%mutator%</white> skipped. Types: DOUBLE_LOOT, ELITE_ENEMIES, NIGHTFALL, EXPLOSIVE_DEATHS, NO_REGENERATION.</yellow>"
 
 # Drone mode (/drone)
 drone:

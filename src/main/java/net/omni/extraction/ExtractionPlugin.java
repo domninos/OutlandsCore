@@ -35,6 +35,7 @@ import net.omni.extraction.pack.PackManager;
 import net.omni.extraction.party.PartyListener;
 import net.omni.extraction.party.PartyManager;
 import net.omni.extraction.pets.PetManager;
+import net.omni.extraction.managers.AdminModeManager;
 import net.omni.extraction.relics.RelicEffectManager;
 import net.omni.extraction.relics.RelicListener;
 import net.omni.extraction.relics.RelicManager;
@@ -84,6 +85,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private LootEditorManager lootEditorManager;
     private CorpseManager corpseManager;
     private PetManager petManager;
+    private AdminModeManager adminModeManager;
     private HologramManager hologramManager;
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
@@ -195,6 +197,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         if (petManager != null)
             petManager.shutdown();
 
+        if (adminModeManager != null)
+            adminModeManager.shutdown();
+
         if (guiManager != null)
             guiManager.clearAll();
 
@@ -297,8 +302,11 @@ public final class ExtractionPlugin extends JavaPlugin {
         petManager.reload();
         petManager.start();
 
+        adminModeManager = new AdminModeManager(this);
+
         registerCommands();
         registerListeners();
+        adminModeManager.register();
 
         areaManager.startAutoSave();
         areaManager.startStateTask();
@@ -527,6 +535,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public PetManager getPetManager() {
         return petManager;
+    }
+
+    public AdminModeManager getAdminModeManager() {
+        return adminModeManager;
     }
 
     public HologramManager getHologramManager() {
