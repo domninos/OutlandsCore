@@ -125,6 +125,16 @@ public class WorldEventManager {
     }
 
     private void tick() {
+        // Events only exist for players actually running Extraction. Once none
+        // remain, end them so event mobs are not kept alive forever.
+        if (!active.isEmpty() && ctx.eligiblePlayers().isEmpty()) {
+            for (EventInstance instance : new ArrayList<>(active.values()))
+                endEvent(instance, false);
+
+            ctx.presentation().updateCompass();
+            return;
+        }
+
         long now = System.currentTimeMillis();
 
         for (EventInstance instance : new ArrayList<>(active.values())) {

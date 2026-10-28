@@ -821,6 +821,17 @@ via `Math.sqrt` of the squared value only when needed.
   `util/DroneUtil`; `drone/DroneSounds` remains the drone-owned sound util. **No reflection anywhere** (FancyNpcs used via
   direct `de.oliver.fancynpcs.api` imports). Dependency: `de.oliver:FancyNpcs:2.9.2` provided + repo
   `repo.fancyinnovations.com/releases`; `plugin.yml` softdepends `FancyNpcs`.
+- **Pets are invincible**: `PetManager` keeps a `petEntityIds` UUID set populated on spawn (and pruned on
+  remove/respawn), exposed through `isPet(Entity)`; the new `listeners/PetListener` cancels every
+  `EntityDamageEvent` for those entities at `LOWEST` priority (on top of the existing `setInvulnerable(true)`),
+  so no damage source can kill a pet. Registered in `ExtractionPlugin.registerListeners()`.
+- **Event mobs do not despawn while an Extraction run is active**: `EventSpawner.spawnGroup` marks every
+  spawned event entity `setPersistent(true)` + `LivingEntity#setRemoveWhenFarAway(false)` (covering wave,
+  storm and reinforcement spawns; the convoy carrier/roam leader already did this), so chunk unloads and
+  distance no longer delete them mid-fight. `WorldEventManager.tick()` ends all active events once
+  `ctx.eligiblePlayers()` is empty (no online player in `settings.world-name` who ran `/extraction`), which
+  despawns the mobs and cleans up boss bars/waypoints/craters — the only case where event mobs are allowed
+  to disappear.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

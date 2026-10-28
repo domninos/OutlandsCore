@@ -12,6 +12,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import java.util.List;
@@ -121,6 +122,12 @@ public class EventSpawner {
             any = true;
             spawned++;
             UUID uuid = entity.getUniqueId();
+
+            // Event mobs must stay put while extraction players are fighting
+            // them: persistence survives chunk unloads and far-away despawns.
+            entity.setPersistent(true);
+            if (entity instanceof LivingEntity living)
+                living.setRemoveWhenFarAway(false);
 
             if (event.isStorm() || eliteGlow)
                 entity.setGlowing(true);
