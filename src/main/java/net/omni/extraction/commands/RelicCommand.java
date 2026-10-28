@@ -1,11 +1,10 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.Permissions;
+import net.omni.extraction.util.Permissions;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.relics.RelicDefinition;
-import net.omni.extraction.relics.RelicManager;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;

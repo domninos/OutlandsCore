@@ -113,7 +113,6 @@ public final class ExtractionPlugin extends JavaPlugin {
         Abilities
         Loot
      -
-      - add /extraction events start {event} [random|mutators]...
      -
      -
      - fix
@@ -134,8 +133,6 @@ public final class ExtractionPlugin extends JavaPlugin {
      - add API
      -
      -
-        Artifact of the Explorer
-        Nearby undiscovered areas appear on the compass/map
         -
          - add "Time remaining" for all party
          -

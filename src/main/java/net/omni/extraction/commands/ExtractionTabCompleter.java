@@ -1,7 +1,7 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.Permissions;
+import net.omni.extraction.util.Permissions;
 import net.omni.extraction.party.Party;
 import net.omni.extraction.worldevent.WorldEvent;
 import org.bukkit.Bukkit;

@@ -1,7 +1,7 @@
 package net.omni.extraction.listeners;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.Permissions;
+import net.omni.extraction.util.Permissions;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.loadout.LoadoutManager;

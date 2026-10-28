@@ -1,4 +1,4 @@
-package net.omni.extraction;
+package net.omni.extraction.util;
 
 /**
  * Central registry of every permission node used by the plugin.

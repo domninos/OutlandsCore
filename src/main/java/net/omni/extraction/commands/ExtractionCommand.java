@@ -2,7 +2,7 @@ package net.omni.extraction.commands;
 
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.Permissions;
+import net.omni.extraction.util.Permissions;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.looteditor.LootEditorHolder;
