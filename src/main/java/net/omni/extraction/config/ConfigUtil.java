@@ -253,6 +253,9 @@ public class ConfigUtil {
     private String compassFillerName;
     private List<String> compassStateLoreDiscovered;
     private List<String> compassStateLoreUndiscovered;
+    private List<String> compassRevealedLore;
+    private String compassHiddenMaterial;
+    private String compassHiddenName;
     private String compassEmptyMaterial;
     private String compassEmptyName;
     private CompassIcon compassDefaultIcon;
@@ -780,6 +783,12 @@ public class ConfigUtil {
                 List.of("<green>Discovered</green>"), savedDefaults);
         this.compassStateLoreUndiscovered = getAndDefaultStringList(ConfigKeys.COMPASS_STATE_LORE_UNDISCOVERED,
                 List.of("<yellow>Undiscovered</yellow>"), savedDefaults);
+        this.compassRevealedLore = getAndDefaultStringList(ConfigKeys.COMPASS_REVEALED_LORE,
+                List.of("<gold>Revealed by the Explorer</gold>"), savedDefaults);
+        this.compassHiddenMaterial = getAndDefaultString(ConfigKeys.COMPASS_HIDDEN_MATERIAL,
+                "BARRIER", savedDefaults);
+        this.compassHiddenName = getAndDefaultString(ConfigKeys.COMPASS_HIDDEN_NAME,
+                "<red>No discovered areas nearby.</red>", savedDefaults);
         this.compassEmptyMaterial = getAndDefaultString(ConfigKeys.COMPASS_EMPTY_MATERIAL,
                 "BARRIER", savedDefaults);
         this.compassEmptyName = getAndDefaultString(ConfigKeys.COMPASS_EMPTY_NAME,
@@ -2221,6 +2230,18 @@ public class ConfigUtil {
 
     public List<String> getCompassStateLore(boolean discovered) {
         return discovered ? compassStateLoreDiscovered : compassStateLoreUndiscovered;
+    }
+
+    public List<String> getCompassRevealedLore() {
+        return compassRevealedLore;
+    }
+
+    public String getCompassHiddenMaterial() {
+        return compassHiddenMaterial;
+    }
+
+    public String getCompassHiddenName() {
+        return compassHiddenName;
     }
 
     public String getCompassEmptyMaterial() {

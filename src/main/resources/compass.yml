@@ -9,6 +9,13 @@ compass:
       - "<green>Discovered</green>"
     undiscovered:
       - "<yellow>Undiscovered</yellow>"
+  # Appended to nearby undiscovered areas revealed by the Artifact of the Explorer.
+  revealed-lore:
+    - "<gold>Revealed by the Explorer</gold>"
+  # Shown when no area is discovered or currently revealed.
+  hidden:
+    material: BARRIER
+    name: "<red>No discovered areas nearby.</red>"
   empty:
     material: BARRIER
     name: "<red>No areas configured</red>"

@@ -62,7 +62,10 @@ explorer:
   icon: FILLED_MAP
   lore:
     - "<gray>Reveals nearby undiscovered areas.</gray>"
-  effects: []
+    - "<gray>Radius: <white>150</white> blocks.</gray>"
+  effects:
+    - type: EXPLORER_RADIUS
+      value: 150
 
 berserker:
   name: "<gold>Artifact of the Berserker</gold>"

@@ -832,6 +832,17 @@ via `Math.sqrt` of the squared value only when needed.
   `ctx.eligiblePlayers()` is empty (no online player in `settings.world-name` who ran `/extraction`), which
   despawns the mobs and cleans up boss bars/waypoints/craters — the only case where event mobs are allowed
   to disappear.
+- **Artifact of the Explorer** (`relics/artifacts.yml` id `explorer`): new `RelicEffectType.EXPLORER_RADIUS`
+  (`value` = radius in blocks, default 150). While the artifact's timed activation is live,
+  `RelicEffectManager.explorerRevealRadius(data)` exposes the radius (max across active relics; existing
+  installs whose explorer still has `effects: []` fall back to 150 with a one-time warning; an explicit 0
+  disables it). The `CompassGUI` now **hides undiscovered areas by default**: it renders only discovered
+  areas or undiscovered areas within the Explorer radius (same world, squared horizontal distance to the
+  area's AABB). Revealed entries get `%state%` = `Revealed`, the configurable `compass.revealed-lore` lines
+  and an enchantment glint, but are NOT persisted as discovered (physical entry still discovers via
+  `AreaManager.checkPlayerAreas`). When nothing is visible the new `compass.hidden.material/name` item shows.
+  The bundled `artifacts.yml` explorer definition carries the effect (`value: 150`); activation uses the
+  normal relic window (global default 60s unless a `duration:` is added).
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

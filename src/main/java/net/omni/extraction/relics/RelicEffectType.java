@@ -64,5 +64,11 @@ public enum RelicEffectType {
     /**
      * Extra seconds added to the starting run timer.
      */
-    RUN_TIME
+    RUN_TIME,
+
+    /**
+     * While active, reveals nearby undiscovered areas in the Extraction
+     * Compass GUI within {@code value} blocks. Discovery is not persisted.
+     */
+    EXPLORER_RADIUS
 }

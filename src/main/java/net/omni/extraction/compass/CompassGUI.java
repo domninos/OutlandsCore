@@ -43,13 +43,27 @@ public final class CompassGUI {
         }
 
         Map<Area, Integer> slots = assignSlots(plugin, areas, size);
+        double revealRadius = plugin.getRelicEffectManager().explorerRevealRadius(data);
+        double revealRadiusSquared = revealRadius * revealRadius;
+        boolean visible = false;
 
         for (Map.Entry<Area, Integer> entry : slots.entrySet()) {
             Area area = entry.getKey();
             int slot = entry.getValue();
-            inventory.setItem(slot, buildItem(plugin, player, data, area));
+            boolean discovered = data.isAreaDiscovered(area.getName());
+            boolean revealed = !discovered && revealRadiusSquared > 0
+                    && horizontalDistanceSquared(player, area) <= revealRadiusSquared;
+
+            if (!discovered && !revealed)
+                continue;
+
+            inventory.setItem(slot, buildItem(plugin, player, area, discovered, revealed));
             holder.map(slot, area.getName());
+            visible = true;
         }
+
+        if (!visible)
+            inventory.setItem(size / 2, buildHidden(plugin));
 
         ItemStack filler = buildFiller(plugin);
 
@@ -103,14 +117,14 @@ public final class CompassGUI {
         return -1;
     }
 
-    private static ItemStack buildItem(ExtractionPlugin plugin, Player player, PlayerData data, Area area) {
+    private static ItemStack buildItem(ExtractionPlugin plugin, Player player, Area area,
+                                       boolean discovered, boolean revealed) {
         CompassIcon icon = plugin.getConfigUtil().getCompassAreaIcon(area.getName());
 
         if (icon == null)
             icon = plugin.getConfigUtil().getCompassDefaultIcon();
 
-        boolean discovered = data.isAreaDiscovered(area.getName());
-        String state = discovered ? "Discovered" : "Undiscovered";
+        String state = discovered ? "Discovered" : "Revealed";
         String status = StringUtils.capitalize(area.getState().name().toLowerCase(Locale.ROOT).replace('_', ' '));
         int level = plugin.getAreaManager().getStats(area).level();
         String distance = distance(player, area);
@@ -124,12 +138,34 @@ public final class CompassGUI {
 
         plugin.getChatRenderer().setDisplayName(meta,
                 fill(icon.name(), area, state, status, level, distance));
-        plugin.getChatRenderer().setLore(meta,
-                fillAll(icon.lore(), area, state, status, level, distance));
+
+        List<String> lore = fillAll(icon.lore(), area, state, status, level, distance);
+
+        if (revealed)
+            lore.addAll(fillAll(plugin.getConfigUtil().getCompassRevealedLore(),
+                    area, state, status, level, distance));
+
+        plugin.getChatRenderer().setLore(meta, lore);
 
         if (icon.customModelData() > 0)
             meta.setCustomModelData(icon.customModelData());
 
+        if (revealed)
+            meta.setEnchantmentGlintOverride(true);
+
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private static ItemStack buildHidden(ExtractionPlugin plugin) {
+        Material material = matchMaterial(plugin.getConfigUtil().getCompassHiddenMaterial(), Material.BARRIER);
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta == null)
+            return item;
+
+        plugin.getChatRenderer().setDisplayName(meta, plugin.getConfigUtil().getCompassHiddenName());
         item.setItemMeta(meta);
         return item;
     }
@@ -200,7 +236,32 @@ public final class CompassGUI {
         if (center == null || center.getWorld() == null || !center.getWorld().equals(player.getWorld()))
             return "-";
 
-        return String.valueOf(Math.round(center.distance(player.getLocation())));
+        return String.valueOf(Math.round(Math.sqrt(center.distanceSquared(player.getLocation()))));
+    }
+
+    /**
+     * Squared horizontal distance from the player to the area's bounding box,
+     * or {@link Double#MAX_VALUE} when the area cannot be compared.
+     */
+    private static double horizontalDistanceSquared(Player player, Area area) {
+        Location min = area.getMin();
+        Location max = area.getMax();
+        String world = area.getWorld();
+
+        if (min == null || max == null || world == null
+                || !world.equalsIgnoreCase(player.getWorld().getName()))
+            return Double.MAX_VALUE;
+
+        double minX = Math.min(min.getX(), max.getX());
+        double maxX = Math.max(min.getX(), max.getX());
+        double minZ = Math.min(min.getZ(), max.getZ());
+        double maxZ = Math.max(min.getZ(), max.getZ());
+        double x = player.getX();
+        double z = player.getZ();
+        double dx = x < minX ? minX - x : (x > maxX ? x - maxX : 0);
+        double dz = z < minZ ? minZ - z : (z > maxZ ? z - maxZ : 0);
+
+        return dx * dx + dz * dz;
     }
 
     private static Material matchMaterial(String name, Material fallback) {

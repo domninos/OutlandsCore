@@ -42,7 +42,10 @@ public class RelicEffectManager {
     private static final UUID MAX_HEALTH_MOD = UUID.fromString("8b77b9b0-1912-49b4-bbf4-79f3a1ad5280");
     private static final String MOVEMENT_SPEED_NAME = "extraction_relic_speed";
     private static final String MAX_HEALTH_NAME = "extraction_relic_health";
+    private static final String EXPLORER_ID = "explorer";
+    private static final double DEFAULT_EXPLORER_RADIUS = 150.0;
     private final ExtractionPlugin plugin;
+    private boolean explorerFallbackWarned;
 
     /**
      * player uuid -> (equipped relic id -> expiry epoch millis).
@@ -566,6 +569,47 @@ public class RelicEffectManager {
         return boss
                 ? sumEffect(data, RelicEffectType.BOSS_LOOT)
                 : sumEffect(data, RelicEffectType.MOB_LOOT);
+    }
+
+    /**
+     * Radius (blocks) in which the Explorer artifact reveals undiscovered
+     * areas, or 0 when no Explorer is active. Existing installs whose
+     * explorer definition still has an empty effects list fall back to the
+     * default radius so the artifact works without a config edit.
+     */
+    public double explorerRevealRadius(PlayerData data) {
+        if (data == null)
+            return 0;
+
+        double radius = 0;
+        boolean hasEffect = false;
+        boolean explorerActive = false;
+
+        for (RelicDefinition def : activeRelics(data)) {
+            if (EXPLORER_ID.equalsIgnoreCase(def.id()))
+                explorerActive = true;
+
+            for (RelicEffect effect : def.effects()) {
+                if (effect.type() != RelicEffectType.EXPLORER_RADIUS)
+                    continue;
+
+                hasEffect = true;
+                radius = Math.max(radius, effect.value());
+            }
+        }
+
+        if (explorerActive && !hasEffect) {
+            if (!explorerFallbackWarned) {
+                explorerFallbackWarned = true;
+                plugin.getLogger().warning("Artifact 'explorer' has no EXPLORER_RADIUS effect; using the default "
+                        + (int) DEFAULT_EXPLORER_RADIUS + "-block reveal radius. Add the effect to "
+                        + "relics/artifacts.yml to tune it.");
+            }
+
+            radius = DEFAULT_EXPLORER_RADIUS;
+        }
+
+        return Math.max(0, radius);
     }
 
     private record ParticleSpec(Particle particle, Object data) {

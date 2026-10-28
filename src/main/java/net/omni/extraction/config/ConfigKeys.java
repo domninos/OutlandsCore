@@ -95,6 +95,9 @@ public final class ConfigKeys {
     public static final String COMPASS_FILLER_NAME = "compass.filler.name";
     public static final String COMPASS_STATE_LORE_DISCOVERED = "compass.state-lore.discovered";
     public static final String COMPASS_STATE_LORE_UNDISCOVERED = "compass.state-lore.undiscovered";
+    public static final String COMPASS_REVEALED_LORE = "compass.revealed-lore";
+    public static final String COMPASS_HIDDEN_MATERIAL = "compass.hidden.material";
+    public static final String COMPASS_HIDDEN_NAME = "compass.hidden.name";
     public static final String COMPASS_EMPTY_MATERIAL = "compass.empty.material";
     public static final String COMPASS_EMPTY_NAME = "compass.empty.name";
     public static final String COMPASS_DEFAULT_ICON = "compass.default-icon";
