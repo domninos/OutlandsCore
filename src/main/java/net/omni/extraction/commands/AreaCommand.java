@@ -120,34 +120,34 @@ public class AreaCommand implements CommandExecutor {
 
         switch (category) {
             case AREA_CATEGORY_SETUP -> {
-                MessageUtil.append("/areas wand [name] [mode]", "Get (or configure) the area wand", help);
-                MessageUtil.append("/areas create {name}", "Create an area from your wand corners", help);
-                MessageUtil.append("/areas rename {old} {new}", "Rename an area", help);
-                MessageUtil.append("/areas resize {name}", "Resize an area to new corners", help);
-                MessageUtil.append("/areas update {name}", "Re-detect a resized area", help);
-                MessageUtil.append("/areas delete {name}", "Delete an area", help);
+                MessageUtil.append("areas wand [name] [mode]", "Get (or configure) the area wand", help);
+                MessageUtil.append("areas create {name}", "Create an area from your wand corners", help);
+                MessageUtil.append("areas rename {old} {new}", "Rename an area", help);
+                MessageUtil.append("areas resize {name}", "Resize an area to new corners", help);
+                MessageUtil.append("areas update {name}", "Re-detect a resized area", help);
+                MessageUtil.append("areas delete {name}", "Delete an area", help);
             }
             case AREA_CATEGORY_MOBS -> {
-                MessageUtil.append("/areas addmob {area} {mob} [count] [boss] [level] [respawn]", "Add a spawn to an area", help);
-                MessageUtil.append("/areas delmob {area} {mob}", "Remove a spawn from an area", help);
-                MessageUtil.append("/areas setmob {area} {mob} {field} {value}", "Edit a spawn", help);
-                MessageUtil.append("/areas mob create {id} {type} [mythic]", "Create a mob template", help);
-                MessageUtil.append("/areas mob set {id} {field} {value}", "Edit a mob template", help);
-                MessageUtil.append("/areas mob remove {id}", "Remove a mob template", help);
-                MessageUtil.append("/areas mob list", "List mob templates", help);
-                MessageUtil.append("/areas mob info {id}", "Show a mob template", help);
+                MessageUtil.append("areas addmob {area} {mob} [count] [boss] [level] [respawn]", "Add a spawn to an area", help);
+                MessageUtil.append("areas delmob {area} {mob}", "Remove a spawn from an area", help);
+                MessageUtil.append("areas setmob {area} {mob} {field} {value}", "Edit a spawn", help);
+                MessageUtil.append("areas mob create {id} {type} [mythic]", "Create a mob template", help);
+                MessageUtil.append("areas mob set {id} {field} {value}", "Edit a mob template", help);
+                MessageUtil.append("areas mob remove {id}", "Remove a mob template", help);
+                MessageUtil.append("areas mob list", "List mob templates", help);
+                MessageUtil.append("areas mob info {id}", "Show a mob template", help);
             }
             case AREA_CATEGORY_LOOT -> {
-                MessageUtil.append("/areas setchest {area} {index} {type|key|remove} [key]", "Edit a loot chest", help);
+                MessageUtil.append("areas setchest {area} {index} {type|key|remove} [key]", "Edit a loot chest", help);
                 help.append("  <gray>Tip: right-click a container with the chest wand to open the Loot Table Editor.</gray>\n");
             }
             case AREA_CATEGORY_UTILITY -> {
-                MessageUtil.append("/areas list", "List all areas", help);
-                MessageUtil.append("/areas info {name}", "Show area details", help);
-                MessageUtil.append("/areas tp {name}", "Teleport to an area", help);
-                MessageUtil.append("/areas reset {name}", "Reset an area's clear state", help);
-                MessageUtil.append("/areas setlevel {area} {level}", "Set the mob level (0 = derive)", help);
-                MessageUtil.append("/areas reload", "Reload all area files", help);
+                MessageUtil.append("areas list", "List all areas", help);
+                MessageUtil.append("areas info {name}", "Show area details", help);
+                MessageUtil.append("areas tp {name}", "Teleport to an area", help);
+                MessageUtil.append("areas reset {name}", "Reset an area's clear state", help);
+                MessageUtil.append("areas setlevel {area} {level}", "Set the mob level (0 = derive)", help);
+                MessageUtil.append("areas reload", "Reload all area files", help);
             }
         }
 

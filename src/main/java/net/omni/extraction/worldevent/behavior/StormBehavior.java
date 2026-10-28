@@ -71,7 +71,7 @@ public class StormBehavior {
         if (area == null || world == null)
             return false;
 
-        int wanted = Math.min(Math.max(1, cfg.zones()), 12);
+        int wanted = Math.clamp(cfg.zones(), 1, 12);
         List<Location> result = new ArrayList<>();
         int attempts = 0;
 
@@ -80,7 +80,8 @@ public class StormBehavior {
             if (point == null)
                 break;
 
-            boolean tooClose = result.stream().anyMatch(z -> z.distance(point) < cfg.radius() * 2);
+            boolean tooClose = result.stream().anyMatch(z ->
+                    z.distanceSquared(point) < (double) cfg.radius() * cfg.radius() * 4);
             if (!tooClose)
                 result.add(point);
         }
@@ -89,7 +90,7 @@ public class StormBehavior {
             return false;
 
         instance.getStormZones().addAll(result);
-        instance.setTrackLocation(result.get(0));
+        instance.setTrackLocation(result.getFirst());
         return true;
     }
 
@@ -153,12 +154,12 @@ public class StormBehavior {
                 clampToArea(zone, instance.getBoundArea(), cfg.radius());
             }
 
-            instance.setTrackLocation(zones.get(0));
+            instance.setTrackLocation(zones.getFirst());
             instance.setLastZoneDrift(now);
         }
 
         for (Location zone : zones) {
-            int ring = Math.min(12, Math.max(4, cfg.radius()));
+            int ring = Math.clamp(cfg.radius(), 4, 12);
 
             for (int i = 0; i < ring; i++) {
                 double angle = i * 2 * Math.PI / ring;
@@ -186,7 +187,7 @@ public class StormBehavior {
                 if (zone.getWorld() != playerLoc.getWorld())
                     continue;
 
-                if (zone.distance(playerLoc) <= cfg.radius()) {
+                if (zone.distanceSquared(playerLoc) <= (double) cfg.radius() * cfg.radius()) {
                     inside = true;
                     break;
                 }

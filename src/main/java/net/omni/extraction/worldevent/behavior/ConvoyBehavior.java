@@ -68,7 +68,16 @@ public class ConvoyBehavior {
                 points.add(ctx.spawner().groundSnap(origin.clone().add(dir.clone().multiply(d))));
         }
 
-        points.add(dest.clone());
+        points.add(world.equals(dest.getWorld())
+                ? dest.clone()
+                : origin.clone().add(dir.clone().multiply(dist)));
+
+        if (!world.equals(dest.getWorld()))
+            ctx.plugin().getLogger().warning("Convoy '" + event.getId()
+                    + "' end anchor is in world '" + dest.getWorld().getName()
+                    + "' but the convoy walks in '" + world.getName()
+                    + "' — the route terminates at those in-world coordinates instead.");
+
         instance.setConvoyRouteLength(dist);
         instance.setLastConvoyDist(Double.MAX_VALUE);
 
@@ -258,11 +267,16 @@ public class ConvoyBehavior {
         if (points.isEmpty())
             return;
 
-        int step = Math.min(Math.max(instance.getConvoyStep(), 0), points.size() - 1);
+        int step = Math.clamp(instance.getConvoyStep(), 0, points.size() - 1);
         Location target = points.get(step);
-        double distToTarget = leader.getLocation().distance(target);
 
-        if (instance.getLastConvoyDist() - distToTarget >= 0.5) {
+        // distanceSquared everywhere: Location#distance throws across worlds
+        // and pays a sqrt per call. Stuck progress uses squared thresholds.
+        Location leaderLoc = leader.getLocation();
+        boolean sameWorld = leaderLoc.getWorld() != null && leaderLoc.getWorld().equals(target.getWorld());
+        double distSq = sameWorld ? leaderLoc.distanceSquared(target) : Double.MAX_VALUE;
+
+        if (instance.getLastConvoyDist() - distSq >= 0.25) {
             instance.setConvoyStuckSince(-1);
         } else if (instance.getConvoyStuckSince() == -1) {
             instance.setConvoyStuckSince(System.currentTimeMillis());
@@ -272,12 +286,12 @@ public class ConvoyBehavior {
             instance.setLastConvoyDist(Double.MAX_VALUE);
         }
 
-        instance.setLastConvoyDist(distToTarget);
+        instance.setLastConvoyDist(distSq);
 
         boolean finalPoint = step >= points.size() - 1;
         double reach = finalPoint && cfg.escapeRadius() > 0 ? cfg.escapeRadius() : cfg.checkpointRadius();
 
-        if (distToTarget <= reach) {
+        if (distSq <= reach * reach) {
             if (!finalPoint) {
                 instance.setConvoyStep(step + 1);
                 instance.setLastConvoyDist(Double.MAX_VALUE);
@@ -288,11 +302,13 @@ public class ConvoyBehavior {
             }
         }
 
-        int currentStep = Math.min(Math.max(instance.getConvoyStep(), 0), points.size() - 1);
-        mob.getPathfinder().moveTo(points.get(currentStep),
-                Math.max(0.05, Math.min(1.0, cfg.speed())));
+        int currentStep = Math.clamp(instance.getConvoyStep(), 0, points.size() - 1);
+        mob.getPathfinder().moveTo(points.get(currentStep), Math.clamp(cfg.speed(), 0.05, 1.0));
 
-        double remaining = leader.getLocation().distance(points.getLast());
+        Location last = points.getLast();
+        double remaining = leaderLoc.getWorld() != null && leaderLoc.getWorld().equals(last.getWorld())
+                ? Math.sqrt(leaderLoc.distanceSquared(last))
+                : leaderLoc.toVector().distance(last.toVector());
         instance.setConvoyProgress(Math.clamp(
                 1.0 - remaining / Math.max(1.0, instance.getConvoyRouteLength()), 0.0, 1.0));
 
@@ -303,8 +319,9 @@ public class ConvoyBehavior {
                 if (escort == null || !escort.isValid())
                     continue;
 
-                if (escort.getLocation().distance(leader.getLocation()) > followRange) {
-                    Location spot = leader.getLocation().clone().add(
+                if (escort.getWorld().equals(leaderLoc.getWorld())
+                        && escort.getLocation().distanceSquared(leaderLoc) > (double) followRange * followRange) {
+                    Location spot = leaderLoc.clone().add(
                             ctx.random().nextInt(followRange + 1) - followRange / 2.0, 0,
                             ctx.random().nextInt(followRange + 1) - followRange / 2.0);
                     escort.teleport(ctx.spawner().groundSnap(spot));
@@ -313,7 +330,7 @@ public class ConvoyBehavior {
         }
 
         updateConvoyVisual(instance, leader);
-        instance.setTrackLocation(leader.getLocation());
+        instance.setTrackLocation(leaderLoc);
     }
 
     /**

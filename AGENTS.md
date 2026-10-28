@@ -45,6 +45,12 @@ Always declare imports at the top of the file — never use fully-qualified clas
 `net.omni.extraction.data.PlayerData pd = ...`). Same for static calls and field types. When touching
 existing code that has inline qualified names, convert them to imports.
 
+### Distance checks
+Never `Location#distance(...)` — it throws `IllegalArgumentException` across worlds (e.g. convoy route vs
+extraction spawn) and pays a sqrt on every call. Use `distanceSquared(...)` with squared thresholds
+(`reach²`, `radius²`), guard world equality before comparing positions, and derive a true length (ratios)
+via `Math.sqrt` of the squared value only when needed.
+
 ### Integrations
 - Use direct plugin APIs only — do **not** introduce reflection.
 - Integration dependencies are `provided`; guard their use so a missing plugin does not crash the server.

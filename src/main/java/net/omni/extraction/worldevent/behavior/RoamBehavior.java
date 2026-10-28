@@ -226,7 +226,8 @@ public class RoamBehavior {
         Player target = nearestPlayer(leader.getLocation(), cfg.aggroRange());
 
         if (target != null
-                && leader.getLocation().distance(target.getLocation()) <= cfg.attackRadius()
+                && leader.getWorld().equals(target.getWorld())
+                && leader.getLocation().distanceSquared(target.getLocation()) <= (double) cfg.attackRadius() * cfg.attackRadius()
                 && now - instance.getLastAreaAttack() >= cfg.attackIntervalSeconds() * 1000L) {
             areaAttack(leader, cfg.attackRadius(), cfg.attackDamage() * instance.getDamageMultiplier());
             instance.setLastAreaAttack(now);
@@ -249,12 +250,12 @@ public class RoamBehavior {
             return null;
 
         Player best = null;
-        double bestDistance = Math.max(0, range);
+        double bestDistanceSq = Math.pow(Math.max(0, range), 2);
 
         for (Player player : world.getPlayers()) {
-            double distance = player.getLocation().distance(from);
-            if (distance <= bestDistance) {
-                bestDistance = distance;
+            double distanceSq = player.getLocation().distanceSquared(from);
+            if (distanceSq <= bestDistanceSq) {
+                bestDistanceSq = distanceSq;
                 best = player;
             }
         }
@@ -329,7 +330,7 @@ public class RoamBehavior {
             world.playSound(center, boom, 1.2f, 1.0f);
 
         for (Player player : world.getPlayers())
-            if (player.getLocation().distance(center) <= radius)
+            if (player.getLocation().distanceSquared(center) <= (double) radius * radius)
                 player.damage(damage, attacker);
     }
 

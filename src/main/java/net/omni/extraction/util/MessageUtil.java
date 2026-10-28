@@ -28,6 +28,10 @@ public class MessageUtil {
     }
 
     public static String formatString(String command, String description, String... aliases) {
+        // The leading slash is hard-coded here; callers pass the bare command.
+        if (command.startsWith("/"))
+            command = command.substring(1);
+
         StringBuilder builder = new StringBuilder();
 
         builder.append("  <#00AAFF>/")
