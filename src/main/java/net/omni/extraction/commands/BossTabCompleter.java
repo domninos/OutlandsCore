@@ -1,6 +1,7 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.mobs.MobTemplate;
 import net.omni.extraction.util.Permissions;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -50,7 +51,7 @@ public class BossTabCompleter implements TabCompleter {
             return filter(availableTypes(), input);
 
         if (args.length == 3 && args[0].equalsIgnoreCase("settype"))
-            return filter(plugin.getBossTemplateManager().getIds(), input);
+            return filter(plugin.getBossTemplateManager().getBossTemplates().stream().map(MobTemplate::getId).toList(), input);
 
         if (args.length == 3)
             return List.of();
@@ -83,7 +84,7 @@ public class BossTabCompleter implements TabCompleter {
     }
 
     private List<String> bossIds() {
-        return plugin.getBossTemplateManager().getIds();
+        return plugin.getBossTemplateManager().getBossTemplates().stream().map(MobTemplate::getId).toList();
     }
 
     private List<String> filter(List<String> values, String input) {

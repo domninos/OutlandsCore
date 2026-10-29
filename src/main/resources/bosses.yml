@@ -14,4 +14,132 @@
 #   abilities        boss abilities (SLAM, VOLLEY, TELEPORT_STRIKE, HEAL, ENRAGE, TOXIC_AURA)
 #   loot-table       optional loot table id
 #   loot-rolls       how many loot-table rolls to make
-bosses: {}
+
+# Sample bosses - copy/edit these to fit your map.
+bosses:
+  bone_hyperion:
+    type: SKELETON
+    mythic: false
+    display-name: "<yellow>Bone Hyperion</yellow>"
+    health: 60
+    damage: 6
+    level: 2
+    count: 1
+    respawn-seconds: 0
+    equipment:
+      helmet: IRON_HELMET
+      mainhand: BOW
+    drops:
+      - type: BONE
+        chance: 1.0
+        amount: 2
+      - type: IRON_INGOT
+        chance: 0.25
+        amount: 1
+    abilities:
+      - type: SLAM
+        cooldown: 12
+        power: 6
+        radius: 4
+      - type: VOLLEY
+        cooldown: 8
+        power: 4
+        radius: 20
+        amount: 5
+    loot-table: Easy
+    loot-rolls: 1
+
+  ember_baron:
+    type: BLAZE
+    mythic: false
+    display-name: "<red>Ember Baron</red>"
+    health: 90
+    damage: 8
+    level: 3
+    count: 1
+    respawn-seconds: 0
+    drops:
+      - type: BLAZE_ROD
+        chance: 1.0
+        amount: 2
+      - type: GOLD_INGOT
+        chance: 0.3
+        amount: 1
+    abilities:
+      - type: SLAM
+        cooldown: 10
+        power: 8
+        radius: 5
+      - type: TELEPORT_STRIKE
+        cooldown: 12
+        power: 9
+        radius: 12
+    loot-table: Easy
+    loot-rolls: 1
+
+  toxic_banne:
+    type: WITHER_SKELETON
+    mythic: false
+    display-name: "<dark_red>Toxic Banne</dark_red>"
+    health: 100
+    damage: 9
+    level: 4
+    count: 1
+    respawn-seconds: 0
+    abilities:
+      - type: TOXIC_AURA
+        cooldown: 15
+        power: 2
+        radius: 7
+        duration: 6
+    loot-table: Easy
+    loot-rolls: 1
+
+  vex_warden:
+    t ype: VINDICATOR
+    mythic: false
+    display-name: "<gold>Vex Warden</gold>"
+    health: 120
+    damage: 10
+    level: 4
+    count: 1
+    respawn-seconds: 0
+    equipment:
+      helmet: IRON_HELMET
+      mainhand: IRON_AXE
+    drops:
+      - type: IRON_INGOT
+        chance: 1.0
+        amount: 3
+      - type: EMERALD
+        chance: 0.2
+        amount: 1
+    abilities:
+      - type: SLAM
+        cooldown: 10
+        power: 10
+        radius: 6
+    loot-table: Easy
+    loot-rolls: 1
+
+  skeleton_king:
+    type: SkeletonKing
+    mythic: true
+    display-name: "<red>Skeleton King</red>"
+    health: 150
+    damage: 12
+    level: 5
+    count: 1
+    respawn-seconds: 0
+    abilities:
+      - type: SLAM
+        cooldown: 10
+        power: 10
+        radius: 6
+      - type: ENRAGE
+        cooldown: 30
+        power: 2
+        duration: 8
+        trigger-health: 35
+    loot-table: Easy
+    loot-rolls: 1

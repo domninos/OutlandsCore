@@ -148,7 +148,7 @@ public class BossCommand {
             return;
         }
 
-        int count = plugin.getMobTemplateManager().getBossTemplates().size();
+        int count = plugin.getBossTemplateManager().getBossTemplates().size();
 
         if (count == 0) {
             plugin.sendMessage(player, Messages.BOSS_NO_BOSSES.toString());
@@ -231,7 +231,7 @@ public class BossCommand {
         if (!isBoss(sender, id))
             return;
 
-        if (plugin.getMobTemplateManager().delete(id))
+        if (plugin.getBossTemplateManager().delete(id))
             plugin.sendMessage(sender, Messages.BOSS_DELETED.replace("boss", id));
         else
             plugin.sendMessage(sender, Messages.BOSS_NOT_FOUND.replace("boss", id));
@@ -249,9 +249,9 @@ public class BossCommand {
         if (!isBoss(sender, id))
             return;
 
-        MobTemplate template = plugin.getMobTemplateManager().getBoss(id);
+        MobTemplate template = plugin.getBossTemplateManager().getBoss(id);
         template.setDisplayName(String.join(" ", List.of(args).subList(2, args.length)));
-        plugin.getMobTemplateManager().save();
+        plugin.getBossTemplateManager().saveBosses();
         plugin.sendMessage(sender, Messages.BOSS_RENAMED.replace("boss", id));
     }
 
@@ -275,10 +275,10 @@ public class BossCommand {
         if (check == null)
             return;
 
-        MobTemplate template = plugin.getMobTemplateManager().getBoss(id);
+        MobTemplate template = plugin.getBossTemplateManager().getBoss(id);
         template.setType(check.type());
         template.setMythic(check.mythic());
-        plugin.getMobTemplateManager().save();
+        plugin.getBossTemplateManager().saveBosses();
         applyMythicAttributes(id, check.type(), check.mythic());
         plugin.sendMessage(sender, Messages.BOSS_TYPE_SET.replace("boss", id, "type", check.type()));
     }
@@ -311,7 +311,7 @@ public class BossCommand {
         if (!isBoss(sender, id))
             return;
 
-        MobTemplate template = plugin.getMobTemplateManager().getBoss(id);
+        MobTemplate template = plugin.getBossTemplateManager().getBoss(id);
         int spawned = plugin.getBossManager().spawn(player, template, Math.max(1, count));
 
         plugin.sendMessage(sender, spawned > 0
@@ -320,7 +320,7 @@ public class BossCommand {
     }
 
     private boolean isBoss(CommandSender sender, String id) {
-        if (plugin.getMobTemplateManager().isBoss(id))
+        if (plugin.getBossTemplateManager().isBoss(id))
             return true;
 
         plugin.sendMessage(sender, Messages.BOSS_NOT_FOUND.replace("boss", id));
@@ -358,7 +358,7 @@ public class BossCommand {
         if (attributes == null)
             return;
 
-        plugin.getMobTemplateManager().applyMythicAttributes(id,
+        plugin.getBossTemplateManager().applyMythicAttributesToBoss(id,
                 attributes.getHealth(), attributes.getDamage(), attributes.getDisplayName());
     }
 

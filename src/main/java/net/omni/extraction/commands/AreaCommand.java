@@ -521,6 +521,7 @@ public class AreaCommand implements CommandExecutor {
 
     private boolean handleReload(CommandSender sender) {
         plugin.getMobTemplateManager().load();
+        plugin.getBossTemplateManager().load();
         plugin.getAreaManager().load();
         plugin.getLootTableManager().reload();
         plugin.sendMessage(sender, Messages.AREA_RELOADED.toString());

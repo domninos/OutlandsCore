@@ -2,6 +2,7 @@ package net.omni.extraction.mobs;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.AreaSpawnDefinition;
+import net.omni.extraction.boss.BossTemplateManager;
 import net.omni.extraction.integration.MythicMobsProvider;
 import org.bukkit.entity.EntityType;
 
@@ -122,7 +123,8 @@ public class MobResolver {
     }
 
     public boolean templateBoss(String mobId) {
-        return plugin.getMobTemplateManager().isBoss(mobId);
+        BossTemplateManager bosses = plugin.getBossTemplateManager();
+        return bosses != null && bosses.isBoss(mobId);
     }
 
     public int templateLevel(String mobId) {

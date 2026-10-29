@@ -324,7 +324,7 @@ via `Math.sqrt` of the squared value only when needed.
   (system scope), `com.github.MilkBowl:VaultAPI:1.7.1` (provided).
 
 ## Completed
-- Boss Creator (`/boss`, `/bosses`): create/edit boss templates stored as `boss: true` `mob_template`, features stats, 6 abilities, per-boss item drops + bonus loot table, test-spawn, GUI editing; uses six SlotType validations. `mobs.yml` ability/loot fields.
+- Boss Creator (`/boss`, `/bosses`): create/edit boss templates stored in `bosses.yml` (one manager owns the file; `/bosses list` shows boss templates), features stats, 6 abilities, per-boss item drops + bonus loot table, test-spawn, GUI editing. Ships five starter templates (one MythicMobs `SkeletonKing`).
 
 - Separate lobby spawn: `settings.spawn` stays the extraction/outlands entry (unchanged, used by
   `/extraction enter` + convoy), and new `settings.lobby` (world default `ExtractionSpawn`, `/extraction setlobby`)

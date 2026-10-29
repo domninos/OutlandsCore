@@ -34,7 +34,7 @@ import net.omni.extraction.looteditor.LootEditorManager;
 import net.omni.extraction.managers.*;
 import net.omni.extraction.mobs.MobResolver;
 import net.omni.extraction.mobs.MobTemplateManager;
-import net.omni.extraction.mobs.BossTemplateManager;
+import net.omni.extraction.boss.BossTemplateManager;
 import net.omni.extraction.pack.PackManager;
 import net.omni.extraction.party.PartyListener;
 import net.omni.extraction.party.PartyManager;
@@ -77,6 +77,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private BackpackManager backpackManager;
     private ExternalPluginManager externalPluginManager;
     private MobTemplateManager mobTemplateManager;
+    private BossTemplateManager bossTemplateManager;
     private MobResolver mobResolver;
     private LootResolver lootResolver;
     private AreaManager areaManager;
@@ -103,7 +104,6 @@ public final class ExtractionPlugin extends JavaPlugin {
     private PartyListener partyListener;
     private DroneManager droneManager;
     private BossManager bossManager;
-    private BossTemplateManager bossTemplateManager;
     private BossCreatorManager bossCreatorManager;
 
 
@@ -276,9 +276,10 @@ public final class ExtractionPlugin extends JavaPlugin {
         externalPluginManager.detect();
 
         this.mobTemplateManager = new MobTemplateManager(this);
-        this.mobTemplateManager.load();
         this.bossTemplateManager = new BossTemplateManager(this);
+        this.mobTemplateManager.setBossTemplateManager(this.bossTemplateManager);
         this.bossTemplateManager.load();
+        this.mobTemplateManager.load();
 
         this.mobResolver = new MobResolver(this);
         this.lootResolver = new LootResolver(this);
@@ -515,6 +516,10 @@ public final class ExtractionPlugin extends JavaPlugin {
         return mobTemplateManager;
     }
 
+    public BossTemplateManager getBossTemplateManager() {
+        return bossTemplateManager;
+    }
+
     public MobResolver getMobResolver() {
         return mobResolver;
     }
@@ -594,11 +599,6 @@ public final class ExtractionPlugin extends JavaPlugin {
     public BossManager getBossManager() {
         return bossManager;
     }
-
-    public BossTemplateManager getBossTemplateManager() {
-        return bossTemplateManager;
-    }
-
 
     public BossCreatorManager getBossCreatorManager() {
         return bossCreatorManager;

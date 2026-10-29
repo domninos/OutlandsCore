@@ -299,6 +299,7 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getMessagesManager().loadMessages();
         plugin.getBossCreatorManager().closeAll();
         plugin.getMobTemplateManager().load();
+        plugin.getBossTemplateManager().load();
         plugin.getBossManager().reload();
         plugin.getUpgradeManager().reload();
         plugin.getScoreboardManager().reload();
