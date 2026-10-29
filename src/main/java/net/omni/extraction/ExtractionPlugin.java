@@ -34,6 +34,7 @@ import net.omni.extraction.looteditor.LootEditorManager;
 import net.omni.extraction.managers.*;
 import net.omni.extraction.mobs.MobResolver;
 import net.omni.extraction.mobs.MobTemplateManager;
+import net.omni.extraction.mobs.BossTemplateManager;
 import net.omni.extraction.pack.PackManager;
 import net.omni.extraction.party.PartyListener;
 import net.omni.extraction.party.PartyManager;
@@ -102,6 +103,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private PartyListener partyListener;
     private DroneManager droneManager;
     private BossManager bossManager;
+    private BossTemplateManager bossTemplateManager;
     private BossCreatorManager bossCreatorManager;
 
 
@@ -129,6 +131,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      - add join / leave extraction messages
      -
      - drone custom entity model for texture
+     - pet doesn't follow smoothly. make the minimum 3/5 for the pets
      -
 
      */
@@ -274,6 +277,8 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         this.mobTemplateManager = new MobTemplateManager(this);
         this.mobTemplateManager.load();
+        this.bossTemplateManager = new BossTemplateManager(this);
+        this.bossTemplateManager.load();
 
         this.mobResolver = new MobResolver(this);
         this.lootResolver = new LootResolver(this);
@@ -589,6 +594,11 @@ public final class ExtractionPlugin extends JavaPlugin {
     public BossManager getBossManager() {
         return bossManager;
     }
+
+    public BossTemplateManager getBossTemplateManager() {
+        return bossTemplateManager;
+    }
+
 
     public BossCreatorManager getBossCreatorManager() {
         return bossCreatorManager;

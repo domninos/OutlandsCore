@@ -310,7 +310,6 @@ public class AreaEditorManager {
             session.setCount(Math.max(1, template.getCount()));
             session.setLevel(Math.max(1, template.getLevel()));
             session.setRespawnSeconds(Math.max(0, template.getRespawnSeconds()));
-            session.setBoss(template.isBoss());
         } else {
             session.setCount(1);
             session.setLevel(1);

@@ -1,0 +1,17 @@
+# Boss templates for the boss creator (separate from area mobs).
+#
+# Each entry under `bosses` is a boss template.
+# Fields:
+#   type             vanilla EntityType or MythicMobs id
+#   mythic           true to spawn a MythicMob
+#   display-name     optional display name
+#   health           max health
+#   damage           attack damage
+#   level            Mythic level
+#   count            boss group size
+#   respawn-seconds  respawn delay (0 = no respawn)
+#   drops            boss drops
+#   abilities        boss abilities (SLAM, VOLLEY, TELEPORT_STRIKE, HEAL, ENRAGE, TOXIC_AURA)
+#   loot-table       optional loot table id
+#   loot-rolls       how many loot-table rolls to make
+bosses: {}

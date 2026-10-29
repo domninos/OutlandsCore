@@ -122,8 +122,7 @@ public class MobResolver {
     }
 
     public boolean templateBoss(String mobId) {
-        MobTemplate template = template(mobId);
-        return template != null && template.isBoss();
+        return plugin.getMobTemplateManager().isBoss(mobId);
     }
 
     public int templateLevel(String mobId) {

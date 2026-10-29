@@ -39,9 +39,9 @@ public class BossCreatorManager {
     }
 
     public void openBoss(Player player, String bossId) {
-        MobTemplate template = plugin.getMobTemplateManager().get(bossId);
+        MobTemplate template = plugin.getBossTemplateManager().get(bossId);
 
-        if (template == null || !template.isBoss()) {
+        if (template == null) {
             plugin.sendMessage(player, Messages.BOSS_NOT_FOUND.replace("boss", bossId));
             return;
         }
@@ -70,9 +70,9 @@ public class BossCreatorManager {
 
     private void render(Player player, BossCreatorSession session) {
         MobTemplate template = session.getBossId() == null
-                ? null : plugin.getMobTemplateManager().get(session.getBossId());
+                ? null : plugin.getBossTemplateManager().get(session.getBossId());
 
-        if (session.getBossId() != null && (template == null || !template.isBoss())) {
+        if (session.getBossId() != null && template == null) {
             session.setPage(BossCreatorSession.Page.LIST);
             session = new BossCreatorSession(null, size());
             sessions.put(player.getUniqueId(), session);
@@ -343,9 +343,9 @@ public class BossCreatorManager {
 
     public void handleClick(Player player, BossCreatorSession session, int slot, ClickType click) {
         MobTemplate template = session.getBossId() == null
-                ? null : plugin.getMobTemplateManager().get(session.getBossId());
+                ? null : plugin.getBossTemplateManager().get(session.getBossId());
 
-        if (session.getBossId() != null && (template == null || !template.isBoss())) {
+        if (session.getBossId() != null && template == null) {
             openList(player);
             return;
         }
@@ -442,7 +442,7 @@ public class BossCreatorManager {
                 return;
             }
 
-            plugin.getMobTemplateManager().delete(template.getId());
+            plugin.getBossTemplateManager().delete(template.getId());
             player.closeInventory();
             plugin.sendMessage(player, Messages.BOSS_DELETED.replace("boss", template.getId()));
             openList(player);
@@ -463,7 +463,7 @@ public class BossCreatorManager {
             }
         }
 
-        plugin.getMobTemplateManager().save();
+        plugin.getBossTemplateManager().save();
         render(player, session);
     }
 
@@ -491,7 +491,7 @@ public class BossCreatorManager {
             }
 
             template.getAbilities().add(new BossAbility(type));
-            plugin.getMobTemplateManager().save();
+            plugin.getBossTemplateManager().save();
             session.setListPage((template.getAbilities().size() - 1) / (size - 9));
             session.setAbilityIndex(template.getAbilities().size() - 1);
             session.setPage(BossCreatorSession.Page.ABILITY);
@@ -547,7 +547,7 @@ public class BossCreatorManager {
 
         if (slot == 40) {
             template.getAbilities().remove(session.getAbilityIndex());
-            plugin.getMobTemplateManager().save();
+            plugin.getBossTemplateManager().save();
             session.setPage(BossCreatorSession.Page.ABILITIES);
             render(player, session);
             plugin.sendMessage(player, Messages.BOSS_ABILITY_REMOVED.replace(
@@ -569,7 +569,7 @@ public class BossCreatorManager {
         boolean minus = slot == 10 || slot == 19 || slot == 28 || slot == 37;
         int direction = minus ? -1 : 1;
         field.apply(ability, field.getDouble(ability) + direction * (double) field.getDefaultStep());
-        plugin.getMobTemplateManager().save();
+        plugin.getBossTemplateManager().save();
         render(player, session);
     }
 
@@ -615,7 +615,7 @@ public class BossCreatorManager {
 
         if (slot == size - 7) {
             template.setLootRolls(template.getLootRolls() % 10 + 1);
-            plugin.getMobTemplateManager().save();
+            plugin.getBossTemplateManager().save();
             render(player, session);
             return;
         }
@@ -637,7 +637,7 @@ public class BossCreatorManager {
 
         if (click.isRightClick()) {
             MobDrop removed = template.getDrops().remove(index);
-            plugin.getMobTemplateManager().save();
+            plugin.getBossTemplateManager().save();
             render(player, session);
             plugin.sendMessage(player, Messages.BOSS_LOOT_REMOVED.replace("boss", template.getId()));
             return;
@@ -670,7 +670,7 @@ public class BossCreatorManager {
 
         if (slot == 40) {
             template.getDrops().remove(session.getDropIndex());
-            plugin.getMobTemplateManager().save();
+            plugin.getBossTemplateManager().save();
             session.setPage(BossCreatorSession.Page.LOOT);
             render(player, session);
             plugin.sendMessage(player, Messages.BOSS_LOOT_REMOVED.replace("boss", template.getId()));
@@ -698,7 +698,7 @@ public class BossCreatorManager {
             }
         }
 
-        plugin.getMobTemplateManager().save();
+        plugin.getBossTemplateManager().save();
         render(player, session);
     }
 
@@ -732,7 +732,7 @@ public class BossCreatorManager {
         if (slot == size - 5) {
             if (template != null) {
                 template.setLootTable(null);
-                plugin.getMobTemplateManager().save();
+                plugin.getBossTemplateManager().save();
                 plugin.sendMessage(player, Messages.BOSS_LOOT_TABLE_CLEARED.replace(
                         "boss", template.getId()));
             }
@@ -753,7 +753,7 @@ public class BossCreatorManager {
 
         String table = tables.get(index);
         template.setLootTable(table);
-        plugin.getMobTemplateManager().save();
+        plugin.getBossTemplateManager().save();
         plugin.sendMessage(player, Messages.BOSS_LOOT_TABLE_SET.replace(
                 "boss", template.getId(), "table", table));
         session.setPage(BossCreatorSession.Page.LOOT);
@@ -765,7 +765,7 @@ public class BossCreatorManager {
             return;
 
         MobTemplate template = session.getBossId() == null
-                ? null : plugin.getMobTemplateManager().get(session.getBossId());
+                ? null : plugin.getBossTemplateManager().get(session.getBossId());
 
         if (template == null)
             return;
@@ -778,7 +778,7 @@ public class BossCreatorManager {
         }
 
         template.getDrops().add(new MobDrop(entry.getType(), 1.0, entry.getAmount()));
-        plugin.getMobTemplateManager().save();
+        plugin.getBossTemplateManager().save();
         render(player, session);
         plugin.sendMessage(player, Messages.BOSS_LOOT_ADDED.replace("boss", template.getId()));
     }
@@ -797,10 +797,10 @@ public class BossCreatorManager {
     private List<MobTemplate> bosses() {
         List<MobTemplate> bosses = new ArrayList<>();
 
-        for (String id : plugin.getMobTemplateManager().getIds()) {
-            MobTemplate template = plugin.getMobTemplateManager().get(id);
+        for (String id : plugin.getBossTemplateManager().getIds()) {
+            MobTemplate template = plugin.getBossTemplateManager().get(id);
 
-            if (template != null && template.isBoss())
+            if (template != null)
                 bosses.add(template);
         }
 

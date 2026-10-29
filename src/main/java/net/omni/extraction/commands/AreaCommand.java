@@ -955,7 +955,6 @@ public class AreaCommand implements CommandExecutor {
                 + "</white>" + (template.isMythic() ? " <aqua>(mythic)</aqua>" : "") + "</gray>");
         plugin.sendMessage(sender, "<gray>Level: <white>" + template.getLevel() + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Count: <white>" + template.getCount() + "</white></gray>");
-        plugin.sendMessage(sender, "<gray>Boss: <white>" + template.isBoss() + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Health: <white>" + formatNumber(template.getHealth()) + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Damage: <white>" + formatNumber(template.getDamage()) + "</white></gray>");
         plugin.sendMessage(sender, "<gray>Respawn: <white>" + template.getRespawnSeconds() + "s</white></gray>");

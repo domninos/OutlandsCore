@@ -106,7 +106,6 @@ public class AreaManager {
             template.setHealth(section.getDouble("health", 0));
             template.setLevel(section.getInt("level", 1));
             template.setCount(section.getInt("count", 1));
-            template.setBoss(section.getBoolean("boss", false));
             template.setRespawnSeconds(section.getInt("respawn-seconds", 0));
 
             ConfigurationSection equipment = section.getConfigurationSection("equipment");

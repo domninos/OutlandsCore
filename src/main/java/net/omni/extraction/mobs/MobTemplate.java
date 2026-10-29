@@ -15,7 +15,6 @@ public class MobTemplate {
     private double damage;
     private int level;
     private int count;
-    private boolean boss;
     private boolean baby;
     private int respawnSeconds;
     private Map<String, String> equipment;
@@ -33,7 +32,6 @@ public class MobTemplate {
         this.damage = 0;
         this.level = 1;
         this.count = 1;
-        this.boss = false;
         this.baby = false;
         this.respawnSeconds = 0;
         this.equipment = new HashMap<>();
@@ -103,14 +101,6 @@ public class MobTemplate {
         this.count = count;
     }
 
-    public boolean isBoss() {
-        return boss;
-    }
-
-    public void setBoss(boolean boss) {
-        this.boss = boss;
-    }
-
     public boolean isBaby() {
         return baby;
     }
@@ -167,3 +157,4 @@ public class MobTemplate {
         this.lootRolls = Math.max(1, lootRolls);
     }
 }
+

@@ -5,10 +5,13 @@ import net.omni.extraction.util.Permissions;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.EntityType;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 
 public class BossTabCompleter implements TabCompleter {
@@ -39,11 +42,15 @@ public class BossTabCompleter implements TabCompleter {
             return switch (args[0].toLowerCase(Locale.ROOT)) {
                 case "edit", "delete", "rename", "settype", "spawn" ->
                         filter(bossIds(), input);
+                case "create" -> List.of();
                 default -> List.of();
             };
 
+        if (args.length == 3 && args[0].equalsIgnoreCase("create"))
+            return filter(availableTypes(), input);
+
         if (args.length == 3 && args[0].equalsIgnoreCase("settype"))
-            return filter(plugin.getMobTemplateManager().getIds(), input);
+            return filter(plugin.getBossTemplateManager().getIds(), input);
 
         if (args.length == 3)
             return List.of();
@@ -54,21 +61,29 @@ public class BossTabCompleter implements TabCompleter {
                 default -> List.of();
             };
 
-        if (args.length == 3)
-            return List.of();
-
         return List.of();
     }
 
-    private List<String> bossIds() {
-        List<String> ids = new ArrayList<>();
+    private List<String> availableTypes() {
+        Set<String> types = new HashSet<>();
 
-        for (String id : plugin.getMobTemplateManager().getIds()) {
-            if (plugin.getMobTemplateManager().get(id).isBoss())
-                ids.add(id);
+        for (EntityType type : EntityType.values()) {
+            if (type.isAlive() && type.isSpawnable())
+                types.add(type.name().toLowerCase(Locale.ROOT));
         }
 
-        return ids;
+        var mythic = plugin.getExternalPluginManager().getMythicMobsProvider();
+
+        if (mythic != null) {
+            for (String id : mythic.getMobNames())
+                types.add(id.toLowerCase(Locale.ROOT));
+        }
+
+        return new ArrayList<>(types);
+    }
+
+    private List<String> bossIds() {
+        return plugin.getBossTemplateManager().getIds();
     }
 
     private List<String> filter(List<String> values, String input) {
