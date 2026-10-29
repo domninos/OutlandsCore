@@ -343,5 +343,34 @@ public final class ConfigKeys {
     public static final String PET_FOLLOW_RANGE = "pet-follow.follow-range";
     public static final String PET_FOLLOW_TELEPORT_RANGE = "pet-follow.teleport-range";
 
+    public static final String BOSSES_UPDATE_TICKS = "bosses.update-ticks";
+    public static final String BOSS_GUI_TITLE = "boss-gui.title";
+    public static final String BOSS_GUI_ROWS = "boss-gui.rows";
+    public static final String BOSS_GUI_FILLER_MATERIAL = "boss-gui.filler-material";
+    public static final String BOSS_GUI_FILLER_NAME = "boss-gui.filler-name";
+    public static final String BOSS_GUI_NAV_BACK_MATERIAL = "boss-gui.nav-back-material";
+    public static final String BOSS_GUI_NAV_BACK_NAME = "boss-gui.nav-back-name";
+    public static final String BOSS_GUI_LIST_PREV_MATERIAL = "boss-gui.list-prev-material";
+    public static final String BOSS_GUI_LIST_PREV_NAME = "boss-gui.list-prev-name";
+    public static final String BOSS_GUI_LIST_NEXT_MATERIAL = "boss-gui.list-next-material";
+    public static final String BOSS_GUI_LIST_NEXT_NAME = "boss-gui.list-next-name";
+    public static final String BOSS_GUI_CREATE_MATERIAL = "boss-gui.create-material";
+    public static final String BOSS_GUI_CREATE_NAME = "boss-gui.create-name";
+    public static final String BOSS_GUI_CREATE_LORE = "boss-gui.create-lore";
+    public static final String BOSS_GUI_DELETE_MATERIAL = "boss-gui.delete-material";
+    public static final String BOSS_GUI_DELETE_NAME = "boss-gui.delete-name";
+    public static final String BOSS_GUI_DELETE_LORE = "boss-gui.delete-lore";
+    public static final String BOSS_GUI_SPAWN_MATERIAL = "boss-gui.spawn-material";
+    public static final String BOSS_GUI_SPAWN_NAME = "boss-gui.spawn-name";
+    public static final String BOSS_GUI_SPAWN_LORE = "boss-gui.spawn-lore";
+    public static final String BOSS_GUI_EMPTY_MATERIAL = "boss-gui.empty-material";
+    public static final String BOSS_GUI_EMPTY_NAME = "boss-gui.empty-name";
+    public static final String BOSS_GUI_ABILITY_ADD_MATERIAL = "boss-gui.ability-add-material";
+    public static final String BOSS_GUI_ABILITY_ADD_NAME = "boss-gui.ability-add-name";
+    public static final String BOSS_GUI_LOOT_TABLE_MATERIAL = "boss-gui.loot-table-material";
+    public static final String BOSS_GUI_LOOT_TABLE_NAME = "boss-gui.loot-table-name";
+    public static final String BOSS_GUI_INCREMENTS = "boss-gui.increments";
+    public static final String BOSS_GUI_SMALLEST = "boss-gui.smallest";
+
     public static final String MESSAGES_PREFIX = "messages.prefix";
 }

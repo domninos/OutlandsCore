@@ -269,7 +269,30 @@ public enum Messages {
     ADMIN_MODE_BLOCKED_DRONE("admin.mode-blocked-drone", "<red>You cannot enter admin mode while piloting a drone.</red>"),
 
     AREA_HELP_TITLE("area.help-title", "  <gradient:#00AAFF:#55FFFF><bold>Areas</bold></gradient>"),
-    AREA_HELP_CATEGORY_TITLE("area.help-category-title", "  <gradient:#00AAFF:#55FFFF><bold>Areas</bold></gradient> <dark_gray>-</dark_gray> <white>%category%</white>");
+    AREA_HELP_CATEGORY_TITLE("area.help-category-title", "  <gradient:#00AAFF:#55FFFF><bold>Areas</bold></gradient> <dark_gray>-</dark_gray> <white>%category%</white>"),
+
+    BOSS_USAGE("boss.usage", "<red>Usage: <white>%usage%</white></red>"),
+    BOSS_CREATED("boss.created", "<green>Created boss <white>%boss%</white>.</green>"),
+    BOSS_EXISTS("boss.exists", "<red>A mob template with id <white>%boss%</white> already exists.</red>"),
+    BOSS_NOT_FOUND("boss.not-found", "<red>Boss <white>%boss%</white> was not found.</red>"),
+    BOSS_DELETED("boss.deleted", "<gold>Deleted boss <white>%boss%</white>.</gold>"),
+    BOSS_RENAMED("boss.renamed", "<green>Renamed boss <white>%boss%</white>.</green>"),
+    BOSS_TYPE_SET("boss.type-set", "<green>Boss <white>%boss%</white> now uses <white>%type%</white>.</green>"),
+    BOSS_UNKNOWN_TYPE("boss.unknown-type", "<red>Unknown entity or MythicMobs id <white>%type%</white>.</red>"),
+    BOSS_NEEDS_MYTHIC("boss.needs-mythic", "<red><white>%type%</white> is a MythicMobs id. Add <white>mythic</white> or use <white>/boss settype {boss} {type} mythic</white>.</red>"),
+    BOSS_SPAWNED("boss.spawned", "<green>Spawned <white>%count%x</white> <white>%boss%</white>.</green>"),
+    BOSS_SPAWN_FAILED("boss.spawn-failed", "<red>Could not spawn <white>%boss%</white>.</red>"),
+    BOSS_ABILITY_ADDED("boss.ability-added", "<green>Added <white>%ability%</white> to <white>%boss%</white>.</green>"),
+    BOSS_ABILITY_REMOVED("boss.ability-removed", "<gold>Removed <white>%ability%</white> from <white>%boss%</white>.</gold>"),
+    BOSS_LOOT_ADDED("boss.loot-added", "<green>Added a loot drop to <white>%boss%</white>.</green>"),
+    BOSS_LOOT_REMOVED("boss.loot-removed", "<gold>Removed a loot drop from <white>%boss%</white>.</gold>"),
+    BOSS_LOOT_INVALID("boss.loot-invalid", "<red>That item cannot be used as a boss drop.</red>"),
+    BOSS_LOOT_TABLE_SET("boss.loot-table-set", "<green>Boss <white>%boss%</white> now rolls loot table <white>%table%</white>.</green>"),
+    BOSS_LOOT_TABLE_CLEARED("boss.loot-table-cleared", "<gray>Boss <white>%boss%</white> no longer has a bonus loot table.</gray>"),
+    BOSS_DELETE_CONFIRM("boss.delete-confirm", "<red>Shift-click the delete button again to confirm.</red>"),
+    BOSS_SAVED("boss.saved", "<green>Saved boss <white>%boss%</white>.</green>"),
+    BOSS_NO_BOSSES("boss.no-bosses", "<gray>No boss templates exist. Create one with <white>/boss create {id} {entityType} [mythic]</white>.</gray>"),
+    BOSS_GUI_CLOSED("boss.gui-closed", "<gray>Boss Creator closed.</gray>");
 
     private final String path;
     private final Object defaultVal;

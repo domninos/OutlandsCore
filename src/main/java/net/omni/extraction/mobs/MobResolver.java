@@ -43,6 +43,10 @@ public class MobResolver {
             definition.setDamage(template.getDamage());
             definition.setEquipment(new HashMap<>(template.getEquipment()));
             definition.setDrops(template.getDrops());
+            definition.setAbilities(template.getAbilities().stream()
+                    .map(BossAbility::copy).toList());
+            definition.setLootTable(template.getLootTable());
+            definition.setLootRolls(template.getLootRolls());
             definition.setCount(count);
             definition.setBoss(boss);
             definition.setBaby(template.isBaby());
@@ -76,7 +80,7 @@ public class MobResolver {
         return mobs == null ? null : mobs.get(mobId);
     }
 
-    private EntityType parseSpawnType(String name) {
+    public EntityType parseSpawnType(String name) {
         if (name == null || name.isBlank())
             return null;
 
@@ -89,7 +93,7 @@ public class MobResolver {
         }
     }
 
-    private boolean isMythicId(String id) {
+    public boolean isMythicId(String id) {
         MythicMobsProvider provider =
                 plugin.getExternalPluginManager().getMythicMobsProvider();
 

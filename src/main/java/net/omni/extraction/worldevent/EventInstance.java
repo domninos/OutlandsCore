@@ -23,6 +23,8 @@ public class EventInstance {
     private final Set<UUID> mobs;
     private final Set<UUID> bosses;
     private final Map<UUID, List<MobDrop>> mobDrops;
+    private final Map<UUID, String> mobLootTables;
+    private final Map<UUID, Integer> mobLootRolls;
     private final long startTime;
     private final long endTime;
     private final List<SavedBlock> craterBlocks;
@@ -73,6 +75,8 @@ public class EventInstance {
         this.mobs = new HashSet<>();
         this.bosses = new HashSet<>();
         this.mobDrops = new HashMap<>();
+        this.mobLootTables = new HashMap<>();
+        this.mobLootRolls = new HashMap<>();
         this.startTime = System.currentTimeMillis();
         this.endTime = this.startTime + durationMillis;
         this.currentWave = 1;
@@ -129,11 +133,35 @@ public class EventInstance {
     }
 
     public void track(UUID uuid, List<MobDrop> drops, boolean boss) {
+        track(uuid, drops, boss, null, 1);
+    }
+
+    public void track(UUID uuid, List<MobDrop> drops, boolean boss, String lootTable, int lootRolls) {
         mobs.add(uuid);
         mobDrops.put(uuid, drops == null ? new ArrayList<>() : drops);
 
+        if (lootTable != null && !lootTable.isBlank())
+            mobLootTables.put(uuid, lootTable);
+
+        mobLootRolls.put(uuid, Math.max(1, lootRolls));
+
         if (boss)
             bosses.add(uuid);
+    }
+
+    public void untrack(UUID uuid) {
+        mobs.remove(uuid);
+        mobDrops.remove(uuid);
+        mobLootTables.remove(uuid);
+        mobLootRolls.remove(uuid);
+    }
+
+    public String lootTableFor(UUID uuid) {
+        return mobLootTables.get(uuid);
+    }
+
+    public int lootRollsFor(UUID uuid) {
+        return mobLootRolls.getOrDefault(uuid, 1);
     }
 
     public long getStartTime() {

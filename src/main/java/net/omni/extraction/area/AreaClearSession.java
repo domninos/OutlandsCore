@@ -21,6 +21,8 @@ public class AreaClearSession {
     private final Map<UUID, Location> mobOrigins;
     private final Set<Location> chestLocations;
     private final Map<UUID, List<MobDrop>> mobDrops;
+    private final Map<UUID, String> mobLootTables;
+    private final Map<UUID, Integer> mobLootRolls;
     private int totalMobs;
     private BossBar bossBar;
 
@@ -32,6 +34,8 @@ public class AreaClearSession {
         this.mobOrigins = new HashMap<>();
         this.chestLocations = new HashSet<>();
         this.mobDrops = new HashMap<>();
+        this.mobLootTables = new HashMap<>();
+        this.mobLootRolls = new HashMap<>();
         this.totalMobs = 0;
         this.bossBar = null;
     }
@@ -101,5 +105,21 @@ public class AreaClearSession {
     public List<MobDrop> getDropsFor(UUID uuid) {
         List<MobDrop> drops = mobDrops.get(uuid);
         return drops != null ? drops : new ArrayList<>();
+    }
+
+    public Map<UUID, String> getMobLootTables() {
+        return mobLootTables;
+    }
+
+    public Map<UUID, Integer> getMobLootRolls() {
+        return mobLootRolls;
+    }
+
+    public String getLootTableFor(UUID uuid) {
+        return mobLootTables.get(uuid);
+    }
+
+    public int getLootRollsFor(UUID uuid) {
+        return mobLootRolls.getOrDefault(uuid, 1);
     }
 }

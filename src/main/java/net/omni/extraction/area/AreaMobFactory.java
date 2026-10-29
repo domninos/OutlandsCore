@@ -41,6 +41,10 @@ public class AreaMobFactory {
         applyEquipment(entity, definition.getEquipment());
         applyBaby(entity, definition.isBaby());
 
+        if (definition.isBoss() && !definition.getAbilities().isEmpty()
+                && plugin.getBossManager() != null)
+            plugin.getBossManager().register(entity, definition.getAbilities());
+
         return entity;
     }
 

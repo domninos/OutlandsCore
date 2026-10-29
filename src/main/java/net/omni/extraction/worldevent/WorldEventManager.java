@@ -705,9 +705,8 @@ public class WorldEventManager {
                 || instance.getBosses().contains(killed);
         ctx.presentation().spawnDeathEffect(entity, big);
 
-        instance.getMobs().remove(entity.getUniqueId());
+        instance.untrack(entity.getUniqueId());
         instance.getBosses().remove(entity.getUniqueId());
-        instance.getMobDrops().remove(entity.getUniqueId());
         mobInstances.remove(entity.getUniqueId());
 
         ctx.presentation().updateBossBar(instance);

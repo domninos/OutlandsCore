@@ -101,7 +101,7 @@ public class AreaClearManager {
     /**
      * Cancels any active clear whose mobs can no longer finish it: a mob that
      * despawned without dying (natural despawn after players leave, chunk unload,
-     * etc.) leaves a stale UUID in the session — the boss bar can never reach 0,
+     * etc.) leaves a stale UUID in the session â€” the boss bar can never reach 0,
      * {@link #completeClear} never runs, and the area stays locked in
      * {@link AreaState#IN_PROGRESS} forever. Any missing mob bricks the clear, so
      * the whole session is cancelled and the area returned to READY.
@@ -276,7 +276,7 @@ public class AreaClearManager {
             if (keyId != null && !keyId.isBlank() && !plugin.getConfigUtil().getKeyDefinitions().containsKey(keyId)) {
                 plugin.getLogger().warning("Area '" + area.getName() + "' chest (" + anchor.getBlockX()
                         + "," + anchor.getBlockY() + "," + anchor.getBlockZ() + ") references unknown key '"
-                        + keyId + "' — chest left unkeyed.");
+                        + keyId + "' â€” chest left unkeyed.");
                 keyId = null;
             }
 
@@ -605,6 +605,8 @@ public class AreaClearManager {
                 session.getMobs().add(mobId);
                 session.getMobOrigins().put(mobId, location.clone());
                 session.getMobDrops().put(mobId, definition.getDrops());
+                session.getMobLootTables().put(mobId, definition.getLootTable());
+                session.getMobLootRolls().put(mobId, definition.getLootRolls());
                 mobSessions.put(mobId, session);
 
                 if (definition.isBoss())
@@ -625,6 +627,27 @@ public class AreaClearManager {
 
             if (chance >= 1.0 || chance > random.nextDouble())
                 drops.addAll(lootResolver.resolveDropItems(drop.getType(), drop.getAmount()));
+        }
+
+        String lootTableId = session.getLootTableFor(uuid);
+
+        if (lootTableId != null && !lootTableId.isBlank()) {
+            LootTable table = plugin.getLootTableManager().get(lootTableId);
+
+            if (table == null) {
+                plugin.getLogger().warning("Unknown boss loot table '" + lootTableId
+                        + "' for area '" + session.getArea().getName() + "'.");
+            } else {
+                int level = areaManager.getStats(session.getArea()).level();
+                int rolls = Math.max(1, session.getLootRollsFor(uuid));
+
+                for (int roll = 0; roll < rolls; roll++) {
+                    LootEntry entry = table.roll(random, level);
+
+                    if (entry != null)
+                        drops.addAll(lootResolver.resolveDropItems(entry.getType(), entry.getAmount()));
+                }
+            }
         }
 
         return drops;

@@ -15,7 +15,7 @@ public class MobTemplateManager {
     public static final List<String> FIELDS = List.of(
             "type", "mythic", "display-name", "health", "damage", "level", "count", "boss", "baby", "respawn",
             "equipment.helmet", "equipment.chestplate", "equipment.leggings", "equipment.boots",
-            "equipment.mainhand", "equipment.offhand", "drops");
+            "equipment.mainhand", "equipment.offhand", "drops", "loot-table", "loot-rolls");
 
     private final ExtractionPlugin plugin;
     private final File file;
@@ -75,6 +75,31 @@ public class MobTemplateManager {
             }
 
             template.setDrops(drops);
+
+            List<BossAbility> abilities = new ArrayList<>();
+
+            for (Map<?, ?> map : mob.getMapList("abilities")) {
+                BossAbilityType type = BossAbilityType.parse(String.valueOf(map.get("type")));
+
+                if (type == null) {
+                    plugin.getLogger().warning("Unknown boss ability type in mob template '" + id
+                            + "': " + map.get("type"));
+                    continue;
+                }
+
+                BossAbility ability = new BossAbility(type);
+                ability.setCooldown(number(map, "cooldown", ability.getCooldown()));
+                ability.setPower(number(map, "power", ability.getPower()));
+                ability.setRadius(number(map, "radius", ability.getRadius()));
+                ability.setAmount(number(map, "amount", ability.getAmount()));
+                ability.setDuration(number(map, "duration", ability.getDuration()));
+                ability.setTriggerHealth(number(map, "trigger-health", ability.getTriggerHealth()));
+                abilities.add(ability);
+            }
+
+            template.setAbilities(abilities);
+            template.setLootTable(mob.getString("loot-table"));
+            template.setLootRolls(Math.max(1, mob.getInt("loot-rolls", 1)));
 
             templates.put(id.toLowerCase(Locale.ROOT), template);
         }
@@ -156,6 +181,21 @@ public class MobTemplateManager {
 
                 config.set(base + "drops", dropList);
             }
+
+            if (!template.getAbilities().isEmpty()) {
+                List<Map<String, Object>> abilityList = new ArrayList<>();
+
+                for (BossAbility ability : template.getAbilities())
+                    abilityList.add(ability.serialize());
+
+                config.set(base + "abilities", abilityList);
+            }
+
+            if (template.getLootTable() != null && !template.getLootTable().isBlank())
+                config.set(base + "loot-table", template.getLootTable());
+
+            if (template.getLootRolls() != 1)
+                config.set(base + "loot-rolls", template.getLootRolls());
         }
 
         try {
@@ -257,6 +297,12 @@ public class MobTemplateManager {
                     if (parsed < 0) return false;
                     template.setRespawnSeconds(parsed);
                 }
+                case "loot-table" -> template.setLootTable(value.isBlank() ? null : value);
+                case "loot-rolls" -> {
+                    int parsed = Integer.parseInt(value);
+                    if (parsed < 1) return false;
+                    template.setLootRolls(parsed);
+                }
                 default -> {
                     return false;
                 }
@@ -269,8 +315,15 @@ public class MobTemplateManager {
         return true;
     }
 
-    public static Boolean parseBoolean(String value) {
-        if (value == null) return null;
+    private static int number(Map<?, ?> map, String key, int fallback) {
+        return map.get(key) instanceof Number value ? value.intValue() : fallback;
+    }
+
+    private static double number(Map<?, ?> map, String key, double fallback) {
+        return map.get(key) instanceof Number value ? value.doubleValue() : fallback;
+    }
+
+    public static Boolean parseBoolean(String value) {        if (value == null) return null;
 
         return switch (value.toLowerCase(Locale.ROOT)) {
             case "true", "yes", "on", "1" -> Boolean.TRUE;

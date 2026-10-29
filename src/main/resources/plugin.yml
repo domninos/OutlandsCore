@@ -45,6 +45,10 @@ commands:
   drone:
     description: Activate or return from drone mode
     aliases: [dronemode]
+  boss:
+    description: Create and manage extraction bosses
+    aliases: [bosses]
+    permission: extraction.bosses
 
 permissions:
   extraction.*:
@@ -55,6 +59,7 @@ permissions:
       extraction.areas: true
       extraction.party: true
       extraction.bypass.cooldown: true
+      extraction.bosses: true
   extraction.party:
     description: Allows using the party system
     default: true
@@ -73,3 +78,6 @@ permissions:
   extraction.bypass.cooldown:
     description: Bypass the run cooldown
     default: false
+  extraction.bosses:
+    description: Allows managing extraction bosses
+    default: op

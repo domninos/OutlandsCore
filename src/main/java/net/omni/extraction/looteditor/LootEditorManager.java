@@ -422,7 +422,7 @@ public class LootEditorManager {
         }
     }
 
-    private LootEntry toEntry(ItemStack item) {
+    public LootEntry toEntry(ItemStack item) {
         return toEntry(item, item == null ? 1 : Math.max(1, item.getAmount()));
     }
 

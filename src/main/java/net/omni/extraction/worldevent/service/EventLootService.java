@@ -89,6 +89,24 @@ public class EventLootService {
             }
         }
 
+        String bossLootTable = instance.lootTableFor(uuid);
+
+        if (bossLootTable != null && !bossLootTable.isBlank()) {
+            LootTable bossTable = table(bossLootTable);
+
+            if (bossTable != null) {
+                int bossRolls = Math.max(1, instance.lootRollsFor(uuid));
+
+                for (int i = 0; i < bossRolls; i++) {
+                    LootEntry entry = bossTable.roll(ctx.random(), event.getLevel());
+                    if (entry == null)
+                        continue;
+
+                    loot.addAll(ctx.plugin().getLootResolver().resolveDropItems(entry.getType(), entry.getAmount()));
+                }
+            }
+        }
+
         return ctx.plugin().getLootResolver().mergeStacks(loot);
     }
 

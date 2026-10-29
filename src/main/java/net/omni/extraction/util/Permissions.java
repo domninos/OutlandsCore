@@ -14,6 +14,7 @@ public final class Permissions {
     public static final String PARTY = "extraction.party";
     public static final String BYPASS_COOLDOWN = "extraction.bypass.cooldown";
     public static final String DRONE = "extraction.drone";
+    public static final String BOSSES = "extraction.bosses";
 
     private Permissions() {
     }

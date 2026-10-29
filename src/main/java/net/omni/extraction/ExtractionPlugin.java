@@ -6,6 +6,9 @@ import net.omni.extraction.area.*;
 import net.omni.extraction.areaeditor.AreaEditorListener;
 import net.omni.extraction.areaeditor.AreaEditorManager;
 import net.omni.extraction.backpack.BackpackManager;
+import net.omni.extraction.boss.BossManager;
+import net.omni.extraction.boss.creator.BossCreatorListener;
+import net.omni.extraction.boss.creator.BossCreatorManager;
 import net.omni.extraction.chat.ActionBarManager;
 import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.chat.PaperChatRenderer;
@@ -98,6 +101,8 @@ public final class ExtractionPlugin extends JavaPlugin {
     private PartyManager partyManager;
     private PartyListener partyListener;
     private DroneManager droneManager;
+    private BossManager bossManager;
+    private BossCreatorManager bossCreatorManager;
 
 
     /*
@@ -113,7 +118,8 @@ public final class ExtractionPlugin extends JavaPlugin {
         Abilities
         Loot
      -
-     -
+     - make set walls (positions) that can be exploded via an item ONLY gotten from /extshop.
+       - so like a wall bomb where it only breaks blocks horizontally and have it regenerated 5 mins later.
      -
      - fix
         - artifacts/charms should automatically replace the placeholder on /loadout when equipped.
@@ -203,6 +209,12 @@ public final class ExtractionPlugin extends JavaPlugin {
         if (lootEditorManager != null)
             lootEditorManager.clearAll();
 
+        if (bossManager != null)
+            bossManager.shutdown();
+
+        if (bossCreatorManager != null)
+            bossCreatorManager.closeAll();
+
         extractionManager.flush();
 
         if (partyListener != null)
@@ -282,6 +294,9 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         this.worldEventManager = new WorldEventManager(this);
 
+        this.bossManager = new BossManager(this);
+        this.bossCreatorManager = new BossCreatorManager(this);
+
 
         this.relicManager = new RelicManager(this);
         this.relicManager.reload();
@@ -307,6 +322,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         areaSelectionVisualizer.start();
         areaClearManager.start();
         worldEventManager.start();
+        bossManager.start();
 
         if (configUtil.isScoreboardEnabled())
             scoreboardManager.start();
@@ -372,6 +388,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new ArtifactsCommand(this).register();
         new DroneCommand(this, droneManager).register();
         new PetsCommand(this).register();
+        new BossCommand(this).register();
     }
 
     private void registerListeners() {
@@ -390,6 +407,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new ScoreboardListener(this).register();
         new AreaEditorListener(this).register();
         new LootEditorListener(this).register();
+        new BossCreatorListener(this).register();
         new PetsGUIListener(this).register();
         new PetListener(this).register();
         new RelicListener(this).register();
@@ -566,6 +584,14 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public DroneManager getDroneManager() {
         return droneManager;
+    }
+
+    public BossManager getBossManager() {
+        return bossManager;
+    }
+
+    public BossCreatorManager getBossCreatorManager() {
+        return bossCreatorManager;
     }
 
     public PackManager getPackManager() {

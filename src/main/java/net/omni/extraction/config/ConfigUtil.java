@@ -156,6 +156,34 @@ public class ConfigUtil {
     private double petFollowSpeed = 6.0;
     private double petFollowRange = 2.5;
     private double petFollowTeleportRange = 20.0;
+    private int bossesUpdateTicks = 10;
+    private String bossGuiTitle;
+    private int bossGuiRows;
+    private String bossGuiFillerMaterial;
+    private String bossGuiFillerName;
+    private String bossGuiNavBackMaterial;
+    private String bossGuiNavBackName;
+    private String bossGuiListPrevMaterial;
+    private String bossGuiListPrevName;
+    private String bossGuiListNextMaterial;
+    private String bossGuiListNextName;
+    private String bossGuiCreateMaterial;
+    private String bossGuiCreateName;
+    private List<String> bossGuiCreateLore;
+    private String bossGuiDeleteMaterial;
+    private String bossGuiDeleteName;
+    private List<String> bossGuiDeleteLore;
+    private String bossGuiSpawnMaterial;
+    private String bossGuiSpawnName;
+    private List<String> bossGuiSpawnLore;
+    private String bossGuiEmptyMaterial;
+    private String bossGuiEmptyName;
+    private String bossGuiAbilityAddMaterial;
+    private String bossGuiAbilityAddName;
+    private String bossGuiLootTableMaterial;
+    private String bossGuiLootTableName;
+    private List<Integer> bossGuiIncrements;
+    private int bossGuiSmallest;
     private final Map<String, String> guiTextures = new HashMap<>();
     private String packId = "";
     private String packHost = "";
@@ -431,6 +459,7 @@ public class ConfigUtil {
         loadLootEditor(savedDefaults);
         loadCorpse(savedDefaults);
         loadPetsGui(savedDefaults);
+        loadBossGui(savedDefaults);
         loadPack(savedDefaults);
 
         this.autoSaveSeconds = getAndDefaultInt(ConfigKeys.STORAGE_AUTO_SAVE_SECONDS, 30, savedDefaults);
@@ -1201,6 +1230,66 @@ public class ConfigUtil {
                 getAndDefaultDouble(ConfigKeys.PET_FOLLOW_RANGE, 2.5, savedDefaults));
         this.petFollowTeleportRange = Math.max(this.petFollowRange + 1.0,
                 getAndDefaultDouble(ConfigKeys.PET_FOLLOW_TELEPORT_RANGE, 20.0, savedDefaults));
+    }
+
+    private void loadBossGui(AtomicInteger savedDefaults) {
+        this.bossesUpdateTicks = Math.max(1,
+                getAndDefaultInt(ConfigKeys.BOSSES_UPDATE_TICKS, 10, savedDefaults));
+        this.bossGuiTitle = getAndDefaultString(ConfigKeys.BOSS_GUI_TITLE,
+                "<gradient:#AA0000:#FF5555>Boss Creator</gradient>", savedDefaults);
+        this.bossGuiRows = Math.clamp(getAndDefaultInt(ConfigKeys.BOSS_GUI_ROWS, 6, savedDefaults), 3, 6);
+        this.bossGuiFillerMaterial = getAndDefaultString(ConfigKeys.BOSS_GUI_FILLER_MATERIAL,
+                "GRAY_STAINED_GLASS_PANE", savedDefaults);
+        this.bossGuiFillerName = getAndDefaultString(ConfigKeys.BOSS_GUI_FILLER_NAME, " ", savedDefaults);
+        this.bossGuiNavBackMaterial = getAndDefaultString(ConfigKeys.BOSS_GUI_NAV_BACK_MATERIAL,
+                "ARROW", savedDefaults);
+        this.bossGuiNavBackName = getAndDefaultString(ConfigKeys.BOSS_GUI_NAV_BACK_NAME,
+                "<yellow>Back</yellow>", savedDefaults);
+        this.bossGuiListPrevMaterial = getAndDefaultString(ConfigKeys.BOSS_GUI_LIST_PREV_MATERIAL,
+                "SPECTRAL_ARROW", savedDefaults);
+        this.bossGuiListPrevName = getAndDefaultString(ConfigKeys.BOSS_GUI_LIST_PREV_NAME,
+                "<yellow>Previous Page</yellow>", savedDefaults);
+        this.bossGuiListNextMaterial = getAndDefaultString(ConfigKeys.BOSS_GUI_LIST_NEXT_MATERIAL,
+                "SPECTRAL_ARROW", savedDefaults);
+        this.bossGuiListNextName = getAndDefaultString(ConfigKeys.BOSS_GUI_LIST_NEXT_NAME,
+                "<yellow>Next Page</yellow>", savedDefaults);
+        this.bossGuiCreateMaterial = getAndDefaultString(ConfigKeys.BOSS_GUI_CREATE_MATERIAL,
+                "NETHER_STAR", savedDefaults);
+        this.bossGuiCreateName = getAndDefaultString(ConfigKeys.BOSS_GUI_CREATE_NAME,
+                "<green>Create a Boss</green>", savedDefaults);
+        this.bossGuiCreateLore = getAndDefaultStringList(ConfigKeys.BOSS_GUI_CREATE_LORE, List.of(
+                "<gray>Create one with:</gray>",
+                "<white>/boss create {id} {entityType} [mythic]</white>"), savedDefaults);
+        this.bossGuiDeleteMaterial = getAndDefaultString(ConfigKeys.BOSS_GUI_DELETE_MATERIAL,
+                "BARRIER", savedDefaults);
+        this.bossGuiDeleteName = getAndDefaultString(ConfigKeys.BOSS_GUI_DELETE_NAME,
+                "<red>Delete Boss</red>", savedDefaults);
+        this.bossGuiDeleteLore = getAndDefaultStringList(ConfigKeys.BOSS_GUI_DELETE_LORE, List.of(
+                "<gray>Deletes this boss from mobs.yml.</gray>",
+                "<red>Shift-click to confirm.</red>"), savedDefaults);
+        this.bossGuiSpawnMaterial = getAndDefaultString(ConfigKeys.BOSS_GUI_SPAWN_MATERIAL,
+                "ZOMBIE_SPAWN_EGG", savedDefaults);
+        this.bossGuiSpawnName = getAndDefaultString(ConfigKeys.BOSS_GUI_SPAWN_NAME,
+                "<green>Test Spawn</green>", savedDefaults);
+        this.bossGuiSpawnLore = getAndDefaultStringList(ConfigKeys.BOSS_GUI_SPAWN_LORE, List.of(
+                "<gray>Spawns this boss at your feet.</gray>",
+                "<yellow>Click to spawn</yellow>"), savedDefaults);
+        this.bossGuiEmptyMaterial = getAndDefaultString(ConfigKeys.BOSS_GUI_EMPTY_MATERIAL,
+                "GRAY_DYE", savedDefaults);
+        this.bossGuiEmptyName = getAndDefaultString(ConfigKeys.BOSS_GUI_EMPTY_NAME,
+                "<gray>No bosses yet</gray>", savedDefaults);
+        this.bossGuiAbilityAddMaterial = getAndDefaultString(ConfigKeys.BOSS_GUI_ABILITY_ADD_MATERIAL,
+                "LIME_DYE", savedDefaults);
+        this.bossGuiAbilityAddName = getAndDefaultString(ConfigKeys.BOSS_GUI_ABILITY_ADD_NAME,
+                "<green>Add Ability</green>", savedDefaults);
+        this.bossGuiLootTableMaterial = getAndDefaultString(ConfigKeys.BOSS_GUI_LOOT_TABLE_MATERIAL,
+                "CHEST", savedDefaults);
+        this.bossGuiLootTableName = getAndDefaultString(ConfigKeys.BOSS_GUI_LOOT_TABLE_NAME,
+                "<yellow>Bonus Loot Table: %table%</yellow>", savedDefaults);
+        this.bossGuiIncrements = getAndDefaultIntList(ConfigKeys.BOSS_GUI_INCREMENTS,
+                List.of(1, 5, 10), savedDefaults);
+        this.bossGuiSmallest = Math.max(1,
+                getAndDefaultInt(ConfigKeys.BOSS_GUI_SMALLEST, 1, savedDefaults));
     }
 
     private void loadPack(AtomicInteger savedDefaults) {
@@ -1988,6 +2077,118 @@ public class ConfigUtil {
 
     public double getPetFollowTeleportRange() {
         return petFollowTeleportRange;
+    }
+
+    public int getBossesUpdateTicks() {
+        return bossesUpdateTicks;
+    }
+
+    public String getBossGuiTitle() {
+        return bossGuiTitle;
+    }
+
+    public int getBossGuiRows() {
+        return bossGuiRows;
+    }
+
+    public String getBossGuiFillerMaterial() {
+        return bossGuiFillerMaterial;
+    }
+
+    public String getBossGuiFillerName() {
+        return bossGuiFillerName;
+    }
+
+    public String getBossGuiNavBackMaterial() {
+        return bossGuiNavBackMaterial;
+    }
+
+    public String getBossGuiNavBackName() {
+        return bossGuiNavBackName;
+    }
+
+    public String getBossGuiListPrevMaterial() {
+        return bossGuiListPrevMaterial;
+    }
+
+    public String getBossGuiListPrevName() {
+        return bossGuiListPrevName;
+    }
+
+    public String getBossGuiListNextMaterial() {
+        return bossGuiListNextMaterial;
+    }
+
+    public String getBossGuiListNextName() {
+        return bossGuiListNextName;
+    }
+
+    public String getBossGuiCreateMaterial() {
+        return bossGuiCreateMaterial;
+    }
+
+    public String getBossGuiCreateName() {
+        return bossGuiCreateName;
+    }
+
+    public List<String> getBossGuiCreateLore() {
+        return bossGuiCreateLore;
+    }
+
+    public String getBossGuiDeleteMaterial() {
+        return bossGuiDeleteMaterial;
+    }
+
+    public String getBossGuiDeleteName() {
+        return bossGuiDeleteName;
+    }
+
+    public List<String> getBossGuiDeleteLore() {
+        return bossGuiDeleteLore;
+    }
+
+    public String getBossGuiSpawnMaterial() {
+        return bossGuiSpawnMaterial;
+    }
+
+    public String getBossGuiSpawnName() {
+        return bossGuiSpawnName;
+    }
+
+    public List<String> getBossGuiSpawnLore() {
+        return bossGuiSpawnLore;
+    }
+
+    public String getBossGuiEmptyMaterial() {
+        return bossGuiEmptyMaterial;
+    }
+
+    public String getBossGuiEmptyName() {
+        return bossGuiEmptyName;
+    }
+
+    public String getBossGuiAbilityAddMaterial() {
+        return bossGuiAbilityAddMaterial;
+    }
+
+    public String getBossGuiAbilityAddName() {
+        return bossGuiAbilityAddName;
+    }
+
+    public String getBossGuiLootTableMaterial() {
+        return bossGuiLootTableMaterial;
+    }
+
+    public String getBossGuiLootTableName() {
+        return bossGuiLootTableName;
+    }
+
+    public List<Integer> getBossGuiIncrements() {
+        return bossGuiIncrements;
+    }
+
+    public int getBossGuiSmallest() {
+        return bossGuiSmallest;
     }
 
     public String getAreaEditorCountIconMaterial() {

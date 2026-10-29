@@ -2,7 +2,7 @@ settings:
   # Name of the Extraction world (must exist, e.g. via Multiverse)
   world-name: outlands
   # Time limit in seconds per run (default 5 minutes = 300 seconds).
-  # Set to 0 to disable the countdown entirely — runs never auto-extract.
+  # Set to 0 to disable the countdown entirely â€” runs never auto-extract.
   time-limit-seconds: 300
   # Hours between runs (cooldown). Set to 0 to disable the cooldown.
   cooldown-hours: 0
@@ -12,7 +12,7 @@ settings:
   # On their next login they are returned to the location they entered from,
   # their saved pre-run gear is restored, and loot/tokens are banked.
   return-on-disconnect: true
-  # Extraction (outlands) entry spawn — where /extraction enter places players.
+  # Extraction (outlands) entry spawn â€” where /extraction enter places players.
   # Set in-game with /extraction setspawn. Falls back to the world spawn if unset.
   spawn:
     world: outlands
@@ -21,7 +21,7 @@ settings:
     z: 0.5
     yaw: 0.0
     pitch: 0.0
-  # Lobby spawn — players who join without an in-progress run are teleported
+  # Lobby spawn â€” players who join without an in-progress run are teleported
   # here. This is a separate world; the folder must already exist and be
   # loaded on the server. Set the exact point in-game with /extraction setlobby.
   # When no point is configured the lobby world's own spawn is used (never the
@@ -39,7 +39,7 @@ messages:
   # Shown before every plugin message in chat and in the console after startup.
   # Supports MiniMessage tags on Paper; falls back to legacy color codes on Spigot.
   # Set to "" (empty) to show messages without a prefix.
-  prefix: "<gradient:#2C2C2C:#555555:#AAAAAA>ᴇxᴛʀᴀᴄᴛɪᴏɴ</gradient> <white>»</white> "
+  prefix: "<gradient:#2C2C2C:#555555:#AAAAAA>á´‡xá´›Ê€á´€á´„á´›Éªá´É´</gradient> <white>Â»</white> "
 
 # Player data persistence
 storage:
@@ -47,7 +47,7 @@ storage:
   # Data is also saved on player quit and on shutdown.
   auto-save-seconds: 30
   # Write-behind queue: changes are buffered in memory and flushed to the
-  # database once this many changes have accumulated — even before the
+  # database once this many changes have accumulated â€” even before the
   # auto-save interval. Set to 0 to only flush on the interval, quit and
   # shutdown (still never on the main thread). Cross-server-sensitive data
   # (tokens, cooldowns, purchases) and run/quit state always write
@@ -88,7 +88,7 @@ storage:
     pool-size: 5
     # If MySQL/MariaDB is unreachable when the server starts, run on the local
     # SQLite file instead of disabling the plugin. Data written during the
-    # outage is LOCAL ONLY and is not synced back to MySQL — fix the mysql
+    # outage is LOCAL ONLY and is not synced back to MySQL â€” fix the mysql
     # settings and restart to resume shared storage.
     fallback-to-sqlite: true
 
@@ -159,7 +159,7 @@ holograms:
     - "<gold>Bosses: <white>%bosses%</white></gold>"
 
 # Sidebar scoreboard
-# Disabled by default — the actionbar HUD above is the default. Set enabled:
+# Disabled by default â€” the actionbar HUD above is the default. Set enabled:
 # true to show the sidebar instead (or alongside). Lines support MiniMessage
 # and PlaceholderAPI placeholders. When PlaceholderAPI is installed, any of its
 # placeholders work; otherwise the built-in %extraction_*% placeholders below are used.
@@ -171,33 +171,33 @@ scoreboard:
   only-in-world: true
   # How often (in ticks) the scoreboard refreshes (20 ticks = 1 second)
   update-ticks: 20
-  title: 𝐄𝐗𝐓𝐑𝐀𝐂𝐓𝐈𝐎𝐍
+  title: ð„ð—ð“ð‘ð€ð‚ð“ðˆðŽð
   # Maximum of 15 lines (client limit)
   lines:
     - ''
-    - <gray>ᴀʀᴇᴀ <dark_gray>» <white>%extraction_area%
+    - <gray>á´€Ê€á´‡á´€ <dark_gray>Â» <white>%extraction_area%
     - ''
-    - <gray>ᴛɪᴍᴇ <dark_gray>» <white>%extraction_timer%
+    - <gray>á´›Éªá´á´‡ <dark_gray>Â» <white>%extraction_timer%
     - ''
-    - <gray>ᴋɪʟʟꜱ <dark_gray>» <white>%extraction_kills%
+    - <gray>á´‹ÉªÊŸÊŸêœ± <dark_gray>Â» <white>%extraction_kills%
     - ''
-    - <gray>ᴛᴏᴋᴇɴꜱ <dark_gray>» <white>%extraction_tokens%
+    - <gray>á´›á´á´‹á´‡É´êœ± <dark_gray>Â» <white>%extraction_tokens%
     - ''
-    - <gray>ᴘᴀʀᴛʏ <dark_gray>» <white>%extraction_party%
+    - <gray>á´˜á´€Ê€á´›Ê <dark_gray>Â» <white>%extraction_party%
     - ''
-    - <gray>ᴄʟᴏᴄᴋ <dark_gray>» <white>%extraction_clock%
+    - <gray>á´„ÊŸá´á´„á´‹ <dark_gray>Â» <white>%extraction_clock%
     - ''
     - ''
     - <white>  %extraction_ip%
   # Value of %extraction_area% when the player is not inside an area
-  no-area-text: ᴡɪʟᴅᴇʀɴᴇꜱꜱ
+  no-area-text: á´¡ÉªÊŸá´…á´‡Ê€É´á´‡êœ±êœ±
   # Value of %extraction_party% when the player is not in a party
   # (in a party it shows the leader's name).
-  party-placeholder: ɴᴏɴᴇ
+  party-placeholder: É´á´É´á´‡
   # Value of %extraction_timer% when the player has no run and no cooldown
-  idle-text: ɪᴅʟᴇ
+  idle-text: Éªá´…ÊŸá´‡
   # Value of %extraction_ip%
-  server-ip: ᴘʟᴀʏ.ʏᴀᴍᴄꜱ.ɴᴇᴛ
+  server-ip: á´˜ÊŸá´€Ê.Êá´€á´á´„êœ±.É´á´‡á´›
   # Timezone used by %extraction_clock% (e.g. UTC, Europe/London, America/New_York)
   time-zone: GMT-6
   # Clock format used by %extraction_clock%
@@ -260,13 +260,13 @@ pack:
   # reach the machine; otherwise set your public IP or domain, e.g. play.example.com.
   # Resolution order: this value > server.properties server-ip. If neither is a
   # usable address the pack is NOT offered (plain text titles) and a warning is
-  # logged — the pack is never silently served at localhost (unreachable for
+  # logged â€” the pack is never silently served at localhost (unreachable for
   # remote clients).
   host: ""
   # Minecraft caches a server resource pack by the UUID you offer it with. Leave
   # this empty (recommended) to derive the UUID from the zip's content hash, so
   # clients are automatically re-offered (and re-download) whenever the pack
-  # changes. Set a 36-char UUID here to pin a stable id — edit it to force a
+  # changes. Set a 36-char UUID here to pin a stable id â€” edit it to force a
   # one-time re-offer without touching the pack.
   id: ""
   gui-textures:
@@ -342,12 +342,12 @@ loot-editor:
 
 # Run-death corpses: a player-skinned NPC left at the death spot (FancyNpcs;
 # falls back to an ArmorStand when FancyNpcs is missing). The lying pose is
-# applied best-effort — FancyNpcs builds without a pose attribute spawn the
+# applied best-effort â€” FancyNpcs builds without a pose attribute spawn the
 # body standing.
 corpse:
   enabled: true
   despawn-seconds: 60
-  name-format: "<red>☠ %player%</red>"
+  name-format: "<red>â˜  %player%</red>"
 
 # Drone mode (/drone). The pilot rides a visible drone body (a Bee with AI off,
 # re-skin it via the resource pack's bee entity texture) that other players and
@@ -373,3 +373,45 @@ pet-follow:
   follow-range: 2.5
   # Distance (blocks) beyond which the pet teleports to the owner instead.
   teleport-range: 20.0
+
+# Boss Creator (/boss). Bosses are mobs.yml templates with boss: true.
+# Boss stats, abilities, item drops and a bonus loot table are edited in the GUI.
+bosses:
+  # Ability update task period in ticks. Read on startup and /extraction reload.
+  update-ticks: 10
+
+boss-gui:
+  title: "<gradient:#AA0000:#FF5555>Boss Creator</gradient>"
+  rows: 6
+  filler-material: GRAY_STAINED_GLASS_PANE
+  filler-name: " "
+  nav-back-material: ARROW
+  nav-back-name: "<yellow>Back</yellow>"
+  list-prev-material: SPECTRAL_ARROW
+  list-prev-name: "<yellow>Previous Page</yellow>"
+  list-next-material: SPECTRAL_ARROW
+  list-next-name: "<yellow>Next Page</yellow>"
+  create-material: NETHER_STAR
+  create-name: "<green>Create a Boss</green>"
+  create-lore:
+    - "<gray>Create one with:</gray>"
+    - "<white>/boss create {id} {entityType} [mythic]</white>"
+  delete-material: BARRIER
+  delete-name: "<red>Delete Boss</red>"
+  delete-lore:
+    - "<gray>Deletes this boss from mobs.yml.</gray>"
+    - "<red>Shift-click to confirm.</red>"
+  spawn-material: ZOMBIE_SPAWN_EGG
+  spawn-name: "<green>Test Spawn</green>"
+  spawn-lore:
+    - "<gray>Spawns this boss at your feet.</gray>"
+    - "<yellow>Click to spawn</yellow>"
+  empty-material: GRAY_DYE
+  empty-name: "<gray>No bosses yet</gray>"
+  ability-add-material: LIME_DYE
+  ability-add-name: "<green>Add Ability</green>"
+  loot-table-material: CHEST
+  loot-table-name: "<yellow>Bonus Loot Table: %table%</yellow>"
+  # Click increments for stat/ability/loot editor pages.
+  increments: [1, 5, 10]
+  smallest: 1

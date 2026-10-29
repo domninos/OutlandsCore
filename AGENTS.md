@@ -1,18 +1,18 @@
 # AGENTS.md
 
 ## Project
-Extraction — a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
+Extraction â€” a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 - Package: `net.omni.extraction`
 - Artifact: `net.omni:Extraction:1.0.0`
 - Main class: `net.omni.extraction.ExtractionPlugin`
 - Data file: `extraction.db` under `plugins/Extraction/data/` by default; or MariaDB/MySQL when `storage.type: mysql` (see Storage below)
 - Permissions: `extraction.*` with children `extraction.admin`, `extraction.play`, `extraction.areas`, `extraction.party`, `extraction.bypass.cooldown`
 - Placeholders: PlaceholderAPI identifier `extraction` (`%extraction_*%`); built-in fallbacks resolved by `scoreboard/PlaceholderValues`
-- World: `settings.world-name` default `outlands` — this is the server's extraction world folder, intentionally NOT renamed
+- World: `settings.world-name` default `outlands` â€” this is the server's extraction world folder, intentionally NOT renamed
 
 ## Build & verify
 - Compile: `mvn clean compile`
-- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) → `target/Extraction-1.0.0.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.0.0.jar` into the server's `plugins/Extraction/` and restart — an IDE build does not deploy to the server folder.
+- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) â†’ `target/Extraction-1.0.0.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.0.0.jar` into the server's `plugins/Extraction/` and restart â€” an IDE build does not deploy to the server folder.
 - `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.0.0.jar` to confirm the server runs the current build.
 - There is no test suite; compiling `mvn clean compile` is the verification step for syntax; `mvn clean package` is required before claiming a fix is deployed.
 
@@ -26,48 +26,48 @@ Never use angle brackets (`<arg>`) for command arguments.
 This applies to command usage strings, help output, and any user-facing message text.
 Example: `/areas rename {old} {new}`, `/areas wand [name] [mode]`.
 
-Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<gray>`, `<white>`) — do not replace those.
+Angle brackets remain correct for MiniMessage formatting tags (e.g. `<red>`, `<gray>`, `<white>`) â€” do not replace those.
 
 ### Placeholder replacement
-Parse messages with `Messages#replace(...)` — varargs pairs of `key-without-percent` + value:
+Parse messages with `Messages#replace(...)` â€” varargs pairs of `key-without-percent` + value:
 `Messages.USAGE.replace("usage", "/areas rename {old} {new}")` or
 `Messages.AREA_LIST_ENTRY.replace("area", name, "state", state)`. **Never** `String#replace` for message
-placeholders — the method adds the `%...%` wrapping itself, keeping keys consistent with `messages.yml`.
-Always pass ALL placeholders in one varargs call (`Messages.X.replace(key1, value1, key2, value2)`) — if a
+placeholders â€” the method adds the `%...%` wrapping itself, keeping keys consistent with `messages.yml`.
+Always pass ALL placeholders in one varargs call (`Messages.X.replace(key1, value1, key2, value2)`) â€” if a
 message ever renders with a literal `%key%` left in it, the replace call for that key was wrong or missing.
 Exception: non-Messages config-string templates (e.g. `loot-editor.*-name` lore/name templates from
-`ConfigUtil`) have no `%...%` auto-wrapping — those need a direct `.replace("%key%", value)` for each
+`ConfigUtil`) have no `%...%` auto-wrapping â€” those need a direct `.replace("%key%", value)` for each
 placeholder they define.
 
 ### Imports
-Always declare imports at the top of the file — never use fully-qualified class names inline (write
+Always declare imports at the top of the file â€” never use fully-qualified class names inline (write
 `PlayerData pd = ...` with `import net.omni.extraction.data.PlayerData;`, not
 `net.omni.extraction.data.PlayerData pd = ...`). Same for static calls and field types. When touching
 existing code that has inline qualified names, convert them to imports.
 
 ### Distance checks
-Never `Location#distance(...)` — it throws `IllegalArgumentException` across worlds (e.g. convoy route vs
+Never `Location#distance(...)` â€” it throws `IllegalArgumentException` across worlds (e.g. convoy route vs
 extraction spawn) and pays a sqrt on every call. Use `distanceSquared(...)` with squared thresholds
-(`reach²`, `radius²`), guard world equality before comparing positions, and derive a true length (ratios)
+(`reachÂ²`, `radiusÂ²`), guard world equality before comparing positions, and derive a true length (ratios)
 via `Math.sqrt` of the squared value only when needed.
 
 ### Integrations
-- Use direct plugin APIs only — do **not** introduce reflection.
+- Use direct plugin APIs only â€” do **not** introduce reflection.
 - Integration dependencies are `provided`; guard their use so a missing plugin does not crash the server.
 
 ### Dependencies
-- The SQLite JDBC driver is bundled with PaperMC — do **not** add `org.xerial:sqlite-jdbc`.
+- The SQLite JDBC driver is bundled with PaperMC â€” do **not** add `org.xerial:sqlite-jdbc`.
 - The MariaDB JDBC driver (`org.mariadb.jdbc:mariadb-java-client`) is loaded at runtime through Paper's
-  `plugin.yml` `libraries:` block — do **not** shade it.
+  `plugin.yml` `libraries:` block â€” do **not** shade it.
 
 ### Storage
 - `storage.type: sqlite` (default) uses the bundled SQLite file; `storage.type: mysql` uses MariaDB/MySQL
   (`storage.mysql.*`: host/port/database/username/password/table-prefix/use-ssl/pool-size/fallback-to-sqlite).
   Cross-server features (parties) require `mysql` so the data is shared. `use-ssl` defaults **true** and is
-  written to the JDBC URL as `sslMode=trust` (encrypt, accept self-signed certs, no hostname/CA verification) —
+  written to the JDBC URL as `sslMode=trust` (encrypt, accept self-signed certs, no hostname/CA verification) â€”
   this avoids the MySQL 8 `caching_sha2_password` "RSA public key is not available" auth error without
   `allowPublicKeyRetrieval`. `false` emits `sslMode=disable`. The SQLite URL adds
-  `journal_mode=WAL&synchronous=NORMAL&busy_timeout=5000` (pool max 3) — the data folder also contains
+  `journal_mode=WAL&synchronous=NORMAL&busy_timeout=5000` (pool max 3) â€” the data folder also contains
   `extraction.db-wal`/`-shm`, so backups must include them (or stop the server before copying the `.db`).
   The MySQL URL enables `useServerPrepStmts`, `rewriteBatchedStatements`, prepared-statement caching
   (`prepStmtCacheSize=256`), `cacheServerConfiguration`, `useLocalSessionState`, `maintainTimeStats=false`.
@@ -78,7 +78,7 @@ via `Math.sqrt` of the squared value only when needed.
   `storage.mysql.fallback-to-sqlite` is true (default), it logs a loud SEVERE warning and runs on the local
   SQLite file (`Dialect.SQLITE`, empty prefix) instead of aborting `onEnable`; `isFallback()` then reports true
   (`isConfiguredMysql()` still reflects the config). When the option is false the failure propagates (hard fail).
-  Caveat: data written during the outage is local-only and is **not** synced to MySQL — fix settings + restart.
+  Caveat: data written during the outage is local-only and is **not** synced to MySQL â€” fix settings + restart.
   `dialect`/`tablePrefix` are therefore mutable (not final) and `AsyncDatabase` is built *after* the dialect is
   resolved (so SQLite gets the single-threaded worker). `/extraction reload` shows `admin.storage-fallback-active`
   while the fallback is active (`admin.storage-restart-required` otherwise).
@@ -87,14 +87,14 @@ via `Math.sqrt` of the squared value only when needed.
   `supplyAsync`/`runAsync`, per-key serialization `supplyKeyed`/`runKeyed` (a per-UUID chain so a
   load/save/mutation for one entity can never interleave), and `mainExecutor()` (hops a continuation back
   to the main thread; drops it once the plugin is disabled). On SQLite the pool is a single thread (global
-  FIFO order — also per-key order — and no `SQLITE_BUSY`); on MySQL it is `storage.threads` wide. `shutdown(ms)`
+  FIFO order â€” also per-key order â€” and no `SQLITE_BUSY`); on MySQL it is `storage.threads` wide. `shutdown(ms)`
   drains the per-key chains + pool. `DatabaseManager` constructs it, exposes `supplyAsync/runAsync/supplyKeyed/
   runKeyed/mainExecutor`, keeps `executeAsync` as a `runAsync` delegate, and `drain()`/`close()` (drain then
   close the Hikari datasource).
 - `data/DatabaseManager` is dialect-aware (`Dialect.SQLITE`/`MYSQL`, `isMysql()`, `table(name)` applies the
-  optional MySQL table prefix, `playerUpsertSql()` returns `INSERT OR REPLACE` on SQLite / `INSERT … ON
+  optional MySQL table prefix, `playerUpsertSql()` returns `INSERT OR REPLACE` on SQLite / `INSERT â€¦ ON
   DUPLICATE KEY UPDATE` on MySQL). It creates `player_data` plus the party tables (`party`, `party_member`)
-  — exactly three tables. `party` holds `invites` (a JSON array column of
+  â€” exactly three tables. `party` holds `invites` (a JSON array column of
   `{target, inviterUuid, inviterName, expiresAt}`; nullable/`TEXT` on MySQL, `TEXT NOT NULL DEFAULT '[]'`
   on SQLite); `party_member` holds `chat_enabled` (`TINYINT NOT NULL DEFAULT 0`). The legacy
   `party_invite`/`party_chat_toggle` tables are dropped on startup (`dropTableIfExists`); `ensureColumn`
@@ -104,20 +104,20 @@ via `Math.sqrt` of the squared value only when needed.
   checks `INFORMATION_SCHEMA.STATISTICS` first (MySQL lacks `IF NOT EXISTS` on `CREATE INDEX`, which errors
   1064 and logs a driver WARN) and back-fills missing indexes on existing tables.
 - `/extraction admin migratedb` (perm `extraction.admin`) one-time copies every row of an existing SQLite
-  `player_data` into the active MySQL backend (`PlayerDataManager.importFromSqlite`) — manual, run after
+  `player_data` into the active MySQL backend (`PlayerDataManager.importFromSqlite`) â€” manual, run after
   switching `storage.type` to `mysql`; runs on the async worker.
 - **MySQL database auto-create:** when `storage.type: mysql`, `resolveDataSource` calls
   `DatabaseManager.ensureMysqlDatabase(cfg)` before building the pool. It connects *without* a schema,
   queries `INFORMATION_SCHEMA.SCHEMATA` for `storage.mysql.database`, and runs
-  `CREATE DATABASE … CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci` only when missing (backtick-escaped
+  `CREATE DATABASE â€¦ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci` only when missing (backtick-escaped
   name). No `CREATE` privilege is needed when the database already exists; any bootstrap `SQLException` is
   logged and swallowed so the normal pool attempt (and `fallback-to-sqlite`) decides the outcome. MySQL
   `CREATE TABLE`s also append `DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci` (`tableSuffix()`, empty on
   SQLite).
-- `/extraction reload` does **not** switch the active database backend — `DatabaseManager` resolves its
+- `/extraction reload` does **not** switch the active database backend â€” `DatabaseManager` resolves its
   dialect/datasource once in the constructor at `onEnable`. Changing `storage.type` requires a **full server
   restart**; reload warns (`admin.storage-restart-required`) when the configured type differs from the active
-  one. Correct migration flow: edit `storage.type` (+ mysql settings) → restart → `/extraction admin migratedb`.
+  one. Correct migration flow: edit `storage.type` (+ mysql settings) â†’ restart â†’ `/extraction admin migratedb`.
 
 ### Config / messages
 - Config is split across files, routed by top-level section: `config.yml` (`settings`, `messages`,
@@ -134,17 +134,17 @@ via `Math.sqrt` of the squared value only when needed.
 - `messages.yml` defaults live in both `messages.yml` and the `Messages` enum (keep them in sync).
 
 ### DO NOT TOUCH
-- The `/* TODO ... */` block near the top of `ExtractionPlugin.java` is the user's own scratch area — never edit or remove it.
+- The `/* TODO ... */` block near the top of `ExtractionPlugin.java` is the user's own scratch area â€” never edit or remove it.
 
 ## Relevant Files
-- `ExtractionPlugin.java`: main class. onEnable: `initChatRenderer()` (detection lines use `getLogger()` —
-  before the prefix is loaded) → `configUtil` load + `chatRenderer.setPrefix(configUtil.getPrefix())` →
-  messages file/manager → data/managers → registerCommands + registerListeners → start tasks; ends with
+- `ExtractionPlugin.java`: main class. onEnable: `initChatRenderer()` (detection lines use `getLogger()` â€”
+  before the prefix is loaded) â†’ `configUtil` load + `chatRenderer.setPrefix(configUtil.getPrefix())` â†’
+  messages file/manager â†’ data/managers â†’ registerCommands + registerListeners â†’ start tasks; ends with
   `preloadOnlinePlayers()` (async-loads data for anyone already online, e.g. after `/extraction reload`).
-  onDisable: `playerDataManager.onDisable()` FIRST (flips `disabled` so saves become synchronous) → stops
-  the scheduled tasks → **`databaseManager.drain()`** (waits out every in-flight worker task so the pool and
-  the main thread never write at once) → `areaClearManager`/`runManager`/`worldEventManager`/party shutdowns
-  (now synchronous saves) → `playerDataManager.flush()` (synchronous final dump) → config/messages flush →
+  onDisable: `playerDataManager.onDisable()` FIRST (flips `disabled` so saves become synchronous) â†’ stops
+  the scheduled tasks â†’ **`databaseManager.drain()`** (waits out every in-flight worker task so the pool and
+  the main thread never write at once) â†’ `areaClearManager`/`runManager`/`worldEventManager`/party shutdowns
+  (now synchronous saves) â†’ `playerDataManager.flush()` (synchronous final dump) â†’ config/messages flush â†’
   `databaseManager.close()`.
 - `chat/ChatRenderer.java`, `chat/PaperChatRenderer.java`, `chat/SpigotChatRenderer.java`: `setPrefix(String)`
   makes the prefix configurable via `config.yml` -> `messages.prefix` (MiniMessage on Paper; converted to
@@ -155,11 +155,11 @@ via `Math.sqrt` of the squared value only when needed.
   `admin` (wraps `admin addhologram/sethologram/delhologram {area}`).
   `handleReload` re-applies the prefix after `configUtil.reloadConfig()`.
   Two separate spawns: `settings.spawn` (extraction/outlands entry, set via `/extraction setspawn`, used by
-  `/extraction enter` + the convoy escape route) and `settings.lobby` (separate world — default
-  `ExtractionSpawn` — set via `/extraction setlobby`). On join, `PlayerListener.onPlayerJoin` teleports any
+  `/extraction enter` + the convoy escape route) and `settings.lobby` (separate world â€” default
+  `ExtractionSpawn` â€” set via `/extraction setlobby`). On join, `PlayerListener.onPlayerJoin` teleports any
   player who is NOT resuming a run (no `pendingReturn`/`returnLocation`, which `settings.return-on-disconnect`
   controls) to the lobby: the configured `settings.lobby` point, else the lobby world's spawn. If the lobby
-  world isn't loaded it does NOT fall back into the extraction world — the player stays where the server
+  world isn't loaded it does NOT fall back into the extraction world â€” the player stays where the server
   spawned them and a one-time warning is logged. `ConfigUtil.loadLobby(savedDefaults)` auto-adds
   `settings.lobby.world` to existing configs; `getLobbyLocation()`/`getLobbyWorldName()`.
 - `commands/AreaCommand.java` + `AreaTabCompleter.java`: `/areas` management (perm `extraction.areas`).
@@ -184,7 +184,7 @@ via `Math.sqrt` of the squared value only when needed.
   written in batches (`storage.batch-size`) inside a transaction, one connection per chunk; a failed chunk rolls back
   and retries row-by-row. All player writes are serialized through a single `PLAYER_SAVE_KEY` in `runKeyed` (so a
   batch cannot overwrite a newer immediate save). Three entry points: `savePlayer(uuid)` = buffered; `savePlayerShared(uuid)`
-  = immediate (`savePlayerNow`) on MySQL, buffered on SQLite — used for cross-server-critical data
+  = immediate (`savePlayerNow`) on MySQL, buffered on SQLite â€” used for cross-server-critical data
   (tokens/cooldowns/purchases/banked time) since a deferred write could be read as stale by another server;
   `savePlayerNow(uuid)` = always immediate (run enter/extract/death/disconnect, admin grants; drops any buffered
   snapshot for that UUID). `unloadPlayer` now `savePlayerNow`s then evicts. `flush`/`saveAllSync` merge pending +
@@ -202,20 +202,20 @@ via `Math.sqrt` of the squared value only when needed.
   `%extraction_party%` (leader name; `PlaceholderValues`). Public ops: `create/invite/join/leave/kick/disband/
   list/info/chat`. Chat and invite logic are split out: `party/PartyChat.java` owns `chat` + the per-player
   **party chat mode** (toggled via `/extraction party chat on|off`, persisted in `party_member.chat_enabled`
-  so it works across servers, scoped to the player's current membership — it resets to OFF when they leave,
+  so it works across servers, scoped to the player's current membership â€” it resets to OFF when they leave,
   are kicked, or the party disbands) + the relay-out/in for `chat`; `party/Invites.java` owns the invite
   lifecycle (sending, `findFor`/`deleteFor`, the `Invite` record, read-modify-write of the `party.invites`
   JSON column) + the relay-out/in for `invite`. `PartyChat` caches the flag (loaded on join, removed on quit,
   default OFF) and `PartyManager` exposes `setPartyChatMode`/`isPartyChatEnabled`. When enabled, the
   `PartyListener` `AsyncChatEvent` handler cancels the player's normal chat and routes it to the party
-  (only while they are in a party — a toggled-on player outside a party keeps global chat; delivery is
-  scheduled onto the main thread). `party/PartyListener.java` owns ALL party event handling — the Bukkit
+  (only while they are in a party â€” a toggled-on player outside a party keeps global chat; delivery is
+  scheduled onto the main thread). `party/PartyListener.java` owns ALL party event handling â€” the Bukkit
   join/quit/chat handlers (`loadPlayer`/`handleQuit`/`onAsyncChat`) plus the `BungeeCord` plugin channel
   (register/unregister of outgoing+incoming in `register()`/`shutdown()`, and `onPluginMessageReceived`
-  framing → `PartyManager.handleRelay`). `PartyManager.handleRelay` dispatches decoded payloads to
+  framing â†’ `PartyManager.handleRelay`). `PartyManager.handleRelay` dispatches decoded payloads to
   `PartyChat`/`Invites` (chat/invite) and reloads caches (update). The outbound side relays chat + invites
   through the `BungeeCord` channel (`Forward`/`ForwardToPlayer`, subchannel `extraction:party`, Gson payload)
-  — gated by `party.cross-server` — via the package-private `memberArray`/`forwardAll`/`forwardToPlayer`
+  â€” gated by `party.cross-server` â€” via the package-private `memberArray`/`forwardAll`/`forwardToPlayer`
   shared by `PartyChat`/`Invites`.
   `commands/PartyCommand.java` dispatches the subcommands (wired into `ExtractionCommand` `case "party"`).
   **Threading:** every `PartyManager`/`PartyChat`/`Invites` DB operation runs on `DatabaseManager.supplyKeyed/
@@ -228,7 +228,7 @@ via `Math.sqrt` of the squared value only when needed.
 - `event/PlayerEnterAreaEvent.java`, `event/PlayerLeaveAreaEvent.java`: non-cancellable custom Bukkit events
   (`org.bukkit.event.Event`) fired by `AreaManager` on area enter/leave transitions (incl. on quit).
 - `gameplay/RunManager.java`: enterRun / extractPlayer / handleDeath / handleDisconnect / shutdown /
-  restorePendingReturn. `addKill`/`addBoss` now award their tokens immediately (`awardKillTokens` → live
+  restorePendingReturn. `addKill`/`addBoss` now award their tokens immediately (`awardKillTokens` â†’ live
   payout + actionbar `+{n} tokens`); `calculateTokens` pays base + per-event only (kills/bosses paid live).
 - `area/*`: `AreaManager` (auto-save + state task `checkAreaStates`, `getAreaAt` for `%extraction_area%`),
   `AreaClearManager`, `AreaSelectionVisualizer` (`getExtractionPlayers()`), wand listeners.
@@ -237,12 +237,12 @@ via `Math.sqrt` of the squared value only when needed.
   Loot chests are **per-area lists** (`Area.chestLocations`, `loot.chest-locations` in the area file; legacy single
   `loot.chest-location` migrates on load). Each chest has an optional `type` = a loot table id (`AreaChestLocation.lootType`)
   and a stored container `Material` (`material:`, default CHEST; saved only when non-CHEST).
-  The accepted container materials come from config.yml `containers` (`ConfigKeys.CONTAINERS`, `ConfigUtil.isContainerMaterial` —
+  The accepted container materials come from config.yml `containers` (`ConfigKeys.CONTAINERS`, `ConfigUtil.isContainerMaterial` â€”
   a `SHULKER_BOX` entry matches every `*_SHULKER_BOX`); `AreaChestLocation.refreshContainers` seeds the hardcoded
   `CONTAINER_TYPES` set from it on startup/reload, so wand gating and fill/preserve detection share one source. The CHEST-mode
   wand rejects any left-clicked block not in the list (`area.not-container`).
   `buildLoot(area, chestType)` falls back to the area's loot table then legacy entries, rolling a fresh full batch per chest.
-  Loot-table entries roll by weighted chance (`LootEntry.weight`) only — the bundled `Easy` table uses small
+  Loot-table entries roll by weighted chance (`LootEntry.weight`) only â€” the bundled `Easy` table uses small
   `amount`s to avoid stack floods; `UPGRADE` and `TIME` are single items per roll, and `randomTimeKey` picks a
   config-defined `time-loot` entry (config.yml, like `upgrade-tokens`) whose `minutes` set the item's time
   (`LootItemUtil.createTimeItem` substitutes the `%time%` placeholder in the definition's display-name/lore and
@@ -254,13 +254,13 @@ via `Math.sqrt` of the squared value only when needed.
   `Area.addChestLocation` returns boolean: double-chest marks collapse to a single anchor (min-corner of the pair; merge
   detected via adjacent chest-type blocks + `Chest` BlockData facing), and a duplicate at an already-registered block is
   rejected (`AREA_CHEST_EXISTS`). `AreaClearManager` preserves pre-placed world containers (chests/barrels/shulkers/
-  furnaces/hopper/etc — `AreaChestLocation.isSupported`), fills combined double-chest inventories, and registers
+  furnaces/hopper/etc â€” `AreaChestLocation.isSupported`), fills combined double-chest inventories, and registers
   **both halves** of a double. Chest blocks persist forever (a missing container is converted to the stored type, but
   never despawned/removed); each clear refills them in place, and loot only leaves the world when claimed by the clear
   owner. `Area.save` omits empty legacy `mobs`/`spawn-locations`/`boss-locations` keys.
   Wand CHEST mode left-clicks to open the loot-table picker (sneak removes the nearest; the picker applies the type);
   `/areas setchest {area} {index} {type|remove}`.
-  Per-area hologram position: `Area.hologramLocation` ↔ `hologram.x/y/z` in the area file, omitted when unset.
+  Per-area hologram position: `Area.hologramLocation` â†” `hologram.x/y/z` in the area file, omitted when unset.
 - `chat/ActionBarManager.java`: the default HUD (replaces the scoreboard). Repeating task (`actionbar.update-ticks`)
   sends the run/cooldown timer (`%extraction_timer%`) while a player is in a run or on cooldown; `showTokens(UUID,int)`
   overlays `+{n} tokens` for `actionbar.kill-feedback-ticks`. Reads `actionbar.enabled`.
@@ -270,37 +270,37 @@ via `Math.sqrt` of the squared value only when needed.
   (SHA-256 of the zip, unless
   config `pack.id` pins a fixed one) so clients re-download changed packs instead of reusing Minecraft's
   UUID-keyed cache; the served URL appends `?h=<hash8>` to defeat HTTP caches. **The host clients download
-  from is resolved in `init()` → `resolveHost()`: config `pack.host` first, else `server.properties server-ip`
-  (skipping `0.0.0.0`), else the pack is NOT offered (plain text titles) with a loud warning — never a
+  from is resolved in `init()` â†’ `resolveHost()`: config `pack.host` first, else `server.properties server-ip`
+  (skipping `0.0.0.0`), else the pack is NOT offered (plain text titles) with a loud warning â€” never a
   silent `localhost`** (that was the original "pack doesn't apply" bug: Bukkit `getServer().getIp()` is empty
-  on normal servers). `/extraction reload` →
+  on normal servers). `/extraction reload` â†’
   `packManager.reload()` recomputes the id and re-offers the pack to every online player. Per-GUI
-  resource-pack texture glyphs: GUIs are **pure-texture** when the pack hosts their glyph —
+  resource-pack texture glyphs: GUIs are **pure-texture** when the pack hosts their glyph â€”
   `titleWithTexture(title, key)` returns the **bare `\uE0XX` codepoint** (a lone-glyph title line is
   centered by the client, so the panel lands dead-center) as the whole inventory title, else the plain
   text title; `guiTexture(key)` returns the bare glyph (only while the pack is hosted) + `decodeUnicode`
-  converts `\uXXXX` escape text. Font-image textures are capped at **256×256** in vanilla — the
-  providers (`pack/default.gui.providers.json`, `height: 256`) match 256² PNGs, and the client's
-  **Force Unicode Font (Options→Language) must be OFF** for custom glyphs to render. `diagnostics()` backs the
-  `/extraction admin packinfo` command — it prints hosting state + zip internals (font/default.json provider
+  converts `\uXXXX` escape text. Font-image textures are capped at **256Ã—256** in vanilla â€” the
+  providers (`pack/default.gui.providers.json`, `height: 256`) match 256Â² PNGs, and the client's
+  **Force Unicode Font (Optionsâ†’Language) must be OFF** for custom glyphs to render. `diagnostics()` backs the
+  `/extraction admin packinfo` command â€” it prints hosting state + zip internals (font/default.json provider
   count + all 9 glyphs present + merged-vanilla heuristic, pack.mcmeta `pack_format`, each `gui_*.png` size
   and real ImageIO dimensions vs the 256 cap). Codepoints come from
   config.yml `pack.gui-textures` (defaults
-  `\uE001` pack-menu … `\uE009` area-editor; ConfigKeys `PACK_GUI_*`+`PACK_HOST`, ConfigUtil `loadPack`/`getGuiTexture`/`getPackHost`) — wired into
+  `\uE001` pack-menu â€¦ `\uE009` area-editor; ConfigKeys `PACK_GUI_*`+`PACK_HOST`, ConfigUtil `loadPack`/`getGuiTexture`/`getPackHost`) â€” wired into
   LoadoutGUI, UpgradeGUI, UpgradeConfirmGUI, RelicGUI (charms/artifacts), BackpackGUI, BackpackShopGUI, AreaEditorManager.
   Empty value or missing pack = plain titles.
 - `hologram/HologramManager.java`: area holograms via DecentHolograms (`DHAPI` + ` DecentHologramsAPI.isRunning()`,
   gated by `isPluginEnabled("DecentHolograms")`; always-runtime `saveToFile=false` holograms named
-  `extraction_area_<lowercase>`; a MiniMessage→DH-native converter (`toDh`, component walker emitting `<#rrggbb>` +
-  `&l/&o/&n/&m/&k`) because DH text lines only parse IridiumColorAPI formats — no MiniMessage tags). Created/moved/updated
+  `extraction_area_<lowercase>`; a MiniMessageâ†’DH-native converter (`toDh`, component walker emitting `<#rrggbb>` +
+  `&l/&o/&n/&m/&k`) because DH text lines only parse IridiumColorAPI formats â€” no MiniMessage tags). Created/moved/updated
   by a repeating task (`holograms.update-ticks`, always
   visible once placed); line-count mismatch on reload rebuilds the hologram; `lastLocations` avoids re-teleporting.
   `setPosition`/`remove` wire the `/extraction admin addhologram/sethologram/delhologram` subcommands.
-  Hologram existence/update checks use `DHAPI.getHologram(name)` — runtime DHAPI holograms live only in
+  Hologram existence/update checks use `DHAPI.getHologram(name)` â€” runtime DHAPI holograms live only in
   `Hologram.CACHED_HOLOGRAMS`, so the manager's file-backed `containsHologram` would always be false (a frozen-empty /
   never-removed hologram). Placeholders `%area%`, `%level%` (max
   `AreaSpawnDefinition.getLevel()`), and live `%mobs%`/`%bosses%`/`%total%` during an active
-  `AreaClearSession` (`getMobs()`−`getBossMobs()`, `getBossMobs()`, `getTotalMobs()`) falling back to configured
+  `AreaClearSession` (`getMobs()`âˆ’`getBossMobs()`, `getBossMobs()`, `getTotalMobs()`) falling back to configured
   counts when idle. Config `holograms.enabled/update-ticks/lines` in config.yml (`ConfigKeys.HOLOGRAMS_*`).
   Also owns the **persistent per-loot-chest holograms** (`extraction_chest_<world>_<x>_<y>_<z>`,
   `store=true`): `updateChestHologram(area, chest)` creates/moves/updates one hologram one block above each configured
@@ -310,26 +310,28 @@ via `Math.sqrt` of the squared value only when needed.
   holds claimable loot, `empty` after the owner claims; all support `%area%`, empty list hides the hologram.
   `removeChestHologram(name)` tears one down; `clearAll()` clears every chest hologram on disable.
   `ExtractionPlugin` constructs after `areaClearManager`, `start()`s after `actionBarManager`, `stop()`s on disable;
-  `/extraction reload` → `hologramManager.reload()`.
+  `/extraction reload` â†’ `hologramManager.reload()`.
 - `scoreboard/ScoreboardManager.java`, `ScoreboardListener.java`, `PlaceholderValues.java`: internal-only
   Paper-backed scoreboard (Team prefix/suffix Components, `NumberFormat.blank()`), objective key
   `extraction_side`, team prefix `extraction_line_`. **Disabled by default** (`scoreboard.enabled: false`);
   kept so users can re-enable. `PlaceholderValues` resolve `%extraction_*%` for the actionbar + PAPI.
 - `messages/Messages.java` + `src/main/resources/messages.yml`, `managers/MessagesManager.java`,
   `managers/TokenManager.java`.
-- `integration/PlaceholderAPIHook.java`: identifier `extraction` — keep the param list in sync with
+- `integration/PlaceholderAPIHook.java`: identifier `extraction` â€” keep the param list in sync with
   `scoreboard/PlaceholderValues`.
-- `pom.xml`: shade relocates `com.zaxxer.hikari` → `net.omni.extraction.libs.hikari`, excludes `META-INF/*`;
+- `pom.xml`: shade relocates `com.zaxxer.hikari` â†’ `net.omni.extraction.libs.hikari`, excludes `META-INF/*`;
   repositories incl. `https://repo.triumphteam.dev/snapshots` + `https://jitpack.io`; `libs/ItemEdit-3.7.10.jar`
   (system scope), `com.github.MilkBowl:VaultAPI:1.7.1` (provided).
 
 ## Completed
+- Boss Creator (`/boss`, `/bosses`): create/edit boss templates stored as `boss: true` `mob_template`, features stats, 6 abilities, per-boss item drops + bonus loot table, test-spawn, GUI editing; uses six SlotType validations. `mobs.yml` ability/loot fields.
+
 - Separate lobby spawn: `settings.spawn` stays the extraction/outlands entry (unchanged, used by
   `/extraction enter` + convoy), and new `settings.lobby` (world default `ExtractionSpawn`, `/extraction setlobby`)
   is where any player who joins without an in-progress run is teleported. A missing/unloaded lobby world leaves
   the player at the server spawn (warn) rather than dropping them into the extraction world.
 - Config-toggleable storage backend (`storage.type: sqlite` default / `mysql`) + `/extraction admin migratedb`
-  one-time SQLite→MySQL row copy; MariaDB driver loaded via `plugin.yml` `libraries:`.
+  one-time SQLiteâ†’MySQL row copy; MariaDB driver loaded via `plugin.yml` `libraries:`.
 - Cross-server party system (`/extraction party`): DB-backed (`party`/`party_member`), per-server
   cache, BungeeCord `extraction:party` relay for chat/invites, `party.yml` config, `extraction.party` permission,
   `%extraction_party%` returns the leader name.
@@ -337,8 +339,8 @@ via `Math.sqrt` of the squared value only when needed.
   commands, periodic area state task, Extraction spawn (`/extraction setspawn`) + lobby spawn
   (`/extraction setlobby`), configurable chat prefix
   (`messages.prefix` + reload hook).
-- Rename refactor Outlands → Extraction: package `net.omni.extraction`, main class `ExtractionPlugin`,
-  `OutlandsCommand/TabCompleter/Config` → `Extraction*`, permissions → `extraction.*`, PAPI identifier +
+- Rename refactor Outlands â†’ Extraction: package `net.omni.extraction`, main class `ExtractionPlugin`,
+  `OutlandsCommand/TabCompleter/Config` â†’ `Extraction*`, permissions â†’ `extraction.*`, PAPI identifier +
   `%extraction_*%` placeholders, `extraction.db`, shade relocation `net.omni.extraction.libs.hikari`.
   `settings.world-name` default intentionally left as `outlands`.
 - Configurable per-player scoreboard implemented with the internal backend only (FastBoard / ViaVersion
@@ -366,7 +368,7 @@ via `Math.sqrt` of the squared value only when needed.
   `RelicItemUtil`, and `UpgradeTokenUtil` live in `net.omni.extraction.util` (stateful `ConfigUtil` stays in `config/`).
 - Multiple loot chest locations per area with optional per-chest loot table type (`AreaChestLocation`); wand
   CHEST add/remove-nearest; `/areas setchest`; legacy `loot.chest-location` migrates on load.
-- `PaperChatRenderer.toComponent` converts legacy `§` codes to MiniMessage tags so mixed placeholder/message
+- `PaperChatRenderer.toComponent` converts legacy `Â§` codes to MiniMessage tags so mixed placeholder/message
   strings (e.g. upgrade-token names) render correctly on Paper.
 - Timers now disableable via 0: `settings.time-limit-seconds: 0` skips the run countdown (`RunManager.enterRun`),
   `settings.cooldown-hours: 0` disables the extract cooldown (`CooldownManager.setCooldown`).
@@ -379,7 +381,7 @@ via `Math.sqrt` of the squared value only when needed.
 - Upgrade tokens stack freely (`UpgradeTokenUtil.createTokenItem` sets no max-stack limit); each apply consumes exactly one token and returns/banks the remainder (click path: cursor stack decremented; drag path: `consumeUpgradeToken` decrements the matched cursor/inventory stack by 1).
 - Wand GUI editor (`areaeditor` package): CHEST left-click opens a paginated loot-table picker (uses optional
   `icon`/`display-name`/`lore` fields in `loot_tables.yml`, falling back to `area-editor.chest-icon-*`); SPAWN
-  left-click opens a 5-step wizard (mob select → count → level → respawn → boss) that writes a per-spawn
+  left-click opens a 5-step wizard (mob select â†’ count â†’ level â†’ respawn â†’ boss) that writes a per-spawn
   `spawn-entries` entry bound to the clicked block. Wand boss right-click was removed (boss set via the GUI).
   Config section `area-editor.*` (title/rows/filler/nav icons, count/level/respawn increments + smallest,
   +/- and counter icons, boss yes/no icons, mob/chest icon fallbacks, page-nav lore). SPAWN wizard boss YES/NO
@@ -392,24 +394,24 @@ via `Math.sqrt` of the squared value only when needed.
   keys; editor page-nav hides when there is no previous/next page; chest locations dedupe on add (double-chest marks
   collapse to one anchored entry, duplicates rejected with `AREA_CHEST_EXISTS`); loot containers support any
   `AreaChestLocation.isSupported` material (barrels/shulkers/etc preserved in-world, fresh spots get the stored type
-  default CHEST) and pre-built double chests are filled as both halves (blocks persist — never despawned).
-- Cooldowns fully disable when `settings.cooldown-hours` is 0/≤0: `CooldownManager.isEnabled()` gates
+  default CHEST) and pre-built double chests are filled as both halves (blocks persist â€” never despawned).
+- Cooldowns fully disable when `settings.cooldown-hours` is 0/â‰¤0: `CooldownManager.isEnabled()` gates
   `isOnCooldown`/`getCooldownRemainingMs`/`getCooldownFormatted`, and `CooldownManager.applyConfig()` (called from
-  `/extraction reload`) resets every player's cooldown to 0 — loaded `PlayerData` + an async
+  `/extraction reload`) resets every player's cooldown to 0 â€” loaded `PlayerData` + an async
   `UPDATE player_data SET cooldown_until = 0` (`PlayerDataManager.clearAllCooldowns`, `getLoadedData`) so offline
   players get unlocked too. Run timers are intentionally NOT cancelled on reload (timers only apply to new runs).
-- Auto re-enter free areas: `AreaManager` state task calls `autoReenterAreas()` — when free-mode is active
+- Auto re-enter free areas: `AreaManager` state task calls `autoReenterAreas()` â€” when free-mode is active
   (`settings.time-limit-seconds` 0 AND `settings.cooldown-hours` 0), every area with `unavailableUntil == 0` that is
   ready and has mobs automatically (re-)starts its clear for extraction players standing inside who are not in an
-  active run (`AreaClearManager.onPlayerEnter` → `startClear` for a fresh session, boss-bar/glow join otherwise).
+  active run (`AreaClearManager.onPlayerEnter` â†’ `startClear` for a fresh session, boss-bar/glow join otherwise).
 - Vault currency: `integration/VaultEconomy` + `integration/VaultHook` expose Outland tokens as a full read/write
   Vault `Economy` ("token"/"tokens", integer amounts, no bank support). Registered via `ServicesManager` with
   priority `Highest` from `ExternalPluginManager.detect()` when Vault is loaded; pom adds JitPack
   `com.github.MilkBowl:VaultAPI:1.7.1` (provided) and `plugin.yml` softdepends `Vault`.
-- Run-death behavior: dying mid-run makes you leave immediately — `RunManager.handleDeath` clears the carried run
+- Run-death behavior: dying mid-run makes you leave immediately â€” `RunManager.handleDeath` clears the carried run
   loot/loadout (`event.getDrops().clear()` alone kept items in the inventory), sets `PlayerData.pendingDeathRestore`
   and keeps the pre-run snapshot. `PlayerListener.onPlayerDeath` CANCELS the `PlayerDeathEvent`
-  (`event.setCancelled(true)` — a forced `spigot().respawn()` is broken on Paper 1.21.11: the client stays stuck
+  (`event.setCancelled(true)` â€” a forced `spigot().respawn()` is broken on Paper 1.21.11: the client stays stuck
   `waitingForRespawn`, teleported but never truly respawned), calls `handleDeath` then `restoreDeathGear` immediately,
   and after `DEATH_RESPAWN_DELAY_TICKS` (2) heals the player (health/food/saturation, clears fire/fall) and teleports
   to the entry location under a brief `setInvulnerable` guard. No death screen/animation, no extraction rewards on
@@ -418,30 +420,30 @@ via `Math.sqrt` of the squared value only when needed.
   for any residual pending-death flag and serves normal deaths. The cooldown still applies.
 - Custom events: `event/PlayerEnterAreaEvent` + `event/PlayerLeaveAreaEvent` (non-cancellable, expose `getPlayer()`/
   `getArea()`) fired by `AreaManager` on area transitions (`checkPlayerAreas`) and on quit (`handlePlayerQuit`).
-- Loadout defaults are "once touched, gone": `LoadoutManager.hasCustomLoadout(data)` scans the whole GUI — true once
+- Loadout defaults are "once touched, gone": `LoadoutManager.hasCustomLoadout(data)` scans the whole GUI â€” true once
   any weapon/tool/food/potions/charm/artifact/pet cell is in `customizedCells` OR any non-armor/non-offhand cell holds
-  an item (so placing things in blank/free cells flips custom mode too; pure armor upgraders — tier items materialized
-  into armor cells — stay excluded). In custom mode `LoadoutGUI.populate` shows stored items and leaves other empty
-  named cells BLANK (no placeholder, no "Empty" pane — `createEmptyCellPlaceholder` was removed), while non-custom
-  players still see the default placeholders; `applyLoadout` skips the tieredCells default grant — fresh players who
+  an item (so placing things in blank/free cells flips custom mode too; pure armor upgraders â€” tier items materialized
+  into armor cells â€” stay excluded). In custom mode `LoadoutGUI.populate` shows stored items and leaves other empty
+  named cells BLANK (no placeholder, no "Empty" pane â€” `createEmptyCellPlaceholder` was removed), while non-custom
+  players still see the default placeholders; `applyLoadout` skips the tieredCells default grant â€” fresh players who
   never touched a default slot keep the starter kit. `syncToData` never persists ANY placeholder item (it nukes the
-  stored item for the cell regardless of which slot the placeholder is tagged for — the old code only cleared
+  stored item for the cell regardless of which slot the placeholder is tagged for â€” the old code only cleared
   matching-slot tags, letting stray/mismatched panes fall through to `untagPlaceholder` and be stored as plain panes).
   `handleLoadoutClick` cancels `HOTBAR_SWAP`/`HOTBAR_MOVE_AND_READD` (number keys) so loadout items can't leak into
   the real inventory, and `onInventoryClose` nulls a placeholder left on the cursor so panes never drop into the
   player's inventory. Armor placement in the loadout GUI now marks the cell customized too.
 - Loadout grants never deliver placeholders/filler: `applyLoadout`'s free-inventory copy skips any cell that is a
-  first-row filler cell (`isFirstRowFillerCell`) or whose item is a placeholder (`isPlaceholder`, unconditional — the
+  first-row filler cell (`isFirstRowFillerCell`) or whose item is a placeholder (`isPlaceholder`, unconditional â€” the
   old `slot != null` guard let non-slot cells through). Armor/offhand placeholders already resolve to tier/null.
 - Loadout contents persisted padded to the current GUI size: `PlayerDataManager.padLoadoutItems` writes
   `loadout_items` as a full `guiSize`-length list, so the legacy `migrateLoadoutItems` size-11 path can only ever
-  match genuine legacy rows (a modern short row — edits ending at cell ≤ 10 — used to be re-interpreted by slot
+  match genuine legacy rows (a modern short row â€” edits ending at cell â‰¤ 10 â€” used to be re-interpreted by slot
   ordinal and shift items to the wrong cells).
-- Armor tier is the source of truth: `RunManager → applyLoadout` equips `buildTierItem(effectiveTier)` for
+- Armor tier is the source of truth: `RunManager â†’ applyLoadout` equips `buildTierItem(effectiveTier)` for
   NON-customized armor cells (ignores stale cell contents), materializeTierItem skips customized cells, and
-  `LoadoutGUI.populate` shows the tier placeholder for uncustomized armor — the armor actually worn/displayed always
+  `LoadoutGUI.populate` shows the tier placeholder for uncustomized armor â€” the armor actually worn/displayed always
   matches the player's current armor tier across runs and relogs.
-- Storage GUI is free-select: `PlayerListener` no longer cancels all storage clicks/drags — only the button row
+- Storage GUI is free-select: `PlayerListener` no longer cancels all storage clicks/drags â€” only the button row
   (slots 45-53 = prev/page/claim-all/close/next/discard) is intercepted; loot items move freely between the storage
   inventory and the player inventory. Per-item click-claim was removed (that was the dupe source); `LootManager.
   syncStorageFromInventory(data, page, inv)` rebuilds `extractedLoot` from the visible page (merging other pages) and
@@ -451,34 +453,34 @@ via `Math.sqrt` of the squared value only when needed.
   wiping banked chest loot); the list is fed strictly by `AreaClearManager.redeemChest`/`storeLeftover` (both now
   use the cache-only `getLoaded` so a still-loading owner can't blank a real DB row). Death still wipes storage on purpose
   (`handleDeath`). `restorePendingReturn` still announces banked loot via `EXTRACT_LOOT_STORED` on relog.
-- Storage GUI allows **fully free** withdraw — item clicks, shift-click, drags, claim-all, nav and number-key
+- Storage GUI allows **fully free** withdraw â€” item clicks, shift-click, drags, claim-all, nav and number-key
   transfers all work even mid-run (no `isWithdrawBlocked` gate; the `withdraw.blocked` message is unused/kept).
-  `ExtractionManager.isExtractionPlayer` — the "in extraction" flag added on successful `enterRun`
+  `ExtractionManager.isExtractionPlayer` â€” the "in extraction" flag added on successful `enterRun`
   (`ExtractionCommand.handleEnter`) and removed on extract/death (`RunManager.extractPlayer`/`handleDeath`) and
-  on quit (`AreaSelectionVisualizer.onQuit`) — now ONLY drives scoreboard/actionbar/area-transition targeting.
+  on quit (`AreaSelectionVisualizer.onQuit`) â€” now ONLY drives scoreboard/actionbar/area-transition targeting.
   Opening the GUI stays allowed regardless.
 - Actionbar timer is disabled in free mode (`time-limit-seconds <= 0` AND `cooldown-hours <= 0`): `ActionBarManager.
   refresh` skips the `%extraction_timer%` HUD entirely (previously it flashed "0:00" every tick during free-mode
   runs) but still renders the `+N tokens` kill overlay (`showTokens`). Enabled when either value is > 0; recomputed
-  each tick, so `/extraction reload` (→ `actionBarManager.reload()`) re-enables automatically.
+  each tick, so `/extraction reload` (â†’ `actionBarManager.reload()`) re-enables automatically.
 
 - Stale area-clear sessions: the periodic containment task now always runs (decoupled from
   `mob-containment.enabled`). `AreaClearManager.scanStaleSessions()` cancels any session whose mobs
-  can't complete — a mob UUID with `Bukkit.getEntity(id) == null` (despawned without dying: player
-  left, chunk unload, etc.) permanently bricks the clear because the boss-bar total can never hit 0 —
+  can't complete â€” a mob UUID with `Bukkit.getEntity(id) == null` (despawned without dying: player
+  left, chunk unload, etc.) permanently bricks the clear because the boss-bar total can never hit 0 â€”
   and `cancelSession(session, notifyOwner)`: despawns survivors, hides boss bar, removes loot chests,
   sets the area READY + `unavailableUntil(0)` + saves, then sends `AREA_CLEAR_CANCELLED` to the owner.
   `cancelClear(area)` now delegates to `cancelSession(..., false)` (admin `/areas reset` stays silent).
 - Loadout overflow into storage: `applyLoadout`'s free-inventory copy stops placing items at the 36
-  main-slot capacity but no longer silently drops the rest — leftover loadout items go into the
+  main-slot capacity but no longer silently drops the rest â€” leftover loadout items go into the
   player's `extractedLoot` (claimable via `/extraction` storage) and the player gets
   `LOADOUT_INVENTORY_OVERFLOW` ("%count% loadout item(s) exceeded your 36-slot inventory and were
   moved to /extraction storage.").
 - Deterministic loadout drags + non-destructive sync: `handleLoadoutDrag` cancels the event and
   applies `event.getNewItems()` only to the allowed hovered cells (arms/first-row filler/bottom still
-  cancel) — a drag can never repaint rows 2-5 behind the plugin's back. `LoadoutGUI` tracks a
+  cancel) â€” a drag can never repaint rows 2-5 behind the plugin's back. `LoadoutGUI` tracks a
   per-session `touchedCells` set (markTouched on every click/drag target; reset on open/refresh), and
-  `syncToData` ONLY reconciles touched cells on close — every other cell (customized or not, free or
+  `syncToData` ONLY reconciles touched cells on close â€” every other cell (customized or not, free or
   slot) is never written from the view, so a transient empty/placeholder/repaint view can never wipe
   stored items. Removals still work because taking an item touches the cell. `syncLoadout` saves
   UNCONDITIONALLY after sync (no `updated` flag gate; `savePlayer` is a no-op when clean).
@@ -497,17 +499,17 @@ via `Math.sqrt` of the squared value only when needed.
   `writePlayerToDb` log per-close/per-save item/tier/customized/token summaries. `migrateLoadoutItems` only
   re-shapes EXACT 11-entry legacy rows (ordinal map + armor relocate); any other short row maps
   cell-for-cell with no relocation, and `padLoadoutItems` (write) truncates to the canonical guiSize.
-- Single tier-item source of truth: `LoadoutManager.buildTierItem(tier)` is the only builder for tier gear —
-  material + amount + enchantments (level 1) + potion meta (`potion_type`/`level` → `PotionMeta`,
+- Single tier-item source of truth: `LoadoutManager.buildTierItem(tier)` is the only builder for tier gear â€”
+  material + amount + enchantments (level 1) + potion meta (`potion_type`/`level` â†’ `PotionMeta`,
   base potion type + custom effect with amplifier `level-1`). `LoadoutGUI.createPlaceholder` (default loadout
   panes), `LoadoutManager.applyLoadout` (run grants for unset armor/tiered cells + `materializeTierItem`), and
   `UpgradeGUI.createSlotItem` (base item, chrome name/lore layered on top for buying info) all use it, so the
   gear shown in `/upgrade`, the loadout panes, and the `/extraction` grant are the same item with the tier's meta.
 - Loadout GUI = exact-slot inventory mirror (redesign): the GUI is a 1:1 editor of the player's real inventory.
-  First row (0-8) = armor (helmet/chestplate/leggings/boots → equipment 39/38/37/36) + offhand (8) + filler (4-7);
-  cells 9-35 map 1:1 to main inventory slots (identity) and the bottom row 36-44 is the hotbar →
+  First row (0-8) = armor (helmet/chestplate/leggings/boots â†’ equipment 39/38/37/36) + offhand (8) + filler (4-7);
+  cells 9-35 map 1:1 to main inventory slots (identity) and the bottom row 36-44 is the hotbar â†’
   `LoadoutGUI`/`PlayerListener`/`LoadoutManager` use `LoadoutManager.inventorySlotForCell(cell)`
-  (≤8 → -1, ≥36 → cell-36, else cell). `populate` shows the stored item for
+  (â‰¤8 â†’ -1, â‰¥36 â†’ cell-36, else cell). `populate` shows the stored item for
   customized cells and the live tier default (`buildTierItem`, same item as `/upgrade`) for uncustomized
   category cells; charm/artifact/pet + offhand cells show a tagged *drop-here* pane while empty
   (`LoadoutSlot.isPlaceholderSlot()`, `LoadoutGUI.createDropPlaceholder`: labelled panes for charm/artifact/pet,
@@ -515,24 +517,24 @@ via `Math.sqrt` of the squared value only when needed.
   `handleLoadoutClick` lets an empty cursor pick them up (no cancel; the vacated cell is marked touched so it
   goes blank) and placing them elsewhere stores the pane verbatim (`syncToData` no longer clears placeholders),
   so the moved marker persists in `loadout_items` and the old cell never regenerates it. The offhand pane is the
-  only fixed drop-here target — empty cursor is always cancelled on it. Item on cursor replaces any pane.
+  only fixed drop-here target â€” empty cursor is always cancelled on it. Item on cursor replaces any pane.
   `onInventoryClose` nulls a placeholder left on the cursor so panes never leak out.
   Legacy
   `isPlaceholder`/`untagPlaceholder` kept as an inert safety so tagged panes never show as stored or grant
-  (`getPlaceholderSlot` returns the source slot tag — used by the click interception; panes are never granted
+  (`getPlaceholderSlot` returns the source slot tag â€” used by the click interception; panes are never granted
   because `applyLoadout`'s `safeItem` skips them). `syncToData` persists touched cells verbatim (item stored, null cleared) and marks
-  each customized; untouched cells are never written so live defaults survive; saved via close→`syncLoadout`→
-  `savePlayer`→DB queue. Customization is decided ONLY at sync — click/drag handlers no longer
-  `setCellCustomized`. `applyLoadout` places exact-slot: customized→stored (null→empty), uncustomized category→
+  each customized; untouched cells are never written so live defaults survive; saved via closeâ†’`syncLoadout`â†’
+  `savePlayer`â†’DB queue. Customization is decided ONLY at sync â€” click/drag handlers no longer
+  `setCellCustomized`. `applyLoadout` places exact-slot: customizedâ†’stored (nullâ†’empty), uncustomized categoryâ†’
   tier default, everything else blank; armor/offhand via equipment slots; default tiers no longer gated by a
-  "custom loadout" flag (`hasCustomLoadout` and `materializeTierItem` were removed — upgrades just set the tier
+  "custom loadout" flag (`hasCustomLoadout` and `materializeTierItem` were removed â€” upgrades just set the tier
   and it reflects live in the GUI/grant). Loadout is fully WYSIWYG: tier cells (armor/weapon/tool/food/potions)
-  show the STORED item when customized and the effective-tier item otherwise — the `/extraction` grant is exactly
+  show the STORED item when customized and the effective-tier item otherwise â€” the `/extraction` grant is exactly
   the final arrangement. Upgrades materialize into that arrangement via `LoadoutManager.materializeTier(slot,
   fromTier, toTier, data)`: `applyUpgradeToken`/`upgradeSlot` call it right after setting the tier; it scans
   EVERY stored cell and replaces, in place, any item matching a tier iteration `1..fromTier`
   (`ItemStack.isSimilar` against `buildTierItem(getTier(slot,t))`) with the new tier item, marking the cell
-  customized — so the upgraded gear replaces the old tier wherever the player moved it (not just the default
+  customized â€” so the upgraded gear replaces the old tier wherever the player moved it (not just the default
   slot). Genuinely custom items are never overwritten, so the arrangement survives. The scan also heals
   previously-frozen cells: a stale prior-tier item is replaced on the next
   upgrade. `PlayerListener.applyUpgradeDeferred`'s consume-failure rollback calls
@@ -540,20 +542,20 @@ via `Math.sqrt` of the squared value only when needed.
   materialized new-tier item can't linger). Stored customization applies to all cells including tier cells
   (charm/artifact/pet/offhand + free inventory-mirror slots). `RunManager.enterRun` reads player data via
   `getLoaded` so `applyLoadout` never sees an unloaded tier-0 instance after a fresh
-  join / mid-session reload (the pre-login `loadPlayerBlocking` guarantees the cache is warm). Sequential free-fill and the 36-slot overflow→storage branch were
+  join / mid-session reload (the pre-login `loadPlayerBlocking` guarantees the cache is warm). Sequential free-fill and the 36-slot overflowâ†’storage branch were
   removed (1 cell = 1 exact slot).
-- Upgrade quality: upgrade tokens apply ONLY to the exact next tier — `LoadoutManager.applyUpgradeToken` requires
+- Upgrade quality: upgrade tokens apply ONLY to the exact next tier â€” `LoadoutManager.applyUpgradeToken` requires
   `tokenTier == getEffectiveTier(slot) + 1` (any skip is rejected with `loadout.token-wrong-tier`, wired through
   click, drag, and confirm paths). Buying with tokens via `/upgrade` (empty-cursor click on a slot) opens a
   config-driven confirm menu (`upgrade/UpgradeConfirmHolder` + `UpgradeConfirmGUI`, section `upgrade-confirm.*` in
   config.yml: title/rows/prompt/yes/no icons+names, prompt placeholders `%slot%`/`%current%`/`%next%`/`%cost%`;
-  layout YES=center−1, prompt=center, NO=center+1, upgrade-gui filler reused). YES re-validates (tokens + still next
+  layout YES=centerâˆ’1, prompt=center, NO=center+1, upgrade-gui filler reused). YES re-validates (tokens + still next
   tier), spends, applies, and reopens `/upgrade`; NO (and ESC, and any other click) returns to `/upgrade` without a
-  purchase — a `resolved` flag on the holder stops the close handler from reopening twice. `/extraction reload`
+  purchase â€” a `resolved` flag on the holder stops the close handler from reopening twice. `/extraction reload`
   closes open confirm views alongside loadout/upgrade GUIs.
 - Upgrade-token definition validation: `UpgradeManager.validateTokens()` runs after `loadTiers()` (startup and
   `/extraction reload`) and logs a console WARNING for any `upgrade-tokens` entry whose `upgrade-slot` is
-  blank/unknown or whose `upgrade-tier` is ≤ 0 or beyond the slot's tier-list max — such tokens can never be
+  blank/unknown or whose `upgrade-tier` is â‰¤ 0 or beyond the slot's tier-list max â€” such tokens can never be
   applied. `upgrade-tier` is the 1-based index of the item the token grants (first tier-list entry = 1); the
   default tokens follow it (stone_weapon=2, iron_helmet=3, diamond_chestplate=4). Note the static check cannot
   catch off-by-one labeling where the declared tier happens to be valid for some player state.
@@ -563,7 +565,7 @@ via `Math.sqrt` of the squared value only when needed.
   (perm `extraction.admin`, messages `area.hologram-set/removed/disabled`). Position persists in the area file as
   `hologram.x/y/z` (omitted when unset). Content comes from config.yml `holograms.lines` (MiniMessage, converted
   to DH's `&`/`&#hex` legacy) with `%area%`, `%level%` (highest configured `AreaSpawnDefinition.getLevel()`), and
-  `%mobs%`/`%bosses%`/`%total%` — live `AreaClearSession` remaining counts during a clear, configured totals
+  `%mobs%`/`%bosses%`/`%total%` â€” live `AreaClearSession` remaining counts during a clear, configured totals
   otherwise. A repeating task (`holograms.update-ticks`) refreshes numbers and moves/rebuilds (`lastLocations`
   avoids re-teleporting; line-count change on `/extraction reload` rebuilds). Runtime holograms are
   `saveToFile=false`, named `extraction_area_<lowercase>`. Guarded by `DecentHologramsAPI.isRunning()` +
@@ -573,7 +575,7 @@ via `Math.sqrt` of the squared value only when needed.
   container materials (`AreaChestLocation.refreshContainers` re-seeds `CONTAINER_TYPES` on load/reload; a
   `SHULKER_BOX` entry matches every `*_SHULKER_BOX`). The CHEST-mode wand rejects left-clicked blocks not in the
   list (`area.not-container`) before opening the picker, and the same list drives fill/preserve detection.
-  Chest blocks persist forever (never despawned/removed — `loot.despawn-seconds` is legacy/unused); each clear refills
+  Chest blocks persist forever (never despawned/removed â€” `loot.despawn-seconds` is legacy/unused); each clear refills
   registered containers in place. Loot is claimed by right-clicking a registered chest: `redeemChest` returns `-2`
   while the area's clear is still active (`area.chest-ongoing`), `-1` when another player owns the clear
   (`area.chest-locked`), `0` when nothing is registered, else the item count (banked to `/extraction` storage via
@@ -587,7 +589,7 @@ via `Math.sqrt` of the squared value only when needed.
 - Loot claim overhaul (dupe fix + scatter + claim-mode + level scaling + keys + mob drops):
   - **Duplication fixed**: `AreaClearManager.redeemChest` now `inventory.clear()`s the container AFTER banking its
     contents to `/extraction` storage, and `removeChest` clears the container when its leftovers are stored
-    (`leftover-to-withdraw`) — loot no longer stays in the world to be re-claimed.
+    (`leftover-to-withdraw`) â€” loot no longer stays in the world to be re-claimed.
   - **Random scatter**: `createLootChests` fills a freshly-resolved list of `0..size-1` slots shuffled with the run's
     `Random` instead of the first N slots.
   - **Claim mode** `loot.claim-mode` (`ConfigKeys.LOOT_CLAIM_MODE`, `ConfigUtil.isLootClaimOpen()`, default
@@ -607,23 +609,23 @@ via `Math.sqrt` of the squared value only when needed.
     mirroring token-loot incl. defaults when empty). Key ITEMS are loot: accept `KEY:<keyId>` as a loot-table/mob-drop
     `type` (intercepted FIRST in the shared `resolveDropItems`, before the external-provider branch);
     `LootItemUtil.createKeyItem` tags PDC `is_key`/`key_id` (+ `%key%` name/lore placeholder). `AreaClearManager`
-    keeps a `chestKeys` map (location-key → keyId) built in `createLootChests` (unknown ids WARN + leave unkeyed) and
+    keeps a `chestKeys` map (location-key â†’ keyId) built in `createLootChests` (unknown ids WARN + leave unkeyed) and
     removed in `unregisterChestBlock`; `redeemChest`/open gate return `-3` when the owner lacks the key
-    (`area.chest-key-needed` with `%key%` = key display-name), consuming exactly one key item on claim — keys are
+    (`area.chest-key-needed` with `%key%` = key display-name), consuming exactly one key item on claim â€” keys are
     scanned in BOTH `/extraction` storage (`extractedLoot`) AND the main inventory (`LootItemUtil.hasKeyItem`/
     `consumeKeyItem`, stacks decremented by 1).
   - **Mob/boss drops**: `mobs.yml` gets an optional `drops:` list (`MobTemplate.drops`, parsed/saved by
     `MobTemplateManager`, `MobDrop` = type/chance/amount). `AreaSpawnDefinition.drops` are copied from the template in
-    `resolveDefinition`; `AreaClearSession.mobDrops` maps mob UUID → its drop list (filled in `spawnMobs`);
+    `resolveDefinition`; `AreaClearSession.mobDrops` maps mob UUID â†’ its drop list (filled in `spawnMobs`);
     `AreaClearManager.rollMobDrops(uuid)` rolls each by chance and resolves via the shared `resolveDropItems`
-    (`MATERIAL`, `TOKENS`, `TIME`, `UPGRADE`, `provider:id` — mmoitems/nexo/itemedit — or `KEY:<id>`). `AreaListener.
+    (`MATERIAL`, `TOKENS`, `TIME`, `UPGRADE`, `provider:id` â€” mmoitems/nexo/itemedit â€” or `KEY:<id>`). `AreaListener.
     onEntityDeath` now adds those configured drops to `event.getDrops()` instead of dropping nothing; token payouts
     (kill/boss) still fire as before.
   - **Loot/Mob resolvers** (`loot/LootResolver.java`, `mobs/MobResolver.java`): shared single-source helpers
     extracted from `AreaClearManager`/`AreaManager`. `LootResolver.resolveDropItems(type, amount)` covers
     `MATERIAL`/`TOKENS`/`TIME`/`UPGRADE`/`provider:id`/`KEY:<id>`/`EVENT:<id>`/`CHARM:`/`ARTIFACT:` and
     `mergeStacks(List<ItemStack>)`;
-    `MobResolver.resolve(mobId,count,boss,level,respawnSeconds)` resolves mobs.yml template → vanilla `EntityType` →
+    `MobResolver.resolve(mobId,count,boss,level,respawnSeconds)` resolves mobs.yml template â†’ vanilla `EntityType` â†’
     MythicMobs id (defense/drops/equipment copied; boss = max armor/helmet) plus `isKnownMobId`/template helpers.
     Constructed in `ExtractionPlugin` after `mobTemplateManager.load()`, injected into `AreaManager` (ctor
     `(plugin, mobResolver)`) and `AreaClearManager` (ctor `(plugin, areaManager, lootResolver)`).
@@ -634,10 +636,10 @@ via `Math.sqrt` of the squared value only when needed.
     `worldevent/config/` (`WorldEventsConfig` = file IO + events map + settings, `WorldEventParser` = the parse
     logic, `EventSettings` = a record of the 13 settings); `WorldEvent` is a pure data class (records
     `ConvoyConfig`/`StormConfig`/`RoamConfig` + the `DEFAULT_*` terrain palettes). `WorldEventManager` is a thin
-    lifecycle/scheduler + public-API facade (registries: active, cooldowns, mob→instance, wand wielders, compass)
+    lifecycle/scheduler + public-API facade (registries: active, cooldowns, mobâ†’instance, wand wielders, compass)
     over `worldevent/service/` (`EventContext` = state hub + service locator, `EventSpawner`, `EventPresentation`,
     `TerrainService`, `EventLootService`, `HarvestChestService`) and `worldevent/behavior/` (`ConvoyBehavior`,
-    `StormBehavior`, `RoamBehavior`, `WaveBehavior`) — behaviors/services reach shared state + each other via
+    `StormBehavior`, `RoamBehavior`, `WaveBehavior`) â€” behaviors/services reach shared state + each other via
     `EventContext` accessors (`ctx.plugin()/config()/manager()/spawner()/presentation()/loot()/...`). Each
     `WorldEvent` holds one event
     (`weight` 0 = never auto-chosen, cooldown/duration-seconds, level, loot-table, spawn-locations [empty = spawn
@@ -651,8 +653,8 @@ via `Math.sqrt` of the squared value only when needed.
     `EventInstance` tracks `currentWave`/`wavesTotal`/`lastWaveTime`/`reinforcementsSpawned`/`reachedFinalWave`;
     `spawnGroup` takes level/count gains and `addTotal` keeps `%total%` cumulative. On success a timed/chest event
     may **spawn harvest chests**: `spawnHarvestChests` places `harvest-chests` CHESTs near the origin filled from the
-    event loot table (`items-per-chest` rolls each), tracked in `harvestChests` (Location → holder) and claimed via
-    `WorldEventListener.onInteract` → `claimHarvestChest` (grants loot, breaks the block; not coupled to area-clear
+    event loot table (`items-per-chest` rolls each), tracked in `harvestChests` (Location â†’ holder) and claimed via
+    `WorldEventListener.onInteract` â†’ `claimHarvestChest` (grants loot, breaks the block; not coupled to area-clear
     chests; `clearHarvestChests()` runs on disable). New per-event `broadcast.wave`/`title.wave`/`sounds.wave` and
     `%wave%`/`%waves%` placeholders (broadcast + boss-bar + waypoint). `EVENT:<id>` is a loot/mob-drop type
     resolving through the new config.yml `event-items:` section (like `keys:`; `ConfigKeys.EVENT_ITEMS`,
@@ -667,9 +669,9 @@ via `Math.sqrt` of the squared value only when needed.
     difficulty multiplier `1 + (level-1)*difficulty-step` on health/damage (event-boss drops = entry `drops` if set,
     else template drops), drives an Adventure boss bar, per-in-World-player compass targeting, and a DH waypoint
     (`HologramManager.updateWaypointHologram`, name `extraction_event_<id>`), and pays completion loot to every
-    online **in-World** player on success (per-kill rolls during the event, bosses × boss-roll-multiplier).
+    online **in-World** player on success (per-kill rolls during the event, bosses Ã— boss-roll-multiplier).
     `WorldEventListener` clears `EntityDeathEvent` drops/exp, rolls loot, `handleMobDeath` (success gate is
-    gate-aware: timed → `bosses` empty, finite → `reachedFinalWave` && mobs empty; non-waves unchanged), plus
+    gate-aware: timed â†’ `bosses` empty, finite â†’ `reachedFinalWave` && mobs empty; non-waves unchanged), plus
     join/quit/world-change show/hide of boss bars + compass.
     Broadcasts/titles go to ALL online players; sounds/boss bar/compass/completion loot only to players inside
     `settings.world-name`. Placeholders `%event%`/`%location%`/`%remaining%`/`%total%`/`%wave%`/`%waves%`
@@ -677,55 +679,55 @@ via `Math.sqrt` of the squared value only when needed.
     Stale/expired sessions `endEvent(instance,false)` (despawn mobs, hide bar, remove waypoint, cancel).
     `/extraction events status|list|start {id}|stop [id|all]` (perm `extraction.admin`) + help + tab completer
     wired; `shutdown()` on disable; `reload()` on `/extraction reload`.
-    Area-triggered events: per-event `trigger: area` (`WorldEvent.TriggerMode`, default `schedule`) — such events
+    Area-triggered events: per-event `trigger: area` (`WorldEvent.TriggerMode`, default `schedule`) â€” such events
     are EXCLUDED from the global weighted picker and instead start wherever a player enters ANY area:
-    `WorldEventListener.onPlayerEnterArea` → `WorldEventManager.tryTriggerOnAreaEntry(area)` (gates: enabled,
-    `max-concurrent`, global `min-gap`, per-event cooldown, `area.isReady()`) → weighted pick among the
-    area-triggered events via the shared `chance-per-check` → `startAtArea` with origin = `area.getCenter()`
+    `WorldEventListener.onPlayerEnterArea` â†’ `WorldEventManager.tryTriggerOnAreaEntry(area)` (gates: enabled,
+    `max-concurrent`, global `min-gap`, per-event cooldown, `area.isReady()`) â†’ weighted pick among the
+    area-triggered events via the shared `chance-per-check` â†’ `startAtArea` with origin = `area.getCenter()`
     (no single-area binding; admin `/extraction events start` still forces the scheduled origin). Titles now
     resolve through `fill()` (`showTitle(EventInstance,...)`), so `%wave%/%waves%` work in `title.wave`.
     Meteor terrain (`WorldEvent.terrain:*`): `applyCrater` carves a nether bowl (radius/depth, weighted
-    `floor-blocks` MAGMA center → BLACKSTONE/BASALT/NETHERRACK ring, `edge-blocks` scorched rim; protected
+    `floor-blocks` MAGMA center â†’ BLACKSTONE/BASALT/NETHERRACK ring, `edge-blocks` scorched rim; protected
     blocks BEDROCK/BARRIER/CHEST/END/BARRIER/SPAWNER/LIGHT skipped) saving every original block into
     `EventInstance.craterBlocks` (`SavedBlock` = x/y/z + `BlockData`); `impactEffect` (EXPLOSION_EMITTER/EXPLOSION/
     FLASH/LAVA/FLAME/ASH burst + explosion/basalt/stone crash) fires at start, `ambientCraterEffect` (rising
     LAVA/FLAME/CAMPFIRE smoke + occasional crackle) each tick while active, `restoreCrater` replays the blocks
     with a `restoreEffect` burst and **pushes anyone inside the crater up/back** (`pushPlayersOut`:
-    horizontal-away × `push-strength` + `push-up`, fall-distance reset + a 2-tick re-push) before regenerating.
+    horizontal-away Ã— `push-strength` + `push-up`, fall-distance reset + a 2-tick re-push) before regenerating.
     Regen triggers = last harvest chest of the instance claimed (in `claimHarvestChest`) or `endEvent`/`shutdown()`
-    safety net (so a failed/stopped event never leaves the world cratered; a hard server kill — no onDisable —
+    safety net (so a failed/stopped event never leaves the world cratered; a hard server kill â€” no onDisable â€”
     can still leave a permanent crater, noted limitation). Harvest chests cannot be broken
     (`WorldEventListener.onBlockBreak` cancels). `particle constants note`: this 1.21.11 API uses `LARGE_SMOKE`
     (not `SMOKE_LARGE`) and `EXPLOSION`/`EXPLOSION_EMITTER` (not `EXPLOSION_LARGE`/`EXPLOSION_HUGE`).
   - **Supply Convoy** (`WorldEvent.convoy:*`): a defended convoy walks a sampled straight-line route from the
-    event origin toward the map's extraction spawn (`getConfigUtil().getSpawnLocation()`, fallback world spawn —
+    event origin toward the map's extraction spawn (`getConfigUtil().getSpawnLocation()`, fallback world spawn â€”
     zero per-map setup; nether straight-line otherwise). Route points (`EventInstance.convoyPoints`) are sampled
-    every `step-blocks` along the origin→dest vector and **ground-snapped** (`groundSnap` via `findSurfaceY`) for
+    every `step-blocks` along the originâ†’dest vector and **ground-snapped** (`groundSnap` via `findSurfaceY`) for
     intermediate points so the convoy hugs terrain. The carrier (`carrier` mob id, configured `carrier-name`,
     glow/persistent, `setRemoveWhenFarAway(false)`/`setAware(true)`, warning if not a `Mob`) is tracked as a
     boss (`instance.track(uuid, new ArrayList<>(), true)` + `addTotal(1)` + `mobInstances`). `startConvoyRoute`
     builds the points and spawns it; `updateConvoy` per tick: `getPathfinder().moveTo(currentPoint, speed)`
-    (**1.21.11 renamed `pathfindTo` → `moveTo(Location, double)`**), checkpoint advance at `checkpoint-radius`,
-    `stuck-seconds` without ≥0.5-block progress → teleport-snap to the waypoint, escort follow-back teleports
-    (any escort > `follow-range` from the carrier) via `groundSnap`, and `convoyProgress` = 1 − remaining/route
-    length. The final waypoint is the extraction spawn with a looser **`escape-radius`** threshold — reaching it
+    (**1.21.11 renamed `pathfindTo` â†’ `moveTo(Location, double)`**), checkpoint advance at `checkpoint-radius`,
+    `stuck-seconds` without â‰¥0.5-block progress â†’ teleport-snap to the waypoint, escort follow-back teleports
+    (any escort > `follow-range` from the carrier) via `groundSnap`, and `convoyProgress` = 1 âˆ’ remaining/route
+    length. The final waypoint is the extraction spawn with a looser **`escape-radius`** threshold â€” reaching it
     ends the event as an ESCAPE (`endEvent(false)`), while success (carrier dead AND escorts cleared, checked in
     `handleMobDeath`'s convoy gate) spawns harvest chests at the **kill site** (`spawnHarvestChests(instance,
     instance.getTrackLocation())`). `handleConvoyVanished` drops despawned escorts as casualties and resurrects a
-    vanished carrier at the current waypoint (`respawnConvoyLeader` → new `addTotal(1)` so `%remaining%` can still
+    vanished carrier at the current waypoint (`respawnConvoyLeader` â†’ new `addTotal(1)` so `%remaining%` can still
     hit 0); `tick()` bypasses the generic stale-session fail for convoys (deaths are the win condition).
-  - **Toxic Storm** (`WorldEvent.storm:*`): N drifting contamination zones (cap 12) initialized in `spawnEvent` →
-    `initStormZones` (min-center separation = `radius`×2; `pickStormPoint` = spawn-locations first, else a random
-    online in-World player, else world spawn ±40). `applyStorm` per tick (`applyStorm` after the convoy/storm
-    branch): drift every `drift-interval-seconds` by ±`drift-radius`, smoke ring (`CAMPFIRE_COSY_SMOKE`) + `ASH`
+  - **Toxic Storm** (`WorldEvent.storm:*`): N drifting contamination zones (cap 12) initialized in `spawnEvent` â†’
+    `initStormZones` (min-center separation = `radius`Ã—2; `pickStormPoint` = spawn-locations first, else a random
+    online in-World player, else world spawn Â±40). `applyStorm` per tick (`applyStorm` after the convoy/storm
+    branch): drift every `drift-interval-seconds` by Â±`drift-radius`, smoke ring (`CAMPFIRE_COSY_SMOKE`) + `ASH`
     particles, then per in-World player inside a zone: `player.damage(damage-per-second)`, POISON/DARKNESS/
     BLINDNESS `PotionEffect`s (levels from config) recorded in `EventInstance.stormEffects` (removed via
     `releaseStormEffects` on exit and `clearStormEffects` in `endEvent`). Storm mob spawns (`spawnAnchor` picks a
-    zone center for TIMED/initial/reinforcement groups) get health/damage × `mutate-multiplier`, the `mutate-prefix`
+    zone center for TIMED/initial/reinforcement groups) get health/damage Ã— `mutate-multiplier`, the `mutate-prefix`
     MiniMessage name prefix, and **glowing** while the storm runs. Storms are TIMED-gated (guardians in `bosses`
-    must die to spawn harvest chests — always include `bosses` or the first kill ends it, documented in events.yml).
+    must die to spawn harvest chests â€” always include `bosses` or the first kill ends it, documented in events.yml).
   - **Convoy/storm shared glue**: `EventInstance.trackLocation` (defaults to origin) drives the waypoint +
-    compass (chest → run/craft); `fill()` gained `%progress%` (0-100) + `%zones%` (active zone count). New events.yml
+    compass (chest â†’ run/craft); `fill()` gained `%progress%` (0-100) + `%zones%` (active zone count). New events.yml
     keys: `convoy:{carrier, carrier-name, speed, step-blocks, checkpoint-radius, stuck-seconds, follow-range,
     escape-radius}` and `storm:{zones, radius, drift-interval-seconds, drift-radius, damage-per-second,
     poison-level, poison-seconds, darkness-level, darkness-seconds, blindness, mutate-multiplier, mutate-prefix}`.
@@ -735,11 +737,11 @@ via `Math.sqrt` of the squared value only when needed.
   - **Convoy routes + car visual**: optional `convoy.start`/`convoy.end` anchors (`{world,x,y,z}`,
     `WorldEvent.parseLocationSection`, `ConvoyConfig.start/end`) are edited live via
     `/extraction events route {event} {start|end|clear|show|wand}` (perm `extraction.admin`, tab-completed through
-    `ExtractionTabCompleter`, wired in `ExtractionCommand.handleRoute` → `WorldEventManager.setConvoyPoint`/
+    `ExtractionTabCompleter`, wired in `ExtractionCommand.handleRoute` â†’ `WorldEventManager.setConvoyPoint`/
     `clearConvoyPoint`/`getConvoyPoint` persist with `eventsConfig.set("events.<id>.convoy.start|end.*")` and
     live-apply with `WorldEvent.setRoute` rebuilding the in-memory ConvoyConfig; mid-run changes warn "applies on the
     next run"). The wand (`WandMode.CONVOY`, cycled like the others, lore added in `AreaManager.applyWandDisplay`)
-    sets anchors once armed via `… route {event} wand` (`WorldEventManager.convoyWands` UUID→eventId map +
+    sets anchors once armed via `â€¦ route {event} wand` (`WorldEventManager.convoyWands` UUIDâ†’eventId map +
     `getWandEvent`/`setWandEvent`/`clearWandEvent`; `AreaWandListener.handleConvoy`: left-click = start, right-click
     = end; sneak-right still cycles mode); `AreaSelectionVisualizer.drawConvoyMarker` shows pillars at both anchors.
     `spawnEvent` overrides the origin with `convoyRouteStart(event)` (so `%location%` reads the start);
@@ -749,21 +751,21 @@ via `Math.sqrt` of the squared value only when needed.
     `BlockDisplay`, others as `ItemDisplay`, all `setInvulnerable(true)` + `setTeleportDuration(2)` once
     (`spawnConvoyVisual`/`spawnCarPart`), repositioned every tick in `updateConvoy` (`updateConvoyVisual` rotates
     dx/dz by the carrier's yaw); the driver `Mob` is `setInvisible(true)`+`setSilent(true)` while any part exists.
-    Cleanup via `clearConvoyVisual` in `endEvent` (covers `shutdown()`); `~64` part cap kept in mind — keep samples
+    Cleanup via `clearConvoyVisual` in `endEvent` (covers `shutdown()`); `~64` part cap kept in mind â€” keep samples
     small. The `supply_convoy` sample ships a small truck scaffold; comment that `car` out to show the bare MULE.
     Messages `events.route-set/cleared/show/show-empty/wand-arm/wand-none/needs-player/not-convoy` in
     `Messages.java`/`messages.yml` (kept in sync).
-  - **Particle crash fix (meteor_crash)**: `Particle.FLASH` REQUIRES `org.bukkit.Color` data —
+  - **Particle crash fix (meteor_crash)**: `Particle.FLASH` REQUIRES `org.bukkit.Color` data â€”
     `world.spawnParticle(Particle.FLASH, ...)` without it throws `IllegalArgumentException: missing required data
     class org.bukkit.Color` and kills `/extraction events start meteor_crash`. `impactEffect` now passes
     `Color.WHITE`. It was the only data-requiring particle in the codebase (DUST always passes `DustOptions`).
   - **`MobResolver` refactor detail**: resolve returns a complete `AreaSpawnDefinition`, so
     `AreaManager.resolveSpawns` works unchanged; `AreaClearManager.spawnGroup` still overwrites count/level from the
-    spawn-entry after resolve. `AreaSpawnDefinition.count` (a template copy) is stale for per-spawn entries — read
+    spawn-entry after resolve. `AreaSpawnDefinition.count` (a template copy) is stale for per-spawn entries â€” read
     the entry fields in callers.
 - **Area Compass discovery GUI**: right-clicking the Extraction Compass during a run opens `compass/CompassGUI`
   (non-cached, built fresh from live data) and lists **every** configured area from `AreaManager.getAreas()`.
-  `compass/CompassHolder` (slot→area map) backs click handling; `listeners/CompassGUIListener` opens the GUI
+  `compass/CompassHolder` (slotâ†’area map) backs click handling; `listeners/CompassGUIListener` opens the GUI
   (`RIGHT_CLICK_AIR/BLOCK` + `LoadoutManager.isLoadoutCompass` + `RunManager.isPlayerInRun`) and on click sets
   `player.setCompassTarget(area.getCenter())`, sends `compass.tracking`, and closes. Cross-world/centre-less areas
   send `compass.no-target`. Icons/slots live in `compass.yml` (`compass.*`, routed in `ConfigManager`):
@@ -776,42 +778,42 @@ via `Math.sqrt` of the squared value only when needed.
   first entry. `DatabaseManager.PLAYER_COLUMNS` gained the column (index 19) with `CREATE TABLE` + `ensureColumn`
   migrations for existing MySQL/SQLite tables. Messages `compass.tracking`/`compass.no-target`.
 - **Drone mode** (`/drone`, `/drone return|stop|exit`; perm `extraction.drone`): `managers/DroneManager` (sessions,
-  per-session scheduler task — movement + battery + hum in ONE runnable created in `activate` and cancelled in
+  per-session scheduler task â€” movement + battery + hum in ONE runnable created in `activate` and cancelled in
   `cleanupSession`, so **no drone task exists while nobody is flying**; battery drains `1%/s` proportionally to
   `update-ticks`, hum every 2s wall-clock per session; recall/stop), `drone/DroneSession` (body location/yaw/pitch, original
   GameMode, body marker, mount, battery), `commands/DroneCommand` (conventions: jspecify `@NonNull`,
-  `plugin.sendMessage` + `Messages`, perm guard `extraction.drone`, NO `§`), `drone/listener/DroneListener`
+  `plugin.sendMessage` + `Messages`, perm guard `extraction.drone`, NO `Â§`), `drone/listener/DroneListener`
   (quit/world-change/respawn recall + `EntityDismountEvent` guard blocking vanilla shift-dismount while
-  piloting — recall-initiated and dead-mount dismounts pass), `drone/util/DronePhysics`
-  (movement vectors + solid-block ray-trace — the drone bumps into walls, never phases), `util/DroneSounds`
+  piloting â€” recall-initiated and dead-mount dismounts pass), `drone/util/DronePhysics`
+  (movement vectors + solid-block ray-trace â€” the drone bumps into walls, never phases), `util/DroneSounds`
   (drone-owned static sound util: move/ascend/descend/hurt/destroyed Breeze cues + `BLOCK_BEACON_AMBIENT`
   idle hum every ~2s; mount is silent so vanilla sounds don't pollute). All drone player-facing text lives in
   `Messages` (`drone.*`) + `messages.yml`. **Movement input = `Player#getCurrentInput()`** (`org.bukkit.Input`,
-  Paper 1.21.3+) polled by a per-tick task in `DroneManager` (`tickMovement`) — NOT packets:
+  Paper 1.21.3+) polled by a per-tick task in `DroneManager` (`tickMovement`) â€” NOT packets:
   the 1.21.2+ input packet is a 7-boolean bitfield ProtocolLib cannot read (its `StructureModifier<Float>`
   returns nothing, open issue #3299), and clients only send it on key CHANGES anyway, so packet steering was
   silently dead (the "mounted but can't move" bug). `drone/packet/` was deleted; ProtocolLib remains in
   plugin.yml softdepend for `util/PacketGlow` only. **3D flight**:
-  `DronePhysics.calculateFlightMovement` (user-authored) flies where the pilot LOOKS — yaw **and pitch**
-  (`Player#getLocation()` read once per tick for both) — with horizontal strafe and absolute Space/Sneak
+  `DronePhysics.calculateFlightMovement` (user-authored) flies where the pilot LOOKS â€” yaw **and pitch**
+  (`Player#getLocation()` read once per tick for both) â€” with horizontal strafe and absolute Space/Sneak
   vertical; primitives-only math (no Vector/clone allocations). **Collision = cheap swept block-scan**
   (`DronePhysics.checkCollision` marches the sub-block segment in 0.25 steps via `getBlockAt` + material
-  `isSolid` — `World#rayTraceBlocks` walked collision shapes per tick per moving drone and dominated the
-  spark server-thread profile ~2%); A/D strafing direction fixed (left = `(cos,0,sin)` — Minecraft yaw is
+  `isSolid` â€” `World#rayTraceBlocks` walked collision shapes per tick per moving drone and dominated the
+  spark server-thread profile ~2%); A/D strafing direction fixed (left = `(cos,0,sin)` â€” Minecraft yaw is
   clockwise). **`drone.update-ticks`** (default 1; read at start, needs restart) scales the movement-task
   period AND per-step distance, trading 10Hz chunkier control for half the per-drone thread cost;
   `tickMovement` early-exits when no sessions are active (idle = no-op). **Drone body = visible `Bee` mount** the pilot actually rides
-  (`addPassenger` — passengers follow mount teleports): AI off, no gravity, persistent, NOT invulnerable,
+  (`addPassenger` â€” passengers follow mount teleports): AI off, no gravity, persistent, NOT invulnerable,
   silent, `Attribute.MAX_HEALTH` = `drone.max-health` (default 40, config.yml `drone:` section) healed on
   spawn. Re-skin it to look like a drone by replacing the bee entity texture in the hosted resource pack
   (global to all bees). Mount damage/death: `DroneListener` `EntityTargetEvent` redirects hostiles targeting
-  the hidden pilot onto the mount (mobs follow + hit the drone), `EntityDamageEvent` → hurt sound + low-HP
-  warning (throttled 3s), `EntityDeathEvent` → "drone destroyed" + forced recall. **Pilot invisibility**:
+  the hidden pilot onto the mount (mobs follow + hit the drone), `EntityDamageEvent` â†’ hurt sound + low-HP
+  warning (throttled 3s), `EntityDeathEvent` â†’ "drone destroyed" + forced recall. **Pilot invisibility**:
   infinite INVISIBILITY (no particles) + `hidePlayer` from every other viewer, restored on recall. Movement:
-  direction = pilot look-yaw, Space = ascend, **Sneak = descend** (never dismounts), sprint-forward ≥1.5 =
-  ~1.8× boost, move whoosh throttled 400ms; exit = `/drone return` / battery empty / drone death / quit /
+  direction = pilot look-yaw, Space = ascend, **Sneak = descend** (never dismounts), sprint-forward â‰¥1.5 =
+  ~1.8Ã— boost, move whoosh throttled 400ms; exit = `/drone return` / battery empty / drone death / quit /
   world-change / respawn; battery task recalls a pilot whose `getVehicle() != mount` (stranded guard).
-  **Body avatar = FancyNpcs NPC** (all FancyNpcs interaction lives in `integration/FancyNpcHook` —
+  **Body avatar = FancyNpcs NPC** (all FancyNpcs interaction lives in `integration/FancyNpcHook` â€”
   `isAvailable()` guard, `spawnBodyNpc`, `removeBodyNpc`; the manager stays NPC-free): player-skinned
   (`setSkin(player.getName())`), display name = player name, `saveToFile=false`, `showInTab=false`,
   `collidable=false`, runtime-only, removed (`removeForAll` + `NpcManager.removeNpc`) on
@@ -830,7 +832,7 @@ via `Math.sqrt` of the squared value only when needed.
   storm and reinforcement spawns; the convoy carrier/roam leader already did this), so chunk unloads and
   distance no longer delete them mid-fight. `WorldEventManager.tick()` ends all active events once
   `ctx.eligiblePlayers()` is empty (no online player in `settings.world-name` who ran `/extraction`), which
-  despawns the mobs and cleans up boss bars/waypoints/craters — the only case where event mobs are allowed
+  despawns the mobs and cleans up boss bars/waypoints/craters â€” the only case where event mobs are allowed
   to disappear.
 - **Artifact of the Explorer** (`relics/artifacts.yml` id `explorer`): new `RelicEffectType.EXPLORER_RADIUS`
   (`value` = radius in blocks, default 150). While the artifact's timed activation is live,
@@ -866,10 +868,10 @@ via `Math.sqrt` of the squared value only when needed.
   verify `mvn clean compile` (grep `BUILD SUCCESS|BUILD FAILURE|ERROR|error:`).
   `JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-25.0.3.9-hotspot\`. A deprecated-API note on
   `ExtractionPlugin.java` is benign.
-- BOM gotcha: PowerShell `Set-Content -Encoding UTF8` adds a BOM — use
+- BOM gotcha: PowerShell `Set-Content -Encoding UTF8` adds a BOM â€” use
   `[System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]$false)`.
 - Paper API facts: `org.bukkit.scoreboard.Team` has Paper-only `prefix(Component)`/`suffix(Component)`;
-  `Objective` has `displayName(Component)` and `numberFormat(...)`; `Criteria.DUMMY` — used by the internal
+  `Objective` has `displayName(Component)` and `numberFormat(...)`; `Criteria.DUMMY` â€” used by the internal
   scoreboard for full MiniMessage lines with hidden numbers.
 - Built-in + PlaceholderAPI placeholders (identifier `extraction`): `%extraction_area%`, `%extraction_timer%`,
   `%extraction_kills%`, `%extraction_tokens%`, `%extraction_party%`, `%extraction_clock%`, `%extraction_ip%`.

@@ -28,6 +28,7 @@ public class AreaListener implements Listener {
     @EventHandler
     public void onEntityDeath(EntityDeathEvent event) {
         UUID uuid = event.getEntity().getUniqueId();
+        plugin.getBossManager().unregister(uuid);
 
         if (!plugin.getAreaClearManager().isSessionMob(uuid)) return;
 

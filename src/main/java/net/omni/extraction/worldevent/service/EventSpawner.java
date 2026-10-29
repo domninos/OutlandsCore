@@ -132,7 +132,7 @@ public class EventSpawner {
             if (event.isStorm() || eliteGlow)
                 entity.setGlowing(true);
 
-            instance.track(uuid, drops, boss);
+            instance.track(uuid, drops, boss, definition.getLootTable(), definition.getLootRolls());
             ctx.mobInstances().put(uuid, instance);
         }
 

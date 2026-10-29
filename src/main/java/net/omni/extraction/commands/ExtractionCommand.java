@@ -297,6 +297,9 @@ public class ExtractionCommand implements CommandExecutor {
                     "active", activeMysql ? "mysql" : "sqlite"));
 
         plugin.getMessagesManager().loadMessages();
+        plugin.getBossCreatorManager().closeAll();
+        plugin.getMobTemplateManager().load();
+        plugin.getBossManager().reload();
         plugin.getUpgradeManager().reload();
         plugin.getScoreboardManager().reload();
         plugin.getActionBarManager().reload();

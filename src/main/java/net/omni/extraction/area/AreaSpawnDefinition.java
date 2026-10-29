@@ -1,5 +1,6 @@
 package net.omni.extraction.area;
 
+import net.omni.extraction.mobs.BossAbility;
 import net.omni.extraction.mobs.MobDrop;
 import org.bukkit.Location;
 
@@ -24,6 +25,9 @@ public class AreaSpawnDefinition {
     private int respawnSeconds;
     private Map<String, String> equipment;
     private List<MobDrop> drops;
+    private List<BossAbility> abilities;
+    private String lootTable;
+    private int lootRolls;
 
     public AreaSpawnDefinition(String group) {
         this.group = group;
@@ -39,6 +43,9 @@ public class AreaSpawnDefinition {
         this.respawnSeconds = 0;
         this.equipment = new HashMap<>();
         this.drops = new ArrayList<>();
+        this.abilities = new ArrayList<>();
+        this.lootTable = null;
+        this.lootRolls = 1;
     }
 
     public String getGroup() {
@@ -147,5 +154,29 @@ public class AreaSpawnDefinition {
 
     public void setDrops(List<MobDrop> drops) {
         this.drops = drops != null ? drops : new ArrayList<>();
+    }
+
+    public List<BossAbility> getAbilities() {
+        return abilities;
+    }
+
+    public void setAbilities(List<BossAbility> abilities) {
+        this.abilities = abilities != null ? abilities : new ArrayList<>();
+    }
+
+    public String getLootTable() {
+        return lootTable;
+    }
+
+    public void setLootTable(String lootTable) {
+        this.lootTable = lootTable;
+    }
+
+    public int getLootRolls() {
+        return lootRolls;
+    }
+
+    public void setLootRolls(int lootRolls) {
+        this.lootRolls = Math.max(1, lootRolls);
     }
 }

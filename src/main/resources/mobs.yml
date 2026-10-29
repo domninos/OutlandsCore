@@ -44,3 +44,17 @@ mobs:
         amount: 3
       - type: IRON_INGOT
         chance: 0.25
+# Boss creator fields (/boss):
+#   abilities     list of boss abilities (optional). Each entry supports:
+#                   type           SLAM, VOLLEY, TELEPORT_STRIKE, HEAL,
+#                                  ENRAGE or TOXIC_AURA
+#                   cooldown       seconds between casts (default 8-30)
+#                   power          damage, heal %, or poison/raging level
+#                   radius         cast/target radius in blocks
+#                   amount         arrow count (Volley)
+#                   duration       effect duration in seconds
+#                   trigger-health cast as soon as boss is below this health %,
+#                                  0 = always allowed
+#                   MythicMobs keeps its own native skills; abilities are extra.
+#   loot-table    optional loot table id rolled on top of "drops" when killed
+#   loot-rolls    how many loot-table rolls to make (default 1)
