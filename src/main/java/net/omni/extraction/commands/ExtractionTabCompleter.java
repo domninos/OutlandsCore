@@ -1,8 +1,9 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.util.Permissions;
+import net.omni.extraction.area.Area;
 import net.omni.extraction.party.Party;
+import net.omni.extraction.util.Permissions;
 import net.omni.extraction.worldevent.WorldEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -12,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -75,7 +77,7 @@ public class ExtractionTabCompleter implements TabCompleter {
                 && args[0].equalsIgnoreCase("party")
                 && (args[1].equalsIgnoreCase("invite") || args[1].equalsIgnoreCase("info"))) {
             List<String> playerNames = Bukkit.getOnlinePlayers().stream()
-                    .map(player -> player.getName())
+                    .map(Player::getName)
                     .toList();
             return StringUtil.copyPartialMatches(args[2], playerNames, new ArrayList<>());
         }
@@ -107,7 +109,7 @@ public class ExtractionTabCompleter implements TabCompleter {
                 && args[1].equalsIgnoreCase("start")
                 && sender.hasPermission(Permissions.ADMIN)) {
             List<String> ids = plugin.getWorldEventManager().getEvents().values().stream()
-                    .map(event -> event.getId())
+                    .map(WorldEvent::getId)
                     .toList();
             return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
         }
@@ -116,10 +118,22 @@ public class ExtractionTabCompleter implements TabCompleter {
                 && args[0].equalsIgnoreCase("events")
                 && args[1].equalsIgnoreCase("start")
                 && sender.hasPermission(Permissions.ADMIN)) {
-            List<String> suggestions = new ArrayList<>(java.util.Arrays.asList("random", "DOUBLE_LOOT",
-                    "ELITE_ENEMIES", "NIGHTFALL", "EXPLOSIVE_DEATHS", "NO_REGENERATION"));
-            suggestions.removeAll(java.util.Arrays.stream(args, 3, args.length)
+            List<String> suggestions = new ArrayList<>();
+            suggestions.add("here");
+
+            for (Area area : plugin.getAreaManager().getAreas())
+                if (area != null) suggestions.add(area.getName());
+
+            suggestions.add("random");
+            suggestions.add("DOUBLE_LOOT");
+            suggestions.add("ELITE_ENEMIES");
+            suggestions.add("NIGHTFALL");
+            suggestions.add("EXPLOSIVE_DEATHS");
+            suggestions.add("NO_REGENERATION");
+
+            suggestions.removeAll(Arrays.stream(args, 3, args.length)
                     .map(String::toUpperCase).toList());
+            suggestions.removeAll(Arrays.stream(args, 3, args.length).toList());
             return StringUtil.copyPartialMatches(args[args.length - 1], suggestions, new ArrayList<>());
         }
 
@@ -140,7 +154,7 @@ public class ExtractionTabCompleter implements TabCompleter {
                 && args[1].equalsIgnoreCase("route")
                 && sender.hasPermission(Permissions.ADMIN)) {
             List<String> ids = plugin.getWorldEventManager().getEvents().values().stream()
-                    .filter(event -> event.isConvoy())
+                    .filter(WorldEvent::isConvoy)
                     .map(WorldEvent::getId)
                     .toList();
             return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
@@ -160,7 +174,7 @@ public class ExtractionTabCompleter implements TabCompleter {
                 || args[1].equalsIgnoreCase("delhologram"))
                 && sender.hasPermission(Permissions.ADMIN)) {
             List<String> areaNames = plugin.getAreaManager().getAreas().stream()
-                    .map(area -> area.getName())
+                    .map(Area::getName)
                     .toList();
             return StringUtil.copyPartialMatches(args[2], areaNames, new ArrayList<>());
         }

@@ -264,6 +264,21 @@ public class WorldEventManager {
     }
 
     /**
+     * Resolves an area token by name (case-insensitive) for admin event starts.
+     */
+    public Area findArea(String token) {
+        if (token == null || token.isBlank())
+            return null;
+
+        for (Area area : plugin.getAreaManager().getAreas()) {
+            if (area != null && area.getName().equalsIgnoreCase(token))
+                return area;
+        }
+
+        return null;
+    }
+
+    /**
      * Resolves an admin-typed area token into the location to anchor an event
      * start to: a defined area's center (or {@code here}), or null when the
      * token names no area.

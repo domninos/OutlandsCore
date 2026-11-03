@@ -262,6 +262,8 @@ public enum Messages {
     PETS_PURCHASED("pets.purchased", "<green>You bought the pet <white>%pet%</white> for <white>%cost%</white> tokens!</green>"),
 
     EVENTS_MUTATORS_FORCED("events.mutators-forced", "<gray>Forced mutators: <white>%mutators%</white>.</gray>"),
+
+    EVENTS_AREA_ANCHORED("events.area-anchored", "<gray>Event anchored to area <white>%area%</white>.</gray>"),
     EVENTS_MUTATOR_SKIPPED("events.mutator-skipped", "<yellow>Unknown mutator <white>%mutator%</white> skipped. Types: DOUBLE_LOOT, ELITE_ENEMIES, NIGHTFALL, EXPLOSIVE_DEATHS, NO_REGENERATION.</yellow>"),
     ADMIN_MODE_ON("admin.mode-on", "<green>Admin mode enabled — creative, area clears and area events ignored. Run <white>/extraction admin</white> again to exit.</green>"),
     ADMIN_MODE_OFF("admin.mode-off", "<green>Admin mode disabled — inventory and gamemode restored.</green>"),

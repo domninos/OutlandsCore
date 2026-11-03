@@ -202,7 +202,7 @@ public class ExtractionCommand implements CommandExecutor {
             }
             case CATEGORY_EVENTS -> {
                 MessageUtil.append("extraction events status", "List world-event definitions and their state", help);
-                MessageUtil.append("extraction events start {event}", "Force-start a world event", help);
+                MessageUtil.append("extraction events start {event} [area] [random|mutator...]", "Force-start a world event", help);
                 MessageUtil.append("extraction events stop [event|all]", "Stop the running world event(s)", help);
                 MessageUtil.append("extraction events route {event} {start|end|clear|show|wand}", "Edit a convoy route", help);
             }
@@ -447,7 +447,7 @@ public class ExtractionCommand implements CommandExecutor {
             case "start" -> {
                 if (args.length < 3) {
                     plugin.sendMessage(sender, Messages.USAGE
-                            .replace("usage", "/extraction events start {event} [random|mutator...]"));
+                            .replace("usage", "/extraction events start {event} [area] [random|mutator...]"));
                     return true;
                 }
 
@@ -459,8 +459,9 @@ public class ExtractionCommand implements CommandExecutor {
                     return true;
                 }
 
-                List<MutatorType> forced = parseMutators(sender, args);
-                EventStartResult result = manager.startEvent(event.getId(), true, forced);
+                StartArgs start = parseStartArgs(sender, args);
+                EventStartResult result = manager.startEvent(
+                        event.getId(), true, start.location(), start.mutators());
                 sendStartResult(sender, result, event);
             }
             case "stop" -> {
@@ -567,14 +568,22 @@ public class ExtractionCommand implements CommandExecutor {
     }
 
     /**
-     * Parses the trailing args of {@code events start {event} [random|mutator...]}
-     * into a forced mutator list. {@code random} (explicit) and no args both mean
-     * the default weighted roll; unknown type names warn and are skipped.
+     * Parsed trailing args of {@code events start {event} [area] [random|mutator...]}.
      */
-    private List<MutatorType> parseMutators(CommandSender sender, String[] args) {
-        if (args.length < 4)
-            return List.of();
+    private record StartArgs(Location location, List<MutatorType> mutators) {
+    }
 
+    /**
+     * Parses the trailing args of {@code events start {event} [area] [random|mutator...]}.
+     * A token matching a defined extraction area ({@code here} = the sender's feet)
+     * anchors the event origin there; {@code random} and the known mutator names are
+     * forced mutators; unknown tokens warn and are skipped.
+     */
+    private StartArgs parseStartArgs(CommandSender sender, String[] args) {
+        if (args.length < 4)
+            return new StartArgs(null, List.of());
+
+        Location areaLoc = null;
         List<MutatorType> forced = new ArrayList<>();
 
         for (int i = 3; i < args.length; i++) {
@@ -582,6 +591,20 @@ public class ExtractionCommand implements CommandExecutor {
 
             if (raw.equalsIgnoreCase("random"))
                 continue;
+
+            if ("here".equalsIgnoreCase(raw) && sender instanceof Player senderPlayer) {
+                if (areaLoc == null)
+                    areaLoc = senderPlayer.getLocation();
+                continue;
+            }
+
+            Area area = plugin.getWorldEventManager().findArea(raw);
+            if (area != null && areaLoc == null) {
+                areaLoc = area.getCenter();
+                plugin.sendMessage(sender, Messages.EVENTS_AREA_ANCHORED
+                        .replace("area", area.getName()));
+                continue;
+            }
 
             MutatorType type = MutatorType.fromString(raw);
 
@@ -598,7 +621,7 @@ public class ExtractionCommand implements CommandExecutor {
                     "mutators", forced.stream().map(Enum::name)
                             .collect(java.util.stream.Collectors.joining(", "))));
 
-        return forced;
+        return new StartArgs(areaLoc, forced);
     }
 
     private String locString(Location location) {        String world = location.getWorld() == null ? "?" : location.getWorld().getName();

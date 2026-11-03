@@ -250,6 +250,7 @@ events:
   route-wand-none: "<red>Your wand is not armed for a convoy - run <white>/extraction events route {event} wand</white> first.</red>"
   route-needs-player: "<red>Only players can set convoy anchors.</red>"
   mutators-forced: "<gray>Forced mutators: <white>%mutators%</white>.</gray>"
+  area-anchored: "<gray>Event anchored to area <white>%area%</white>.</gray>"
   mutator-skipped: "<yellow>Unknown mutator <white>%mutator%</white> skipped. Types: DOUBLE_LOOT, ELITE_ENEMIES, NIGHTFALL, EXPLOSIVE_DEATHS, NO_REGENERATION.</yellow>"
 
 # Drone mode (/drone)
