@@ -635,11 +635,9 @@ public class AreaManager {
         if (item == null)
             return null;
 
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null)
-            return null;
-
-        return getWandAreaName(meta);
+        // Direct PDC read on the live CraftItemStack handle — a getItemMeta()
+        // deep-clone per render cycle showed up in the spark profile.
+        return item.getPersistentDataContainer().get(wandAreaKey, PersistentDataType.STRING);
     }
 
     private String getWandAreaName(ItemMeta meta) {

@@ -19,6 +19,10 @@ public class AreaSelectionVisualizer implements Listener {
     private final Set<UUID> wandHolders = new HashSet<>();
     private BukkitTask task;
     private Particle particle = Particle.DUST;
+    private Particle.DustOptions outlineDust;
+    private Particle.DustOptions mobDust;
+    private Particle.DustOptions bossDust;
+    private Particle.DustOptions chestDust;
     private int refreshTicks;
 
     public AreaSelectionVisualizer(ExtractionPlugin plugin) {
@@ -30,6 +34,18 @@ public class AreaSelectionVisualizer implements Listener {
 
         this.refreshTicks = plugin.getConfigUtil() == null ? 0 : plugin.getConfigUtil().getAreaOutlineRefreshTicks();
         this.particle = resolveParticle();
+
+        if (plugin.getConfigUtil() != null) {
+            this.outlineDust = dust(plugin.getConfigUtil().getAreaOutlineColor());
+            this.mobDust = dust(plugin.getConfigUtil().getAreaOutlineColorMob());
+            this.bossDust = dust(plugin.getConfigUtil().getAreaOutlineColorBoss());
+            this.chestDust = dust(plugin.getConfigUtil().getAreaOutlineColorChest());
+        } else {
+            this.outlineDust = dust(null);
+            this.mobDust = dust(null);
+            this.bossDust = dust(null);
+            this.chestDust = dust(null);
+        }
     }
 
     public void stop() {
@@ -38,7 +54,6 @@ public class AreaSelectionVisualizer implements Listener {
             task = null;
         }
 
-        plugin.getExtractionManager().flush();
         wandHolders.clear();
     }
 
@@ -101,8 +116,7 @@ public class AreaSelectionVisualizer implements Listener {
                         drawChestMarker(player, bound);
                 }
                 case CONVOY -> drawConvoyMarker(player);
-            }
-        }
+            }        }
 
         if (wandHolders.isEmpty() && task != null) {
             task.cancel();
@@ -160,6 +174,9 @@ public class AreaSelectionVisualizer implements Listener {
         Location first = areaManager.getPos1(player.getUniqueId());
         Location second = areaManager.getPos2(player.getUniqueId());
 
+        // Particles persist client-side for under a second, so the box is
+        // re-sent every cycle; the cost win is the hoisted dust options and
+        // the removed per-cycle getItemMeta() deep-clone, not skipping sends.
         if (first == null || second == null || first.getWorld() == null || second.getWorld() == null)
             return;
 
@@ -173,7 +190,7 @@ public class AreaSelectionVisualizer implements Listener {
         int maxY = Math.max(first.getBlockY(), second.getBlockY());
         int maxZ = Math.max(first.getBlockZ(), second.getBlockZ());
 
-        drawBox(player, minX, minY, minZ, maxX, maxY, maxZ, dust(plugin.getConfigUtil().getAreaOutlineColor()));
+        drawBox(player, minX, minY, minZ, maxX, maxY, maxZ, outlineDust);
     }
 
     private void drawBox(Player player, int x1, int y1, int z1, int x2, int y2, int z2,
@@ -216,9 +233,6 @@ public class AreaSelectionVisualizer implements Listener {
     }
 
     private void drawSpawnMarkers(Player player, Area area) {
-        Particle.DustOptions mobDust = dust(plugin.getConfigUtil().getAreaOutlineColorMob());
-        Particle.DustOptions bossDust = dust(plugin.getConfigUtil().getAreaOutlineColorBoss());
-
         for (AreaSpawnEntry entry : area.getSpawnEntries())
             marker(player, entry.getLocation(), entry.isBoss() ? bossDust : mobDust);
 
@@ -230,8 +244,6 @@ public class AreaSelectionVisualizer implements Listener {
     }
 
     private void drawChestMarker(Player player, Area area) {
-        Particle.DustOptions chestDust = dust(plugin.getConfigUtil().getAreaOutlineColorChest());
-
         for (AreaChestLocation chest : area.resolveChestLocations())
             marker(player, chest.getLocation(), chestDust);
     }
@@ -246,13 +258,10 @@ public class AreaSelectionVisualizer implements Listener {
         if (eventId == null)
             return;
 
-        Particle.DustOptions startDust = dust(plugin.getConfigUtil().getAreaOutlineColorMob());
-        Particle.DustOptions endDust = dust(plugin.getConfigUtil().getAreaOutlineColorBoss());
-
         for (String point : new String[]{"start", "end"}) {
             Location anchor = manager.getConvoyPoint(eventId, point);
             if (anchor != null)
-                marker(player, anchor, point.equals("start") ? startDust : endDust);
+                marker(player, anchor, point.equals("start") ? mobDust : bossDust);
         }
     }
 

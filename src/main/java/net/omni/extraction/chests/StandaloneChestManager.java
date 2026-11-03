@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -46,6 +47,8 @@ public class StandaloneChestManager implements Listener {
     private final File file;
     private final Random random;
     private final Map<Integer, StandaloneChest> chests;
+    private final Map<Integer, Boolean> lastReady;
+    private final Map<Integer, List<String>> lastLines;
     private NamespacedKey markerKey;
     private BukkitTask refillTask;
     private int nextId;
@@ -55,12 +58,16 @@ public class StandaloneChestManager implements Listener {
         this.file = new File(plugin.getDataFolder(), "chests.yml");
         this.random = new Random();
         this.chests = new TreeMap<>();
+        this.lastReady = new HashMap<>();
+        this.lastLines = new HashMap<>();
         this.nextId = 1;
         this.markerKey = new NamespacedKey(plugin, "standalone_chest");
     }
 
     public void load() {
         chests.clear();
+        lastReady.clear();
+        lastLines.clear();
 
         if (!file.exists()) {
             plugin.sendConsole("<green>Loaded 0 standalone chest(s).</green>");
@@ -186,6 +193,8 @@ public class StandaloneChestManager implements Listener {
 
     public boolean remove(org.bukkit.command.CommandSender sender, int id) {
         StandaloneChest chest = chests.remove(id);
+        lastReady.remove(id);
+        lastLines.remove(id);
         if (chest == null) {
             if (sender instanceof Player player)
                 plugin.sendMessage(player, Messages.CHEST_NOT_FOUND.replace("id", String.valueOf(id)));
@@ -357,16 +366,54 @@ public class StandaloneChestManager implements Listener {
         if (chest == null)
             return;
 
+        // Transition-triggered refresh: always rebuild + push the text.
+        lastReady.remove(chest.getId());
+        lastLines.remove(chest.getId());
+
         plugin.getHologramManager().updateStandaloneHologram(chest.getId(),
-                chest.getLocation(), hologramLines(chest));
+                chest.getLocation(), hologramSnapshot(chest));
     }
 
     /**
-     * State lines for periodic hologram refresh WITHOUT pushing an update from
-     * the manager side — the hologram manager pulls this each tick.
+     * State lines for periodic hologram refresh. The ready/empty scanning stays
+     * (the flag can only be observed from the container), but the line list and
+     * its DH conversion are cached per ready-flag transition so unchanged chests
+     * skip everything above the cheap inventory scan.
      */
     public List<String> hologramSnapshot(StandaloneChest chest) {
-        return hologramLines(chest);
+        if (chest == null)
+            return List.of();
+
+        boolean ready = isReady(chest);
+
+        Boolean last = lastReady.get(chest.getId());
+        List<String> cached = lastLines.get(chest.getId());
+
+        if (last != null && cached != null && last.equals(ready))
+            return cached;
+
+        List<String> lines = buildHologramLines(ready);
+        lastReady.put(chest.getId(), ready);
+        lastLines.put(chest.getId(), lines);
+        return lines;
+    }
+
+    private boolean isReady(StandaloneChest chest) {
+        World world = chest.getLocation().getWorld();
+        if (world == null)
+            return false;
+
+        Block block = chest.getLocation().getBlock();
+
+        if (!(block.getState() instanceof InventoryHolder holder))
+            return false;
+
+        for (ItemStack item : holder.getInventory().getContents()) {
+            if (item != null && !item.getType().isAir())
+                return true;
+        }
+
+        return false;
     }
 
     public void refreshHolograms() {
@@ -374,23 +421,7 @@ public class StandaloneChestManager implements Listener {
             refreshHologram(chest);
     }
 
-    private List<String> hologramLines(StandaloneChest chest) {
-        World world = chest.getLocation().getWorld();
-        if (world == null)
-            return List.of();
-
-        Block block = chest.getLocation().getBlock();
-        boolean ready = false;
-
-        if (block.getState() instanceof InventoryHolder holder) {
-            for (ItemStack item : holder.getInventory().getContents()) {
-                if (item != null && !item.getType().isAir()) {
-                    ready = true;
-                    break;
-                }
-            }
-        }
-
+    private List<String> buildHologramLines(boolean ready) {
         List<String> raw = ready
                 ? plugin.getConfigUtil().getLootChestHologramReady()
                 : plugin.getConfigUtil().getLootChestHologramEmpty();
@@ -401,7 +432,8 @@ public class StandaloneChestManager implements Listener {
         List<String> lines = new ArrayList<>();
         for (String line : raw)
             if (line != null)
-                lines.add(line.replace("%area%", "Loot"));
+                lines.add(plugin.getHologramManager()
+                        .toDh(line.replace("%area%", "Loot")));
 
         return lines;
     }

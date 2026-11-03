@@ -11,6 +11,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.area.AreaChestLocation;
+import net.omni.extraction.area.AreaClearManager;
 import net.omni.extraction.area.AreaClearSession;
 import net.omni.extraction.area.AreaSpawnDefinition;
 import net.omni.extraction.chests.StandaloneChest;
@@ -45,6 +46,7 @@ public class HologramManager {
     private final Map<String, List<String>> appliedWaypointLines;
     private final Map<String, String> lastAppliedSignature;
     private final Map<String, String> lastChestState;
+    private final Map<String, List<String>> chestLineCache;
     private boolean enabled = false;
     private BukkitTask task;
 
@@ -58,6 +60,7 @@ public class HologramManager {
         this.appliedWaypointLines = new HashMap<>();
         this.lastAppliedSignature = new HashMap<>();
         this.lastChestState = new HashMap<>();
+        this.chestLineCache = new HashMap<>();
     }
 
     private static String hologramName(Area area) {
@@ -91,6 +94,12 @@ public class HologramManager {
             clearAll();
             return;
         }
+
+        // Caches (state keys, applied lines) must not survive a reload: chest /
+        // loot-table config can change without their state strings changing.
+        lastChestState.clear();
+        chestLineCache.clear();
+        appliedChestLines.clear();
 
         int ticks = plugin.getConfigUtil().getHologramsUpdateTicks();
         task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -142,6 +151,7 @@ public class HologramManager {
         appliedWaypointLines.clear();
         lastAppliedSignature.clear();
         lastChestState.clear();
+        chestLineCache.clear();
     }
 
     public static String chestHologramName(Location anchor) {
@@ -177,13 +187,39 @@ public class HologramManager {
         if (name == null)
             return null;
 
-        List<String> lines = chestHologramLines(area, chest);
-        if (lines.isEmpty()) {
+        // Cheap state key first: lines (and their MiniMessage->DH toDh conversion)
+        // are a pure function of this key (state + area name + loot-table id), so
+        // an unchanged key reuses the cached lines and skips ALL deserialization.
+        String stateKey = chestStateKey(area, chest);
+        String lastStateKey = lastChestState.get(name);
+
+        boolean hologramKnown = lastChestPositions.containsKey(name);
+        Location position = anchor.getBlock().getLocation().add(0.5, 2.5, 0.5);
+        boolean moved = false;
+
+        if (hologramKnown) {
+            Location last = lastChestPositions.get(name);
+            moved = last == null || !sameSpot(last, position);
+            if (moved)
+                lastChestPositions.put(name, position.clone());
+        }
+
+        if (hologramKnown && !moved && stateKey.equals(lastStateKey)) {
+            List<String> cached = chestLineCache.get(name);
+            if (cached != null && !cached.isEmpty())
+                return name;
+        }
+
+        List<String> lines = chestLineCache.containsKey(cachedLinesKey(stateKey))
+                ? chestLineCache.get(cachedLinesKey(stateKey))
+                : chestHologramLines(area, chest, stateKey);
+
+        if (lines == null || lines.isEmpty()) {
             removeChestHologram(name);
             return null;
         }
 
-        Location position = anchor.getBlock().getLocation().add(0.5, 2.5, 0.5);
+        chestLineCache.put(cachedLinesKey(stateKey), lines);
 
         try {
             Hologram hologram = DHAPI.getHologram(name);
@@ -191,24 +227,19 @@ public class HologramManager {
                 hologram = DHAPI.createHologram(name, position, false, lines);
                 lastChestPositions.put(name, position.clone());
                 appliedChestLines.put(name, lines);
-                lastChestState.put(name, getChestState(area, chest));
+                lastChestState.put(name, stateKey);
                 return name;
             }
 
-            Location last = lastChestPositions.get(name);
-            if (last == null || !sameSpot(last, position)) {
+            if (moved)
                 DHAPI.moveHologram(hologram, position);
-                lastChestPositions.put(name, position.clone());
-            }
 
-            String state = getChestState(area, chest);
             List<String> applied = appliedChestLines.get(name);
-            String lastState = lastChestState.get(name);
 
-            if (lastState == null || !lastState.equals(state) || applied == null || !applied.equals(lines)) {
+            if (applied == null || !applied.equals(lines) || !stateKey.equals(lastStateKey)) {
                 DHAPI.setHologramLines(hologram, lines);
                 appliedChestLines.put(name, lines);
-                lastChestState.put(name, state);
+                lastChestState.put(name, stateKey);
             }
 
             return name;
@@ -217,8 +248,25 @@ public class HologramManager {
         }
     }
 
-    private String getChestState(Area area, AreaChestLocation chest) {
-        return (plugin.getAreaClearManager().isActive(area) ? "A" : "I") + "_" + (plugin.getAreaClearManager().isLootChest(chest.getLocation()) ? "R" : "E");
+    /**
+     * The signature that fully determines a chest hologram's text: clear state,
+     * claimable-loot state, owning area, and the effective loot table. Changes in
+     * any of these (and only these) require a line rebuild.
+     */
+    private String chestStateKey(Area area, AreaChestLocation chest) {
+        AreaClearManager clearManager = plugin.getAreaClearManager();
+        boolean active = clearManager != null && clearManager.isActive(area);
+        boolean loot = clearManager != null && clearManager.isLootChest(chest.getLocation());
+
+        String tableId = chest.getLootType() != null && !chest.getLootType().isBlank()
+                ? chest.getLootType() : area.getLootTable();
+
+        return (active ? "A" : "I") + "_" + (loot ? "R" : "E") + "_"
+                + area.getName() + "_" + (tableId == null ? "" : tableId);
+    }
+
+    private String cachedLinesKey(String stateKey) {
+        return "lines:" + stateKey;
     }
 
     /**
@@ -320,6 +368,7 @@ public class HologramManager {
 
         lastChestPositions.remove(name);
         appliedChestLines.remove(name);
+        lastChestState.remove(name);
 
         if (!available())
             return;
@@ -331,12 +380,15 @@ public class HologramManager {
         }
     }
 
-    private List<String> chestHologramLines(Area area, AreaChestLocation chest) {
+    private List<String> chestHologramLines(Area area, AreaChestLocation chest, String stateKey) {
         List<String> raw;
 
-        if (plugin.getAreaClearManager().isActive(area)) {
+        boolean active = stateKey.startsWith("A_");
+        boolean loot = stateKey.contains("_R_");
+
+        if (active) {
             raw = plugin.getConfigUtil().getLootChestHologramOngoing();
-        } else if (plugin.getAreaClearManager().isLootChest(chest.getLocation())) {
+        } else if (loot) {
             raw = readyChestHologramLines(area, chest);
         } else {
             raw = plugin.getConfigUtil().getLootChestHologramEmpty();
