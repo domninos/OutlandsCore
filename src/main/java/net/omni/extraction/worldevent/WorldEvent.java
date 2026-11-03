@@ -51,6 +51,8 @@ public class WorldEvent {
     private final int waveCountGain;
     private final int bossWave;
     private final int maxReinforcements;
+    private final boolean countBosses;
+    private final boolean spawnBossesInWaves;
     private final int harvestChests;
     private final String warningMessage;
     private final String startMessage;
@@ -100,8 +102,9 @@ public class WorldEvent {
                       List<EventSpawnLocation> spawnLocations, List<EventSpawn> mobs, List<EventSpawn> bosses,
                       List<EventSpawn> reinforceMobs,
                       boolean wavesEnabled, WaveType waveType, int waveCount, int waveIntervalSeconds,
-                      int waveLevelGain, int waveCountGain, int bossWave, int maxReinforcements, int harvestChests,
-                      String warningMessage, String startMessage, String endMessage, String waveMessage,
+                      int waveLevelGain, int waveCountGain, int bossWave, int maxReinforcements,
+                      boolean countBosses, boolean spawnBossesInWaves,
+                      int harvestChests, String warningMessage, String startMessage, String endMessage, String waveMessage,
                       String phaseMessage, String escapeMessage,
                       String titleTitle, String titleSubtitle, String titleWave, String titlePhase, String titleEscape,
                       int titleFadeIn, int titleStay, int titleFadeOut,
@@ -136,6 +139,8 @@ public class WorldEvent {
         this.waveCountGain = Math.max(0, waveCountGain);
         this.bossWave = Math.max(1, bossWave);
         this.maxReinforcements = Math.max(0, maxReinforcements);
+        this.countBosses = countBosses;
+        this.spawnBossesInWaves = spawnBossesInWaves;
         this.harvestChests = Math.max(0, harvestChests);
         this.warningMessage = warningMessage;
         this.startMessage = startMessage;
@@ -265,6 +270,16 @@ public class WorldEvent {
 
     public int getMaxReinforcements() {
         return maxReinforcements;
+    }
+
+    /** True (default) = bosses count toward %total%/%remaining%; false = guardians excluded. */
+    public boolean isCountBosses() {
+        return countBosses;
+    }
+
+    /** True = every wave also spawns the bosses: groups "for help" (they count normally). */
+    public boolean isSpawnBossesInWaves() {
+        return spawnBossesInWaves;
     }
 
     public int getHarvestChests() {

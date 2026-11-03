@@ -25,6 +25,7 @@ public class EventInstance {
     private final Map<UUID, List<MobDrop>> mobDrops;
     private final Map<UUID, String> mobLootTables;
     private final Map<UUID, Integer> mobLootRolls;
+    private final Set<UUID> uncountedMobs;
     private final long startTime;
     private final long endTime;
     private final List<SavedBlock> craterBlocks;
@@ -52,6 +53,10 @@ public class EventInstance {
     private double convoyProgress;
     private double lastConvoyDist;
     private long convoyStuckSince;
+    private org.bukkit.scheduler.BukkitTask convoyMover;
+    private double convoyDamageTaken;
+    private UUID convoyDamageAttacker;
+    private boolean applyingConvoyDamage;
     private long lastZoneDrift;
     private Area boundArea;
     private UUID roamLeader;
@@ -77,6 +82,7 @@ public class EventInstance {
         this.mobDrops = new HashMap<>();
         this.mobLootTables = new HashMap<>();
         this.mobLootRolls = new HashMap<>();
+        this.uncountedMobs = new HashSet<>();
         this.startTime = System.currentTimeMillis();
         this.endTime = this.startTime + durationMillis;
         this.currentWave = 1;
@@ -154,6 +160,27 @@ public class EventInstance {
         mobDrops.remove(uuid);
         mobLootTables.remove(uuid);
         mobLootRolls.remove(uuid);
+        uncountedMobs.remove(uuid);
+    }
+
+    /** Mob excluded from %total%/%remaining%/boss-bar counting (e.g. initial guardians). */
+    public void markUncounted(UUID uuid) {
+        if (uuid != null)
+            uncountedMobs.add(uuid);
+    }
+
+    public Set<UUID> getUncountedMobs() {
+        return uncountedMobs;
+    }
+
+    /** Remaining mobs that COUNT toward wave/loot totals (lags per count-bosses). */
+    public int countedRemaining() {
+        return Math.max(0, mobs.size() - uncountedMobs.size());
+    }
+
+    /** Total that matches {@link #countedRemaining()}. */
+    public int countedTotal() {
+        return Math.max(countedRemaining(), totalMobs - uncountedMobs.size());
     }
 
     public String lootTableFor(UUID uuid) {
@@ -391,6 +418,45 @@ public class EventInstance {
 
     public void setConvoyStuckSince(long convoyStuckSince) {
         this.convoyStuckSince = convoyStuckSince;
+    }
+
+    /** The per-instance straight-line mover task (null when not driving). */
+    public org.bukkit.scheduler.BukkitTask getConvoyMover() {
+        return convoyMover;
+    }
+
+    public void setConvoyMover(org.bukkit.scheduler.BukkitTask convoyMover) {
+        this.convoyMover = convoyMover;
+    }
+
+    /** Damage accumulated on the carrier (raw hits are cancelled, applied on the mover step). */
+    public double getConvoyDamageTaken() {
+        return convoyDamageTaken;
+    }
+
+    public void addConvoyDamage(double amount) {
+        convoyDamageTaken += Math.max(0.0, amount);
+    }
+
+    public void resetConvoyDamage() {
+        convoyDamageTaken = 0.0;
+    }
+
+    public UUID getConvoyDamageAttacker() {
+        return convoyDamageAttacker;
+    }
+
+    public void setConvoyDamageAttacker(UUID convoyDamageAttacker) {
+        this.convoyDamageAttacker = convoyDamageAttacker;
+    }
+
+    /** While true our own mob.damage() echo reenters the damage handler — let it pass. */
+    public boolean isApplyingConvoyDamage() {
+        return applyingConvoyDamage;
+    }
+
+    public void setApplyingConvoyDamage(boolean applyingConvoyDamage) {
+        this.applyingConvoyDamage = applyingConvoyDamage;
     }
 
     /**

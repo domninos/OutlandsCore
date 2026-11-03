@@ -91,6 +91,8 @@ public final class WorldEventParser {
         int waveCountGain = waves == null ? 0 : waves.getInt("count-gain", 0);
         int bossWave = waves == null ? Integer.MAX_VALUE : waves.getInt("boss-wave", Integer.MAX_VALUE);
         int maxReinforcements = waves == null ? 0 : waves.getInt("max", 0);
+        boolean countBosses = waves == null ? true : waves.getBoolean("count-bosses", true);
+        boolean spawnBossesInWaves = waves == null ? false : waves.getBoolean("spawn-bosses", false);
         int harvestChests = section.getInt("harvest-chests", 0);
 
         ConfigurationSection broadcast = section.getConfigurationSection("broadcast");
@@ -215,7 +217,7 @@ public final class WorldEventParser {
                 cooldownSeconds, durationSeconds, level, lootTable,
                 spawnLocations, mobs, bosses, reinforceMobs,
                 wavesEnabled, waveType, waveCount, waveIntervalSeconds, waveLevelGain, waveCountGain,
-                bossWave, maxReinforcements, harvestChests,
+                bossWave, maxReinforcements, countBosses, spawnBossesInWaves, harvestChests,
                 warningMessage, startMessage, endMessage, waveMessage, phaseMessage, escapeMessage,
                 titleTitle, titleSubtitle, titleWave, titlePhase, titleEscape, titleFadeIn, titleStay, titleFadeOut,
                 startSound, endSound, waveSound, phaseSound, escapeSound, (float) volume, (float) pitch,

@@ -134,6 +134,11 @@ public class EventSpawner {
 
             instance.track(uuid, drops, boss, definition.getLootTable(), definition.getLootRolls());
             ctx.mobInstances().put(uuid, instance);
+
+            // count-bosses: false — initial guardians are STILL tracked (cleanup
+            // and success gates need them) but excluded from the counted totals.
+            if (boss && !event.isCountBosses())
+                instance.markUncounted(uuid);
         }
 
         instance.addTotal(spawned);

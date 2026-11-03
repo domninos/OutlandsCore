@@ -65,6 +65,12 @@ public class WaveBehavior {
             any |= ctx.spawner().spawnGroup(instance, spawn, false,
                     ctx.spawner().spawnAnchor(instance), difficulty, levelGain, countGain);
 
+        // Optional "guardians for help": each wave also spawns the bosses: groups.
+        if (event.isSpawnBossesInWaves())
+            for (EventSpawn spawn : event.getBosses())
+                any |= ctx.spawner().spawnGroup(instance, spawn, true,
+                        ctx.spawner().spawnAnchor(instance), difficulty, levelGain, countGain);
+
         instance.setReinforcementsSpawned(wave - 1);
 
         if (any)

@@ -59,10 +59,11 @@
 #       start / end: {world, x, y, z} optional anchors (null = default route)
 #       carrier: mob id (mobs.yml / vanilla / MythicMobs) driven as the boss
 #       carrier-name: display name given to the carrier (MiniMessage)
-#       speed: pathfinding speed 0.05-1.0
+#       speed: movement blocks/second multiplier 0.05-1.0 (1.0 ~ vanilla walk
+#         pace); the convoy never pathfinds — it drives the straight route by
+#         teleport steps, hits cancel-then-store damage onto the invisible mule
 #       step-blocks: blocks between route waypoints (larger = straighter, rougher)
 #       checkpoint-radius: distance to a waypoint before the next is targeted
-#       stuck-seconds: no progress this long -> caravan is teleported to its waypoint
 #       follow-range: escorts this far from the carrier get teleported back
 #       escape-radius: carrier within this many blocks of the end anchor counts
 #                      as escaped -> event ends
@@ -225,6 +226,12 @@ events:
       level-gain: 1
       count-gain: 1
       max: 6
+      # count-bosses: false = the initial guardians are excluded from the
+      # boss bar / %total% / %remaining% (only wave mobs are counted)
+      count-bosses: false
+      # spawn-bosses: false (default) = guardians spawn once at the start only;
+      # true = every wave also spawns the bosses: groups again ("for help")
+      spawn-bosses: false
     broadcast:
       warning: "<yellow>A meteor tears across the sky above %location%!</yellow>"
       start: "<red>%event% has begun at %location% — slay the guardians, then harvest the crater!</red>"

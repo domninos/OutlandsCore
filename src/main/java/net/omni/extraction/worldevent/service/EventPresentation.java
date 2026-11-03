@@ -122,8 +122,8 @@ public class EventPresentation {
             return;
 
         WorldEvent event = instance.getEvent();
-        int total = instance.getTotalMobs();
-        int remaining = instance.getMobs().size();
+        int total = instance.countedTotal();
+        int remaining = instance.countedRemaining();
 
         float progress = total <= 0 ? 0f : (float) remaining / total;
         bossBar.progress(Math.clamp(progress, 0f, 1f));
@@ -137,8 +137,8 @@ public class EventPresentation {
 
         return message.replace("%event%", event.getDisplayName())
                 .replace("%location%", locationText(instance))
-                .replace("%remaining%", String.valueOf(instance.getMobs().size()))
-                .replace("%total%", String.valueOf(instance.getTotalMobs()))
+                .replace("%remaining%", String.valueOf(instance.countedRemaining()))
+                .replace("%total%", String.valueOf(instance.countedTotal()))
                 .replace("%wave%", String.valueOf(instance.getCurrentWave()))
                 .replace("%waves%", String.valueOf(instance.getWavesTotal()))
                 .replace("%progress%", String.valueOf(progress))
