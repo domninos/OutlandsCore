@@ -14,11 +14,6 @@ import org.bukkit.block.BlockState;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -41,7 +36,7 @@ import java.util.TreeMap;
  * and is refilled automatically once its inventory is fully looted. A
  * DecentHolograms hologram tracks its ready/empty state.
  */
-public class StandaloneChestManager implements Listener {
+public class StandaloneChestManager {
 
     private final ExtractionPlugin plugin;
     private final File file;
@@ -268,10 +263,6 @@ public class StandaloneChestManager implements Listener {
         return block != null && at(block.getLocation()) != null;
     }
 
-    public void register() {
-        Bukkit.getPluginManager().registerEvents(this, plugin);
-    }
-
     public void start() {
         stop();
 
@@ -443,56 +434,6 @@ public class StandaloneChestManager implements Listener {
             return Integer.parseInt(raw);
         } catch (NumberFormatException e) {
             return fallback;
-        }
-    }
-
-    @EventHandler
-    public void onInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK)
-            return;
-
-        Block block = event.getClickedBlock();
-        if (block == null)
-            return;
-
-        StandaloneChest chest = at(block.getLocation());
-        if (chest == null)
-            return;
-
-        Player player = event.getPlayer();
-
-        if (plugin.getDroneManager() != null && plugin.getDroneManager().isInDrone(player)) {
-            event.setCancelled(true);
-            return;
-        }
-
-        if (chest.getKeyId() == null)
-            return;
-
-        event.setCancelled(true);
-
-        if (!plugin.getBackpackManager().hasKeyItem(player, chest.getKeyId())) {
-            plugin.sendMessage(player, Messages.AREA_CHEST_KEY_NEEDED
-                    .replace("key", keyDisplayName(chest.getKeyId())));
-            return;
-        }
-
-        plugin.getBackpackManager().consumeKeyItem(player, chest.getKeyId());
-
-        event.setCancelled(false);
-    }
-
-    private String keyDisplayName(String keyId) {
-        Object name = plugin.getConfigUtil().getKeyDefinitions().get(keyId) instanceof Map<?, ?> def
-                ? def.get("display-name") : null;
-        return name != null ? String.valueOf(name) : keyId;
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onBlockBreak(BlockBreakEvent event) {
-        if (isStandaloneChest(event.getBlock())) {
-            event.setCancelled(true);
-            plugin.sendMessage(event.getPlayer(), Messages.CHEST_PROTECTED.toString());
         }
     }
 }

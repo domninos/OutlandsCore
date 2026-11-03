@@ -32,6 +32,7 @@ import net.omni.extraction.loot.LootTableManager;
 import net.omni.extraction.looteditor.LootEditorListener;
 import net.omni.extraction.looteditor.LootEditorManager;
 import net.omni.extraction.chests.StandaloneChestManager;
+import net.omni.extraction.chests.StandaloneChestListener;
 import net.omni.extraction.chests.StandaloneChestCommand;
 import net.omni.extraction.managers.*;
 import net.omni.extraction.mobs.MobResolver;
@@ -430,8 +431,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new PetListener(this).register();
         new RelicListener(this).register();
 
-        if (standaloneChestManager != null)
-            standaloneChestManager.register();
+        new StandaloneChestListener(this).register();
         this.partyListener = new PartyListener(this);
         partyListener.register();
     }
