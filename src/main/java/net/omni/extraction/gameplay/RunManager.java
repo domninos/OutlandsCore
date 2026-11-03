@@ -124,6 +124,16 @@ public class RunManager {
     }
 
     public boolean extractPlayer(UUID uuid) {
+        // The player is gone (quit after the run outlived them — e.g.
+        // return-on-disconnect off): the extract path touches live state that
+        // no longer exists. Delegate to the disconnect path instead so
+        // pending-return is still honored; the run must still be in the map
+        // because handleDisconnect removes it itself.
+        if (Bukkit.getPlayer(uuid) == null && activeRuns.containsKey(uuid)) {
+            handleDisconnect(uuid);
+            return true;
+        }
+
         ActiveRun run = activeRuns.remove(uuid);
         if (run == null)
             return false;
@@ -461,6 +471,16 @@ public class RunManager {
             timerTask = new BukkitRunnable() {
                 @Override
                 public void run() {
+                    // A run must never outlive its player: the quit handler
+                    // does not always cancel this timer (return-on-disconnect
+                    // can be disabled) — fire-extracting an offline, evicted
+                    // uuid would warn about unloaded data and ghost-save.
+                    if (Bukkit.getPlayer(uuid) == null) {
+                        cancel();
+                        runManager.extractPlayer(uuid);
+                        return;
+                    }
+
                     if (remainingSeconds <= 0) {
                         cancel();
                         plugin.sendMessage(player, Messages.RUN_AUTO_EXTRACT.toString());

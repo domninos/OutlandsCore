@@ -196,9 +196,12 @@ public class PlayerListener implements Listener {
                 plugin.getRunManager().handleDisconnect(uuid);
         }
 
+        // Terminating managers before the player data is unloaded — the final
+        // world-event sweep runs with the cache still warm.
+        plugin.getIdleTaskManager().onQuit();
+
         plugin.getPlayerDataManager().unloadPlayer(uuid);
         plugin.getGuiManager().removePlayer(uuid);
-        plugin.getIdleTaskManager().onQuit();
         lastBlockBlocked.remove(uuid);
     }
 
