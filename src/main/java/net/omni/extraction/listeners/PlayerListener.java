@@ -353,8 +353,8 @@ public class PlayerListener implements Listener {
         PetDefinition pet = plugin.getPetManager().getActive(data);
         if (pet == null || pet.boostPercent() <= 0)
             return "";
-        return Messages.PETS_BOOST_NOTE.replace("pet", pet.name())
-                .replace("boost", String.valueOf(pet.boostPercent()));
+        return Messages.PETS_BOOST_NOTE.replace(
+                "pet", pet.name(), "boost", String.valueOf(pet.boostPercent()));
     }
 
     @EventHandler

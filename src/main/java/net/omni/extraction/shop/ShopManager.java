@@ -163,8 +163,7 @@ public class ShopManager {
         plugin.getPlayerDataManager().savePlayerShared(player.getUniqueId());
 
         plugin.sendMessage(player, Messages.PETS_PURCHASED
-                .replace("pet", def.name())
-                .replace("cost", String.valueOf(def.cost())));
+                .replace("pet", def.name(), "cost", String.valueOf(def.cost())));
 
         plugin.getGuiManager().refreshShop(player);
     }

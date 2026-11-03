@@ -5,7 +5,6 @@ import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -22,12 +21,7 @@ public final class PetsGUI {
     private PetsGUI() {
     }
 
-    /** Center of the bottom row — the layout matches the area-editor nav info slot. */
-    public static int shopSlot(int inventorySize) {
-        return inventorySize - 5;
-    }
-
-    public static Inventory build(ExtractionPlugin plugin, Player player, PlayerData data) {
+    public static Inventory build(ExtractionPlugin plugin, PlayerData data) {
         ChatRenderer renderer = plugin.getChatRenderer();
         ConfigUtil config = plugin.getConfigUtil();
 
@@ -77,16 +71,54 @@ public final class PetsGUI {
 
         renderer.setDisplayName(meta, def.name());
 
-        List<String> lore = new ArrayList<>();
-        for (String line : def.lore())
-            lore.add(line);
+        List<String> lore = new ArrayList<>(def.lore());
+
         for (String line : config.getPetsGuiBoostLore())
             lore.add(line.replace("%boost%", String.valueOf(def.boostPercent())));
-        for (String line : equipped ? config.getPetsGuiEquippedLore() : config.getPetsGuiUnequippedLore())
-            lore.add(line);
+
+        lore.addAll(equipped ? config.getPetsGuiEquippedLore() : config.getPetsGuiUnequippedLore());
 
         renderer.setLore(meta, lore);
         item.setItemMeta(meta);
+        return item;
+    }
+
+    private static ItemStack filler(ChatRenderer renderer, String materialName, String name) {
+        Material material = Material.matchMaterial(materialName == null ? "" : materialName);
+        if (material == null || material.isAir())
+            material = Material.GRAY_STAINED_GLASS_PANE;
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            if (name != null && !name.isEmpty()) renderer.setDisplayName(meta, name);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    /**
+     * Center of the bottom row — the layout matches the area-editor nav info slot.
+     */
+    public static int shopSlot(int inventorySize) {
+        return inventorySize - 5;
+    }
+
+    private static ItemStack shopButton(ExtractionPlugin plugin) {
+        ChatRenderer renderer = plugin.getChatRenderer();
+        ConfigUtil config = plugin.getConfigUtil();
+
+        Material material = Material.matchMaterial(config.getPetsGuiShopMaterial());
+        if (material == null || !material.isItem())
+            material = Material.GOLD_NUGGET;
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            renderer.setDisplayName(meta, config.getPetsGuiShopName());
+            renderer.setLore(meta, config.getPetsGuiShopLore());
+            item.setItemMeta(meta);
+        }
         return item;
     }
 
@@ -111,38 +143,6 @@ public final class PetsGUI {
 
         renderer.setLore(meta, lore);
         item.setItemMeta(meta);
-        return item;
-    }
-
-    private static ItemStack shopButton(ExtractionPlugin plugin) {
-        ChatRenderer renderer = plugin.getChatRenderer();
-        ConfigUtil config = plugin.getConfigUtil();
-
-        Material material = Material.matchMaterial(config.getPetsGuiShopMaterial());
-        if (material == null || !material.isItem())
-            material = Material.GOLD_NUGGET;
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            renderer.setDisplayName(meta, config.getPetsGuiShopName());
-            renderer.setLore(meta, config.getPetsGuiShopLore());
-            item.setItemMeta(meta);
-        }
-        return item;
-    }
-
-    private static ItemStack filler(ChatRenderer renderer, String materialName, String name) {
-        Material material = Material.matchMaterial(materialName == null ? "" : materialName);
-        if (material == null || material.isAir())
-            material = Material.GRAY_STAINED_GLASS_PANE;
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            if (name != null && !name.isEmpty()) renderer.setDisplayName(meta, name);
-            item.setItemMeta(meta);
-        }
         return item;
     }
 }

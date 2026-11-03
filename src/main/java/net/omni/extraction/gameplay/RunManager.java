@@ -1,12 +1,12 @@
 package net.omni.extraction.gameplay;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.util.Permissions;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.managers.TokenManager;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.pets.PetDefinition;
+import net.omni.extraction.util.Permissions;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -113,8 +113,7 @@ public class RunManager {
         PetDefinition pet = plugin.getPetManager().getActive(data);
         if (pet != null && pet.boostPercent() > 0)
             plugin.sendMessage(player, Messages.PETS_RUN_BOOST
-                    .replace("pet", pet.name())
-                    .replace("boost", String.valueOf(pet.boostPercent())));
+                    .replace("pet", pet.name(), "boost", String.valueOf(pet.boostPercent())));
 
         plugin.getPetManager().spawnPet(player);
         return true;
@@ -122,12 +121,6 @@ public class RunManager {
 
     public boolean isPlayerInRun(UUID uuid) {
         return activeRuns.containsKey(uuid);
-    }
-
-    private int calculateTokens(ActiveRun run, PlayerData data) {
-        int base = plugin.getConfigUtil().getBaseTokens()
-                + (run.getEventCount() * plugin.getConfigUtil().getPerEventTokens());
-        return plugin.getPetManager().applyBoost(data, base);
     }
 
     public boolean extractPlayer(UUID uuid) {
@@ -163,7 +156,7 @@ public class RunManager {
 
             plugin.sendMessage(player, Messages.EXTRACT_SUCCESS.toString());
 
-            String boostNote = extractBoostNote(data, tokens);
+            String boostNote = extractBoostNote(data);
             plugin.sendMessage(player, Messages.EXTRACT_TOKENS.replace("tokens", String.valueOf(tokens))
                     + (boostNote.isEmpty() ? "" : " " + boostNote));
         }
@@ -179,12 +172,10 @@ public class RunManager {
         return true;
     }
 
-    private String extractBoostNote(PlayerData data, int rawBase) {
-        PetDefinition pet = plugin.getPetManager().getActive(data);
-        if (pet == null || pet.boostPercent() <= 0)
-            return "";
-        return Messages.PETS_BOOST_NOTE.replace("pet", pet.name())
-                .replace("boost", String.valueOf(pet.boostPercent()));
+    private int calculateTokens(ActiveRun run, PlayerData data) {
+        int base = plugin.getConfigUtil().getBaseTokens()
+                + (run.getEventCount() * plugin.getConfigUtil().getPerEventTokens());
+        return plugin.getPetManager().applyBoost(data, base);
     }
 
     private void restorePlayerInventory(Player player, PlayerData data) {
@@ -216,6 +207,14 @@ public class RunManager {
         }
 
         player.getInventory().setArmorContents(armorContents);
+    }
+
+    private String extractBoostNote(PlayerData data) {
+        PetDefinition pet = plugin.getPetManager().getActive(data);
+        if (pet == null || pet.boostPercent() <= 0)
+            return "";
+        return Messages.PETS_BOOST_NOTE.replace(
+                "pet", pet.name(), "boost", String.valueOf(pet.boostPercent()));
     }
 
     public void handleDeath(UUID uuid) {
@@ -397,6 +396,30 @@ public class RunManager {
         awardKillTokens(uuid, plugin.getConfigUtil().getPerKillTokens());
     }
 
+    private void awardKillTokens(UUID uuid, int amount) {
+        if (amount <= 0) return;
+
+        PlayerData data = playerDataManager.getLoaded(uuid);
+        int boosted = plugin.getPetManager().applyBoost(data, amount);
+
+        tokenManager.addTokens(uuid, boosted);
+
+        if (boosted != amount) {
+            PetDefinition pet = plugin.getPetManager().getActive(data);
+            String note = pet == null ? null : Messages.PETS_BOOST_NOTE
+                    .replace("pet", pet.name(), "boost", String.valueOf(pet.boostPercent()));
+
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null && note != null)
+                plugin.sendMessage(player, "<green>+" + boosted + " tokens</green> " + note);
+
+            plugin.getActionBarManager().showTokens(uuid, boosted, note);
+            return;
+        }
+
+        plugin.getActionBarManager().showTokens(uuid, boosted);
+    }
+
     public void addEvent(UUID uuid) {
         ActiveRun run = activeRuns.get(uuid);
 
@@ -410,31 +433,6 @@ public class RunManager {
 
         run.incrementBosses();
         awardKillTokens(uuid, plugin.getConfigUtil().getPerBossTokens());
-    }
-
-    private void awardKillTokens(UUID uuid, int amount) {
-        if (amount <= 0) return;
-
-        PlayerData data = playerDataManager.getLoaded(uuid);
-        int boosted = plugin.getPetManager().applyBoost(data, amount);
-
-        tokenManager.addTokens(uuid, boosted);
-
-        if (boosted != amount) {
-            PetDefinition pet = plugin.getPetManager().getActive(data);
-            String note = pet == null ? null : Messages.PETS_BOOST_NOTE
-                    .replace("pet", pet.name())
-                    .replace("boost", String.valueOf(pet.boostPercent()));
-
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null && note != null)
-                plugin.sendMessage(player, "<green>+" + boosted + " tokens</green> " + note);
-
-            plugin.getActionBarManager().showTokens(uuid, boosted, note);
-            return;
-        }
-
-        plugin.getActionBarManager().showTokens(uuid, boosted);
     }
 
     public static class ActiveRun {

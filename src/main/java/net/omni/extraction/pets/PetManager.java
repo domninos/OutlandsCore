@@ -7,24 +7,12 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Mob;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Loads pet definitions from {@code pets/pets.yml}, owns the run-scoped pet
@@ -32,16 +20,6 @@ import java.util.UUID;
  * token booster. All token payout paths consult {@link #getBoostPercent}.
  */
 public class PetManager {
-
-    private static final class PetSession {
-        private final Player owner;
-        private Entity pet;
-
-        private PetSession(Player owner, Entity pet) {
-            this.owner = owner;
-            this.pet = pet;
-        }
-    }
 
     private final ExtractionPlugin plugin;
     private final Map<String, PetDefinition> pets = new LinkedHashMap<>();
@@ -110,25 +88,9 @@ public class PetManager {
         }
     }
 
-    public List<PetDefinition> getDefinitions() {
-        return new ArrayList<>(pets.values());
-    }
-
-    public PetDefinition get(String id) {
-        return id == null ? null : pets.get(id.toLowerCase(Locale.ROOT));
-    }
-
-    public PetDefinition getActive(PlayerData data) {
-        return data == null ? null : get(data.getActivePet());
-    }
-
-    /** The equipped pet's token boost, 0 when no pet is equipped. */
-    public int getBoostPercent(PlayerData data) {
-        PetDefinition def = getActive(data);
-        return def == null ? 0 : def.boostPercent();
-    }
-
-    /** Applies the equipped pet's boost to a token amount (min 1 when boosted). */
+    /**
+     * Applies the equipped pet's boost to a token amount (min 1 when boosted).
+     */
     public int applyBoost(PlayerData data, int amount) {
         int boost = getBoostPercent(data);
 
@@ -136,6 +98,22 @@ public class PetManager {
             return amount;
 
         return Math.max(1, (int) Math.floor(amount * (100 + boost) / 100.0));
+    }
+
+    /**
+     * The equipped pet's token boost, 0 when no pet is equipped.
+     */
+    public int getBoostPercent(PlayerData data) {
+        PetDefinition def = getActive(data);
+        return def == null ? 0 : def.boostPercent();
+    }
+
+    public PetDefinition getActive(PlayerData data) {
+        return data == null ? null : get(data.getActivePet());
+    }
+
+    public PetDefinition get(String id) {
+        return id == null ? null : pets.get(id.toLowerCase(Locale.ROOT));
     }
 
     public void grant(PlayerData data, PetDefinition def) {
@@ -151,21 +129,11 @@ public class PetManager {
         return removed;
     }
 
-    // ------------------------------------------------------------------
-    // Entity lifecycle
-
     public void start() {
         stop();
 
         long ticks = Math.max(1, plugin.getConfigUtil().getPetFollowUpdateTicks());
         followTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickFollow, ticks, ticks);
-    }
-
-    public void stop() {
-        if (followTask != null) {
-            followTask.cancel();
-            followTask = null;
-        }
     }
 
     public void shutdown() {
@@ -178,12 +146,46 @@ public class PetManager {
         petEntityIds.clear();
     }
 
-    /** True when the entity is one of the live cosmetic pet entities. */
+    // ------------------------------------------------------------------
+    // Entity lifecycle
+
+    public void stop() {
+        if (followTask != null) {
+            followTask.cancel();
+            followTask = null;
+        }
+    }
+
+    public void removePet(UUID uuid) {
+        PetSession session = activeEntities.remove(uuid);
+
+        if (session == null)
+            return;
+
+        Entity entity = session.pet();
+
+        if (entity == null)
+            return;
+
+        petEntityIds.remove(entity.getUniqueId());
+
+        try {
+            if (entity.isValid())
+                entity.remove();
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * True when the entity is one of the live cosmetic pet entities.
+     */
     public boolean isPet(Entity entity) {
         return entity != null && petEntityIds.contains(entity.getUniqueId());
     }
 
-    /** True when the player currently has a live pet session. */
+    /**
+     * True when the player currently has a live pet session.
+     */
     public boolean hasPet(UUID uuid) {
         return uuid != null && activeEntities.containsKey(uuid);
     }
@@ -205,8 +207,8 @@ public class PetManager {
         // Snapshot: spawn/remove below mutates the backing map.
         for (Map.Entry<UUID, PetSession> entry : new ArrayList<>(activeEntities.entrySet())) {
             PetSession session = entry.getValue();
-            Player owner = session.owner;
-            Entity pet = session.pet;
+            Player owner = session.owner();
+            Entity pet = session.pet();
 
             if (owner == null || !owner.isOnline()
                     || !plugin.getRunManager().isPlayerInRun(owner.getUniqueId())) {
@@ -256,23 +258,76 @@ public class PetManager {
         }
     }
 
+    /**
+     * Snaps the player's live pet to them after a teleport (called a tick later).
+     */
+    public void snapToOwner(Player player) {
+        PetSession session = player == null ? null : activeEntities.get(player.getUniqueId());
+
+        if (session == null || session.pet() == null || !session.pet().isValid())
+            return;
+
+        session.pet().teleport(behind(player));
+    }
+
     private Location behind(Player player) {
         Location loc = player.getLocation().clone();
         Vector back = loc.getDirection().setY(0).normalize().multiply(-1.2);
         return loc.add(back).add(0, 0.5, 0);
     }
 
-    /** Snaps the player's live pet to them after a teleport (called a tick later). */
-    public void snapToOwner(Player player) {
-        PetSession session = player == null ? null : activeEntities.get(player.getUniqueId());
+    /**
+     * Handles a click inside the /pets GUI (slot = definition index).
+     */
+    public void click(Player player, int slot) {
+        List<PetDefinition> definitions = getDefinitions();
 
-        if (session == null || session.pet == null || !session.pet.isValid())
+        if (slot < 0 || slot >= definitions.size())
             return;
 
-        session.pet.teleport(behind(player));
+        PetDefinition def = definitions.get(slot);
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
+
+        if (!data.ownsPet(def.id())) {
+            plugin.sendMessage(player, Messages.PETS_NOT_OWNED.replace("pet", def.name()));
+            open(player);
+            return;
+        }
+
+        if (def.id().equalsIgnoreCase(data.getActivePet())) {
+            data.setActivePet("");
+            plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
+            removePet(player.getUniqueId());
+            plugin.sendMessage(player, Messages.PETS_UNEQUIPPED.replace("pet", def.name()));
+        } else {
+            data.setActivePet(def.id());
+            plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
+
+            if (plugin.getRunManager().isPlayerInRun(player.getUniqueId()))
+                spawnPet(player);
+
+            plugin.sendMessage(player, Messages.PETS_EQUIPPED
+                    .replace("pet", def.name(), "boost", String.valueOf(def.boostPercent())));
+        }
+
+        open(player);
     }
 
-    /** Spawns (or replaces) the equipped pet entity for a player in a run. */
+    public List<PetDefinition> getDefinitions() {
+        return new ArrayList<>(pets.values());
+    }
+
+    public void open(Player player) {
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
+        player.openInventory(PetsGUI.build(plugin, data));
+    }
+
+    // ------------------------------------------------------------------
+    // GUI equip handling
+
+    /**
+     * Spawns (or replaces) the equipped pet entity for a player in a run.
+     */
     public void spawnPet(Player player) {
         removePet(player.getUniqueId());
 
@@ -310,69 +365,5 @@ public class PetManager {
 
         petEntityIds.add(entity.getUniqueId());
         activeEntities.put(player.getUniqueId(), new PetSession(player, entity));
-    }
-
-    public void removePet(UUID uuid) {
-        PetSession session = activeEntities.remove(uuid);
-
-        if (session == null)
-            return;
-
-        Entity entity = session.pet;
-
-        if (entity == null)
-            return;
-
-        petEntityIds.remove(entity.getUniqueId());
-
-        try {
-            if (entity.isValid())
-                entity.remove();
-        } catch (Exception ignored) {
-        }
-    }
-
-    // ------------------------------------------------------------------
-    // GUI equip handling
-
-    /** Handles a click inside the /pets GUI (slot = definition index). */
-    public void click(Player player, int slot) {
-        List<PetDefinition> definitions = getDefinitions();
-
-        if (slot < 0 || slot >= definitions.size())
-            return;
-
-        PetDefinition def = definitions.get(slot);
-        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
-
-        if (!data.ownsPet(def.id())) {
-            plugin.sendMessage(player, Messages.PETS_NOT_OWNED.replace("pet", def.name()));
-            open(player);
-            return;
-        }
-
-        if (def.id().equalsIgnoreCase(data.getActivePet())) {
-            data.setActivePet("");
-            plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
-            removePet(player.getUniqueId());
-            plugin.sendMessage(player, Messages.PETS_UNEQUIPPED.replace("pet", def.name()));
-        } else {
-            data.setActivePet(def.id());
-            plugin.getPlayerDataManager().savePlayer(player.getUniqueId());
-
-            if (plugin.getRunManager().isPlayerInRun(player.getUniqueId()))
-                spawnPet(player);
-
-            plugin.sendMessage(player, Messages.PETS_EQUIPPED
-                    .replace("pet", def.name())
-                    .replace("boost", String.valueOf(def.boostPercent())));
-        }
-
-        open(player);
-    }
-
-    public void open(Player player) {
-        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
-        player.openInventory(PetsGUI.build(plugin, player, data));
     }
 }
