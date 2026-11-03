@@ -852,6 +852,11 @@ public class WorldEventManager {
         if (instance == null) return;
 
         String typeName = dead.getType().name();
+
+        if (!"SLIME".equalsIgnoreCase(typeName) && !"MAGMA_CUBE".equalsIgnoreCase(typeName))
+            return;
+
+        UUID deadId = dead.getUniqueId();
         Location origin = dead.getLocation().clone();
         String eventId = instance.getEvent().getId();
 
@@ -864,6 +869,10 @@ public class WorldEventManager {
 
             for (org.bukkit.entity.Entity entity : world.getNearbyEntities(origin, 1.5, 1.5, 1.5)) {
                 if (!entity.getType().name().equalsIgnoreCase(typeName)) continue;
+                // Only the actual split children: the dying corpse is still in
+                // the world for its death animation and must never re-enter.
+                if (!entity.isValid() || entity.isDead()) continue;
+                if (entity.getUniqueId().equals(deadId)) continue;
                 if (mobInstances.containsKey(entity.getUniqueId())) continue;
 
                 mobInstances.put(entity.getUniqueId(), instance);

@@ -4,6 +4,7 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.integration.ExternalItemProvider;
 import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootResolver;
@@ -68,10 +69,41 @@ public class AreaClearManager {
         containmentTask = new BukkitRunnable() {
             @Override
             public void run() {
+                endClearsWhenWorldEmpty();
                 scanStaleSessions();
                 containMobs();
             }
         }.runTaskTimer(plugin, ticks, ticks);
+    }
+
+    /**
+     * Area clears follow the same rule as world events: a clear is abandoned
+     * (and the area silently reset to READY) once no extraction player remains
+     * in the extraction world — everyone left or /extraction-ed out.
+     */
+    private void endClearsWhenWorldEmpty() {
+        if (sessions.isEmpty() || hasEligibleExtractionPlayer())
+            return;
+
+        for (AreaClearSession session : new ArrayList<>(sessions.values()))
+            cancelSession(session, false);
+    }
+
+    private boolean hasEligibleExtractionPlayer() {
+        ConfigUtil config = plugin.getConfigUtil();
+        String worldName = config == null ? null : config.getWorldName();
+
+        if (worldName == null || worldName.isBlank())
+            return Bukkit.getOnlinePlayers().size() > 0;
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getWorld() == null) continue;
+            if (!worldName.equalsIgnoreCase(player.getWorld().getName())) continue;
+            if (plugin.getExtractionManager().isExtractionPlayer(player.getUniqueId()))
+                return true;
+        }
+
+        return false;
     }
 
     public void stop() {
@@ -201,7 +233,11 @@ public class AreaClearManager {
         AreaClearSession session = mobSessions.get(dead.getUniqueId());
         if (session == null) return;
 
+        if (!isSplittingType(dead.getType().name()))
+            return;
+
         String typeName = dead.getType().name();
+        UUID deadId = dead.getUniqueId();
         Location origin = dead.getLocation().clone();
         AreaSpawnDefinition definition = session.getDefinitionFor(dead.getUniqueId());
         boolean wasBoss = session.isBossMob(dead.getUniqueId());
@@ -216,11 +252,20 @@ public class AreaClearManager {
 
             for (Entity entity : world.getNearbyEntities(origin, 1.5, 1.5, 1.5)) {
                 if (!entity.getType().name().equalsIgnoreCase(typeName)) continue;
+                // Only the actual split children: the dying corpse is still in
+                // the world for its death animation and must never re-enter.
+                if (!entity.isValid() || entity.isDead()) continue;
+                if (entity.getUniqueId().equals(deadId)) continue;
                 if (mobSessions.containsKey(entity.getUniqueId())) continue;
 
                 adoptSplitMob(session, entity, origin, definition, wasBoss, drops, lootTable, lootRolls);
             }
         }, 5L);
+    }
+
+    /** True for entity types that split into smaller copies on death. */
+    private boolean isSplittingType(String typeName) {
+        return "SLIME".equalsIgnoreCase(typeName) || "MAGMA_CUBE".equalsIgnoreCase(typeName);
     }
 
     private void adoptSplitMob(AreaClearSession session, Entity entity, Location origin,
