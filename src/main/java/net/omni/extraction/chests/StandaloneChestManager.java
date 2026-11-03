@@ -5,11 +5,7 @@ import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.HologramUtils;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.configuration.ConfigurationSection;
@@ -22,14 +18,7 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * Loot containers registered outside any area (/extchest). Each chest has a
@@ -45,7 +34,7 @@ public class StandaloneChestManager {
     private final Map<Integer, StandaloneChest> chests;
     private final Map<Integer, Boolean> lastReady;
     private final Map<Integer, List<String>> lastLines;
-    private NamespacedKey markerKey;
+    private final NamespacedKey markerKey;
     private BukkitTask refillTask;
     private int nextId;
 
@@ -107,29 +96,11 @@ public class StandaloneChestManager {
         plugin.sendConsole("<green>Loaded " + chests.size() + " standalone chest(s).</green>");
     }
 
-    public void save() {
-        YamlConfiguration config = new YamlConfiguration();
-
-        for (StandaloneChest chest : chests.values()) {
-            String base = "chests." + chest.getId() + ".";
-            config.set(base + "world", chest.getLocation().getWorld() == null
-                    ? "" : chest.getLocation().getWorld().getName());
-            config.set(base + "x", chest.getLocation().getBlockX());
-            config.set(base + "y", chest.getLocation().getBlockY());
-            config.set(base + "z", chest.getLocation().getBlockZ());
-            config.set(base + "container", chest.getContainer().name());
-
-            if (chest.getLootTable() != null)
-                config.set(base + "loot-table", chest.getLootTable());
-
-            if (chest.getKeyId() != null)
-                config.set(base + "key", chest.getKeyId());
-        }
-
+    private int parseInt(String raw, int fallback) {
         try {
-            config.save(file);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to save chests.yml: " + e.getMessage());
+            return Integer.parseInt(raw);
+        } catch (NumberFormatException e) {
+            return fallback;
         }
     }
 
@@ -187,107 +158,35 @@ public class StandaloneChestManager {
         return true;
     }
 
-    public boolean remove(org.bukkit.command.CommandSender sender, int id) {
-        StandaloneChest chest = chests.remove(id);
-        lastReady.remove(id);
-        lastLines.remove(id);
-        if (chest == null) {
-            if (sender instanceof Player player)
-                plugin.sendMessage(player, Messages.CHEST_NOT_FOUND.replace("id", String.valueOf(id)));
-            return false;
-        }
-
-        plugin.getHologramManager().removeStandaloneHologram(id);
-        save();
-
-        if (sender instanceof Player player)
-            plugin.sendMessage(player, Messages.CHEST_REMOVED.replace("id", String.valueOf(id)));
-
-        return true;
-    }
-
-    public int removeAll(org.bukkit.command.CommandSender sender) {
-        int count = chests.size();
-        List<Integer> ids = new ArrayList<>(chests.keySet());
-
-        for (int id : ids)
-            remove(null, id);
-
-        if (sender instanceof Player player)
-            plugin.sendMessage(player, Messages.CHEST_REMOVED_ALL.replace("count", String.valueOf(count)));
-
-        return count;
-    }
-
-    public List<StandaloneChest> getAll() {
-        return new ArrayList<>(chests.values());
-    }
-
-    public boolean isEmpty() {
-        return chests.isEmpty();
-    }
-
-    public boolean usesKey(String keyId) {
-        if (keyId == null)
-            return false;
+    public void save() {
+        YamlConfiguration config = new YamlConfiguration();
 
         for (StandaloneChest chest : chests.values()) {
-            if (keyId.equalsIgnoreCase(chest.getKeyId()))
-                return true;
+            String base = "chests." + chest.getId() + ".";
+            config.set(base + "world", chest.getLocation().getWorld() == null
+                    ? "" : chest.getLocation().getWorld().getName());
+            config.set(base + "x", chest.getLocation().getBlockX());
+            config.set(base + "y", chest.getLocation().getBlockY());
+            config.set(base + "z", chest.getLocation().getBlockZ());
+            config.set(base + "container", chest.getContainer().name());
+
+            if (chest.getLootTable() != null)
+                config.set(base + "loot-table", chest.getLootTable());
+
+            if (chest.getKeyId() != null)
+                config.set(base + "key", chest.getKeyId());
         }
 
-        return false;
-    }
-
-    public StandaloneChest at(Location location) {
-        if (location == null || location.getWorld() == null)
-            return null;
-
-        for (StandaloneChest chest : chests.values()) {
-            Location anchor = chest.getLocation();
-
-            if (anchor.getWorld() == null || !anchor.getWorld().equals(location.getWorld()))
-                continue;
-
-            if (anchor.getBlockX() != location.getBlockX()
-                    || anchor.getBlockY() != location.getBlockY()
-                    || anchor.getBlockZ() != location.getBlockZ())
-                continue;
-
-            return chest;
-        }
-
-        return null;
-    }
-
-    public boolean isStandaloneChest(Block block) {
-        return block != null && at(block.getLocation()) != null;
-    }
-
-    public void start() {
-        stop();
-
-        long periodTicks = Math.max(30L, plugin.getConfigUtil()
-                .getLootStandaloneRefillSeconds()) * 20L;
-        refillTask = Bukkit.getScheduler().runTaskTimer(plugin, this::refillAll,
-                periodTicks, periodTicks);
-    }
-
-    public void stop() {
-        if (refillTask != null) {
-            refillTask.cancel();
-            refillTask = null;
+        try {
+            config.save(file);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Failed to save chests.yml: " + e.getMessage());
         }
     }
 
-    private void refillAll() {
-        for (StandaloneChest chest : new ArrayList<>(chests.values())) {
-            if (fillIfEmpty(chest))
-                refreshHologram(chest);
-        }
-    }
-
-    /** Fills the container from its loot table when it holds nothing. */
+    /**
+     * Fills the container from its loot table when it holds nothing.
+     */
     public boolean fillIfEmpty(StandaloneChest chest) {
         if (chest == null)
             return false;
@@ -323,6 +222,18 @@ public class StandaloneChestManager {
         return true;
     }
 
+    public void refreshHologram(StandaloneChest chest) {
+        if (chest == null)
+            return;
+
+        // Transition-triggered refresh: always rebuild + push the text.
+        lastReady.remove(chest.getId());
+        lastLines.remove(chest.getId());
+
+        plugin.getHologramManager().updateStandaloneHologram(chest.getId(),
+                chest.getLocation(), hologramSnapshot(chest));
+    }
+
     private List<ItemStack> rollLoot(StandaloneChest chest) {
         String tableId = chest.getLootTable();
         List<ItemStack> loot = new ArrayList<>();
@@ -352,18 +263,6 @@ public class StandaloneChestManager {
 
         Collections.shuffle(loot, random);
         return loot;
-    }
-
-    public void refreshHologram(StandaloneChest chest) {
-        if (chest == null)
-            return;
-
-        // Transition-triggered refresh: always rebuild + push the text.
-        lastReady.remove(chest.getId());
-        lastLines.remove(chest.getId());
-
-        plugin.getHologramManager().updateStandaloneHologram(chest.getId(),
-                chest.getLocation(), hologramSnapshot(chest));
     }
 
     /**
@@ -408,11 +307,6 @@ public class StandaloneChestManager {
         return false;
     }
 
-    public void refreshHolograms() {
-        for (StandaloneChest chest : chests.values())
-            refreshHologram(chest);
-    }
-
     private List<String> buildHologramLines(boolean ready) {
         List<String> raw = ready
                 ? plugin.getConfigUtil().getLootChestHologramReady()
@@ -430,11 +324,108 @@ public class StandaloneChestManager {
         return lines;
     }
 
-    private int parseInt(String raw, int fallback) {
-        try {
-            return Integer.parseInt(raw);
-        } catch (NumberFormatException e) {
-            return fallback;
+    public int removeAll(org.bukkit.command.CommandSender sender) {
+        int count = chests.size();
+        List<Integer> ids = new ArrayList<>(chests.keySet());
+
+        for (int id : ids)
+            remove(null, id);
+
+        if (sender instanceof Player player)
+            plugin.sendMessage(player, Messages.CHEST_REMOVED_ALL.replace("count", String.valueOf(count)));
+
+        return count;
+    }
+
+    public boolean remove(org.bukkit.command.CommandSender sender, int id) {
+        StandaloneChest chest = chests.remove(id);
+        lastReady.remove(id);
+        lastLines.remove(id);
+        if (chest == null) {
+            if (sender instanceof Player player)
+                plugin.sendMessage(player, Messages.CHEST_NOT_FOUND.replace("id", String.valueOf(id)));
+            return false;
         }
+
+        plugin.getHologramManager().removeStandaloneHologram(id);
+        save();
+
+        if (sender instanceof Player player)
+            plugin.sendMessage(player, Messages.CHEST_REMOVED.replace("id", String.valueOf(id)));
+
+        return true;
+    }
+
+    public Collection<StandaloneChest> getAll() {
+        return chests.values();
+    }
+
+    public boolean isEmpty() {
+        return chests.isEmpty();
+    }
+
+    public boolean usesKey(String keyId) {
+        if (keyId == null)
+            return false;
+
+        for (StandaloneChest chest : chests.values()) {
+            if (keyId.equalsIgnoreCase(chest.getKeyId()))
+                return true;
+        }
+
+        return false;
+    }
+
+    public boolean isStandaloneChest(Block block) {
+        return block != null && at(block.getLocation()) != null;
+    }
+
+    public StandaloneChest at(Location location) {
+        if (location == null || location.getWorld() == null)
+            return null;
+
+        for (StandaloneChest chest : chests.values()) {
+            Location anchor = chest.getLocation();
+
+            if (anchor.getWorld() == null || !anchor.getWorld().equals(location.getWorld()))
+                continue;
+
+            if (anchor.getBlockX() != location.getBlockX()
+                    || anchor.getBlockY() != location.getBlockY()
+                    || anchor.getBlockZ() != location.getBlockZ())
+                continue;
+
+            return chest;
+        }
+
+        return null;
+    }
+
+    public void start() {
+        stop();
+
+        long periodTicks = Math.max(30L, plugin.getConfigUtil()
+                .getLootStandaloneRefillSeconds()) * 20L;
+        refillTask = Bukkit.getScheduler().runTaskTimer(plugin, this::refillAll,
+                periodTicks, periodTicks);
+    }
+
+    public void stop() {
+        if (refillTask != null) {
+            refillTask.cancel();
+            refillTask = null;
+        }
+    }
+
+    private void refillAll() {
+        for (StandaloneChest chest : new ArrayList<>(chests.values())) {
+            if (fillIfEmpty(chest))
+                refreshHologram(chest);
+        }
+    }
+
+    public void refreshHolograms() {
+        for (StandaloneChest chest : chests.values())
+            refreshHologram(chest);
     }
 }

@@ -17,10 +17,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * All player-facing feedback for events: boss bar, compass, waypoint hologram,
@@ -29,6 +26,12 @@ import java.util.UUID;
 public class EventPresentation {
 
     private final EventContext ctx;
+
+    /**
+     * Cached DH waypoint lines + the count signature they were built for.
+     */
+    private final Map<String, List<String>> waypointLineCache = new HashMap<>();
+    private final Map<String, String> waypointSignature = new HashMap<>();
 
     public EventPresentation(EventContext ctx) {
         this.ctx = ctx;
@@ -199,16 +202,42 @@ public class EventPresentation {
         if (ctx.plugin().getHologramManager() == null)
             return;
 
-        List<String> lines = new ArrayList<>();
+        // The lines only change when the dynamic numbers do — rebuild (and pay
+        // the MiniMessage→DH conversion) only when the signature differs.
+        String signature = event.getId() + ":" + instance.countedRemaining() + ":"
+                + instance.countedTotal() + ":" + instance.getCurrentWave()
+                + "/" + instance.getWavesTotal() + ":" + (int) (instance.getConvoyProgress() * 100)
+                + ":" + instance.getStormZones().size();
 
-        for (String line : event.getWaypointLines()) {
-            if (line == null || line.isBlank())
-                continue;
+        List<String> lines;
+        String lastSignature = waypointSignature.get(event.getId());
 
-            lines.add(ctx.plugin().getHologramManager().toDh(fill(line, event, instance)));
+        if (signature.equals(lastSignature)
+                && waypointLineCache.containsKey(event.getId())) {
+            lines = waypointLineCache.get(event.getId());
+        } else {
+            lines = new ArrayList<>();
+
+            for (String line : event.getWaypointLines()) {
+                if (line == null || line.isBlank())
+                    continue;
+
+                lines.add(ctx.plugin().getHologramManager().toDh(fill(line, event, instance)));
+            }
+
+            waypointLineCache.put(event.getId(), lines);
+            waypointSignature.put(event.getId(), signature);
         }
 
         ctx.plugin().getHologramManager().updateWaypointHologram(event.getId(), instance.getTrackLocation(), lines);
+    }
+
+    /**
+     * Clears the cached waypoint text of one event (end/start lifecycle).
+     */
+    public void clearWaypointCache(String eventId) {
+        waypointLineCache.remove(eventId);
+        waypointSignature.remove(eventId);
     }
 
     public void updateCompass() {

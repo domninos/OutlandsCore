@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
@@ -59,7 +60,7 @@ public class StandaloneChestCommand implements CommandExecutor, TabCompleter {
                 manager.add(player, args[1], args.length >= 3 ? args[2] : null);
             }
             case "list" -> {
-                List<StandaloneChest> chests = manager.getAll();
+                Collection<StandaloneChest> chests = manager.getAll();
 
                 if (chests.isEmpty()) {
                     plugin.sendMessage(sender, Messages.CHEST_LIST_HEADER.toString());

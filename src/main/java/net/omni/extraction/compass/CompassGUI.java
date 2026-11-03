@@ -12,11 +12,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 public final class CompassGUI {
 
@@ -29,7 +25,7 @@ public final class CompassGUI {
         if (data == null || !data.isLoaded())
             return;
 
-        List<Area> areas = plugin.getAreaManager().getAreas();
+        Collection<Area> areas = plugin.getAreaManager().getAreas();
         double revealRadius = plugin.getRelicEffectManager().explorerRevealRadius(data);
         double revealRadiusSquared = revealRadius * revealRadius;
 
@@ -80,6 +76,31 @@ public final class CompassGUI {
         player.openInventory(inventory);
     }
 
+    /**
+     * Squared horizontal distance from the player to the area's bounding box,
+     * or {@link Double#MAX_VALUE} when the area cannot be compared.
+     */
+    private static double horizontalDistanceSquared(Player player, Area area) {
+        Location min = area.getMin();
+        Location max = area.getMax();
+        String world = area.getWorld();
+
+        if (min == null || max == null || world == null
+                || !world.equalsIgnoreCase(player.getWorld().getName()))
+            return Double.MAX_VALUE;
+
+        double minX = Math.min(min.getX(), max.getX());
+        double maxX = Math.max(min.getX(), max.getX());
+        double minZ = Math.min(min.getZ(), max.getZ());
+        double maxZ = Math.max(min.getZ(), max.getZ());
+        double x = player.getX();
+        double z = player.getZ();
+        double dx = x < minX ? minX - x : (x > maxX ? x - maxX : 0);
+        double dz = z < minZ ? minZ - z : (z > maxZ ? z - maxZ : 0);
+
+        return dx * dx + dz * dz;
+    }
+
     private static Map<Area, Integer> assignSlots(ExtractionPlugin plugin, List<Area> areas, int size) {
         Map<Area, Integer> assigned = new LinkedHashMap<>();
         boolean[] used = new boolean[size];
@@ -112,14 +133,6 @@ public final class CompassGUI {
         }
 
         return assigned;
-    }
-
-    private static int firstFree(boolean[] used) {
-        for (int i = 0; i < used.length; i++)
-            if (!used[i])
-                return i;
-
-        return -1;
     }
 
     private static ItemStack buildItem(ExtractionPlugin plugin, Player player, Area area,
@@ -180,15 +193,30 @@ public final class CompassGUI {
         return item;
     }
 
-    private static List<String> fillAll(List<String> lines, Area area, String state, String status,
-                                        int level, String distance) {
-        List<String> filled = new ArrayList<>();
+    private static int firstFree(boolean[] used) {
+        for (int i = 0; i < used.length; i++)
+            if (!used[i])
+                return i;
 
-        if (lines != null)
-            for (String line : lines)
-                filled.add(fill(line, area, state, status, level, distance));
+        return -1;
+    }
 
-        return filled;
+    private static String distance(Player player, Area area) {
+        Location center = area.getCenter();
+
+        if (center == null || center.getWorld() == null || !center.getWorld().equals(player.getWorld()))
+            return "-";
+
+        return String.valueOf(Math.round(Math.sqrt(center.distanceSquared(player.getLocation()))));
+    }
+
+    private static Material matchMaterial(String name, Material fallback) {
+        if (name == null || name.isBlank())
+            return fallback;
+
+        Material material = Material.matchMaterial(name.trim());
+
+        return material == null ? fallback : material;
     }
 
     private static String fill(String text, Area area, String state, String status, int level, String distance) {
@@ -209,46 +237,14 @@ public final class CompassGUI {
                 .replace("%z%", min == null ? "-" : String.valueOf(min.getBlockZ()));
     }
 
-    private static String distance(Player player, Area area) {
-        Location center = area.getCenter();
+    private static List<String> fillAll(List<String> lines, Area area, String state, String status,
+                                        int level, String distance) {
+        List<String> filled = new ArrayList<>();
 
-        if (center == null || center.getWorld() == null || !center.getWorld().equals(player.getWorld()))
-            return "-";
+        if (lines != null)
+            for (String line : lines)
+                filled.add(fill(line, area, state, status, level, distance));
 
-        return String.valueOf(Math.round(Math.sqrt(center.distanceSquared(player.getLocation()))));
-    }
-
-    /**
-     * Squared horizontal distance from the player to the area's bounding box,
-     * or {@link Double#MAX_VALUE} when the area cannot be compared.
-     */
-    private static double horizontalDistanceSquared(Player player, Area area) {
-        Location min = area.getMin();
-        Location max = area.getMax();
-        String world = area.getWorld();
-
-        if (min == null || max == null || world == null
-                || !world.equalsIgnoreCase(player.getWorld().getName()))
-            return Double.MAX_VALUE;
-
-        double minX = Math.min(min.getX(), max.getX());
-        double maxX = Math.max(min.getX(), max.getX());
-        double minZ = Math.min(min.getZ(), max.getZ());
-        double maxZ = Math.max(min.getZ(), max.getZ());
-        double x = player.getX();
-        double z = player.getZ();
-        double dx = x < minX ? minX - x : (x > maxX ? x - maxX : 0);
-        double dz = z < minZ ? minZ - z : (z > maxZ ? z - maxZ : 0);
-
-        return dx * dx + dz * dz;
-    }
-
-    private static Material matchMaterial(String name, Material fallback) {
-        if (name == null || name.isBlank())
-            return fallback;
-
-        Material material = Material.matchMaterial(name.trim());
-
-        return material == null ? fallback : material;
+        return filled;
     }
 }

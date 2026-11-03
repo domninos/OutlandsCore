@@ -1,13 +1,11 @@
 package net.omni.extraction.managers;
 
 import net.omni.extraction.ExtractionPlugin;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class ExtractionManager {
 
@@ -41,12 +39,13 @@ public class ExtractionManager {
         return extractionPlayers.contains(uuid);
     }
 
-    public Set<Player> getExtractionPlayers() {
-        return extractionPlayers.stream().map(Bukkit::getPlayer).collect(Collectors.toSet());
-    }
-
+    /**
+     * Live UUID set — hot callers (actionbar/scoreboard ticks) resolve
+     * {@code Bukkit.getPlayer(uuid)} inline instead of materializing a
+     * per-tick player set.
+     */
     public Set<UUID> getExtractionPlayersUUID() {
-        return this.extractionPlayers;
+        return extractionPlayers;
     }
 
     public void flush() {

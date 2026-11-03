@@ -69,6 +69,14 @@ public class AreaSelectionVisualizer implements Listener {
         }
     }
 
+    private Particle.DustOptions dust(int[] rgb) {
+        int red = rgb != null && rgb.length > 0 ? rgb[0] : 255;
+        int green = rgb != null && rgb.length > 1 ? rgb[1] : 255;
+        int blue = rgb != null && rgb.length > 2 ? rgb[2] : 255;
+
+        return new Particle.DustOptions(Color.fromRGB(red, green, blue), 1.0f);
+    }
+
     private void addWandHolder(UUID uuid) {
         if (wandHolders.add(uuid) && task == null)
             schedule();
@@ -116,7 +124,8 @@ public class AreaSelectionVisualizer implements Listener {
                         drawChestMarker(player, bound);
                 }
                 case CONVOY -> drawConvoyMarker(player);
-            }        }
+            }
+        }
 
         if (wandHolders.isEmpty() && task != null) {
             task.cancel();
@@ -157,9 +166,13 @@ public class AreaSelectionVisualizer implements Listener {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
-    /** IDs of players currently holding an area wand (marker gating source). */
+    /**
+     * IDs of players currently holding an area wand (marker gating source).
+     */
     public Set<UUID> getWandHolders() {
-        return new HashSet<>(wandHolders);
+        // Live set — only read main-thread (single scheduler + events), never
+        // mutated through this ref.
+        return wandHolders;
     }
 
     private Area resolveArea(AreaManager areaManager, Player player, ItemStack hand) {
@@ -297,13 +310,5 @@ public class AreaSelectionVisualizer implements Listener {
             player.spawnParticle(Particle.DUST, x, y, z, 1, 0.0, 0.0, 0.0, 0.0, dust);
         else
             player.spawnParticle(particle, x, y, z, 1, 0.0, 0.0, 0.0, 0.0);
-    }
-
-    private Particle.DustOptions dust(int[] rgb) {
-        int red = rgb != null && rgb.length > 0 ? rgb[0] : 255;
-        int green = rgb != null && rgb.length > 1 ? rgb[1] : 255;
-        int blue = rgb != null && rgb.length > 2 ? rgb[2] : 255;
-
-        return new Particle.DustOptions(Color.fromRGB(red, green, blue), 1.0f);
     }
 }

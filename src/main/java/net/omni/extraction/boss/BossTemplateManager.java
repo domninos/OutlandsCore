@@ -10,12 +10,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 public class BossTemplateManager {
 
@@ -108,6 +103,65 @@ public class BossTemplateManager {
         plugin.sendConsole("<green>Loaded " + bosses.size() + " boss template(s).</green>");
     }
 
+    private static int number(Map<?, ?> map, String key, int fallback) {
+        return map.get(key) instanceof Number value ? value.intValue() : fallback;
+    }
+
+    private static double number(Map<?, ?> map, String key, double fallback) {
+        return map.get(key) instanceof Number value ? value.doubleValue() : fallback;
+    }
+
+    public MobTemplate getBoss(String id) {
+        return get(id);
+    }
+
+    public MobTemplate get(String id) {
+        if (id == null) return null;
+        return bosses.get(id.toLowerCase(Locale.ROOT));
+    }
+
+    public boolean exists(String id) {
+        return get(id) != null;
+    }
+
+    public Collection<MobTemplate> getBossTemplates() {
+        // Live view (TreeMap-order = id order); callers iterate/stream only,
+        // except the boss-creator GUI which copies locally before sorting.
+        return bosses.values();
+    }
+
+    public List<String> getIds() {
+        List<String> ids = new ArrayList<>();
+
+        for (MobTemplate template : bosses.values())
+            ids.add(template.getId());
+
+        return ids;
+    }
+
+    public int size() {
+        return bosses.size();
+    }
+
+    public boolean isBoss(String id) {
+        if (id == null) return false;
+        return bosses.containsKey(id.toLowerCase(Locale.ROOT));
+    }
+
+    public boolean createBoss(String id, String type, boolean mythic) {
+        if (id == null || id.isBlank() || bosses.containsKey(id.toLowerCase(Locale.ROOT)))
+            return false;
+
+        MobTemplate template = new MobTemplate(id.toLowerCase(Locale.ROOT));
+        template.setType(type);
+        template.setMythic(mythic);
+
+        bosses.put(template.getId().toLowerCase(Locale.ROOT), template);
+        saveBosses();
+
+        return true;
+    }
+
     public void saveBosses() {
         if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) return;
 
@@ -173,55 +227,6 @@ public class BossTemplateManager {
         }
     }
 
-    public MobTemplate get(String id) {
-        if (id == null) return null;
-        return bosses.get(id.toLowerCase(Locale.ROOT));
-    }
-
-    public MobTemplate getBoss(String id) {
-        return get(id);
-    }
-
-    public boolean exists(String id) {
-        return get(id) != null;
-    }
-
-    public List<MobTemplate> getBossTemplates() {
-        return new ArrayList<>(bosses.values());
-    }
-
-    public List<String> getIds() {
-        List<String> ids = new ArrayList<>();
-
-        for (MobTemplate template : bosses.values())
-            ids.add(template.getId());
-
-        return ids;
-    }
-
-    public int size() {
-        return bosses.size();
-    }
-
-    public boolean isBoss(String id) {
-        if (id == null) return false;
-        return bosses.containsKey(id.toLowerCase(Locale.ROOT));
-    }
-
-    public boolean createBoss(String id, String type, boolean mythic) {
-        if (id == null || id.isBlank() || bosses.containsKey(id.toLowerCase(Locale.ROOT)))
-            return false;
-
-        MobTemplate template = new MobTemplate(id.toLowerCase(Locale.ROOT));
-        template.setType(type);
-        template.setMythic(mythic);
-
-        bosses.put(template.getId().toLowerCase(Locale.ROOT), template);
-        saveBosses();
-
-        return true;
-    }
-
     public boolean delete(String id) {
         if (id == null) return false;
 
@@ -245,13 +250,5 @@ public class BossTemplateManager {
 
         saveBosses();
         return true;
-    }
-
-    private static int number(Map<?, ?> map, String key, int fallback) {
-        return map.get(key) instanceof Number value ? value.intValue() : fallback;
-    }
-
-    private static double number(Map<?, ?> map, String key, double fallback) {
-        return map.get(key) instanceof Number value ? value.doubleValue() : fallback;
     }
 }

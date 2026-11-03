@@ -267,6 +267,7 @@ public class WorldEventManager {
         }
 
         plugin.getHologramManager().removeWaypointHologram(event.getId());
+        ctx.presentation().clearWaypointCache(event.getId());
 
         long now = System.currentTimeMillis();
         if (event.getCooldownSeconds() > 0)
@@ -980,8 +981,9 @@ public class WorldEventManager {
         return active.get(id.toLowerCase(Locale.ROOT));
     }
 
-    public List<EventInstance> getActiveEvents() {
-        return new ArrayList<>(active.values());
+    public Collection<EventInstance> getActiveEvents() {
+        // Live view — all callers iterate/read only; no per-call copy.
+        return active.values();
     }
 
     public boolean hasActiveEvents() {

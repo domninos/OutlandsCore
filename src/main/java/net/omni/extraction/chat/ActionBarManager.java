@@ -3,15 +3,14 @@ package net.omni.extraction.chat;
 import net.kyori.adventure.text.Component;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.data.PlayerData;
-import net.omni.extraction.util.MessageUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.scoreboard.PlaceholderValues;
+import net.omni.extraction.util.MessageUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -51,9 +50,11 @@ public class ActionBarManager {
         overlays.clear();
         lastText.clear();
 
-        for (Player player : plugin.getExtractionManager().getExtractionPlayers())
+        for (UUID uuid : plugin.getExtractionManager().getExtractionPlayersUUID()) {
+            Player player = Bukkit.getPlayer(uuid);
             if (player != null)
                 player.sendActionBar(Component.empty());
+        }
     }
 
     public void reload() {
@@ -66,7 +67,9 @@ public class ActionBarManager {
         showTokens(uuid, amount, null);
     }
 
-    /** Optional note (e.g. a pet boost tag) appended to the token overlay. */
+    /**
+     * Optional note (e.g. a pet boost tag) appended to the token overlay.
+     */
     public void showTokens(UUID uuid, int amount, String note) {
         long expire = System.currentTimeMillis()
                 + plugin.getConfigUtil().getActionbarKillFeedbackTicks() * 50L;
@@ -87,13 +90,6 @@ public class ActionBarManager {
         long expire = System.currentTimeMillis() + Math.max(1, ticks) * 50L;
         overlays.put(player.getUniqueId(), new Overlay(MessageUtil.parse(message), expire));
         refresh(player);
-    }
-
-    public void refreshAll() {
-        if (!plugin.getConfigUtil().isActionbarEnabled()) return;
-
-        for (Player player : new ArrayList<>(Bukkit.getOnlinePlayers()))
-            refresh(player);
     }
 
     private void refresh(Player player) {
@@ -129,6 +125,14 @@ public class ActionBarManager {
 
         player.sendActionBar(Component.text(text));
         lastText.put(uuid, text);
+    }
+
+    public void refreshAll() {
+        if (!plugin.getConfigUtil().isActionbarEnabled()) return;
+
+        // The online players view is not mutated during refresh — no copy.
+        for (Player player : Bukkit.getOnlinePlayers())
+            refresh(player);
     }
 
     private record Overlay(String text, long expire) {

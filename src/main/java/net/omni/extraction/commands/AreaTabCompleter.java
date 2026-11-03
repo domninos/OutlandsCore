@@ -1,11 +1,11 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.util.Permissions;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.area.AreaMobReference;
 import net.omni.extraction.integration.MythicMobsProvider;
 import net.omni.extraction.mobs.MobTemplateManager;
+import net.omni.extraction.util.Permissions;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -14,6 +14,7 @@ import org.bukkit.entity.EntityType;
 import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
@@ -97,7 +98,7 @@ public class AreaTabCompleter implements TabCompleter {
                     case 4 -> filter(List.of("[count]", "1"), args[3]);
                     case 5 -> filter(List.of("[boss]", "true", "false"), args[4]);
                     case 6 -> filter(List.of("[level]", "1", "5", "10", "20"), args[5]);
-                    case 7 -> filter(List.of("[respawn]" ,"0", "30", "60"), args[6]);
+                    case 7 -> filter(List.of("[respawn]", "0", "30", "60"), args[6]);
                     default -> List.of();
                 };
             }
@@ -113,7 +114,7 @@ public class AreaTabCompleter implements TabCompleter {
                     default -> List.of();
                 };
             }
-        case "setchest" -> {
+            case "setchest" -> {
                 return switch (args.length) {
                     case 3 -> filter(List.of("0", "1", "2"), args[2]);
                     case 4 -> filter(chestTypeSuggestions(), args[3]);
@@ -134,7 +135,7 @@ public class AreaTabCompleter implements TabCompleter {
         return List.of();
     }
 
-    private List<String> filter(List<String> options, String input) {
+    private List<String> filter(Collection<String> options, String input) {
         List<String> result = new ArrayList<>();
         String lower = input.toLowerCase(Locale.ROOT);
 

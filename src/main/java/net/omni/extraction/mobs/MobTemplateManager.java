@@ -116,6 +116,14 @@ public class MobTemplateManager {
         plugin.sendConsole("<green>Loaded " + templates.size() + " mob template(s).</green>");
     }
 
+    private static int number(Map<?, ?> map, String key, int fallback) {
+        return map.get(key) instanceof Number value ? value.intValue() : fallback;
+    }
+
+    private static double number(Map<?, ?> map, String key, double fallback) {
+        return map.get(key) instanceof Number value ? value.doubleValue() : fallback;
+    }
+
     public List<String> getIds() {
         List<String> ids = new ArrayList<>();
 
@@ -152,22 +160,83 @@ public class MobTemplateManager {
         return true;
     }
 
-    public boolean createBoss(String id, String type, boolean mythic) {
-        return bossTemplateManager != null && bossTemplateManager.createBoss(id, type, mythic);
-    }
-
-    public boolean exists(String id) {
-        return get(id) != null;
-    }
-
     public void save() {
         if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) return;
 
         saveMobs();
     }
 
-    public void saveBosses() {
-        if (bossTemplateManager != null) bossTemplateManager.saveBosses();
+    private void saveMobs() {
+        if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) return;
+
+        YamlConfiguration config = new YamlConfiguration();
+
+        for (MobTemplate template : templates.values()) {
+            String base = "mobs." + template.getId() + ".";
+            config.set(base + "type", template.getType());
+            config.set(base + "mythic", template.isMythic());
+
+            if (template.getDisplayName() != null)
+                config.set(base + "display-name", template.getDisplayName());
+
+            config.set(base + "health", template.getHealth());
+            config.set(base + "damage", template.getDamage());
+            config.set(base + "level", template.getLevel());
+            config.set(base + "count", template.getCount());
+            config.set(base + "baby", template.isBaby());
+            config.set(base + "respawn-seconds", template.getRespawnSeconds());
+
+            for (Map.Entry<String, String> entry : template.getEquipment().entrySet())
+                config.set(base + "equipment." + entry.getKey(), entry.getValue());
+
+            if (!template.getDrops().isEmpty()) {
+                List<Map<String, Object>> dropList = new ArrayList<>();
+
+                for (MobDrop drop : template.getDrops()) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("type", drop.getType());
+
+                    if (drop.getChance() != 1.0)
+                        map.put("chance", drop.getChance());
+
+                    if (drop.getAmount() != 1)
+                        map.put("amount", drop.getAmount());
+
+                    dropList.add(map);
+                }
+
+                config.set(base + "drops", dropList);
+            }
+
+            if (!template.getAbilities().isEmpty()) {
+                List<Map<String, Object>> abilityList = new ArrayList<>();
+
+                for (BossAbility ability : template.getAbilities())
+                    abilityList.add(ability.serialize());
+
+                config.set(base + "abilities", abilityList);
+            }
+
+            if (template.getLootTable() != null && !template.getLootTable().isBlank())
+                config.set(base + "loot-table", template.getLootTable());
+
+            if (template.getLootRolls() != 1)
+                config.set(base + "loot-rolls", template.getLootRolls());
+        }
+
+        try {
+            config.save(file);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Failed to save mobs.yml: " + e.getMessage());
+        }
+    }
+
+    public boolean createBoss(String id, String type, boolean mythic) {
+        return bossTemplateManager != null && bossTemplateManager.createBoss(id, type, mythic);
+    }
+
+    public boolean exists(String id) {
+        return get(id) != null;
     }
 
     public MobTemplate get(String id) {
@@ -184,18 +253,22 @@ public class MobTemplateManager {
         return templates.get(key);
     }
 
+    public void saveBosses() {
+        if (bossTemplateManager != null) bossTemplateManager.saveBosses();
+    }
+
     public MobTemplate getBoss(String id) {
         if (id == null) return null;
 
         return bossTemplateManager == null ? null : bossTemplateManager.get(id);
     }
 
-    public List<MobTemplate> getBossTemplates() {
+    public Collection<MobTemplate> getBossTemplates() {
         return bossTemplateManager == null ? List.of() : bossTemplateManager.getBossTemplates();
     }
 
-    public List<MobTemplate> getMobTemplates() {
-        return new ArrayList<>(templates.values());
+    public Collection<MobTemplate> getMobTemplates() {
+        return templates.values();
     }
 
     public boolean isBoss(String id) {
@@ -219,6 +292,13 @@ public class MobTemplateManager {
 
         saveOwned(id);
         return true;
+    }
+
+    private void saveOwned(String id) {
+        if (bossTemplateManager != null && bossTemplateManager.isBoss(id))
+            bossTemplateManager.saveBosses();
+        else
+            save();
     }
 
     public boolean applyMythicAttributesToBoss(String id, double health, double damage,
@@ -324,86 +404,6 @@ public class MobTemplateManager {
 
         saveOwned(id);
         return true;
-    }
-
-    private void saveOwned(String id) {
-        if (bossTemplateManager != null && bossTemplateManager.isBoss(id))
-            bossTemplateManager.saveBosses();
-        else
-            save();
-    }
-
-    private void saveMobs() {
-        if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) return;
-
-        YamlConfiguration config = new YamlConfiguration();
-
-        for (MobTemplate template : templates.values()) {
-            String base = "mobs." + template.getId() + ".";
-            config.set(base + "type", template.getType());
-            config.set(base + "mythic", template.isMythic());
-
-            if (template.getDisplayName() != null)
-                config.set(base + "display-name", template.getDisplayName());
-
-            config.set(base + "health", template.getHealth());
-            config.set(base + "damage", template.getDamage());
-            config.set(base + "level", template.getLevel());
-            config.set(base + "count", template.getCount());
-            config.set(base + "baby", template.isBaby());
-            config.set(base + "respawn-seconds", template.getRespawnSeconds());
-
-            for (Map.Entry<String, String> entry : template.getEquipment().entrySet())
-                config.set(base + "equipment." + entry.getKey(), entry.getValue());
-
-            if (!template.getDrops().isEmpty()) {
-                List<Map<String, Object>> dropList = new ArrayList<>();
-
-                for (MobDrop drop : template.getDrops()) {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("type", drop.getType());
-
-                    if (drop.getChance() != 1.0)
-                        map.put("chance", drop.getChance());
-
-                    if (drop.getAmount() != 1)
-                        map.put("amount", drop.getAmount());
-
-                    dropList.add(map);
-                }
-
-                config.set(base + "drops", dropList);
-            }
-
-            if (!template.getAbilities().isEmpty()) {
-                List<Map<String, Object>> abilityList = new ArrayList<>();
-
-                for (BossAbility ability : template.getAbilities())
-                    abilityList.add(ability.serialize());
-
-                config.set(base + "abilities", abilityList);
-            }
-
-            if (template.getLootTable() != null && !template.getLootTable().isBlank())
-                config.set(base + "loot-table", template.getLootTable());
-
-            if (template.getLootRolls() != 1)
-                config.set(base + "loot-rolls", template.getLootRolls());
-        }
-
-        try {
-            config.save(file);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to save mobs.yml: " + e.getMessage());
-        }
-    }
-
-    private static int number(Map<?, ?> map, String key, int fallback) {
-        return map.get(key) instanceof Number value ? value.intValue() : fallback;
-    }
-
-    private static double number(Map<?, ?> map, String key, double fallback) {
-        return map.get(key) instanceof Number value ? value.doubleValue() : fallback;
     }
 
     public static Boolean parseBoolean(String value) {

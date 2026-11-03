@@ -98,6 +98,105 @@ public class ConvoyBehavior {
     }
 
     /**
+     * Resolves the convoy's end anchor, else the map's extraction spawn.
+     */
+    public Location convoyRouteEnd(WorldEvent event, World fallbackWorld) {
+        WorldEvent.ConvoyConfig cfg = event.getConvoy();
+        if (cfg != null && cfg.end() != null) {
+            World world = Bukkit.getWorld(cfg.end().world());
+            if (world != null)
+                return new Location(world, cfg.end().x() + 0.5, cfg.end().y(), cfg.end().z() + 0.5);
+        }
+
+        Location spawn = ctx.plugin().getConfigUtil().getSpawnLocation();
+        if (spawn == null || spawn.getWorld() == null)
+            spawn = fallbackWorld.getSpawnLocation();
+
+        return spawn;
+    }
+
+    /**
+     * Snaps a convoy waypoint to the topmost non-air block in its column so
+     * waypoints under overhangs/half-blocks stay walkable for the pathfinder;
+     * the column-scan variant used elsewhere can latch onto a ceiling Y and
+     * embed the waypoint inside terrain (the carrier then never reaches it and
+     * falls back to stuck-timeout teleports, looking like it "isn't moving").
+     */
+    private Location groundSnapPoint(Location point) {
+        World world = point.getWorld();
+        if (world == null)
+            return point;
+
+        org.bukkit.block.Block top = world.getHighestBlockAt(point.getBlockX(), point.getBlockZ());
+
+        return new Location(world, point.getX(),
+                Math.max(top.getY() + 1, world.getMinHeight()), point.getZ());
+    }
+
+    /**
+     * Spawns one named, glowing, persistent carrier Mob at the given point.
+     */
+    public Entity spawnCarrier(WorldEvent event, Location at) {
+        WorldEvent.ConvoyConfig cfg = event.getConvoy();
+        AreaSpawnDefinition definition = ctx.plugin().getMobResolver().resolve(
+                cfg.carrier(), 1, true, Math.max(1, event.getLevel()), 0);
+        if (definition == null) {
+            ctx.plugin().getLogger().warning("Convoy carrier '" + cfg.carrier()
+                    + "' does not resolve to any mob — the convoy cannot start.");
+            return null;
+        }
+
+        double difficulty = ctx.spawner().difficultyFor(event);
+        if (difficulty > 0) {
+            if (definition.getHealth() > 0)
+                definition.setHealth(definition.getHealth() * difficulty);
+            if (definition.getDamage() > 0)
+                definition.setDamage(definition.getDamage() * difficulty);
+        }
+
+        definition.setDisplayName(cfg.carrierName());
+
+        Entity entity = ctx.mobFactory().spawn(definition, at);
+        if (entity == null)
+            return null;
+
+        entity.setGlowing(true);
+        entity.setPersistent(true);
+
+        if (!(entity instanceof Mob carrierMob)) {
+            ctx.plugin().getLogger().warning("Convoy carrier '" + cfg.carrier()
+                    + "' is not a Mob — the convoy cannot walk; event stopped.");
+            entity.remove();
+            return null;
+        }
+
+        carrierMob.setRemoveWhenFarAway(false);
+        // The straight-line mover teleports the carrier itself — no AI movement.
+        carrierMob.setAware(false);
+
+        // The display-entity "car" is the visible convoy — hide the driver mob.
+        if (!cfg.car().isEmpty()) {
+            carrierMob.setInvisible(true);
+            carrierMob.setSilent(true);
+        }
+
+        return entity;
+    }
+
+    /**
+     * Spawns the display-entity "car" parts around the carrier (which is already hidden).
+     */
+    public void spawnConvoyVisual(EventInstance instance, Location base) {
+        List<WorldEvent.CarPart> car = instance.getEvent().getConvoy().car();
+
+        for (WorldEvent.CarPart part : car) {
+            Display display = spawnCarPart(base, part);
+            if (display != null)
+                instance.getConvoyDisplays().add(display.getUniqueId());
+        }
+    }
+
+    /**
      * Starts the per-instance straight-line mover: every few ticks the carrier is
      * stepped along the route toward the end anchor. No pathfinding is involved,
      * so the convoy can never detour, wander or be steered by other mobs'. The
@@ -109,6 +208,30 @@ public class ConvoyBehavior {
         org.bukkit.scheduler.BukkitTask task = Bukkit.getScheduler()
                 .runTaskTimer(ctx.plugin(), () -> moveConvoy(instance), 2L, 2L);
         instance.setConvoyMover(task);
+    }
+
+    private Display spawnCarPart(Location base, WorldEvent.CarPart part) {
+        World world = base.getWorld();
+        if (world == null)
+            return null;
+
+        Location at = base.clone().add(part.dx(), part.dy(), part.dz());
+        at.setYaw(base.getYaw() + part.yaw());
+        at.setPitch(0);
+
+        if (part.material().isBlock()) {
+            return world.spawn(at, BlockDisplay.class, display -> {
+                display.setBlock(part.material().createBlockData());
+                display.setInvulnerable(true);
+                display.setTeleportDuration(2);
+            });
+        }
+
+        return world.spawn(at, ItemDisplay.class, display -> {
+            display.setItemStack(new ItemStack(part.material()));
+            display.setInvulnerable(true);
+            display.setTeleportDuration(2);
+        });
     }
 
     public void cancelMover(EventInstance instance) {
@@ -177,6 +300,10 @@ public class ConvoyBehavior {
         instance.setTrackLocation(next);
     }
 
+    private float yawFor(double dx, double dz) {
+        return (float) Math.toDegrees(Math.atan2(-dx, dz));
+    }
+
     /**
      * Keeps the mover inside sane bounds: when the step would overshoot the
      * waypoint the carrier lands exactly on it (keeping its fractional offset
@@ -189,132 +316,43 @@ public class ConvoyBehavior {
         return next;
     }
 
-    private float yawFor(double dx, double dz) {
-        return (float) Math.toDegrees(Math.atan2(-dx, dz));
-    }
-
     /**
-     * Snaps a convoy waypoint to the topmost non-air block in its column so
-     * waypoints under overhangs/half-blocks stay walkable for the pathfinder;
-     * the column-scan variant used elsewhere can latch onto a ceiling Y and
-     * embed the waypoint inside terrain (the carrier then never reaches it and
-     * falls back to stuck-timeout teleports, looking like it "isn't moving").
+     * Repositions every car part so the whole convoy rides the (rotated) carrier.
      */
-    private Location groundSnapPoint(Location point) {
-        World world = point.getWorld();
-        if (world == null)
-            return point;
+    private void updateConvoyVisual(EventInstance instance, Entity leader) {
+        List<UUID> ids = instance.getConvoyDisplays();
+        if (ids.isEmpty())
+            return;
 
-        org.bukkit.block.Block top = world.getHighestBlockAt(point.getBlockX(), point.getBlockZ());
-
-        return new Location(world, point.getX(),
-                Math.max(top.getY() + 1, world.getMinHeight()), point.getZ());
-    }
-
-    /**
-     * Resolves the convoy's end anchor, else the map's extraction spawn.
-     */
-    public Location convoyRouteEnd(WorldEvent event, World fallbackWorld) {
-        WorldEvent.ConvoyConfig cfg = event.getConvoy();
-        if (cfg != null && cfg.end() != null) {
-            World world = Bukkit.getWorld(cfg.end().world());
-            if (world != null)
-                return new Location(world, cfg.end().x() + 0.5, cfg.end().y(), cfg.end().z() + 0.5);
-        }
-
-        Location spawn = ctx.plugin().getConfigUtil().getSpawnLocation();
-        if (spawn == null || spawn.getWorld() == null)
-            spawn = fallbackWorld.getSpawnLocation();
-
-        return spawn;
-    }
-
-    /**
-     * Spawns one named, glowing, persistent carrier Mob at the given point.
-     */
-    public Entity spawnCarrier(WorldEvent event, Location at) {
-        WorldEvent.ConvoyConfig cfg = event.getConvoy();
-        AreaSpawnDefinition definition = ctx.plugin().getMobResolver().resolve(
-                cfg.carrier(), 1, true, Math.max(1, event.getLevel()), 0);
-        if (definition == null) {
-            ctx.plugin().getLogger().warning("Convoy carrier '" + cfg.carrier()
-                    + "' does not resolve to any mob — the convoy cannot start.");
-            return null;
-        }
-
-        double difficulty = ctx.spawner().difficultyFor(event);
-        if (difficulty > 0) {
-            if (definition.getHealth() > 0)
-                definition.setHealth(definition.getHealth() * difficulty);
-            if (definition.getDamage() > 0)
-                definition.setDamage(definition.getDamage() * difficulty);
-        }
-
-        definition.setDisplayName(cfg.carrierName());
-
-        Entity entity = ctx.mobFactory().spawn(definition, at);
-        if (entity == null)
-            return null;
-
-        entity.setGlowing(true);
-        entity.setPersistent(true);
-
-        if (!(entity instanceof Mob)) {
-            ctx.plugin().getLogger().warning("Convoy carrier '" + cfg.carrier()
-                    + "' is not a Mob — the convoy cannot walk; event stopped.");
-            entity.remove();
-            return null;
-        }
-
-        Mob carrierMob = (Mob) entity;
-        carrierMob.setRemoveWhenFarAway(false);
-        // The straight-line mover teleports the carrier itself — no AI movement.
-        carrierMob.setAware(false);
-
-        // The display-entity "car" is the visible convoy — hide the driver mob.
-        if (!cfg.car().isEmpty()) {
-            carrierMob.setInvisible(true);
-            carrierMob.setSilent(true);
-        }
-
-        return entity;
-    }
-
-    /**
-     * Spawns the display-entity "car" parts around the carrier (which is already hidden).
-     */
-    public void spawnConvoyVisual(EventInstance instance, Location base) {
         List<WorldEvent.CarPart> car = instance.getEvent().getConvoy().car();
+        if (car.isEmpty())
+            return;
 
-        for (WorldEvent.CarPart part : car) {
-            Display display = spawnCarPart(base, part);
-            if (display != null)
-                instance.getConvoyDisplays().add(display.getUniqueId());
+        Location base = leader.getLocation().clone();
+        double rad = Math.toRadians(base.getYaw());
+        double cos = Math.cos(rad);
+        double sin = Math.sin(rad);
+
+        // One scratch location mutated per part — no clone per car piece per step.
+        Location at = base.clone();
+
+        for (int i = 0; i < ids.size() && i < car.size(); i++) {
+            Entity display = Bukkit.getEntity(ids.get(i));
+            if (display == null || !display.isValid())
+                continue;
+
+            WorldEvent.CarPart part = car.get(i);
+            double rx = part.dx() * cos - part.dz() * sin;
+            double rz = part.dx() * sin + part.dz() * cos;
+
+            at.setX(base.getX() + rx);
+            at.setY(base.getY() + part.dy());
+            at.setZ(base.getZ() + rz);
+            at.setYaw(base.getYaw() + part.yaw());
+            at.setPitch(0);
+
+            display.teleport(at);
         }
-    }
-
-    private Display spawnCarPart(Location base, WorldEvent.CarPart part) {
-        World world = base.getWorld();
-        if (world == null)
-            return null;
-
-        Location at = base.clone().add(part.dx(), part.dy(), part.dz());
-        at.setYaw(base.getYaw() + part.yaw());
-        at.setPitch(0);
-
-        if (part.material().isBlock()) {
-            return world.spawn(at, BlockDisplay.class, display -> {
-                display.setBlock(part.material().createBlockData());
-                display.setInvulnerable(true);
-                display.setTeleportDuration(2);
-            });
-        }
-
-        return world.spawn(at, ItemDisplay.class, display -> {
-            display.setItemStack(new ItemStack(part.material()));
-            display.setInvulnerable(true);
-            display.setTeleportDuration(2);
-        });
     }
 
     /**
@@ -440,40 +478,6 @@ public class ConvoyBehavior {
     private void endConvoyEscape(EventInstance instance) {
         cancelMover(instance);
         ctx.manager().endEvent(instance, false);
-    }
-
-    /**
-     * Repositions every car part so the whole convoy rides the (rotated) carrier.
-     */
-    private void updateConvoyVisual(EventInstance instance, Entity leader) {
-        List<UUID> ids = instance.getConvoyDisplays();
-        if (ids.isEmpty())
-            return;
-
-        List<WorldEvent.CarPart> car = instance.getEvent().getConvoy().car();
-        if (car.isEmpty())
-            return;
-
-        Location base = leader.getLocation().clone();
-        double rad = Math.toRadians(base.getYaw());
-        double cos = Math.cos(rad);
-        double sin = Math.sin(rad);
-
-        for (int i = 0; i < ids.size() && i < car.size(); i++) {
-            Entity display = Bukkit.getEntity(ids.get(i));
-            if (display == null || !display.isValid())
-                continue;
-
-            WorldEvent.CarPart part = car.get(i);
-            double rx = part.dx() * cos - part.dz() * sin;
-            double rz = part.dx() * sin + part.dz() * cos;
-
-            Location at = base.clone().add(rx, part.dy(), rz);
-            at.setYaw(base.getYaw() + part.yaw());
-            at.setPitch(0);
-
-            display.teleport(at);
-        }
     }
 
     /**
@@ -625,6 +629,15 @@ public class ConvoyBehavior {
 
     /**
      * True when {@code entity} is the live carrier of a running Supply Convoy
+     * and at least one escort is still alive — the carrier is shielded until
+     * every guard has fallen.
+     */
+    public boolean isConvoyCarrierProtected(Entity entity) {
+        return isConvoyCarrier(entity) && convoyGuardsRemaining(entity) > 0;
+    }
+
+    /**
+     * True when {@code entity} is the live carrier of a running Supply Convoy
      * (shielded or not).
      */
     public boolean isConvoyCarrier(Entity entity) {
@@ -636,36 +649,6 @@ public class ConvoyBehavior {
             return false;
 
         return entity.getUniqueId().equals(instance.getConvoyLeader());
-    }
-
-    /**
-     * True when {@code entity} is the live carrier of a running Supply Convoy
-     * and at least one escort is still alive — the carrier is shielded until
-     * every guard has fallen.
-     */
-    public boolean isConvoyCarrierProtected(Entity entity) {
-        return isConvoyCarrier(entity) && convoyGuardsRemaining(entity) > 0;
-    }
-
-    /**
-     * Queues damage for the unshielded carrier: raw hits are cancelled (no knockback,
-     * no movement interruption) and the mover applies the stored amount straight to
-     * the invisible mule's health on its next step.
-     */
-    public void queueConvoyDamage(Entity carrier, double amount, UUID attacker) {
-        if (amount <= 0)
-            return;
-
-        EventInstance instance = ctx.mobInstances().get(carrier.getUniqueId());
-        if (instance == null || !instance.getEvent().isConvoy())
-            return;
-
-        if (!carrier.getUniqueId().equals(instance.getConvoyLeader()))
-            return;
-
-        instance.addConvoyDamage(amount);
-        if (attacker != null)
-            instance.setConvoyDamageAttacker(attacker);
     }
 
     /**
@@ -695,5 +678,26 @@ public class ConvoyBehavior {
         }
 
         return guards;
+    }
+
+    /**
+     * Queues damage for the unshielded carrier: raw hits are cancelled (no knockback,
+     * no movement interruption) and the mover applies the stored amount straight to
+     * the invisible mule's health on its next step.
+     */
+    public void queueConvoyDamage(Entity carrier, double amount, UUID attacker) {
+        if (amount <= 0)
+            return;
+
+        EventInstance instance = ctx.mobInstances().get(carrier.getUniqueId());
+        if (instance == null || !instance.getEvent().isConvoy())
+            return;
+
+        if (!carrier.getUniqueId().equals(instance.getConvoyLeader()))
+            return;
+
+        instance.addConvoyDamage(amount);
+        if (attacker != null)
+            instance.setConvoyDamageAttacker(attacker);
     }
 }

@@ -197,13 +197,19 @@ public class StormBehavior {
         for (Location zone : zones) {
             int ring = Math.clamp(cfg.radius(), 4, 12);
 
+            // One spread-parameter spawn per ring segment instead of a Location
+            // clone per point: same circle look, zero per-point allocations.
             for (int i = 0; i < ring; i++) {
                 double angle = i * 2 * Math.PI / ring;
-                Location p = zone.clone().add(Math.cos(angle) * cfg.radius(), 0.4, Math.sin(angle) * cfg.radius());
-                world.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, p, 1, 0, 0, 0, 0.01);
+                world.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE,
+                        zone.getX() + Math.cos(angle) * cfg.radius(),
+                        zone.getY() + 0.4,
+                        zone.getZ() + Math.sin(angle) * cfg.radius(),
+                        1, 0, 0, 0, 0.01);
             }
 
-            world.spawnParticle(Particle.ASH, zone.clone().add(0, 0.6, 0),
+            world.spawnParticle(Particle.ASH,
+                    zone.getX(), zone.getY() + 0.6, zone.getZ(),
                     Math.max(3, cfg.radius() / 2), cfg.radius() * 0.5, 0.3, cfg.radius() * 0.5, 0.02);
         }
 

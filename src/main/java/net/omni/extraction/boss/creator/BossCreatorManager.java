@@ -4,26 +4,15 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.messages.Messages;
-import net.omni.extraction.mobs.BossAbility;
-import net.omni.extraction.mobs.BossAbilityField;
-import net.omni.extraction.mobs.BossAbilityType;
-import net.omni.extraction.mobs.MobDrop;
-import net.omni.extraction.mobs.MobTemplate;
+import net.omni.extraction.mobs.*;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class BossCreatorManager {
 
@@ -795,9 +784,8 @@ public class BossCreatorManager {
     }
 
     private List<MobTemplate> bosses() {
-        List<MobTemplate> bosses = plugin.getBossTemplateManager().getBossTemplates();
-        bosses.sort(Comparator.comparing(MobTemplate::getId));
-        return bosses;
+        // TreeSet-backed map is already id-sorted; copy so the GUI can sort.
+        return new ArrayList<>(plugin.getBossTemplateManager().getBossTemplates());
     }
 
     private ItemStack bossIcon(MobTemplate template) {

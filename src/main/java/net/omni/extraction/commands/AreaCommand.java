@@ -2,7 +2,6 @@ package net.omni.extraction.commands;
 
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.util.Permissions;
 import net.omni.extraction.area.*;
 import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.integration.MythicMobsProvider;
@@ -10,6 +9,7 @@ import net.omni.extraction.messages.Messages;
 import net.omni.extraction.mobs.MobTemplate;
 import net.omni.extraction.mobs.MobTemplateManager;
 import net.omni.extraction.util.MessageUtil;
+import net.omni.extraction.util.Permissions;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -21,13 +21,19 @@ import org.bukkit.entity.Player;
 import org.jspecify.annotations.NonNull;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
 public class AreaCommand implements CommandExecutor {
 
+    private static final String AREA_CATEGORY_SETUP = "setup";
+    private static final String AREA_CATEGORY_MOBS = "mobs";
+    private static final String AREA_CATEGORY_LOOT = "loot";
+    private static final String AREA_CATEGORY_UTILITY = "utility";
+    private static final List<String> AREA_HELP_CATEGORIES = List.of(
+            AREA_CATEGORY_SETUP, AREA_CATEGORY_MOBS, AREA_CATEGORY_LOOT, AREA_CATEGORY_UTILITY);
     private final ExtractionPlugin plugin;
-
     public AreaCommand(ExtractionPlugin plugin) {
         this.plugin = plugin;
     }
@@ -75,14 +81,9 @@ public class AreaCommand implements CommandExecutor {
         };
     }
 
-    private static final String AREA_CATEGORY_SETUP = "setup";
-    private static final String AREA_CATEGORY_MOBS = "mobs";
-    private static final String AREA_CATEGORY_LOOT = "loot";
-    private static final String AREA_CATEGORY_UTILITY = "utility";
-    private static final List<String> AREA_HELP_CATEGORIES = List.of(
-            AREA_CATEGORY_SETUP, AREA_CATEGORY_MOBS, AREA_CATEGORY_LOOT, AREA_CATEGORY_UTILITY);
-
-    /** Clickable, categorized help — same pattern as /extraction help. */
+    /**
+     * Clickable, categorized help — same pattern as /extraction help.
+     */
     private void sendHelp(CommandSender sender, String category) {
         if (category != null && !AREA_HELP_CATEGORIES.contains(category)) {
             sendHelp(sender, null);
@@ -354,7 +355,7 @@ public class AreaCommand implements CommandExecutor {
     }
 
     private boolean handleList(CommandSender sender) {
-        List<Area> areas = plugin.getAreaManager().getAreas();
+        Collection<Area> areas = plugin.getAreaManager().getAreas();
 
         plugin.sendMessage(sender, Messages.AREA_LIST_HEADER.replace("count", String.valueOf(areas.size())));
 

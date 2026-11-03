@@ -1,12 +1,11 @@
 package net.omni.extraction.relics;
 
-import net.omni.extraction.util.RelicItemUtil;
-
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.RelicItemUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
@@ -45,23 +44,19 @@ public class RelicEffectManager {
     private static final String EXPLORER_ID = "explorer";
     private static final double DEFAULT_EXPLORER_RADIUS = 150.0;
     private final ExtractionPlugin plugin;
-    private boolean explorerFallbackWarned;
-
     /**
      * player uuid -> (equipped relic id -> expiry epoch millis).
      */
     private final Map<UUID, Map<String, Long>> activations = new HashMap<>();
-
     /**
      * player uuid -> (relic id -> last rendered display label) so items only repaint when the second ticks.
      */
     private final Map<UUID, Map<String, String>> lastLabels = new HashMap<>();
-
     /**
      * raw particle spec ("NAME" or "NAME:#hex") -> parsed spawn descriptor.
      */
     private final Map<String, ParticleSpec> particleCache = new HashMap<>();
-
+    private boolean explorerFallbackWarned;
     private BukkitTask task;
     private BukkitTask particleTask;
 
@@ -110,20 +105,25 @@ public class RelicEffectManager {
     public void tick() {
         long now = System.currentTimeMillis();
 
-        for (Map.Entry<UUID, Map<String, Long>> entry : new HashMap<>(activations).entrySet()) {
-            UUID uuid = entry.getKey();
-            Map<String, Long> active = entry.getValue();
+        Iterator<Map.Entry<UUID, Map<String, Long>>> outer = activations.entrySet().iterator();
+
+        while (outer.hasNext()) {
+            UUID uuid = outer.next().getKey();
+            Map<String, Long> active = activations.get(uuid);
 
             if (active == null || active.isEmpty()) {
-                activations.remove(uuid);
+                outer.remove();
                 continue;
             }
 
             List<RelicDefinition> expired = new ArrayList<>();
 
-            for (Map.Entry<String, Long> relic : new HashMap<>(active).entrySet()) {
+            for (Iterator<Map.Entry<String, Long>> relicIt = active.entrySet().iterator();
+                 relicIt.hasNext(); ) {
+                Map.Entry<String, Long> relic = relicIt.next();
+
                 if (relic.getValue() <= now) {
-                    active.remove(relic.getKey());
+                    relicIt.remove();
 
                     RelicDefinition def = plugin.getRelicManager().getDefinition(relic.getKey());
                     if (def != null)
@@ -132,7 +132,7 @@ public class RelicEffectManager {
             }
 
             if (active.isEmpty())
-                activations.remove(uuid);
+                outer.remove();
 
             Player player = Bukkit.getPlayer(uuid);
 
@@ -159,7 +159,8 @@ public class RelicEffectManager {
         if (activations.isEmpty())
             return;
 
-        for (UUID uuid : new ArrayList<>(activations.keySet())) {
+        // No copy: spawnParticles never mutates the activation map.
+        for (UUID uuid : activations.keySet()) {
             Player player = Bukkit.getPlayer(uuid);
             if (player == null || player.isDead())
                 continue;

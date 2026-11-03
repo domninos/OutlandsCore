@@ -147,6 +147,30 @@ public class AreaManager {
         dirty.remove(area.getName().toLowerCase(Locale.ROOT));
     }
 
+    public Area.AreaStats getStats(Area area) {
+        Area.AreaStats cached = area.getCachedStats();
+        if (cached != null)
+            return cached;
+
+        int configuredMobs = 0;
+        int configuredBosses = 0;
+        int level = area.getLevel() > 0 ? area.getLevel() : 1;
+
+        for (AreaSpawnDefinition definition : resolveSpawns(area)) {
+            if (definition.isBoss())
+                configuredBosses += definition.getCount();
+            else
+                configuredMobs += definition.getCount();
+
+            if (definition.getLevel() > level)
+                level = definition.getLevel();
+        }
+
+        Area.AreaStats stats = new Area.AreaStats(level, configuredMobs, configuredBosses, configuredMobs + configuredBosses);
+        area.setCachedStats(stats);
+        return stats;
+    }
+
     public List<AreaSpawnDefinition> resolveSpawns(Area area) {
         List<AreaSpawnDefinition> result = new ArrayList<>();
 
@@ -183,60 +207,6 @@ public class AreaManager {
         }
 
         return result;
-    }
-
-    public Area.AreaStats getStats(Area area) {
-        Area.AreaStats cached = area.getCachedStats();
-        if (cached != null)
-            return cached;
-
-        int configuredMobs = 0;
-        int configuredBosses = 0;
-        int level = area.getLevel() > 0 ? area.getLevel() : 1;
-
-        for (AreaSpawnDefinition definition : resolveSpawns(area)) {
-            if (definition.isBoss())
-                configuredBosses += definition.getCount();
-            else
-                configuredMobs += definition.getCount();
-
-            if (definition.getLevel() > level)
-                level = definition.getLevel();
-        }
-
-        Area.AreaStats stats = new Area.AreaStats(level, configuredMobs, configuredBosses, configuredMobs + configuredBosses);
-        area.setCachedStats(stats);
-        return stats;
-    }
-
-    public boolean hasMobs(Area area) {
-        if (area == null)
-            return false;
-
-        for (AreaSpawnEntry entry : area.getSpawnEntries()) {
-            String id = entry.getMobId();
-
-            if (isKnownMobId(id))
-                return true;
-        }
-
-        MobTemplateManager mobs = plugin.getMobTemplateManager();
-
-        if (mobs == null)
-            return false;
-
-        for (AreaMobReference reference : area.getMobReferences()) {
-            String id = reference.getMobId();
-
-            if (isKnownMobId(id))
-                return true;
-        }
-
-        return false;
-    }
-
-    private boolean isKnownMobId(String id) {
-        return mobResolver.isKnownMobId(id);
     }
 
     public void saveDirty() {
@@ -411,6 +381,36 @@ public class AreaManager {
         return areas.get(name.toLowerCase(Locale.ROOT));
     }
 
+    public boolean hasMobs(Area area) {
+        if (area == null)
+            return false;
+
+        for (AreaSpawnEntry entry : area.getSpawnEntries()) {
+            String id = entry.getMobId();
+
+            if (isKnownMobId(id))
+                return true;
+        }
+
+        MobTemplateManager mobs = plugin.getMobTemplateManager();
+
+        if (mobs == null)
+            return false;
+
+        for (AreaMobReference reference : area.getMobReferences()) {
+            String id = reference.getMobId();
+
+            if (isKnownMobId(id))
+                return true;
+        }
+
+        return false;
+    }
+
+    private boolean isKnownMobId(String id) {
+        return mobResolver.isKnownMobId(id);
+    }
+
     public void handlePlayerQuit(Player player) {
         if (player == null)
             return;
@@ -516,8 +516,10 @@ public class AreaManager {
         return clearManager != null && clearManager.isActive(area);
     }
 
-    public List<Area> getAreas() {
-        return new ArrayList<>(areas.values());
+    public Collection<Area> getAreas() {
+        // Live view — callers iterate/read only; creates/deletes go through
+        // the explicit mutator methods, never through this getter.
+        return areas.values();
     }
 
     /**
@@ -542,8 +544,8 @@ public class AreaManager {
                 && plugin.getStandaloneChestManager().usesKey(keyId);
     }
 
-    public List<String> getNames() {
-        return new ArrayList<>(areas.keySet());
+    public Collection<String> getNames() {
+        return areas.keySet();
     }
 
     public void setPos1(UUID uuid, Location location) {
@@ -640,10 +642,6 @@ public class AreaManager {
         return item.getPersistentDataContainer().get(wandAreaKey, PersistentDataType.STRING);
     }
 
-    private String getWandAreaName(ItemMeta meta) {
-        return meta.getPersistentDataContainer().get(wandAreaKey, PersistentDataType.STRING);
-    }
-
     public WandMode cycleWandMode(ItemStack item) {
         WandMode next = getWandMode(item).next();
         setWandMode(item, next);
@@ -670,5 +668,9 @@ public class AreaManager {
         applyWandDisplay(meta, getWandAreaName(meta), mode);
 
         item.setItemMeta(meta);
+    }
+
+    private String getWandAreaName(ItemMeta meta) {
+        return meta.getPersistentDataContainer().get(wandAreaKey, PersistentDataType.STRING);
     }
 }

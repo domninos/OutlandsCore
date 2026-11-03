@@ -56,9 +56,11 @@ public class ScoreboardManager {
             task = null;
         }
 
-        for (Player player : plugin.getExtractionManager().getExtractionPlayers())
+        for (UUID uuid : plugin.getExtractionManager().getExtractionPlayersUUID()) {
+            Player player = Bukkit.getPlayer(uuid);
             if (player != null)
                 remove(player);
+        }
     }
 
     public void reload() {
@@ -68,9 +70,11 @@ public class ScoreboardManager {
     }
 
     public void refreshAll() {
-        for (Player player : plugin.getExtractionManager().getExtractionPlayers())
+        for (UUID uuid : plugin.getExtractionManager().getExtractionPlayersUUID()) {
+            Player player = Bukkit.getPlayer(uuid);
             if (player != null)
                 show(player);
+        }
     }
 
     public void show(Player player) {

@@ -22,28 +22,10 @@ public class Area {
     private final List<AreaMobReference> mobReferences;
     private final List<Location> mobSpawnLocations;
     private final List<Location> bossSpawnLocations;
-    private AreaStats cachedStats;
-
-    public record AreaStats(int level, int configuredMobs, int configuredBosses, int totalConfigured) {
-        public String toSignature() {
-            return level + "|" + configuredMobs + "|" + configuredBosses + "|" + totalConfigured;
-        }
-    }
-
-    public void clearStatsCache() {
-        this.cachedStats = null;
-    }
-
-    public AreaStats getCachedStats() {
-        return cachedStats;
-    }
-
-    public void setCachedStats(AreaStats cachedStats) {
-        this.cachedStats = cachedStats;
-    }
     private final List<AreaLootEntry> lootEntries;
     private final List<AreaChestLocation> chestLocations;
     private final List<AreaSpawnEntry> spawnEntries;
+    private AreaStats cachedStats;
     private String name;
     private String world;
     private String difficulty;
@@ -63,7 +45,6 @@ public class Area {
     private AreaState state;
     private long unavailableUntil;
     private Location hologramLocation;
-
     public Area(String name, String world) {
         this.name = name;
         this.world = world;
@@ -306,8 +287,112 @@ public class Area {
         return bossSpawnLocations;
     }
 
+    public void addSpawnEntry(AreaSpawnEntry entry) {
+        if (entry != null && entry.getLocation() != null)
+            spawnEntries.add(entry);
+    }
+
+    public boolean addChestLocation(AreaChestLocation chest) {
+        if (chest == null || chest.getLocation() == null || chest.getLocation().getWorld() == null)
+            return false;
+
+        Location location = normalizeChestLocation(chest.getLocation(), chest.getContainerType());
+        chest.setLocation(location);
+
+        if (hasChestAt(location))
+            return false;
+
+        chestLocations.add(chest);
+        return true;
+    }
+
+    public List<AreaChestLocation> getChestLocations() {
+        return chestLocations;
+    }
+
     public List<AreaLootEntry> getLootEntries() {
         return lootEntries;
+    }
+
+    private Location normalizeChestLocation(Location location, Material containerType) {
+        if (location == null || location.getWorld() == null || !AreaChestLocation.isChestType(containerType))
+            return location;
+
+        Block block = location.getBlock();
+
+        for (int[] offset : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            Block neighbor = block.getRelative(offset[0], 0, offset[1]);
+
+            if (AreaChestLocation.isChestType(neighbor.getType()) && canMergeWith(block, offset[0] != 0, neighbor))
+                return minBlock(location, neighbor.getLocation());
+        }
+
+        return location;
+    }
+
+    private boolean hasChestAt(Location location) {
+        for (AreaChestLocation chest : chestLocations)
+            if (sameBlock(chest.getLocation(), location))
+                return true;
+
+        return false;
+    }
+
+    private boolean canMergeWith(Block chest, boolean alongX, Block neighbor) {
+        BlockFace first = chestFacing(chest);
+        BlockFace second = chestFacing(neighbor);
+
+        if (first == null || second == null)
+            return false;
+
+        return alongX
+                ? isNorthSouth(first) && isNorthSouth(second)
+                : isEastWest(first) && isEastWest(second);
+    }
+
+    private Location minBlock(Location a, Location b) {
+        if (a.getBlockX() != b.getBlockX())
+            return a.getBlockX() < b.getBlockX() ? a : b;
+
+        if (a.getBlockZ() != b.getBlockZ())
+            return a.getBlockZ() < b.getBlockZ() ? a : b;
+
+        return a;
+    }
+
+    private boolean sameBlock(Location a, Location b) {
+        return a != null && b != null
+                && a.getWorld() != null && a.getWorld().equals(b.getWorld())
+                && a.getBlockX() == b.getBlockX()
+                && a.getBlockY() == b.getBlockY()
+                && a.getBlockZ() == b.getBlockZ();
+    }
+
+    private BlockFace chestFacing(Block block) {
+        if (block.getBlockData() instanceof org.bukkit.block.data.type.Chest chest)
+            return chest.getFacing();
+
+        return null;
+    }
+
+    private boolean isNorthSouth(BlockFace facing) {
+        return facing == BlockFace.NORTH || facing == BlockFace.SOUTH;
+    }
+
+    private boolean isEastWest(BlockFace facing) {
+        return facing == BlockFace.EAST || facing == BlockFace.WEST;
+    }
+
+    public void clearStatsCache() {
+        this.cachedStats = null;
+    }
+
+    public AreaStats getCachedStats() {
+        return cachedStats;
+    }
+
+    public void setCachedStats(AreaStats cachedStats) {
+        this.cachedStats = cachedStats;
     }
 
     public boolean removeMobReference(String mobId) {
@@ -349,7 +434,9 @@ public class Area {
         this.difficulty = difficulty;
     }
 
-    /** Stored level override; 0 means derive from spawn entries. */
+    /**
+     * Stored level override; 0 means derive from spawn entries.
+     */
     public int getLevel() {
         return level;
     }
@@ -430,6 +517,96 @@ public class Area {
         if (location != null) bossSpawnLocations.add(location);
     }
 
+    public Location getSpawnLocation(AreaSpawnDefinition definition, Random random) {
+        if (definition != null && definition.isBoss() && !bossSpawnLocations.isEmpty())
+            return bossSpawnLocations.get(random.nextInt(bossSpawnLocations.size()));
+
+        if (!mobSpawnLocations.isEmpty())
+            return mobSpawnLocations.get(random.nextInt(mobSpawnLocations.size()));
+
+        return null;
+    }
+
+    public boolean addChestLocation(Location location, String lootType) {
+        return addChestLocation(new AreaChestLocation(location, lootType));
+    }
+
+    public boolean addChestLocation(Location location, String lootType, Material containerType) {
+        return addChestLocation(new AreaChestLocation(location, lootType, containerType));
+    }
+
+    public AreaChestLocation removeNearestChestLocation(Location location, double radius) {
+        AreaChestLocation nearest = null;
+        double nearestDistance = radius * radius;
+
+        for (AreaChestLocation chest : chestLocations) {
+            double distance = distanceSq(chest.getLocation(), location);
+
+            if (distance <= nearestDistance) {
+                nearestDistance = distance;
+                nearest = chest;
+            }
+        }
+
+        if (nearest == null)
+            return null;
+
+        chestLocations.remove(nearest);
+        return nearest;
+    }
+
+    private static double distanceSq(Location first, Location second) {
+        if (first == null || second == null || first.getWorld() == null || second.getWorld() == null)
+            return Double.MAX_VALUE;
+
+        if (!first.getWorld().equals(second.getWorld()))
+            return Double.MAX_VALUE;
+
+        double dx = first.getX() - second.getX();
+        double dy = first.getY() - second.getY();
+        double dz = first.getZ() - second.getZ();
+
+        return dx * dx + dy * dy + dz * dz;
+    }
+
+    public void clearChestLocations() {
+        chestLocations.clear();
+    }
+
+    public List<AreaSpawnEntry> getSpawnEntries() {
+        return spawnEntries;
+    }
+
+    public boolean removeSpawnEntry(AreaSpawnEntry entry) {
+        return entry != null && spawnEntries.remove(entry);
+    }
+
+    public boolean removeNearestSpawnEntity(Location location, double radius) {
+        if (removeNearestSpawnEntry(location, radius) != null)
+            return true;
+
+        return removeNearestSpawnLocation(location, radius);
+    }
+
+    public AreaSpawnEntry removeNearestSpawnEntry(Location location, double radius) {
+        AreaSpawnEntry nearest = null;
+        double nearestDistance = radius * radius;
+
+        for (AreaSpawnEntry entry : spawnEntries) {
+            double distance = distanceSq(entry.getLocation(), location);
+
+            if (distance <= nearestDistance) {
+                nearestDistance = distance;
+                nearest = entry;
+            }
+        }
+
+        if (nearest != null)
+            spawnEntries.remove(nearest);
+
+        return nearest;
+    }
+
     public boolean removeNearestSpawnLocation(Location location, double radius) {
         Location nearestMob = nearest(mobSpawnLocations, location, radius);
         Location nearestBoss = nearest(bossSpawnLocations, location, radius);
@@ -465,188 +642,6 @@ public class Area {
         }
 
         return nearest;
-    }
-
-    private static double distanceSq(Location first, Location second) {
-        if (first == null || second == null || first.getWorld() == null || second.getWorld() == null)
-            return Double.MAX_VALUE;
-
-        if (!first.getWorld().equals(second.getWorld()))
-            return Double.MAX_VALUE;
-
-        double dx = first.getX() - second.getX();
-        double dy = first.getY() - second.getY();
-        double dz = first.getZ() - second.getZ();
-
-        return dx * dx + dy * dy + dz * dz;
-    }
-
-    public Location getSpawnLocation(AreaSpawnDefinition definition, Random random) {
-        if (definition != null && definition.isBoss() && !bossSpawnLocations.isEmpty())
-            return bossSpawnLocations.get(random.nextInt(bossSpawnLocations.size()));
-
-        if (!mobSpawnLocations.isEmpty())
-            return mobSpawnLocations.get(random.nextInt(mobSpawnLocations.size()));
-
-        return null;
-    }
-
-    public List<AreaChestLocation> getChestLocations() {
-        return chestLocations;
-    }
-
-    public boolean addChestLocation(AreaChestLocation chest) {
-        if (chest == null || chest.getLocation() == null || chest.getLocation().getWorld() == null)
-            return false;
-
-        Location location = normalizeChestLocation(chest.getLocation(), chest.getContainerType());
-        chest.setLocation(location);
-
-        if (hasChestAt(location))
-            return false;
-
-        chestLocations.add(chest);
-        return true;
-    }
-
-    public boolean addChestLocation(Location location, String lootType) {
-        return addChestLocation(new AreaChestLocation(location, lootType));
-    }
-
-    public boolean addChestLocation(Location location, String lootType, Material containerType) {
-        return addChestLocation(new AreaChestLocation(location, lootType, containerType));
-    }
-
-    private boolean hasChestAt(Location location) {
-        for (AreaChestLocation chest : chestLocations)
-            if (sameBlock(chest.getLocation(), location))
-                return true;
-
-        return false;
-    }
-
-    private boolean sameBlock(Location a, Location b) {
-        return a != null && b != null
-                && a.getWorld() != null && a.getWorld().equals(b.getWorld())
-                && a.getBlockX() == b.getBlockX()
-                && a.getBlockY() == b.getBlockY()
-                && a.getBlockZ() == b.getBlockZ();
-    }
-
-    private Location normalizeChestLocation(Location location, Material containerType) {
-        if (location == null || location.getWorld() == null || !AreaChestLocation.isChestType(containerType))
-            return location;
-
-        Block block = location.getBlock();
-
-        for (int[] offset : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-            Block neighbor = block.getRelative(offset[0], 0, offset[1]);
-
-            if (AreaChestLocation.isChestType(neighbor.getType()) && canMergeWith(block, offset[0] != 0, neighbor))
-                return minBlock(location, neighbor.getLocation());
-        }
-
-        return location;
-    }
-
-    private boolean canMergeWith(Block chest, boolean alongX, Block neighbor) {
-        BlockFace first = chestFacing(chest);
-        BlockFace second = chestFacing(neighbor);
-
-        if (first == null || second == null)
-            return false;
-
-        return alongX
-                ? isNorthSouth(first) && isNorthSouth(second)
-                : isEastWest(first) && isEastWest(second);
-    }
-
-    private BlockFace chestFacing(Block block) {
-        if (block.getBlockData() instanceof org.bukkit.block.data.type.Chest chest)
-            return chest.getFacing();
-
-        return null;
-    }
-
-    private boolean isNorthSouth(BlockFace facing) {
-        return facing == BlockFace.NORTH || facing == BlockFace.SOUTH;
-    }
-
-    private boolean isEastWest(BlockFace facing) {
-        return facing == BlockFace.EAST || facing == BlockFace.WEST;
-    }
-
-    private Location minBlock(Location a, Location b) {
-        if (a.getBlockX() != b.getBlockX())
-            return a.getBlockX() < b.getBlockX() ? a : b;
-
-        if (a.getBlockZ() != b.getBlockZ())
-            return a.getBlockZ() < b.getBlockZ() ? a : b;
-
-        return a;
-    }
-
-    public AreaChestLocation removeNearestChestLocation(Location location, double radius) {
-        AreaChestLocation nearest = null;
-        double nearestDistance = radius * radius;
-
-        for (AreaChestLocation chest : chestLocations) {
-            double distance = distanceSq(chest.getLocation(), location);
-
-            if (distance <= nearestDistance) {
-                nearestDistance = distance;
-                nearest = chest;
-            }
-        }
-
-        if (nearest == null)
-            return null;
-
-        chestLocations.remove(nearest);
-        return nearest;
-    }
-
-    public void clearChestLocations() {
-        chestLocations.clear();
-    }
-
-    public List<AreaSpawnEntry> getSpawnEntries() {
-        return spawnEntries;
-    }
-
-    public void addSpawnEntry(AreaSpawnEntry entry) {
-        if (entry != null && entry.getLocation() != null)
-            spawnEntries.add(entry);
-    }
-
-    public boolean removeSpawnEntry(AreaSpawnEntry entry) {
-        return entry != null && spawnEntries.remove(entry);
-    }
-
-    public AreaSpawnEntry removeNearestSpawnEntry(Location location, double radius) {
-        AreaSpawnEntry nearest = null;
-        double nearestDistance = radius * radius;
-
-        for (AreaSpawnEntry entry : spawnEntries) {
-            double distance = distanceSq(entry.getLocation(), location);
-
-            if (distance <= nearestDistance) {
-                nearestDistance = distance;
-                nearest = entry;
-            }
-        }
-
-        if (nearest != null)
-            spawnEntries.remove(nearest);
-
-        return nearest;
-    }
-
-    public boolean removeNearestSpawnEntity(Location location, double radius) {
-        if (removeNearestSpawnEntry(location, radius) != null)
-            return true;
-
-        return removeNearestSpawnLocation(location, radius);
     }
 
     public int getLootDespawnSeconds() {
@@ -754,8 +749,10 @@ public class Area {
     }
 
     public List<AreaChestLocation> resolveChestLocations() {
+        // Live list when real chest locations exist (callers iterate only);
+        // only the legacy center-fallback path allocates fresh.
         if (!chestLocations.isEmpty())
-            return new ArrayList<>(chestLocations);
+            return chestLocations;
 
         Location center = getCenter();
         if (center == null)
@@ -982,5 +979,11 @@ public class Area {
         }
 
         return lootList;
+    }
+
+    public record AreaStats(int level, int configuredMobs, int configuredBosses, int totalConfigured) {
+        public String toSignature() {
+            return level + "|" + configuredMobs + "|" + configuredBosses + "|" + totalConfigured;
+        }
     }
 }
