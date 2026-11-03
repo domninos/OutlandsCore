@@ -30,7 +30,6 @@ public class PartyCommand {
         }
 
         if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.PARTY_USAGE.replace("usage", USAGE));
             plugin.getPartyManager().info(player, null);
             return true;
         }
@@ -58,9 +57,8 @@ public class PartyCommand {
             case "info" -> plugin.getPartyManager().info(player, args.length >= 3 ? args[2] : null);
             case "chat" -> {
                 if (args.length < 3) {
-                    boolean enabled = plugin.getPartyManager().isPartyChatEnabled(player.getUniqueId());
-                    plugin.sendMessage(sender, Messages.PARTY_CHAT_MODE_STATE
-                            .replace("state", enabled ? "on" : "off"));
+                    boolean newState = !plugin.getPartyManager().isPartyChatEnabled(player.getUniqueId());
+                    plugin.getPartyManager().setPartyChatMode(player, newState);
                     return true;
                 }
 
