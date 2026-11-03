@@ -80,6 +80,9 @@ area-editor:
   level-increments: [1, 5, 10]
   respawn-smallest: 0
   respawn-increments: [5, 30, 60]
+  # Wizard step: how many times the mob may respawn after death (0 = never)
+  respawn-count-smallest: 0
+  respawn-count-increments: [1, 5, 10]
   increment-icon-material: GREEN_STAINED_GLASS_PANE
   increment-icon-name: "<green>+%value%</green>"
   decrement-icon-material: RED_STAINED_GLASS_PANE
@@ -90,6 +93,7 @@ area-editor:
   level-icon-name: "<yellow>Level: %value%</yellow>"
   respawn-icon-material: CLOCK
   respawn-icon-name: "<yellow>Respawn: %value% s</yellow>"
+  respawn-count-icon-name: "<yellow>Respawns: %value%</yellow>"
   # Boss flag page
   boss-yes-material: GREEN_WOOL
   boss-yes-name: "<green>Boss: Yes</green>"

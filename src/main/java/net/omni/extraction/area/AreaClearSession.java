@@ -26,7 +26,7 @@ public class AreaClearSession {
     private final Map<UUID, Integer> mobLootRolls;
     private final Map<UUID, AreaSpawnDefinition> mobDefinitions;
     private final Map<UUID, BukkitTask> respawnTasks;
-    private final Set<UUID> respawnedOnce;
+    private final Map<UUID, Integer> respawnCredits;
     private int totalMobs;
     private BossBar bossBar;
 
@@ -42,7 +42,7 @@ public class AreaClearSession {
         this.mobLootRolls = new HashMap<>();
         this.mobDefinitions = new HashMap<>();
         this.respawnTasks = new HashMap<>();
-        this.respawnedOnce = new HashSet<>();
+        this.respawnCredits = new HashMap<>();
         this.totalMobs = 0;
         this.bossBar = null;
     }
@@ -147,12 +147,17 @@ public class AreaClearSession {
         respawnTasks.clear();
     }
 
-    public boolean hasRespawned(UUID uuid) {
-        return respawnedOnce.contains(uuid);
+    /** Remaining revivals for a live mob slot (0 = none). */
+    public int getRespawnCredits(UUID uuid) {
+        return respawnCredits.getOrDefault(uuid, 0);
     }
 
-    public void markRespawned(UUID uuid) {
-        respawnedOnce.add(uuid);
+    public void setRespawnCredits(UUID uuid, int credits) {
+        respawnCredits.put(uuid, Math.max(0, credits));
+    }
+
+    public void clearRespawnCredits(UUID uuid) {
+        respawnCredits.remove(uuid);
     }
 
     public Map<UUID, String> getMobLootTables() {

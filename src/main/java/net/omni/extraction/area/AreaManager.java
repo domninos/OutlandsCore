@@ -163,6 +163,7 @@ public class AreaManager {
             if (entry.hasDrops())
                 definition.setDrops(entry.getDrops());
 
+            definition.setRespawnCount(entry.getRespawnCount());
             definition.setBoundLocation(entry.getLocation());
             result.add(definition);
         }

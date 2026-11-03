@@ -213,9 +213,11 @@ public class ConfigUtil {
     private List<Integer> editorCountIncrements;
     private List<Integer> editorLevelIncrements;
     private List<Integer> editorRespawnIncrements;
+    private List<Integer> editorRespawnCountIncrements;
     private int editorCountSmallest;
     private int editorLevelSmallest;
     private int editorRespawnSmallest;
+    private int editorRespawnCountSmallest;
     private String editorIncrementIconMaterial;
     private String editorIncrementIconName;
     private String editorDecrementIconMaterial;
@@ -226,6 +228,7 @@ public class ConfigUtil {
     private String editorLevelIconName;
     private String editorRespawnIconMaterial;
     private String editorRespawnIconName;
+    private String editorRespawnCountIconName;
     private String editorBossYesMaterial;
     private String editorBossYesName;
     private String editorBossNoMaterial;
@@ -1372,6 +1375,9 @@ public class ConfigUtil {
         this.editorCountSmallest = Math.max(1, getAndDefaultInt(ConfigKeys.AREA_EDITOR_COUNT_SMALLEST, 1, savedDefaults));
         this.editorLevelSmallest = Math.max(1, getAndDefaultInt(ConfigKeys.AREA_EDITOR_LEVEL_SMALLEST, 1, savedDefaults));
         this.editorRespawnSmallest = Math.max(0, getAndDefaultInt(ConfigKeys.AREA_EDITOR_RESPAWN_SMALLEST, 0, savedDefaults));
+        this.editorRespawnCountIncrements = loadIntList(ConfigKeys.AREA_EDITOR_RESPAWN_COUNT_INCREMENTS,
+                List.of(1, 5, 10), savedDefaults);
+        this.editorRespawnCountSmallest = Math.max(0, getAndDefaultInt(ConfigKeys.AREA_EDITOR_RESPAWN_COUNT_SMALLEST, 0, savedDefaults));
         this.editorIncrementIconMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_INCREMENT_ICON_MATERIAL,
                 "GREEN_STAINED_GLASS_PANE", savedDefaults);
         this.editorIncrementIconName = getAndDefaultString(ConfigKeys.AREA_EDITOR_INCREMENT_ICON_NAME,
@@ -1390,6 +1396,8 @@ public class ConfigUtil {
         this.editorRespawnIconMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_RESPAWN_ICON_MATERIAL, "CLOCK", savedDefaults);
         this.editorRespawnIconName = getAndDefaultString(ConfigKeys.AREA_EDITOR_RESPAWN_ICON_NAME,
                 "<yellow>Respawn: %value% s</yellow>", savedDefaults);
+        this.editorRespawnCountIconName = getAndDefaultString(ConfigKeys.AREA_EDITOR_RESPAWN_COUNT_ICON_NAME,
+                "<yellow>Respawns: %value%</yellow>", savedDefaults);
         this.editorBossYesMaterial = getAndDefaultString(ConfigKeys.AREA_EDITOR_BOSS_YES_MATERIAL,
                 "GREEN_WOOL", savedDefaults);
         this.editorBossYesName = getAndDefaultString(ConfigKeys.AREA_EDITOR_BOSS_YES_NAME,
@@ -1853,6 +1861,10 @@ public class ConfigUtil {
         return editorRespawnIncrements;
     }
 
+    public List<Integer> getAreaEditorRespawnCountIncrements() {
+        return editorRespawnCountIncrements;
+    }
+
     public int getAreaEditorCountSmallest() {
         return editorCountSmallest;
     }
@@ -1863,6 +1875,10 @@ public class ConfigUtil {
 
     public int getAreaEditorRespawnSmallest() {
         return editorRespawnSmallest;
+    }
+
+    public int getAreaEditorRespawnCountSmallest() {
+        return editorRespawnCountSmallest;
     }
 
     public String getAreaEditorIncrementIconMaterial() {
@@ -2227,6 +2243,10 @@ public class ConfigUtil {
 
     public String getAreaEditorRespawnIconName() {
         return editorRespawnIconName;
+    }
+
+    public String getAreaEditorRespawnCountIconName() {
+        return editorRespawnCountIconName;
     }
 
     public String getAreaEditorBossYesMaterial() {

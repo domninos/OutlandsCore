@@ -23,9 +23,10 @@ public class AreaEditorSession {
     public static final int PAGE_COUNT = 1;
     public static final int PAGE_LEVEL = 2;
     public static final int PAGE_RESPAWN = 3;
-    public static final int PAGE_BOSS = 4;
-    public static final int PAGE_DROPS = 5;
-    public static final int PAGE_DROP_CHANCE = 6;
+    public static final int PAGE_RESPAWN_COUNT = 4;
+    public static final int PAGE_BOSS = 5;
+    public static final int PAGE_DROPS = 6;
+    public static final int PAGE_DROP_CHANCE = 7;
 
     /** Max drop chance for an assigned relic (percent). */
     public static final double MAX_DROP_CHANCE = 100.0;
@@ -40,6 +41,7 @@ public class AreaEditorSession {
     private int count = 1;
     private int level = 1;
     private int respawnSeconds = 0;
+    private int respawnCount = 1;
     private boolean boss;
     private String lootType;
     private final Set<String> assignedRelics = new LinkedHashSet<>();
@@ -118,6 +120,15 @@ public class AreaEditorSession {
 
     public void setRespawnSeconds(int respawnSeconds) {
         this.respawnSeconds = respawnSeconds;
+    }
+
+    /** How many times the mob may revive itself after death (0 = never). */
+    public int getRespawnCount() {
+        return respawnCount;
+    }
+
+    public void setRespawnCount(int respawnCount) {
+        this.respawnCount = Math.max(0, respawnCount);
     }
 
     public boolean isBoss() {

@@ -313,13 +313,16 @@ public class AreaClearManager {
         session.getMobLootTables().remove(deadId);
         session.getMobLootRolls().remove(deadId);
         session.getMobDefinitions().remove(deadId);
+
+        int credits = session.getRespawnCredits(deadId);
+        session.clearRespawnCredits(deadId);
         updateBossBar(session);
 
         if (definition != null && definition.getRespawnSeconds() > 0
-                && origin != null && !session.hasRespawned(deadId)) {
-            session.markRespawned(deadId);
+                && definition.getRespawnCount() > 0
+                && origin != null && credits > 0) {
             session.setTotalMobs(session.getTotalMobs() + 1);
-            scheduleRespawn(session, deadId, definition, origin, wasBoss);
+            scheduleRespawn(session, deadId, definition, origin, wasBoss, credits - 1);
             updateBossBar(session);
             return;
         }
@@ -329,7 +332,7 @@ public class AreaClearManager {
     }
 
     private void scheduleRespawn(AreaClearSession session, UUID deadId, AreaSpawnDefinition definition,
-                                 Location origin, boolean wasBoss) {
+                                 Location origin, boolean wasBoss, int creditsLeft) {
         long delayTicks = Math.max(1, definition.getRespawnSeconds() * 20L);
         Area area = session.getArea();
 
@@ -359,7 +362,9 @@ public class AreaClearManager {
                 session.getMobLootTables().put(newId, definition.getLootTable());
                 session.getMobLootRolls().put(newId, definition.getLootRolls());
                 session.getMobDefinitions().put(newId, definition);
+                session.setRespawnCredits(newId, creditsLeft);
                 mobSessions.put(newId, session);
+                markSpillTag(entity, area.getName());
 
                 if (wasBoss)
                     session.addBossMob(newId);
@@ -777,6 +782,8 @@ public class AreaClearManager {
                 session.getMobLootTables().put(mobId, definition.getLootTable());
                 session.getMobLootRolls().put(mobId, definition.getLootRolls());
                 session.getMobDefinitions().put(mobId, definition);
+                session.setRespawnCredits(mobId,
+                        definition.getRespawnSeconds() > 0 ? definition.getRespawnCount() : 0);
                 mobSessions.put(mobId, session);
                 markSpillTag(entity, area.getName());
 

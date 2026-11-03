@@ -13,6 +13,7 @@ public class AreaSpawnEntry {
     private int count;
     private int level;
     private int respawnSeconds;
+    private int respawnCount = 1;
     private boolean boss;
     private List<MobDrop> drops;
 
@@ -22,11 +23,17 @@ public class AreaSpawnEntry {
 
     public AreaSpawnEntry(String mobId, Location location, int count, int level, int respawnSeconds,
                           boolean boss, List<MobDrop> drops) {
+        this(mobId, location, count, level, respawnSeconds, 1, boss, drops);
+    }
+
+    public AreaSpawnEntry(String mobId, Location location, int count, int level, int respawnSeconds,
+                          int respawnCount, boolean boss, List<MobDrop> drops) {
         this.mobId = mobId;
         this.location = location;
         this.count = count;
         this.level = level;
         this.respawnSeconds = respawnSeconds;
+        this.respawnCount = Math.max(0, respawnCount);
         this.boss = boss;
         this.drops = drops != null ? new ArrayList<>(drops) : new ArrayList<>();
     }
@@ -61,6 +68,15 @@ public class AreaSpawnEntry {
 
     public void setRespawnSeconds(int respawnSeconds) {
         this.respawnSeconds = respawnSeconds;
+    }
+
+    /** How many times this slot may revive itself after death (0 = never). */
+    public int getRespawnCount() {
+        return respawnCount;
+    }
+
+    public void setRespawnCount(int respawnCount) {
+        this.respawnCount = Math.max(0, respawnCount);
     }
 
     public boolean isBoss() {

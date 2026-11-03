@@ -171,9 +171,11 @@ public class Area {
                     int count = map.get("count") instanceof Number c ? c.intValue() : 1;
                     int level = map.get("level") instanceof Number l ? l.intValue() : 1;
                     int respawn = map.get("respawn-seconds") instanceof Number r ? r.intValue() : 0;
+                    int respawnCount = map.get("respawn-count") instanceof Number rc ? rc.intValue() : 1;
                     boolean boss = map.get("boss") instanceof Boolean b && b;
 
-                    AreaSpawnEntry entry = new AreaSpawnEntry(String.valueOf(mobId), location, count, level, respawn, boss);
+                    AreaSpawnEntry entry = new AreaSpawnEntry(String.valueOf(mobId), location, count, level,
+                            respawn, respawnCount, boss, new ArrayList<>());
 
                     if (map.get("drops") instanceof List<?> dropMaps) {
                         List<MobDrop> drops = new ArrayList<>();
@@ -855,6 +857,9 @@ public class Area {
             map.put("level", entry.getLevel());
             map.put("respawn-seconds", entry.getRespawnSeconds());
             map.put("boss", entry.isBoss());
+
+            if (entry.getRespawnCount() != 1)
+                map.put("respawn-count", entry.getRespawnCount());
 
             if (entry.hasDrops()) {
                 List<Map<String, Object>> dropList = new ArrayList<>();

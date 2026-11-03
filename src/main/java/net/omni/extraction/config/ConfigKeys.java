@@ -214,9 +214,12 @@ public final class ConfigKeys {
     public static final String AREA_EDITOR_COUNT_INCREMENTS = "area-editor.count-increments";
     public static final String AREA_EDITOR_LEVEL_INCREMENTS = "area-editor.level-increments";
     public static final String AREA_EDITOR_RESPAWN_INCREMENTS = "area-editor.respawn-increments";
+
+    public static final String AREA_EDITOR_RESPAWN_COUNT_INCREMENTS = "area-editor.respawn-count-increments";
     public static final String AREA_EDITOR_COUNT_SMALLEST = "area-editor.count-smallest";
     public static final String AREA_EDITOR_LEVEL_SMALLEST = "area-editor.level-smallest";
     public static final String AREA_EDITOR_RESPAWN_SMALLEST = "area-editor.respawn-smallest";
+    public static final String AREA_EDITOR_RESPAWN_COUNT_SMALLEST = "area-editor.respawn-count-smallest";
     public static final String AREA_EDITOR_INCREMENT_ICON_MATERIAL = "area-editor.increment-icon-material";
     public static final String AREA_EDITOR_INCREMENT_ICON_NAME = "area-editor.increment-icon-name";
     public static final String AREA_EDITOR_DECREMENT_ICON_MATERIAL = "area-editor.decrement-icon-material";
@@ -227,6 +230,8 @@ public final class ConfigKeys {
     public static final String AREA_EDITOR_LEVEL_ICON_NAME = "area-editor.level-icon-name";
     public static final String AREA_EDITOR_RESPAWN_ICON_MATERIAL = "area-editor.respawn-icon-material";
     public static final String AREA_EDITOR_RESPAWN_ICON_NAME = "area-editor.respawn-icon-name";
+
+    public static final String AREA_EDITOR_RESPAWN_COUNT_ICON_NAME = "area-editor.respawn-count-icon-name";
     public static final String AREA_EDITOR_BOSS_YES_MATERIAL = "area-editor.boss-yes-material";
     public static final String AREA_EDITOR_BOSS_YES_NAME = "area-editor.boss-yes-name";
     public static final String AREA_EDITOR_BOSS_NO_MATERIAL = "area-editor.boss-no-material";

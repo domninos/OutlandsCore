@@ -324,10 +324,12 @@ public class AreaEditorManager {
             session.setCount(Math.max(1, template.getCount()));
             session.setLevel(Math.max(1, template.getLevel()));
             session.setRespawnSeconds(Math.max(0, template.getRespawnSeconds()));
+            session.setRespawnCount(1);
         } else {
             session.setCount(1);
             session.setLevel(1);
             session.setRespawnSeconds(0);
+            session.setRespawnCount(1);
             session.setBoss(false);
         }
 
@@ -347,6 +349,8 @@ public class AreaEditorManager {
                     config.getAreaEditorLevelSmallest(), session.getLevel() + delta));
             case AreaEditorSession.PAGE_RESPAWN -> session.setRespawnSeconds(Math.max(
                     config.getAreaEditorRespawnSmallest(), session.getRespawnSeconds() + delta));
+            case AreaEditorSession.PAGE_RESPAWN_COUNT -> session.setRespawnCount(Math.max(
+                    config.getAreaEditorRespawnCountSmallest(), session.getRespawnCount() + delta));
             case AreaEditorSession.PAGE_DROP_CHANCE -> {
                 String relic = session.getCurrentRelic();
                 if (relic != null) {
@@ -422,7 +426,8 @@ public class AreaEditorManager {
 
         AreaSpawnEntry entry = new AreaSpawnEntry(session.getMobId(),
                 session.getTargetLocation(), session.getCount(),
-                session.getLevel(), session.getRespawnSeconds(), session.isBoss(), drops);
+                session.getLevel(), session.getRespawnSeconds(),
+                session.getRespawnCount(), session.isBoss(), drops);
         area.addSpawnEntry(entry);
         plugin.getAreaManager().markDirty(area);
 
@@ -491,6 +496,8 @@ public class AreaEditorManager {
                         config.getAreaEditorLevelIconName().replace("%value%", String.valueOf(session.getLevel())));
                 case AreaEditorSession.PAGE_RESPAWN -> valueItem(config.getAreaEditorRespawnIconMaterial(),
                         config.getAreaEditorRespawnIconName().replace("%value%", String.valueOf(session.getRespawnSeconds())));
+                case AreaEditorSession.PAGE_RESPAWN_COUNT -> valueItem(config.getAreaEditorRespawnIconMaterial(),
+                        config.getAreaEditorRespawnCountIconName().replace("%value%", String.valueOf(session.getRespawnCount())));
                 case AreaEditorSession.PAGE_BOSS -> valueItem(session.isBoss() ? config.getAreaEditorBossYesMaterial()
                                 : config.getAreaEditorBossNoMaterial(),
                         session.isBoss() ? config.getAreaEditorBossYesName() : config.getAreaEditorBossNoName());
@@ -570,6 +577,7 @@ public class AreaEditorManager {
             case AreaEditorSession.PAGE_COUNT -> addNumericKeys(keys, config.getAreaEditorCountIncrements());
             case AreaEditorSession.PAGE_LEVEL -> addNumericKeys(keys, config.getAreaEditorLevelIncrements());
             case AreaEditorSession.PAGE_RESPAWN -> addNumericKeys(keys, config.getAreaEditorRespawnIncrements());
+            case AreaEditorSession.PAGE_RESPAWN_COUNT -> addNumericKeys(keys, config.getAreaEditorRespawnCountIncrements());
             case AreaEditorSession.PAGE_BOSS -> {
                 keys.add("YES");
                 keys.add("NO");
