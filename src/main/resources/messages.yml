@@ -277,6 +277,24 @@ loot-editor:
   reset-none: "<red>No bundled default exists for loot table <white>%table%</white>.</red>"
 
 
+
+
+# Standalone loot chests (/extchest)
+chest:
+  look-at-block: "<red>Aim at the container block to register (within 6 blocks).</red>"
+  not-container: "<red>That block cannot hold loot.</red>"
+  unknown-table: "<red>Unknown loot table <white>%table%</white>. Use an id from loot_tables.yml.</red>"
+  unknown-key: "<red>Unknown key <white>%key%</white>. Define it under 'keys:' in tokens.yml.</red>"
+  already-registered: "<red>That block is already a registered loot chest.</red>"
+  registered: "<green>Standalone loot chest <white>%id%</white> registered.</green>"
+  not-found: "<red>No standalone chest <white>%id%</white>.</red>"
+  removed: "<gold>Removed standalone chest <white>%id%</white>.</gold>"
+  removed-all: "<gold>Removed <white>%count%</white> standalone chest(s).</gold>"
+  protected: "<red>Registered loot chests cannot be broken. Use <white>/extchest remove {id}</white>.</red>"
+  list-header: "<gray>Standalone loot chests:</gray>"
+  list-entry: "<gray> - </gray><white>%id%</white> <dark_gray>»</dark_gray> <white>%location%</white> <dark_gray>[</dark_gray><white>%table%</white><dark_gray>|</dark_gray><white>%key%</white><dark_gray>]</dark_gray>"
+
+
 # Boss Creator (/boss, /bosses)
 boss:
   usage: "<red>Usage: <white>%usage%</white></red>"

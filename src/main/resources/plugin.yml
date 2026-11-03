@@ -49,6 +49,9 @@ commands:
     description: Create and manage extraction bosses
     aliases: [bosses]
     permission: extraction.bosses
+  extchest:
+    description: Manage standalone loot chests
+    permission: extraction.areas
 
 permissions:
   extraction.*:

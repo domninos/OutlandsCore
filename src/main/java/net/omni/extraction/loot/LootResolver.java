@@ -49,7 +49,18 @@ public class LootResolver {
         String upper = type.toUpperCase(Locale.ROOT);
 
         if (upper.startsWith("KEY:")) {
-            ItemStack key = buildKeyItem(type.substring(4));
+            String keyId = type.substring(4);
+
+            if (!plugin.getConfigUtil().getKeyDefinitions().containsKey(keyId)) {
+                plugin.getLogger().warning("Unknown key '" + keyId
+                        + "' in loot drop — define it under 'keys:' in tokens.yml.");
+                return result;
+            }
+
+            if (plugin.getAreaManager() != null && !plugin.getAreaManager().isKeyInUse(keyId))
+                return result;
+
+            ItemStack key = buildKeyItem(keyId);
             if (key != null)
                 result.add(key);
             return result;

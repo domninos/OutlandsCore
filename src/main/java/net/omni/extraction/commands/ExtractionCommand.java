@@ -301,6 +301,9 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getMobTemplateManager().load();
         plugin.getBossTemplateManager().load();
         plugin.getBossManager().reload();
+        plugin.getStandaloneChestManager().load();
+        plugin.getStandaloneChestManager().start();
+        plugin.getStandaloneChestManager().refreshHolograms();
         plugin.getUpgradeManager().reload();
         plugin.getScoreboardManager().reload();
         plugin.getActionBarManager().reload();

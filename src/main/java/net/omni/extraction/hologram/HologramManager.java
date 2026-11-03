@@ -13,6 +13,8 @@ import net.omni.extraction.area.Area;
 import net.omni.extraction.area.AreaChestLocation;
 import net.omni.extraction.area.AreaClearSession;
 import net.omni.extraction.area.AreaSpawnDefinition;
+import net.omni.extraction.chests.StandaloneChest;
+import net.omni.extraction.chests.StandaloneChestManager;
 import net.omni.extraction.loot.LootTable;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -31,6 +33,7 @@ public class HologramManager {
 
     private static final String HOLOGRAM_PREFIX = "extraction_area_";
     private static final String CHEST_HOLOGRAM_PREFIX = "extraction_chest_";
+    private static final String STANDALONE_CHEST_PREFIX = "extraction_chest_standalone_";
     private static final String WAYPOINT_HOLOGRAM_PREFIX = "extraction_event_";
 
     private final ExtractionPlugin plugin;
@@ -238,9 +241,77 @@ public class HologramManager {
             }
         }
 
-        for (String name : new ArrayList<>(appliedChestLines.keySet()))
+        StandaloneChestManager standalone = plugin.getStandaloneChestManager();
+
+        if (standalone != null) {
+            for (StandaloneChest chest : standalone.getAll()) {
+                String name = updateStandaloneHologram(chest.getId(), chest.getLocation(),
+                        standalone.hologramSnapshot(chest));
+
+                if (name != null)
+                    expected.add(name);
+            }
+        }        for (String name : new ArrayList<>(appliedChestLines.keySet()))
             if (!expected.contains(name))
                 removeChestHologram(name);
+    }
+
+    /**
+     * Creates or refreshes the persistent hologram above a standalone (/extchest)
+     * loot chest. Lines pass pre-resolved state text from {@code StandaloneChestManager}.
+     *
+     * @return the hologram name, or null when nothing was shown
+     */
+    public String updateStandaloneHologram(int id, Location anchor, List<String> lines) {
+        if (!available())
+            return null;
+
+        if (!plugin.getConfigUtil().isHologramsEnabled())
+            return null;
+
+        String name = standaloneHologramName(id);
+
+        if (anchor == null || anchor.getWorld() == null || lines == null || lines.isEmpty()) {
+            removeChestHologram(name);
+            return null;
+        }
+
+        Location position = anchor.getBlock().getLocation().add(0.5, 2.5, 0.5);
+
+        try {
+            Hologram hologram = DHAPI.getHologram(name);
+
+            if (hologram == null) {
+                hologram = DHAPI.createHologram(name, position, false, lines);
+                lastChestPositions.put(name, position.clone());
+                appliedChestLines.put(name, lines);
+                return name;
+            }
+
+            Location last = lastChestPositions.get(name);
+            if (last == null || !sameSpot(last, position)) {
+                DHAPI.moveHologram(hologram, position);
+                lastChestPositions.put(name, position.clone());
+            }
+
+            List<String> applied = appliedChestLines.get(name);
+            if (applied == null || !applied.equals(lines)) {
+                DHAPI.setHologramLines(hologram, lines);
+                appliedChestLines.put(name, lines);
+            }
+
+            return name;
+        } catch (RuntimeException ignored) {
+            return name;
+        }
+    }
+
+    public static String standaloneHologramName(int id) {
+        return STANDALONE_CHEST_PREFIX + id;
+    }
+
+    public void removeStandaloneHologram(int id) {
+        removeChestHologram(standaloneHologramName(id));
     }
 
     public void removeChestHologram(String name) {

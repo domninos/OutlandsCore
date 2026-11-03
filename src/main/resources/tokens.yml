@@ -107,12 +107,6 @@ event-items:
     display-name: "<gray>Meteor Rock</gray>"
     lore:
       - "<dark_gray>A charred lump of the crater floor."
-  supply_crate_key:
-    material: TRIPWIRE_HOOK
-    display-name: "<gold>Crate Key</gold>"
-    lore:
-      - "<gray>A heavy key stamped with the"
-      - "<gray>emblem of the supply convoy."
   hazmat_fragment:
     material: CHORUS_FRUIT
     display-name: "<green><bold>Hazmat Fragment</bold></green>"

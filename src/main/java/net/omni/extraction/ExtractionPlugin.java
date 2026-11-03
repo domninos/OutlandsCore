@@ -31,6 +31,8 @@ import net.omni.extraction.loot.LootResolver;
 import net.omni.extraction.loot.LootTableManager;
 import net.omni.extraction.looteditor.LootEditorListener;
 import net.omni.extraction.looteditor.LootEditorManager;
+import net.omni.extraction.chests.StandaloneChestManager;
+import net.omni.extraction.chests.StandaloneChestCommand;
 import net.omni.extraction.managers.*;
 import net.omni.extraction.mobs.MobResolver;
 import net.omni.extraction.mobs.MobTemplateManager;
@@ -94,6 +96,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private HologramManager hologramManager;
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
+    private StandaloneChestManager standaloneChestManager;
     private ExtractionManager extractionManager;
     private RelicManager relicManager;
     private RelicEffectManager relicEffectManager;
@@ -197,6 +200,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         if (corpseManager != null)
             corpseManager.shutdown();
 
+        if (standaloneChestManager != null)
+            standaloneChestManager.stop();
+
         if (petManager != null)
             petManager.shutdown();
 
@@ -298,6 +304,10 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.lootTableManager.load();
         this.lootEditorManager = new LootEditorManager(this);
 
+        this.standaloneChestManager = new StandaloneChestManager(this);
+        this.standaloneChestManager.load();
+        this.standaloneChestManager.refreshHolograms();
+
         this.worldEventManager = new WorldEventManager(this);
 
         this.bossManager = new BossManager(this);
@@ -329,6 +339,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         areaClearManager.start();
         worldEventManager.start();
         bossManager.start();
+        standaloneChestManager.start();
 
         if (configUtil.isScoreboardEnabled())
             scoreboardManager.start();
@@ -395,6 +406,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new DroneCommand(this, droneManager).register();
         new PetsCommand(this).register();
         new BossCommand(this).register();
+        new StandaloneChestCommand(this).register();
     }
 
     private void registerListeners() {
@@ -418,6 +430,8 @@ public final class ExtractionPlugin extends JavaPlugin {
         new PetListener(this).register();
         new RelicListener(this).register();
 
+        if (standaloneChestManager != null)
+            standaloneChestManager.register();
         this.partyListener = new PartyListener(this);
         partyListener.register();
     }
@@ -570,6 +584,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public LootTableManager getLootTableManager() {
         return lootTableManager;
+    }
+
+    public StandaloneChestManager getStandaloneChestManager() {
+        return standaloneChestManager;
     }
 
     public Gson getGson() {

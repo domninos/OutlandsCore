@@ -519,6 +519,28 @@ public class AreaManager {
         return new ArrayList<>(areas.values());
     }
 
+    /**
+     * True when any configured chest (here or in the standalone chest system)
+     * is locked behind this key id — used to suppress key loot drops when
+     * nothing can consume them.
+     */
+    public boolean isKeyInUse(String keyId) {
+        if (keyId == null || keyId.isBlank())
+            return false;
+
+        for (Area area : areas.values()) {
+            if (area == null) continue;
+
+            for (AreaChestLocation chest : area.getChestLocations()) {
+                if (keyId.equalsIgnoreCase(chest.getKeyId()))
+                    return true;
+            }
+        }
+
+        return plugin.getStandaloneChestManager() != null
+                && plugin.getStandaloneChestManager().usesKey(keyId);
+    }
+
     public List<String> getNames() {
         return new ArrayList<>(areas.keySet());
     }

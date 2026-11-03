@@ -161,9 +161,6 @@ supply_convoy:
     - "<gold><bold>Supply Cache</bold></gold>"
     - "<gray>Right-click to open</gray>"
   entries:
-    - type: "EVENT:supply_crate_key"
-      amount: 1
-      weight: 14
     - type: TOKENS
       amount: 6
       weight: 14

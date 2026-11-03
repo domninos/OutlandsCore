@@ -208,6 +208,9 @@ loot:
   # Rolls per chest when neither the area file (loot.items-per-chest) nor the
   # loot table (items-per-chest) specifies a value
   default-items-per-chest: 3
+  # Refill period for /extchest standalone loot chests (seconds) when their
+  # inventory has been fully looted
+  standalone-refill-seconds: 300
   # Material/display name of the physical TOKENS loot item (credits balance on pickup)
   token-item-material: GOLD_INGOT
   token-item-name: "<gold>Extraction Token</gold>"

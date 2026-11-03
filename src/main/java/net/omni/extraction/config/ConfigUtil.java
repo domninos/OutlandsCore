@@ -348,6 +348,7 @@ public class ConfigUtil {
     private List<String> lootChestHologramEmpty;
 
     private int lootDefaultItemsPerChest;
+    private int lootStandaloneRefillSeconds;
     private String lootTokenItemMaterial;
     private String lootTokenItemName;
     private String prefix;
@@ -972,6 +973,7 @@ public class ConfigUtil {
 
     private void loadLoot(AtomicInteger savedDefaults) {
         this.lootDefaultItemsPerChest = Math.max(1, getAndDefaultInt(ConfigKeys.LOOT_DEFAULT_ITEMS_PER_CHEST, 3, savedDefaults));
+        this.lootStandaloneRefillSeconds = Math.max(30, getAndDefaultInt(ConfigKeys.LOOT_STANDALONE_REFILL_SECONDS, 300, savedDefaults));
         this.lootTokenItemMaterial = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_MATERIAL, "GOLD_INGOT", savedDefaults);
         this.lootTokenItemName = getAndDefaultString(ConfigKeys.LOOT_TOKEN_ITEM_NAME, "<gold>Extraction Token</gold>", savedDefaults);
         this.lootChestHologramOngoing = loadLootChestHologramState("ongoing", List.of(
@@ -2727,6 +2729,10 @@ public class ConfigUtil {
 
     public int getLootDefaultItemsPerChest() {
         return lootDefaultItemsPerChest;
+    }
+
+    public int getLootStandaloneRefillSeconds() {
+        return lootStandaloneRefillSeconds;
     }
 
     public String getLootTokenItemMaterial() {
