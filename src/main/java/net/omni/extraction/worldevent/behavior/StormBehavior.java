@@ -28,7 +28,10 @@ public class StormBehavior {
     }
 
     /**
-     * Picks a random ready extraction area to host a storm, or null when none fits.
+     * Picks the extraction area to host a storm: prefers the area containing or
+     * nearest to {@code origin} (so a storm anchored to a player start lands in
+     * that area instead of a random one), then any ready area; null when none
+     * fits.
      */
     public Area pickStormArea(Location origin) {
         AreaManager areaManager = ctx.plugin().getAreaManager();
@@ -53,6 +56,39 @@ public class StormBehavior {
 
         if (candidates.isEmpty())
             return null;
+
+        if (candidates.size() == 1)
+            return candidates.get(0);
+
+        if (origin != null && origin.getWorld() != null) {
+            Area containing = ctx.plugin().getAreaManager().getAreaAt(origin);
+
+            if (containing != null && candidates.contains(containing))
+                return containing;
+
+            Area nearest = null;
+            double nearestSq = Double.MAX_VALUE;
+
+            for (Area area : candidates) {
+                Location center = area.getCenter();
+                if (center == null || center.getWorld() == null
+                        || !center.getWorld().equals(origin.getWorld())) {
+                    continue;
+                }
+
+                double distSq = center.distanceSquared(origin);
+                if (distSq < nearestSq) {
+                    nearestSq = distSq;
+                    nearest = area;
+                }
+            }
+
+            if (nearest != null) {
+                ctx.plugin().getLogger().info("Storm anchored to area '" + nearest.getName()
+                        + "' (" + candidates.size() + " area(s) available).");
+                return nearest;
+            }
+        }
 
         return candidates.get(ctx.random().nextInt(candidates.size()));
     }
