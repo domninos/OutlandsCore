@@ -109,7 +109,7 @@ public class AreaEditorManager {
         int size = sizeFor(session);
 
         Inventory inventory = plugin.getChatRenderer().createInventory(
-                new AreaEditorHolder(), size,
+                new AreaEditorHolder(session), size,
                 plugin.getPackManager().titleWithTexture(config.getAreaEditorTitle(), "area-editor"));
 
         fillTop(inventory, config);
@@ -187,7 +187,11 @@ public class AreaEditorManager {
 
             for (int i = 0; i < slots.length && i < keys.size(); i++)
                 if (rawSlot == slots[i]) {
-                    handleContent(player, session, keys.get(i));
+                    String key = keys.get(i);
+
+                    if (contentItem(session, key, config) != null)
+                        handleContent(player, session, key);
+
                     return;
                 }
 
@@ -204,7 +208,12 @@ public class AreaEditorManager {
         if (index < 0 || index >= keys.size())
             return;
 
-        handleContent(player, session, keys.get(index));
+        String key = keys.get(index);
+
+        if (contentItem(session, key, config) == null)
+            return;
+
+        handleContent(player, session, key);
     }
 
     private void handleBack(Player player, AreaEditorSession session) {
@@ -225,8 +234,13 @@ public class AreaEditorManager {
 
         if (session.getPage() < AreaEditorSession.PAGE_DROP_CHANCE) {
             if (session.getPage() == AreaEditorSession.PAGE_DROPS
-                    && session.getCurrentRelic() == null
-                    && !session.getAssignedRelics().isEmpty())
+                    && session.getAssignedRelics().isEmpty()) {
+                confirmSpawn(player, session);
+                return;
+            }
+
+            if (session.getPage() == AreaEditorSession.PAGE_DROPS
+                    && session.getCurrentRelic() == null)
                 session.setCurrentRelic(session.getAssignedRelics().iterator().next());
 
             session.setPage(session.getPage() + 1);
@@ -457,6 +471,15 @@ public class AreaEditorManager {
         int info = size - 5;
         ItemStack item;
 
+        if (isBossPage(session)) {
+            for (int slot : bossButtonSlots(size)) {
+                if (slot == info) {
+                    inventory.setItem(info, filler(config));
+                    return;
+                }
+            }
+        }
+
         switch (session.getMode()) {
             case CHEST -> item = textItem(config.getAreaEditorFillerMaterial(), "<yellow>Choose a loot table</yellow>");
             case SPAWN -> item = switch (session.getPage()) {
@@ -558,8 +581,10 @@ public class AreaEditorManager {
                     keys.add("RELIC:" + RelicManager.KIND_ARTIFACT + ":" + def.id());
             }
             case AreaEditorSession.PAGE_DROP_CHANCE -> {
-                if (session.getCurrentRelic() != null)
-                    addNumericKeys(keys, config.getAreaEditorDropChanceIncrements());
+                if (session.getCurrentRelic() == null)
+                    break;
+
+                addNumericKeys(keys, config.getAreaEditorDropChanceIncrements());
                 keys.add("REMOVEDROP");
             }
         }

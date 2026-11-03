@@ -214,7 +214,7 @@ public class ExtractionCommand implements CommandExecutor {
                 MessageUtil.append("extraction party kick {player}", "Kick a member (leader)", help);
                 MessageUtil.append("extraction party disband", "Disband the party (leader)", help);
                 MessageUtil.append("extraction party list", "List party members", help);
-                MessageUtil.append("extraction party chat on|off", "Toggle party chat mode", help);
+                MessageUtil.append("extraction party chat [on|off]", "Toggle party chat mode", help);
             }
             case CATEGORY_AREAS -> {
                 MessageUtil.append("/areas wand [name] [mode]", "Get (or configure) the area wand", help);
