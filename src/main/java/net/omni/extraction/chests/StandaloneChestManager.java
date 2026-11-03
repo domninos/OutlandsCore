@@ -4,6 +4,7 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.HologramUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -423,7 +424,7 @@ public class StandaloneChestManager {
         List<String> lines = new ArrayList<>();
         for (String line : raw)
             if (line != null)
-                lines.add(plugin.getHologramManager()
+                lines.add(HologramUtils
                         .toDh(line.replace("%area%", "Loot")));
 
         return lines;

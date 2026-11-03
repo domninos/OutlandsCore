@@ -3,11 +3,6 @@ package net.omni.extraction.hologram;
 import eu.decentsoftware.holograms.api.DHAPI;
 import eu.decentsoftware.holograms.api.DecentHologramsAPI;
 import eu.decentsoftware.holograms.api.holograms.Hologram;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.area.AreaChestLocation;
@@ -17,8 +12,8 @@ import net.omni.extraction.area.AreaSpawnDefinition;
 import net.omni.extraction.chests.StandaloneChest;
 import net.omni.extraction.chests.StandaloneChestManager;
 import net.omni.extraction.loot.LootTable;
+import net.omni.extraction.util.HologramUtils;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -31,11 +26,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class HologramManager {
-
-    private static final String HOLOGRAM_PREFIX = "extraction_area_";
-    private static final String CHEST_HOLOGRAM_PREFIX = "extraction_chest_";
-    private static final String STANDALONE_CHEST_PREFIX = "extraction_chest_standalone_";
-    private static final String WAYPOINT_HOLOGRAM_PREFIX = "extraction_event_";
 
     private final ExtractionPlugin plugin;
     private final Map<String, Location> lastLocations;
@@ -64,7 +54,7 @@ public class HologramManager {
     }
 
     private static String hologramName(Area area) {
-        return HOLOGRAM_PREFIX + area.getName().toLowerCase();
+        return HologramUtils.areaHologramName(area);
     }
 
     private void init() {
@@ -155,13 +145,7 @@ public class HologramManager {
     }
 
     public static String chestHologramName(Location anchor) {
-        if (anchor == null || anchor.getWorld() == null)
-            return null;
-
-        return CHEST_HOLOGRAM_PREFIX + anchor.getWorld().getName().toLowerCase(Locale.ROOT)
-                + "_" + anchor.getBlockX()
-                + "_" + anchor.getBlockY()
-                + "_" + anchor.getBlockZ();
+        return HologramUtils.chestHologramName(anchor);
     }
 
     /**
@@ -355,7 +339,7 @@ public class HologramManager {
     }
 
     public static String standaloneHologramName(int id) {
-        return STANDALONE_CHEST_PREFIX + id;
+        return HologramUtils.standaloneHologramName(id);
     }
 
     public void removeStandaloneHologram(int id) {
@@ -428,7 +412,7 @@ public class HologramManager {
     }
 
     public static String eventWaypointName(String id) {
-        return WAYPOINT_HOLOGRAM_PREFIX + id.toLowerCase(Locale.ROOT);
+        return HologramUtils.eventWaypointName(id);
     }
 
     /**
@@ -606,77 +590,16 @@ public class HologramManager {
     }
 
     /**
-     * Converts a MiniMessage string to DecentHolograms' native text format
-     * (IridiumColorAPI): {@code &} legacy codes plus {@code <#RRGGBB>} solid
-     * hex. Colors and decorations are resolved per component node while walking
-     * the tree, so nesting and hex gradients (MiniMessage flattens those into
-     * per-character solid colors) survive the conversion.
+     * Converts a MiniMessage string to DecentHolograms' native text format —
+     * delegates to {@link HologramUtils#toDh(String)}; kept as a member for the
+     * existing call sites (event presentation, standalone chest lines).
      */
     public String toDh(String raw) {
-        try {
-            Component component = MiniMessage.miniMessage().deserialize(raw);
-            StringBuilder builder = new StringBuilder();
-            appendDh(component, null, 0, builder);
-            return builder.toString();
-        } catch (RuntimeException ignored) {
-            return ChatColor.stripColor(raw);
-        }
-    }
-
-    private void appendDh(Component component, TextColor parentColor, int parentDecorations, StringBuilder builder) {
-        TextColor color = component.style().color() != null ? component.style().color() : parentColor;
-        int decorations = parentDecorations;
-
-        for (TextDecoration decoration : TextDecoration.values()) {
-            TextDecoration.State state = component.style().decoration(decoration);
-
-            if (state == TextDecoration.State.TRUE)
-                decorations |= decorationBit(decoration);
-            else if (state == TextDecoration.State.FALSE)
-                decorations &= ~decorationBit(decoration);
-        }
-
-        if (color != null)
-            builder.append("<#").append(color.asHexString().substring(1)).append(">");
-
-        appendDecorationCodes(decorations, builder);
-
-        if (component instanceof TextComponent text)
-            builder.append(text.content());
-
-        for (Component child : component.children())
-            appendDh(child, color, decorations, builder);
-    }
-
-    private int decorationBit(TextDecoration decoration) {
-        return switch (decoration) {
-            case BOLD -> 1;
-            case ITALIC -> 2;
-            case UNDERLINED -> 4;
-            case STRIKETHROUGH -> 8;
-            case OBFUSCATED -> 16;
-        };
-    }
-
-    private void appendDecorationCodes(int decorations, StringBuilder builder) {
-        if ((decorations & 1) != 0) builder.append("&l");
-        if ((decorations & 2) != 0) builder.append("&o");
-        if ((decorations & 4) != 0) builder.append("&n");
-        if ((decorations & 8) != 0) builder.append("&m");
-        if ((decorations & 16) != 0) builder.append("&k");
+        return HologramUtils.toDh(raw);
     }
 
     private boolean sameSpot(Location first, Location second) {
-        if (first.getWorld() == null || second.getWorld() == null)
-            return first.getWorld() == second.getWorld()
-                    && first.getX() == second.getX()
-                    && first.getY() == second.getY()
-                    && first.getZ() == second.getZ();
-
-        return first.getWorld().getName().equals(second.getWorld().getName())
-                && first.getX() == second.getX()
-                && first.getY() == second.getY()
-                && first.getZ() == second.getZ();
+        return HologramUtils.sameSpot(first, second);
     }
 
     private List<String> buildLines(Area area, Map<String, String> values) {
@@ -694,7 +617,7 @@ public class HologramManager {
             for (Map.Entry<String, String> entry : values.entrySet())
                 filled = filled.replace(entry.getKey(), entry.getValue());
 
-            lines.add(toDh(filled));
+            lines.add(HologramUtils.toDh(filled));
         }
 
         return lines;
