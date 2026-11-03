@@ -14,14 +14,18 @@ import net.omni.extraction.util.PacketGlow;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -39,6 +43,7 @@ public class AreaClearManager {
     private final Map<String, AreaClearSession> chestSessions;
     private final Map<String, String> chestKeys;
     private BukkitTask containmentTask;
+    private NamespacedKey spillKey;
 
     public AreaClearManager(ExtractionPlugin plugin, AreaManager areaManager, LootResolver lootResolver) {
         this.plugin = plugin;
@@ -50,6 +55,7 @@ public class AreaClearManager {
         this.mobSessions = new HashMap<>();
         this.chestSessions = new HashMap<>();
         this.chestKeys = new HashMap<>();
+        this.spillKey = new NamespacedKey(plugin, "extraction_clear_spill");
     }
 
     public void start() {
@@ -156,10 +162,14 @@ public class AreaClearManager {
             mobSessions.remove(mobId);
         }
 
+        session.cancelRespawns();
+
         if (session.getBossBar() != null) {
             for (Player player : Bukkit.getOnlinePlayers())
                 player.hideBossBar(session.getBossBar());
         }
+
+        removeAllSpawnedSpills(session);
 
         removeSessionChests(session);
 
@@ -173,6 +183,67 @@ public class AreaClearManager {
             if (owner != null)
                 plugin.sendMessage(owner, Messages.AREA_CLEAR_CANCELLED.replace("area", area.getName()));
         }
+    }
+
+    public AreaClearSession getMobSession(UUID uuid) {
+        return mobSessions.get(uuid);
+    }
+
+    /**
+     * Registers a newly split child (e.g. a magma cube created by the death of a
+     * larger one) into the session of its parent so containment, boss-bar bookkeeping
+     * and clear completion all count it, and so {@link #cancelSession} removes it.
+     * Returns false when the parent was not a session mob.
+     */
+    public boolean registerSplit(UUID parentUuid, LivingEntity child) {
+        AreaClearSession session = mobSessions.get(parentUuid);
+        if (session == null || child == null || child.isDead())
+            return false;
+
+        UUID id = child.getUniqueId();
+        AreaSpawnDefinition definition = session.getDefinitionFor(parentUuid);
+
+        session.getMobs().add(id);
+        session.getMobOrigins().put(id, child.getLocation());
+        session.getMobDrops().put(id, session.getDropsFor(parentUuid));
+        session.getMobLootTables().put(id, session.getLootTableFor(parentUuid));
+        session.getMobLootRolls().put(id, session.getLootRollsFor(parentUuid));
+        if (definition != null)
+            session.getMobDefinitions().put(id, definition);
+        session.setTotalMobs(session.getTotalMobs() + 1);
+        mobSessions.put(id, session);
+
+        child.setPersistent(true);
+        child.setRemoveWhenFarAway(false);
+        markSpillTag(child, session.getArea().getName());
+
+        updateBossBar(session);
+        return true;
+    }
+
+    /**
+     * Splits that could not be registered live (parent already untracked at split
+     * time) are tagged instead and swept here, so they never linger in the world
+     * after a clear is cancelled or finished.
+     */
+    private void removeAllSpawnedSpills(AreaClearSession session) {
+        Area area = session.getArea();
+        World world = Bukkit.getWorld(area.getWorld());
+        if (world == null || spillKey == null)
+            return;
+
+        String target = area.getName();
+
+        for (LivingEntity entity : world.getLivingEntities()) {
+            String tagged = entity.getPersistentDataContainer().get(spillKey, PersistentDataType.STRING);
+            if (target.equalsIgnoreCase(tagged))
+                entity.remove();
+        }
+    }
+
+    private void markSpillTag(Entity entity, String areaName) {
+        if (entity == null || spillKey == null) return;
+        entity.getPersistentDataContainer().set(spillKey, PersistentDataType.STRING, areaName);
     }
 
     private boolean inside(Area area, Location location, double margin) {
@@ -202,14 +273,86 @@ public class AreaClearManager {
     public void handleMobDeath(Entity entity, Player killer) {
         if (entity == null) return;
 
-        AreaClearSession session = mobSessions.remove(entity.getUniqueId());
+        UUID deadId = entity.getUniqueId();
+        AreaClearSession session = mobSessions.remove(deadId);
         if (session == null) return;
 
-        session.getMobs().remove(entity.getUniqueId());
-        session.getMobOrigins().remove(entity.getUniqueId());
+        AreaSpawnDefinition definition = session.getDefinitionFor(deadId);
+        boolean wasBoss = session.isBossMob(deadId);
+        Location origin = session.getMobOrigins().get(deadId);
+
+        session.getMobs().remove(deadId);
+        session.getMobOrigins().remove(deadId);
+        session.getMobDrops().remove(deadId);
+        session.getMobLootTables().remove(deadId);
+        session.getMobLootRolls().remove(deadId);
+        session.getMobDefinitions().remove(deadId);
         updateBossBar(session);
 
-        if (session.getMobs().isEmpty()) completeClear(session, killer);
+        if (definition != null && definition.getRespawnSeconds() > 0
+                && origin != null && !session.hasRespawned(deadId)) {
+            session.markRespawned(deadId);
+            session.setTotalMobs(session.getTotalMobs() + 1);
+            scheduleRespawn(session, deadId, definition, origin, wasBoss);
+            updateBossBar(session);
+            return;
+        }
+
+        if (session.getMobs().isEmpty() && !session.hasPendingRespawns())
+            completeClear(session, killer);
+    }
+
+    private void scheduleRespawn(AreaClearSession session, UUID deadId, AreaSpawnDefinition definition,
+                                 Location origin, boolean wasBoss) {
+        long delayTicks = Math.max(1, definition.getRespawnSeconds() * 20L);
+        Area area = session.getArea();
+
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                session.clearRespawn(deadId);
+
+                World world = Bukkit.getWorld(area.getWorld());
+                if (world == null || !sessions.containsKey(area.getName().toLowerCase(Locale.ROOT))) {
+                    session.setTotalMobs(session.getTotalMobs() - 1);
+                    updateBossBar(session);
+                    return;
+                }
+
+                Entity entity = mobFactory.spawn(definition, origin);
+                if (entity == null) {
+                    session.setTotalMobs(session.getTotalMobs() - 1);
+                    updateBossBar(session);
+                    return;
+                }
+
+                UUID newId = entity.getUniqueId();
+                session.getMobs().add(newId);
+                session.getMobOrigins().put(newId, origin.clone());
+                session.getMobDrops().put(newId, definition.getDrops());
+                session.getMobLootTables().put(newId, definition.getLootTable());
+                session.getMobLootRolls().put(newId, definition.getLootRolls());
+                session.getMobDefinitions().put(newId, definition);
+                mobSessions.put(newId, session);
+
+                if (wasBoss)
+                    session.addBossMob(newId);
+
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (!area.contains(player.getLocation()))
+                        continue;
+
+                    if (session.getBossBar() != null)
+                        player.showBossBar(session.getBossBar());
+
+                    PacketGlow.setGlow(player, entity, true);
+                }
+
+                updateBossBar(session);
+            }
+        }.runTaskLater(plugin, delayTicks);
+
+        session.scheduleRespawn(deadId, task);
     }
 
     private void updateBossBar(AreaClearSession session) {
@@ -607,7 +750,9 @@ public class AreaClearManager {
                 session.getMobDrops().put(mobId, definition.getDrops());
                 session.getMobLootTables().put(mobId, definition.getLootTable());
                 session.getMobLootRolls().put(mobId, definition.getLootRolls());
+                session.getMobDefinitions().put(mobId, definition);
                 mobSessions.put(mobId, session);
+                markSpillTag(entity, area.getName());
 
                 if (definition.isBoss())
                     session.addBossMob(mobId);
@@ -759,6 +904,8 @@ public class AreaClearManager {
                     player.hideBossBar(session.getBossBar());
             }
 
+            session.cancelRespawns();
+            removeAllSpawnedSpills(session);
             removeSessionChests(session);
         }
 

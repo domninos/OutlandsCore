@@ -3,6 +3,7 @@ package net.omni.extraction.area;
 import net.kyori.adventure.bossbar.BossBar;
 import net.omni.extraction.mobs.MobDrop;
 import org.bukkit.Location;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +24,9 @@ public class AreaClearSession {
     private final Map<UUID, List<MobDrop>> mobDrops;
     private final Map<UUID, String> mobLootTables;
     private final Map<UUID, Integer> mobLootRolls;
+    private final Map<UUID, AreaSpawnDefinition> mobDefinitions;
+    private final Map<UUID, BukkitTask> respawnTasks;
+    private final Set<UUID> respawnedOnce;
     private int totalMobs;
     private BossBar bossBar;
 
@@ -36,6 +40,9 @@ public class AreaClearSession {
         this.mobDrops = new HashMap<>();
         this.mobLootTables = new HashMap<>();
         this.mobLootRolls = new HashMap<>();
+        this.mobDefinitions = new HashMap<>();
+        this.respawnTasks = new HashMap<>();
+        this.respawnedOnce = new HashSet<>();
         this.totalMobs = 0;
         this.bossBar = null;
     }
@@ -105,6 +112,43 @@ public class AreaClearSession {
     public List<MobDrop> getDropsFor(UUID uuid) {
         List<MobDrop> drops = mobDrops.get(uuid);
         return drops != null ? drops : new ArrayList<>();
+    }
+
+    public AreaSpawnDefinition getDefinitionFor(UUID uuid) {
+        return mobDefinitions.get(uuid);
+    }
+
+    public boolean hasPendingRespawn(UUID uuid) {
+        return respawnTasks.containsKey(uuid);
+    }
+
+    public boolean hasPendingRespawns() {
+        return !respawnTasks.isEmpty();
+    }
+
+    public void scheduleRespawn(UUID deadId, BukkitTask task) {
+        respawnTasks.put(deadId, task);
+    }
+
+    public void clearRespawn(UUID deadId) {
+        BukkitTask task = respawnTasks.remove(deadId);
+        if (task != null)
+            task.cancel();
+    }
+
+    public void cancelRespawns() {
+        for (BukkitTask task : respawnTasks.values())
+            task.cancel();
+
+        respawnTasks.clear();
+    }
+
+    public boolean hasRespawned(UUID uuid) {
+        return respawnedOnce.contains(uuid);
+    }
+
+    public void markRespawned(UUID uuid) {
+        respawnedOnce.add(uuid);
     }
 
     public Map<UUID, String> getMobLootTables() {

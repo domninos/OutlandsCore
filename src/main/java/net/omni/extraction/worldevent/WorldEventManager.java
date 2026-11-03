@@ -756,6 +756,29 @@ public class WorldEventManager {
         return mobInstances.get(uuid);
     }
 
+    /**
+     * Registers newly split children (magma cubes / slimes) of an event mob into
+     * the same event instance so {@link #endEvent} can remove them together with
+     * the tracked parents; without this, split children (fresh UUIDs) linger in
+     * the world after the event ends.
+     */
+    public void registerSplitChildren(UUID parentUuid, List<org.bukkit.entity.LivingEntity> children) {
+        EventInstance instance = getMobInstance(parentUuid);
+        if (instance == null || children == null || children.isEmpty())
+            return;
+
+        for (org.bukkit.entity.LivingEntity child : children) {
+            if (child == null)
+                continue;
+
+            mobInstances.put(child.getUniqueId(), instance);
+            instance.track(child.getUniqueId(), new ArrayList<>(), false);
+            instance.addTotal(1);
+            child.setPersistent(true);
+            child.setRemoveWhenFarAway(false);
+        }
+    }
+
     public boolean claimHarvestChest(Player player, Block block) {
         return ctx.harvest().claimHarvestChest(player, block);
     }
