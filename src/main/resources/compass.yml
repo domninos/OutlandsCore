@@ -1,6 +1,6 @@
 compass:
   title: "<dark_gray>Area Compass</dark_gray>"
-  rows: 6
+  rows: 4
   filler:
     material: GRAY_STAINED_GLASS_PANE
     name: " "

@@ -3,6 +3,7 @@ package net.omni.extraction.compass;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.data.PlayerData;
+import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.StringUtils;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -28,42 +29,46 @@ public final class CompassGUI {
         if (data == null || !data.isLoaded())
             return;
 
+        List<Area> areas = plugin.getAreaManager().getAreas();
+        double revealRadius = plugin.getRelicEffectManager().explorerRevealRadius(data);
+        double revealRadiusSquared = revealRadius * revealRadius;
+
+        // Visible entries only (discovered, or within the Explorer's reveal
+        // radius). With nothing to show the GUI is not opened at all — the
+        // player is told in chat instead.
+        List<Area> visible = new ArrayList<>();
+
+        for (Area area : areas) {
+            boolean discovered = data.isAreaDiscovered(area.getName());
+            boolean revealed = !discovered && revealRadiusSquared > 0
+                    && horizontalDistanceSquared(player, area) <= revealRadiusSquared;
+
+            if (discovered || revealed)
+                visible.add(area);
+        }
+
+        if (visible.isEmpty()) {
+            plugin.sendMessage(player, Messages.COMPASS_NO_AREAS.toString());
+            return;
+        }
+
         int size = plugin.getConfigUtil().getCompassSize();
         CompassHolder holder = new CompassHolder();
         Inventory inventory = plugin.getChatRenderer().createInventory(holder, size,
                 plugin.getConfigUtil().getCompassTitle());
         holder.setInventory(inventory);
 
-        List<Area> areas = plugin.getAreaManager().getAreas();
-
-        if (areas.isEmpty()) {
-            inventory.setItem(size / 2, buildEmpty(plugin));
-            player.openInventory(inventory);
-            return;
-        }
-
-        Map<Area, Integer> slots = assignSlots(plugin, areas, size);
-        double revealRadius = plugin.getRelicEffectManager().explorerRevealRadius(data);
-        double revealRadiusSquared = revealRadius * revealRadius;
-        boolean visible = false;
+        Map<Area, Integer> slots = assignSlots(plugin, visible, size);
 
         for (Map.Entry<Area, Integer> entry : slots.entrySet()) {
             Area area = entry.getKey();
             int slot = entry.getValue();
             boolean discovered = data.isAreaDiscovered(area.getName());
-            boolean revealed = !discovered && revealRadiusSquared > 0
-                    && horizontalDistanceSquared(player, area) <= revealRadiusSquared;
-
-            if (!discovered && !revealed)
-                continue;
+            boolean revealed = !discovered;
 
             inventory.setItem(slot, buildItem(plugin, player, area, discovered, revealed));
             holder.map(slot, area.getName());
-            visible = true;
         }
-
-        if (!visible)
-            inventory.setItem(size / 2, buildHidden(plugin));
 
         ItemStack filler = buildFiller(plugin);
 
@@ -157,19 +162,6 @@ public final class CompassGUI {
         return item;
     }
 
-    private static ItemStack buildHidden(ExtractionPlugin plugin) {
-        Material material = matchMaterial(plugin.getConfigUtil().getCompassHiddenMaterial(), Material.BARRIER);
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta == null)
-            return item;
-
-        plugin.getChatRenderer().setDisplayName(meta, plugin.getConfigUtil().getCompassHiddenName());
-        item.setItemMeta(meta);
-        return item;
-    }
-
     private static ItemStack buildFiller(ExtractionPlugin plugin) {
         Material material = matchMaterial(plugin.getConfigUtil().getCompassFillerMaterial(),
                 Material.GRAY_STAINED_GLASS_PANE);
@@ -184,19 +176,6 @@ public final class CompassGUI {
             return item;
 
         plugin.getChatRenderer().setDisplayName(meta, plugin.getConfigUtil().getCompassFillerName());
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private static ItemStack buildEmpty(ExtractionPlugin plugin) {
-        Material material = matchMaterial(plugin.getConfigUtil().getCompassEmptyMaterial(), Material.BARRIER);
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta == null)
-            return item;
-
-        plugin.getChatRenderer().setDisplayName(meta, plugin.getConfigUtil().getCompassEmptyName());
         item.setItemMeta(meta);
         return item;
     }

@@ -818,7 +818,7 @@ public class ConfigUtil {
     private void loadCompass(AtomicInteger savedDefaults) {
         this.compassTitle = getAndDefaultString(ConfigKeys.COMPASS_TITLE,
                 "<dark_gray>Area Compass</dark_gray>", savedDefaults);
-        this.compassRows = Math.clamp(getAndDefaultInt(ConfigKeys.COMPASS_ROWS, 6, savedDefaults), 1, 6);
+        this.compassRows = Math.clamp(getAndDefaultInt(ConfigKeys.COMPASS_ROWS, 4, savedDefaults), 1, 6);
         this.compassFillerMaterial = getAndDefaultString(ConfigKeys.COMPASS_FILLER_MATERIAL,
                 "GRAY_STAINED_GLASS_PANE", savedDefaults);
         this.compassFillerName = getAndDefaultString(ConfigKeys.COMPASS_FILLER_NAME, " ", savedDefaults);
