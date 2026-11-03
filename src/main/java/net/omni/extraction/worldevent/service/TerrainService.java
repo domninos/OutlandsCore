@@ -263,8 +263,15 @@ public class TerrainService {
         if (event.isPushPlayers())
             pushPlayersOut(center, event);
 
-        for (EventInstance.SavedBlock saved : blocks)
-            world.getBlockAt(saved.x(), saved.y(), saved.z()).setBlockData(saved.data(), false);
+        for (EventInstance.SavedBlock saved : blocks) {
+            // A successful event's harvest chest may sit inside the crater —
+            // regenerating the block would delete the still-unclaimed loot.
+            Block chestCheck = world.getBlockAt(saved.x(), saved.y(), saved.z());
+            if (ctx.harvest().isHarvestChest(chestCheck))
+                continue;
+
+            chestCheck.setBlockData(saved.data(), false);
+        }
 
         if (event.isPushPlayers()) {
             try {

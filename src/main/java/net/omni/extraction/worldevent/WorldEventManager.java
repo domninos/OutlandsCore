@@ -353,7 +353,10 @@ public class WorldEventManager {
         ctx.storm().clearStormEffects(instance);
         ctx.convoy().cancelMover(instance);
         ctx.convoy().clearConvoyVisual(instance);
-        ctx.harvest().clearAll();
+        // Successful events keep their harvest chests in the world for claiming
+        // (the last claim restores terrain); failed/expired runs lose theirs.
+        if (!success)
+            ctx.harvest().clearFor(instance);
         // roam cleanup handled by context if needed
 
         for (UUID uuid : new ArrayList<>(instance.getMobs())) {

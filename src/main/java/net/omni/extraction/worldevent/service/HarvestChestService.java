@@ -13,6 +13,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
@@ -165,6 +166,36 @@ public class HarvestChestService {
     }
 
     /**
+     * Removes only this instance's unclaimed harvest chests — used when an event
+     * ends WITHOUT success (expiry/no-players/admin stop). The block inventory is
+     * cleared before the chest is turned to AIR so nothing spills to the ground.
+     * On success the chests stay until claimed instead (see endEvent).
+     */
+    public void clearFor(EventInstance instance) {
+        if (instance == null)
+            return;
+
+        List<Location> remove = new ArrayList<>();
+
+        for (Map.Entry<Location, HarvestChest> entry : harvestChests.entrySet()) {
+            if (entry.getValue().instance() == instance)
+                remove.add(entry.getKey());
+        }
+
+        for (Location location : remove) {
+            harvestChests.remove(location);
+
+            Block block = location.getBlock();
+
+            if (block.getState() instanceof InventoryHolder holder)
+                holder.getInventory().clear();
+
+            if (block.getType() == Material.CHEST)
+                block.setType(Material.AIR);
+        }
+    }
+
+    /**
      * Removes every tracked harvest chest (shutdown safety net).
      */
     public void clearAll() {
@@ -181,5 +212,8 @@ public class HarvestChestService {
      * A temporary harvest chest: the owning instance + its rolled loot.
      */
     private record HarvestChest(EventInstance instance, List<ItemStack> items) {
+        public EventInstance instance() {
+            return instance;
+        }
     }
 }
