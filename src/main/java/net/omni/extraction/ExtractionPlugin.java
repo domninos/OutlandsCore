@@ -34,6 +34,8 @@ import net.omni.extraction.looteditor.LootEditorManager;
 import net.omni.extraction.chests.StandaloneChestManager;
 import net.omni.extraction.chests.StandaloneChestListener;
 import net.omni.extraction.chests.StandaloneChestCommand;
+import net.omni.extraction.areaeditor.SpawnMarkerManager;
+import net.omni.extraction.listeners.SpawnMarkerListener;
 import net.omni.extraction.managers.IdleTaskManager;
 import net.omni.extraction.managers.*;
 import net.omni.extraction.mobs.MobResolver;
@@ -100,6 +102,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private LootTableManager lootTableManager;
     private StandaloneChestManager standaloneChestManager;
     private IdleTaskManager idleTaskManager;
+    private SpawnMarkerManager spawnMarkerManager;
     private ExtractionManager extractionManager;
     private RelicManager relicManager;
     private RelicEffectManager relicEffectManager;
@@ -206,6 +209,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         if (standaloneChestManager != null)
             standaloneChestManager.stop();
 
+        if (spawnMarkerManager != null)
+            spawnMarkerManager.stop();
+
         if (petManager != null)
             petManager.shutdown();
 
@@ -303,6 +309,8 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.areaEditorManager = new AreaEditorManager(this);
         this.hologramManager = new HologramManager(this);
 
+        this.spawnMarkerManager = new SpawnMarkerManager(this);
+
         this.lootTableManager = new LootTableManager(this);
         this.lootTableManager.load();
         this.lootEditorManager = new LootEditorManager(this);
@@ -343,6 +351,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         worldEventManager.start();
         bossManager.start();
         standaloneChestManager.start();
+        spawnMarkerManager.start();
 
         if (configUtil.isScoreboardEnabled())
             scoreboardManager.start();
@@ -437,6 +446,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new RelicListener(this).register();
 
         new StandaloneChestListener(this).register();
+        new SpawnMarkerListener(this).register();
         this.partyListener = new PartyListener(this);
         partyListener.register();
     }
@@ -531,6 +541,10 @@ public final class ExtractionPlugin extends JavaPlugin {
         return areaManager;
     }
 
+    public AreaSelectionVisualizer getAreaSelectionVisualizer() {
+        return areaSelectionVisualizer;
+    }
+
     public MobTemplateManager getMobTemplateManager() {
         return mobTemplateManager;
     }
@@ -593,6 +607,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public StandaloneChestManager getStandaloneChestManager() {
         return standaloneChestManager;
+    }
+
+    public SpawnMarkerManager getSpawnMarkerManager() {
+        return spawnMarkerManager;
     }
 
     public IdleTaskManager getIdleTaskManager() {

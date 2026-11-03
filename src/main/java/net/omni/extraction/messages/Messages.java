@@ -290,6 +290,7 @@ public enum Messages {
 
     AREA_HELP_TITLE("area.help-title", "  <gradient:#00AAFF:#55FFFF><bold>Areas</bold></gradient>"),
     AREA_HELP_CATEGORY_TITLE("area.help-category-title", "  <gradient:#00AAFF:#55FFFF><bold>Areas</bold></gradient> <dark_gray>-</dark_gray> <white>%category%</white>"),
+    AREA_MARKER_EDIT_HINT("area.marker-edit-hint", " <gray>(Right Click to Edit)</gray>"),
 
     BOSS_USAGE("boss.usage", "<red>Usage: <white>%usage%</white></red>"),
     BOSS_CREATED("boss.created", "<green>Created boss <white>%boss%</white>.</green>"),

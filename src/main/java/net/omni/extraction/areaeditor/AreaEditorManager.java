@@ -40,6 +40,52 @@ public class AreaEditorManager {
             render(player, session);
     }
 
+    /**
+     * Opens the editor pre-filled from an existing spawn entry (right-click on a
+     * spawn marker): confirm updates the entry in place instead of appending a
+     * duplicate. Relic drops are applied after the template reset so they
+     * survive; non-relic drops are preserved verbatim through the edit.
+     */
+    public void openSpawnEditor(Player player, Area area, AreaSpawnEntry existing) {
+        ConfigUtil config = plugin.getConfigUtil();
+
+        AreaEditorSession session = create(player, area, Mode.SPAWN, existing.getLocation());
+        if (session == null)
+            return;
+
+        session.setExisting(existing);
+        session.setMobId(existing.getMobId());
+        session.setCount(Math.max(config.getAreaEditorCountSmallest(), existing.getCount()));
+        session.setLevel(Math.max(config.getAreaEditorLevelSmallest(), existing.getLevel()));
+        session.setRespawnSeconds(Math.max(config.getAreaEditorRespawnSmallest(), existing.getRespawnSeconds()));
+        session.setRespawnCount(Math.max(config.getAreaEditorRespawnCountSmallest(), existing.getRespawnCount()));
+        session.setBoss(existing.isBoss());
+
+        List<MobDrop> preserved = new ArrayList<>();
+        for (MobDrop drop : existing.getDrops()) {
+            if (drop.getType() != null && (drop.getType().startsWith("CHARM:")
+                    || drop.getType().startsWith("ARTIFACT:"))) {
+                session.addRelic(drop.getType());
+                session.setRelicChance(drop.getType(), Math.clamp(drop.getChance() * 100.0, 0.0, 100.0));
+            } else if (drop != null && !drop.getType().isBlank()) {
+                preserved.add(drop);
+            }
+        }
+        session.preserveDrops(preserved);
+
+        session.setPage(AreaEditorSession.PAGE_COUNT);
+        session.setListPage(0);
+        hideMarker(player, existing);
+        render(player, session);
+    }
+
+    private void hideMarker(Player player, AreaSpawnEntry entry) {
+        if (plugin.getSpawnMarkerManager() == null || entry == null)
+            return;
+
+        plugin.getSpawnMarkerManager().removeMarkerFor(player, entry);
+    }
+
     public void openChestEditor(Player player, Area area, Location location) {
         AreaEditorSession session = create(player, area, Mode.CHEST, location);
         if (session != null)
@@ -417,19 +463,37 @@ public class AreaEditorManager {
         return null;
     }
 
+    /**
+     * The exact numeric Location instance used as the map key in MarkerManager;
+     * entry locations are compared block-wise.
+     */
     private void confirmSpawn(Player player, AreaEditorSession session) {
         Area area = session.getArea();
 
         List<MobDrop> drops = new ArrayList<>();
         for (String dropType : session.getAssignedRelics())
             drops.add(new MobDrop(dropType, session.getRelicChance(dropType) / 100.0, 1));
+        for (MobDrop preserved : session.getPreservedDrops())
+            if (preserved != null && !preserved.getType().isBlank())
+                drops.add(preserved);
 
         AreaSpawnEntry entry = new AreaSpawnEntry(session.getMobId(),
                 session.getTargetLocation(), session.getCount(),
                 session.getLevel(), session.getRespawnSeconds(),
                 session.getRespawnCount(), session.isBoss(), drops);
-        area.addSpawnEntry(entry);
+
+        AreaSpawnEntry existing = session.getExisting();
+
+        if (existing != null && area.getSpawnEntries().remove(existing)) {
+            area.addSpawnEntry(entry);
+        } else {
+            area.addSpawnEntry(entry);
+        }
+
         plugin.getAreaManager().markDirty(area);
+
+        if (plugin.getSpawnMarkerManager() != null)
+            plugin.getSpawnMarkerManager().reconcile();
 
         Location location = session.getTargetLocation();
         Messages message = session.isBoss() ? Messages.AREA_BOSS_ADDED : Messages.AREA_SPAWN_ADDED;

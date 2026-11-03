@@ -27,6 +27,21 @@ public class AreaMobFactory {
     }
 
     public Entity spawn(AreaSpawnDefinition definition, Location location) {
+        Entity entity = spawn(definition, location, false, null);
+        return entity;
+    }
+
+    /**
+     * Spawn-editor marker variant: identical look (type, display name with the
+     * "(Right Click to Edit)" suffix baked into {@code displayOverride},
+     * equipment, baby) but AI-off, silent, invulnerable and non-persistent —
+     * it must never enter the clear session's mob registry.
+     */
+    public Entity spawnMarker(AreaSpawnDefinition definition, Location location, String displayOverride) {
+        return spawn(definition, location, true, displayOverride);
+    }
+
+    private Entity spawn(AreaSpawnDefinition definition, Location location, boolean marker, String displayOverride) {
         if (location == null || location.getWorld() == null) return null;
 
         Entity entity = definition.isMythic()
@@ -35,12 +50,25 @@ public class AreaMobFactory {
 
         if (entity == null) return null;
 
-        entity.setPersistent(true);
+        entity.setPersistent(!marker);
 
-        if (entity instanceof org.bukkit.entity.Mob mob)
-            mob.setRemoveWhenFarAway(false);
+        if (marker) {
+            entity.setInvulnerable(true);
 
-        if (definition.isBoss())
+            if (entity instanceof LivingEntity living) {
+                living.setAI(false);
+                living.setSilent(true);
+                living.setRemoveWhenFarAway(false);
+            }
+        } else {
+            if (entity instanceof org.bukkit.entity.Mob mob) {
+                mob.setRemoveWhenFarAway(false);
+            }
+        }
+
+        if (marker && displayOverride != null && !displayOverride.isBlank())
+            applyDisplayName(entity, displayOverride);
+        else if (definition.isBoss() || marker)
             applyDisplayName(entity, definition.getDisplayName());
 
         applyHealth(entity, definition.getHealth());
@@ -48,7 +76,7 @@ public class AreaMobFactory {
         applyEquipment(entity, definition.getEquipment());
         applyBaby(entity, definition.isBaby());
 
-        if (definition.isBoss() && !definition.getAbilities().isEmpty()
+        if (!marker && definition.isBoss() && !definition.getAbilities().isEmpty()
                 && plugin.getBossManager() != null)
             plugin.getBossManager().register(entity, definition.getAbilities());
 

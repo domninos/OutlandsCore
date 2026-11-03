@@ -157,6 +157,11 @@ public class AreaSelectionVisualizer implements Listener {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
+    /** IDs of players currently holding an area wand (marker gating source). */
+    public Set<UUID> getWandHolders() {
+        return new HashSet<>(wandHolders);
+    }
+
     private Area resolveArea(AreaManager areaManager, Player player, ItemStack hand) {
         String name = areaManager.getWandArea(hand);
 

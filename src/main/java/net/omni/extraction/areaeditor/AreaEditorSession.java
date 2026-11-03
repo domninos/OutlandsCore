@@ -1,10 +1,14 @@
 package net.omni.extraction.areaeditor;
 
 import net.omni.extraction.area.Area;
+import net.omni.extraction.area.AreaSpawnEntry;
+import net.omni.extraction.mobs.MobDrop;
 import org.bukkit.Location;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -47,6 +51,8 @@ public class AreaEditorSession {
     private final Set<String> assignedRelics = new LinkedHashSet<>();
     private final Map<String, Double> relicChances = new HashMap<>();
     private String currentRelic;
+    private AreaSpawnEntry existing;
+    private final List<MobDrop> preservedDrops = new ArrayList<>();
 
     public AreaEditorSession(Area area, Mode mode, Location targetLocation) {
         this.area = area;
@@ -185,5 +191,25 @@ public class AreaEditorSession {
         assignedRelics.clear();
         relicChances.clear();
         currentRelic = null;
+    }
+
+    /** The spawn entry being edited in place (null when creating a new one). */
+    public AreaSpawnEntry getExisting() {
+        return existing;
+    }
+
+    public void setExisting(AreaSpawnEntry existing) {
+        this.existing = existing;
+    }
+
+    /** Non-relic drops kept verbatim through an edit (materials/keys/mythic refs). */
+    public List<MobDrop> getPreservedDrops() {
+        return preservedDrops;
+    }
+
+    public void preserveDrops(List<MobDrop> drops) {
+        preservedDrops.clear();
+        if (drops != null)
+            preservedDrops.addAll(drops);
     }
 }

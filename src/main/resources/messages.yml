@@ -172,6 +172,7 @@ admin:
   mode-blocked-drone: "<red>You cannot enter admin mode while piloting a drone.</red>"
   help-title: "  <gradient:#00AAFF:#55FFFF><bold>Areas</bold></gradient>"
   help-category-title: "  <gradient:#00AAFF:#55FFFF><bold>Areas</bold></gradient> <dark_gray>-</dark_gray> <white>%category%</white>"
+  marker-edit-hint: " <gray>(Right Click to Edit)</gray>"
 party:
   usage: "<red>Usage: %usage%</red>"
   no-perm: "<red>You do not have permission to use the party system.</red>"

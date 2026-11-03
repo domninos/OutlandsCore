@@ -217,6 +217,10 @@ public class AreaClearManager {
         }
     }
 
+    public AreaMobFactory getMobFactory() {
+        return mobFactory;
+    }
+
     public AreaClearSession getMobSession(UUID uuid) {
         return mobSessions.get(uuid);
     }
