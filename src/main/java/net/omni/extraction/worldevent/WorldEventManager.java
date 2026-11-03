@@ -124,6 +124,15 @@ public class WorldEventManager {
         startEvent(event.getId(), false);
     }
 
+    /**
+     * Runs one maintenance pass from outside (idle-server shutdown): tears down
+     * any leftover active events so their mobs/craters/boss bars don't freeze
+     * when the task stops.
+     */
+    public void runFinalSweep() {
+        tick();
+    }
+
     private void tick() {
         // Events only exist for players actually running Extraction. Once none
         // remain, end them so event mobs are not kept alive forever.

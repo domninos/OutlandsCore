@@ -136,6 +136,8 @@ public class PlayerListener implements Listener {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
 
+        plugin.getIdleTaskManager().onJoin();
+
         plugin.getPackManager().tryResourcePack(player);
 
         plugin.getPlayerDataManager().loadPlayer(uuid, () -> {
@@ -196,6 +198,7 @@ public class PlayerListener implements Listener {
 
         plugin.getPlayerDataManager().unloadPlayer(uuid);
         plugin.getGuiManager().removePlayer(uuid);
+        plugin.getIdleTaskManager().onQuit();
         lastBlockBlocked.remove(uuid);
     }
 

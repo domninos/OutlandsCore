@@ -34,6 +34,7 @@ import net.omni.extraction.looteditor.LootEditorManager;
 import net.omni.extraction.chests.StandaloneChestManager;
 import net.omni.extraction.chests.StandaloneChestListener;
 import net.omni.extraction.chests.StandaloneChestCommand;
+import net.omni.extraction.managers.IdleTaskManager;
 import net.omni.extraction.managers.*;
 import net.omni.extraction.mobs.MobResolver;
 import net.omni.extraction.mobs.MobTemplateManager;
@@ -98,6 +99,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
     private StandaloneChestManager standaloneChestManager;
+    private IdleTaskManager idleTaskManager;
     private ExtractionManager extractionManager;
     private RelicManager relicManager;
     private RelicEffectManager relicEffectManager;
@@ -352,6 +354,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         startSaveTask();
         preloadOnlinePlayers();
 
+        idleTaskManager = new IdleTaskManager(this);
+        idleTaskManager.sync();
+
         sendConsole("<green>Successfully started " + getDescription().getName() + " v" + getDescription().getVersion() + "</green>");
     }
 
@@ -588,6 +593,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public StandaloneChestManager getStandaloneChestManager() {
         return standaloneChestManager;
+    }
+
+    public IdleTaskManager getIdleTaskManager() {
+        return idleTaskManager;
     }
 
     public Gson getGson() {

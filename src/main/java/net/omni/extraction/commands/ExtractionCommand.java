@@ -315,6 +315,7 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getRelicEffectManager().reload();
         plugin.getPackManager().reload();
         plugin.getWorldEventManager().reload();
+        plugin.getIdleTaskManager().sync();
 
         plugin.getCooldownManager().applyConfig();
 
