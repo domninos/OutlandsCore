@@ -228,6 +228,18 @@ public class WorldEventManager {
      * mutators-max-selected cap, conditions and the enabled flag.
      */
     public EventStartResult startEvent(String id, boolean force, List<MutatorType> forcedMutators) {
+        return startEvent(id, force, null, forcedMutators);
+    }
+
+    /**
+     * Starts an event, optionally pinned to a named extraction {@code areaName}
+     * (case-insensitive; {@code here} anchors to the sender's feet — but this
+     * overload takes the resolved {@link Location} directly). Storm events
+     * always bind to the area containing/nearest the origin, so a charged
+     * start can force that choice explicitly.
+     */
+    public EventStartResult startEvent(String id, boolean force, Location forcedLocation,
+                                       List<MutatorType> forcedMutators) {
         WorldEvent event = config.getEvent(id);
         if (event == null)
             return EventStartResult.NOT_FOUND;
@@ -241,7 +253,7 @@ public class WorldEventManager {
         if (!force && !enabled)
             return EventStartResult.DISABLED;
 
-        EventInstance instance = spawnEvent(event, null, forcedMutators);
+        EventInstance instance = spawnEvent(event, forcedLocation, forcedMutators, true);
         if (instance == null)
             return EventStartResult.NO_SPAWNS;
 
@@ -249,6 +261,28 @@ public class WorldEventManager {
         ctx.presentation().announceStart(instance);
         ctx.presentation().updateCompass();
         return EventStartResult.STARTED;
+    }
+
+    /**
+     * Resolves an admin-typed area token into the location to anchor an event
+     * start to: a defined area's center (or {@code here}), or null when the
+     * token names no area.
+     */
+    public Location resolveAreaAnchor(String token, Location playerLocation) {
+        if (token == null || token.isBlank())
+            return null;
+
+        if ("here".equalsIgnoreCase(token))
+            return playerLocation;
+
+        Area target = null;
+
+        for (Area area : plugin.getAreaManager().getAreas()) {
+            if (area != null && area.getName().equalsIgnoreCase(token))
+                target = area;
+        }
+
+        return target == null ? null : target.getCenter();
     }
 
     // ---- scheduling / starting ----
@@ -342,10 +376,15 @@ public class WorldEventManager {
     }
 
     private EventInstance spawnEvent(WorldEvent event, Location origin) {
-        return spawnEvent(event, origin, List.of());
+        return spawnEvent(event, origin, List.of(), false);
     }
 
     private EventInstance spawnEvent(WorldEvent event, Location origin, List<MutatorType> forcedMutators) {
+        return spawnEvent(event, origin, forcedMutators, false);
+    }
+
+    private EventInstance spawnEvent(WorldEvent event, Location origin, List<MutatorType> forcedMutators,
+                                     boolean explicitOrigin) {
         if (origin == null)
             origin = ctx.spawner().pickOrigin(event);
 
@@ -358,7 +397,10 @@ public class WorldEventManager {
 
         Area stormArea = null;
         if (event.isStorm()) {
-            stormArea = ctx.storm().pickStormArea(origin);
+            stormArea = explicitOrigin && ctx.plugin().getAreaManager().getAreaAt(origin) != null
+                    ? ctx.plugin().getAreaManager().getAreaAt(origin)
+                    : ctx.storm().pickStormArea(origin);
+
             if (stormArea == null) {
                 plugin.getLogger().warning("Toxic Storm '" + event.getId()
                         + "' cannot start — no ready extraction area is available to contaminate.");

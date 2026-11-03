@@ -140,10 +140,33 @@ public class EventSpawner {
         return any;
     }
 
+    /**
+     * Scatters a spawn point around {@code origin}: always at least half the
+     * configured spawn radius away, ground-snapped, and verified passable so
+     * mobs never spawn on top of a player or inside terrain.
+     */
     public Location offsetOrigin(Location origin) {
-        double angle = ctx.random().nextDouble() * Math.PI * 2;
-        double radius = ctx.random().nextDouble() * ctx.settings().spawnRadius();
-        return origin.clone().add(Math.cos(angle) * radius, 1.0, Math.sin(angle) * radius);
+        double spawnRadius = Math.max(1.0, ctx.settings().spawnRadius());
+        double minRadius = Math.min(5.0, spawnRadius * 0.5);
+
+        for (int attempt = 0; attempt < 8; attempt++) {
+            double angle = ctx.random().nextDouble() * Math.PI * 2;
+            double radius = minRadius + ctx.random().nextDouble() * Math.max(0.0, spawnRadius - minRadius);
+
+            Location candidate = origin.clone().add(
+                    Math.cos(angle) * radius, 1.0, Math.sin(angle) * radius);
+            candidate = groundSnap(candidate);
+
+            org.bukkit.block.Block base = candidate.getBlock();
+
+            if (base.isPassable()
+                    && base.getRelative(0, 1, 0).isPassable()
+                    && base.getRelative(0, 2, 0).isPassable())
+                return new Location(origin.getWorld(),
+                        base.getX() + 0.5, base.getY(), base.getZ() + 0.5);
+        }
+
+        return groundSnap(origin.clone().add(0, 1, 0));
     }
 
     /**
@@ -186,7 +209,10 @@ public class EventSpawner {
         if (candidates.isEmpty())
             return null;
 
-        return candidates.get(ctx.random().nextInt(candidates.size())).getLocation().add(0, 2, 0);
+        Player chosen = candidates.get(ctx.random().nextInt(candidates.size()));
+        double angle = ctx.random().nextDouble() * Math.PI * 2;
+
+        return chosen.getLocation().add(Math.cos(angle) * 8.0, 2.0, Math.sin(angle) * 8.0);
     }
 
     /**

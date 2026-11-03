@@ -65,13 +65,12 @@ public class ConvoyBehavior {
                 points.add(origin.clone().add(dir.clone().multiply(d)));
         } else {
             for (double d = step; d < dist; d += step)
-                points.add(ctx.spawner().groundSnap(origin.clone().add(dir.clone().multiply(d))));
+                points.add(groundSnapPoint(origin.clone().add(dir.clone().multiply(d))));
         }
 
         points.add(world.equals(dest.getWorld())
-                ? dest.clone()
+                ? groundSnapPoint(dest.clone())
                 : origin.clone().add(dir.clone().multiply(dist)));
-
         if (!world.equals(dest.getWorld()))
             ctx.plugin().getLogger().warning("Convoy '" + event.getId()
                     + "' end anchor is in world '" + dest.getWorld().getName()
@@ -95,6 +94,24 @@ public class ConvoyBehavior {
             spawnConvoyVisual(instance, origin);
 
         return true;
+    }
+
+    /**
+     * Snaps a convoy waypoint to the topmost non-air block in its column so
+     * waypoints under overhangs/half-blocks stay walkable for the pathfinder;
+     * the column-scan variant used elsewhere can latch onto a ceiling Y and
+     * embed the waypoint inside terrain (the carrier then never reaches it and
+     * falls back to stuck-timeout teleports, looking like it "isn't moving").
+     */
+    private Location groundSnapPoint(Location point) {
+        World world = point.getWorld();
+        if (world == null)
+            return point;
+
+        org.bukkit.block.Block top = world.getHighestBlockAt(point.getBlockX(), point.getBlockZ());
+
+        return new Location(world, point.getX(),
+                Math.max(top.getY() + 1, world.getMinHeight()), point.getZ());
     }
 
     /**
@@ -145,18 +162,21 @@ public class ConvoyBehavior {
         entity.setGlowing(true);
         entity.setPersistent(true);
 
-        if (entity instanceof Mob mob) {
-            mob.setRemoveWhenFarAway(false);
-            mob.setAware(true);
-        } else {
+        if (!(entity instanceof Mob)) {
             ctx.plugin().getLogger().warning("Convoy carrier '" + cfg.carrier()
-                    + "' is not a Mob — movement will not work.");
+                    + "' is not a Mob — the convoy cannot walk; event stopped.");
+            entity.remove();
+            return null;
         }
 
+        Mob mob = (Mob) entity;
+        mob.setRemoveWhenFarAway(false);
+        mob.setAware(true);
+
         // The display-entity "car" is the visible convoy — hide the driver mob.
-        if (!cfg.car().isEmpty() && entity instanceof Mob driver) {
-            driver.setInvisible(true);
-            driver.setSilent(true);
+        if (!cfg.car().isEmpty()) {
+            mob.setInvisible(true);
+            mob.setSilent(true);
         }
 
         return entity;

@@ -74,7 +74,7 @@ public class RoamBehavior {
 
         List<MobDrop> drops = spawn.drops().isEmpty() ? definition.getDrops() : spawn.drops();
 
-        Entity entity = ctx.mobFactory().spawn(definition, origin);
+        Entity entity = ctx.mobFactory().spawn(definition, ctx.spawner().offsetOrigin(origin));
         if (entity == null)
             return false;
 
