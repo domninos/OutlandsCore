@@ -1,12 +1,16 @@
 package net.omni.extraction.commands;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.util.Permissions;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.Permissions;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-/** Handles {@code /extraction party ...}. */
+import java.util.Arrays;
+
+/**
+ * Handles {@code /extraction party ...}.
+ */
 public class PartyCommand {
 
     private static final String USAGE =
@@ -62,12 +66,7 @@ public class PartyCommand {
                     return true;
                 }
 
-                String text = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length));
-
-                if (text.equalsIgnoreCase("on") || text.equalsIgnoreCase("off")) {
-                    plugin.getPartyManager().setPartyChatMode(player, text.equalsIgnoreCase("on"));
-                    return true;
-                }
+                String text = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
 
                 plugin.getPartyManager().chat(player, text);
             }

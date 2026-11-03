@@ -84,12 +84,6 @@ public class ExtractionTabCompleter implements TabCompleter {
 
         if (args.length == 3
                 && args[0].equalsIgnoreCase("party")
-                && args[1].equalsIgnoreCase("chat")) {
-            return StringUtil.copyPartialMatches(args[2], List.of("on", "off"), new ArrayList<>());
-        }
-
-        if (args.length == 3
-                && args[0].equalsIgnoreCase("party")
                 && (args[1].equalsIgnoreCase("kick") || args[1].equalsIgnoreCase("join"))) {
             List<String> names = new ArrayList<>();
 
