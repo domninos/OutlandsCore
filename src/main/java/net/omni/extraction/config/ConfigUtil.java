@@ -155,7 +155,7 @@ public class ConfigUtil {
     private String petsShopFillerName;
     private List<String> petsShopBuyLore;
     private List<String> petsShopOwnedLore;
-    private int petFollowUpdateTicks = 10;
+    private int petFollowUpdateTicks = 4;
     private double petFollowSpeed = 6.0;
     private double petFollowRange = 2.5;
     private double petFollowTeleportRange = 20.0;
@@ -1235,7 +1235,7 @@ public class ConfigUtil {
         this.petsShopOwnedLore = getAndDefaultStringList(ConfigKeys.PETS_SHOP_OWNED_LORE, List.of(
                 "<green>Owned</green>"), savedDefaults);
         this.petFollowUpdateTicks = Math.max(1,
-                getAndDefaultInt(ConfigKeys.PET_FOLLOW_UPDATE_TICKS, 10, savedDefaults));
+                getAndDefaultInt(ConfigKeys.PET_FOLLOW_UPDATE_TICKS, 4, savedDefaults));
         this.petFollowSpeed = Math.max(0.1,
                 getAndDefaultDouble(ConfigKeys.PET_FOLLOW_SPEED, 6.0, savedDefaults));
         this.petFollowRange = Math.max(1.0,

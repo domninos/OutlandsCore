@@ -365,9 +365,9 @@ drone:
 # Equipped pet follow behaviour. The pet trails behind its owner and smoothly
 # walks toward the follow point; a long stray snaps it back.
 pet-follow:
-  # Movement task period in ticks. 10 = twice per second (cheap). Per-step
-  # distance scales so the pet still moves at the configured speed.
-  update-ticks: 10
+  # Movement task period in ticks. 4 = ~5 steps/second for a smooth follow.
+  # Per-step distance scales so the pet still moves at the configured speed.
+  update-ticks: 4
   # Movement speed in blocks per second.
   speed: 6.0
   # Distance (blocks) the pet may drift from its follow point before moving.

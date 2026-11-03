@@ -293,6 +293,11 @@ public class DroneManager {
         }
 
         DroneSession session = new DroneSession(player.getUniqueId(), bodyLoc, originalMode, bodyMarker, bodyNpc, npcId, mount);
+        session.setArmor(player.getInventory().getArmorContents());
+        session.setOffhand(player.getInventory().getItemInOffHand().clone());
+        player.getInventory().setArmorContents(null);
+        player.getInventory().setItemInOffHand(null);
+
         sessions.put(player.getUniqueId(), session);
 
         if (!mount.addPassenger(player)) {
@@ -375,12 +380,35 @@ public class DroneManager {
     public void handleDisconnect(Player player) {
         DroneSession session = sessions.get(player.getUniqueId());
         if (session != null) {
+            restoreStrippedGear(session, player);
             cleanupSession(session);
         }
         sessions.remove(player.getUniqueId());
         bossBars.remove(player.getUniqueId());
         lowHpWarnings.remove(player.getUniqueId());
         lastHum.remove(player.getUniqueId());
+    }
+
+    /**
+     * The pilot flies bare (armor + off-hand stripped at activate) so mobs target
+     * the drone body; this restores the originals, used on recall and on
+     * disconnect so the emptied slots never persist to the DB.
+     */
+    private void restoreStrippedGear(DroneSession session, Player player) {
+        if (session == null || !session.hasStrippedGear())
+            return;
+
+        try {
+            if (session.getArmor() != null)
+                player.getInventory().setArmorContents(session.getArmor());
+
+            if (session.getOffhand() != null)
+                player.getInventory().setItemInOffHand(session.getOffhand());
+        } catch (Exception ignored) {
+        }
+
+        session.setArmor(null);
+        session.setOffhand(null);
     }
 
     private void cleanupSession(DroneSession session) {
@@ -428,6 +456,8 @@ public class DroneManager {
 
         lowHpWarnings.remove(player.getUniqueId());
         lastHum.remove(player.getUniqueId());
+
+        restoreStrippedGear(session, player);
 
         try {
             if (player.getVehicle() != null) {

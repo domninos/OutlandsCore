@@ -5,6 +5,7 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Bee;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.UUID;
@@ -20,6 +21,8 @@ public class DroneSession {
     private final Npc bodyNpc;
     private final String npcId;
     private final Bee mount;
+    private ItemStack[] armor;
+    private ItemStack offhand;
     private BukkitTask task;
     private double battery;
     private boolean active;
@@ -37,6 +40,27 @@ public class DroneSession {
         this.mount = mount;
         this.battery = 100.0;
         this.active = true;
+    }
+
+    /** Armor stripped for the pilot while airborne (null after restore). */
+    public ItemStack[] getArmor() {
+        return armor;
+    }
+
+    public void setArmor(ItemStack[] armor) {
+        this.armor = armor;
+    }
+
+    public ItemStack getOffhand() {
+        return offhand;
+    }
+
+    public void setOffhand(ItemStack offhand) {
+        this.offhand = offhand;
+    }
+
+    public boolean hasStrippedGear() {
+        return armor != null || offhand != null;
     }
 
     public UUID getPlayerId() {
