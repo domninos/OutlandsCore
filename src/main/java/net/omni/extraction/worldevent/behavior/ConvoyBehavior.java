@@ -93,7 +93,104 @@ public class ConvoyBehavior {
         if (!cfg.car().isEmpty())
             spawnConvoyVisual(instance, origin);
 
+        startMover(instance);
         return true;
+    }
+
+    /**
+     * Starts the per-instance straight-line mover: every few ticks the carrier is
+     * stepped along the route toward the end anchor. No pathfinding is involved,
+     * so the convoy can never detour, wander or be steered by other mobs'. The
+     * 1-second maintenance pass keeps checkpoint/escape/escort/bookkeeping work.
+     */
+    public void startMover(EventInstance instance) {
+        cancelMover(instance);
+
+        org.bukkit.scheduler.BukkitTask task = Bukkit.getScheduler()
+                .runTaskTimer(ctx.plugin(), () -> moveConvoy(instance), 2L, 2L);
+        instance.setConvoyMover(task);
+    }
+
+    public void cancelMover(EventInstance instance) {
+        org.bukkit.scheduler.BukkitTask task = instance.getConvoyMover();
+        if (task != null) {
+            task.cancel();
+            instance.setConvoyMover(null);
+        }
+    }
+
+    /**
+     * Straight-line drive step: advances the carrier toward the current route
+     * point at speed-derived blocks/second (speed × 4, so 1.0 ≈ vanilla walk
+     * pace), lerping x/y/z, facing the direction of travel; snaps onto the
+     * point once it would overshoot it.
+     */
+    private void moveConvoy(EventInstance instance) {
+        Entity leader = instance.getConvoyLeader() == null ? null : Bukkit.getEntity(instance.getConvoyLeader());
+        if (!(leader instanceof Mob mob) || !leader.isValid())
+            return;
+
+        List<Location> points = instance.getConvoyPoints();
+        if (points.isEmpty())
+            return;
+
+        int step = Math.clamp(instance.getConvoyStep(), 0, points.size() - 1);
+        Location target = points.get(step);
+        Location here = leader.getLocation();
+
+        if (here.getWorld() == null || !here.getWorld().equals(target.getWorld()))
+            return;
+
+        // Apply stored carrier damage straight to the invisible mule; the queued
+        // raw hits were cancelled to avoid knockback/interruption.
+        double pending = instance.getConvoyDamageTaken();
+        if (pending > 0) {
+            instance.resetConvoyDamage();
+            UUID attackerId = instance.getConvoyDamageAttacker();
+            Player attacker = attackerId == null ? null : Bukkit.getPlayer(attackerId);
+            instance.setApplyingConvoyDamage(true);
+            try {
+                mob.damage(pending, attacker != null ? attacker : mob);
+            } finally {
+                instance.setApplyingConvoyDamage(false);
+            }
+        }
+
+        double dx = target.getX() - here.getX();
+        double dy = target.getY() - here.getY();
+        double dz = target.getZ() - here.getZ();
+        double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (dist <= 0.01)
+            return;
+
+        WorldEvent.ConvoyConfig cfg = instance.getEvent().getConvoy();
+        double speed = Math.clamp(cfg.speed(), 0.05, 1.0) * 4.0;  // blocks per second
+        double move = Math.min(dist, speed * 0.1);                 // mover fires every 2 ticks
+
+        Location next = here.clone().add(dx / dist * move, dy / dist * move, dz / dist * move);
+        next.setYaw(yawFor(dx, dz));
+        next.setPitch(0);
+
+        leader.teleport(snapTo(next, target));
+        updateConvoyVisual(instance, leader);
+        instance.setTrackLocation(next);
+    }
+
+    /**
+     * Keeps the mover inside sane bounds: when the step would overshoot the
+     * waypoint the carrier lands exactly on it (keeping its fractional offset
+     * so the visual alignment stays smooth).
+     */
+    private Location snapTo(Location next, Location target) {
+        if (Math.abs(next.getX() - target.getX()) < 0.5
+                && Math.abs(next.getZ() - target.getZ()) < 0.5)
+            return target.clone();
+        return next;
+    }
+
+    private float yawFor(double dx, double dz) {
+        return (float) Math.toDegrees(Math.atan2(-dx, dz));
     }
 
     /**
@@ -169,14 +266,15 @@ public class ConvoyBehavior {
             return null;
         }
 
-        Mob mob = (Mob) entity;
-        mob.setRemoveWhenFarAway(false);
-        mob.setAware(true);
+        Mob carrierMob = (Mob) entity;
+        carrierMob.setRemoveWhenFarAway(false);
+        // The straight-line mover teleports the carrier itself — no AI movement.
+        carrierMob.setAware(false);
 
         // The display-entity "car" is the visible convoy — hide the driver mob.
         if (!cfg.car().isEmpty()) {
-            mob.setInvisible(true);
-            mob.setSilent(true);
+            carrierMob.setInvisible(true);
+            carrierMob.setSilent(true);
         }
 
         return entity;
@@ -268,17 +366,15 @@ public class ConvoyBehavior {
     }
 
     /**
-     * Every tick of a convoy: keeps the carrier walking toward the current
-     * route point (with a stuck-timeout snap), advances points, keeps escorts
-     * close, tracks progress, and fails the event when the route is finished
-     * (the convoy has escaped).
+     * One-second convoy maintenance pass: advances checkpoints when the mover
+     * reached a waypoint, escapes when the route is finished, keeps escorts
+     * close and updates progress/track bookkeeping. The actual movement happens
+     * in the straight-line mover task (@link #moveConvoy), not pathfinding.
      */
     public void updateConvoy(EventInstance instance) {
-        WorldEvent event = instance.getEvent();
-        WorldEvent.ConvoyConfig cfg = event.getConvoy();
         Entity leader = instance.getConvoyLeader() == null ? null : Bukkit.getEntity(instance.getConvoyLeader());
 
-        if (!(leader instanceof Mob mob)) {
+        if (!(leader instanceof Mob)) {
             respawnConvoyLeader(instance);
             return;
         }
@@ -291,39 +387,25 @@ public class ConvoyBehavior {
         Location target = points.get(step);
 
         // distanceSquared everywhere: Location#distance throws across worlds
-        // and pays a sqrt per call. Stuck progress uses squared thresholds.
+        // and pays a sqrt per call.
         Location leaderLoc = leader.getLocation();
         boolean sameWorld = leaderLoc.getWorld() != null && leaderLoc.getWorld().equals(target.getWorld());
         double distSq = sameWorld ? leaderLoc.distanceSquared(target) : Double.MAX_VALUE;
 
-        if (instance.getLastConvoyDist() - distSq >= 0.25) {
-            instance.setConvoyStuckSince(-1);
-        } else if (instance.getConvoyStuckSince() == -1) {
-            instance.setConvoyStuckSince(System.currentTimeMillis());
-        } else if (System.currentTimeMillis() - instance.getConvoyStuckSince() >= cfg.stuckSeconds() * 1000L) {
-            leader.teleport(target.clone());
-            instance.setConvoyStuckSince(-1);
-            instance.setLastConvoyDist(Double.MAX_VALUE);
-        }
-
-        instance.setLastConvoyDist(distSq);
-
         boolean finalPoint = step >= points.size() - 1;
-        double reach = finalPoint && cfg.escapeRadius() > 0 ? cfg.escapeRadius() : cfg.checkpointRadius();
+        double reach = finalPoint && instance.getEvent().getConvoy().escapeRadius() > 0
+                ? instance.getEvent().getConvoy().escapeRadius()
+                : instance.getEvent().getConvoy().checkpointRadius();
 
         if (distSq <= reach * reach) {
             if (!finalPoint) {
                 instance.setConvoyStep(step + 1);
                 instance.setLastConvoyDist(Double.MAX_VALUE);
-                instance.setConvoyStuckSince(-1);
             } else {
-                ctx.manager().endEvent(instance, false);
+                endConvoyEscape(instance);
                 return;
             }
         }
-
-        int currentStep = Math.clamp(instance.getConvoyStep(), 0, points.size() - 1);
-        mob.getPathfinder().moveTo(points.get(currentStep), Math.clamp(cfg.speed(), 0.05, 1.0));
 
         Location last = points.getLast();
         double remaining = leaderLoc.getWorld() != null && leaderLoc.getWorld().equals(last.getWorld())
@@ -332,7 +414,7 @@ public class ConvoyBehavior {
         instance.setConvoyProgress(Math.clamp(
                 1.0 - remaining / Math.max(1.0, instance.getConvoyRouteLength()), 0.0, 1.0));
 
-        int followRange = cfg.followRange();
+        int followRange = instance.getEvent().getConvoy().followRange();
         if (followRange > 0) {
             for (UUID uuid : instance.getMobs()) {
                 Entity escort = Bukkit.getEntity(uuid);
@@ -349,8 +431,15 @@ public class ConvoyBehavior {
             }
         }
 
-        updateConvoyVisual(instance, leader);
         instance.setTrackLocation(leaderLoc);
+    }
+
+    /**
+     * The convoy reached the end anchor and escaped — clean failure end.
+     */
+    private void endConvoyEscape(EventInstance instance) {
+        cancelMover(instance);
+        ctx.manager().endEvent(instance, false);
     }
 
     /**
@@ -536,11 +625,47 @@ public class ConvoyBehavior {
 
     /**
      * True when {@code entity} is the live carrier of a running Supply Convoy
+     * (shielded or not).
+     */
+    public boolean isConvoyCarrier(Entity entity) {
+        if (entity == null)
+            return false;
+
+        EventInstance instance = ctx.mobInstances().get(entity.getUniqueId());
+        if (instance == null || !instance.getEvent().isConvoy())
+            return false;
+
+        return entity.getUniqueId().equals(instance.getConvoyLeader());
+    }
+
+    /**
+     * True when {@code entity} is the live carrier of a running Supply Convoy
      * and at least one escort is still alive — the carrier is shielded until
      * every guard has fallen.
      */
     public boolean isConvoyCarrierProtected(Entity entity) {
-        return convoyGuardsRemaining(entity) > 0;
+        return isConvoyCarrier(entity) && convoyGuardsRemaining(entity) > 0;
+    }
+
+    /**
+     * Queues damage for the unshielded carrier: raw hits are cancelled (no knockback,
+     * no movement interruption) and the mover applies the stored amount straight to
+     * the invisible mule's health on its next step.
+     */
+    public void queueConvoyDamage(Entity carrier, double amount, UUID attacker) {
+        if (amount <= 0)
+            return;
+
+        EventInstance instance = ctx.mobInstances().get(carrier.getUniqueId());
+        if (instance == null || !instance.getEvent().isConvoy())
+            return;
+
+        if (!carrier.getUniqueId().equals(instance.getConvoyLeader()))
+            return;
+
+        instance.addConvoyDamage(amount);
+        if (attacker != null)
+            instance.setConvoyDamageAttacker(attacker);
     }
 
     /**

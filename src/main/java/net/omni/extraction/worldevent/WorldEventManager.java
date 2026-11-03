@@ -351,6 +351,7 @@ public class WorldEventManager {
         active.remove(event.getId());
 
         ctx.storm().clearStormEffects(instance);
+        ctx.convoy().cancelMover(instance);
         ctx.convoy().clearConvoyVisual(instance);
         ctx.harvest().clearAll();
         // roam cleanup handled by context if needed
@@ -898,6 +899,14 @@ public class WorldEventManager {
 
     public boolean isConvoyCarrierProtected(Entity entity) {
         return ctx.convoy().isConvoyCarrierProtected(entity);
+    }
+
+    public boolean isConvoyCarrier(Entity entity) {
+        return ctx.convoy().isConvoyCarrier(entity);
+    }
+
+    public void queueConvoyDamage(Entity carrier, double amount, UUID attacker) {
+        ctx.convoy().queueConvoyDamage(carrier, amount, attacker);
     }
 
     public int convoyGuardsRemaining(Entity entity) {

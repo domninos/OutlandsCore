@@ -71,7 +71,14 @@ public class WorldEventListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onEntityDamage(EntityDamageEvent event) {
         WorldEventManager manager = plugin.getWorldEventManager();
-        if (manager != null) {
+        if (manager == null)
+            return;
+
+        EventInstance owner = manager.getMobInstance(event.getEntity().getUniqueId());
+        if (owner != null && owner.isApplyingConvoyDamage())
+            return; // our own queue-apply echo: let vanilla damage run
+
+        if (manager.isConvoyCarrier(event.getEntity())) {
             if (manager.isConvoyCarrierProtected(event.getEntity())) {
                 event.setCancelled(true);
                 if (event instanceof EntityDamageByEntityEvent byEntity) {
@@ -85,16 +92,28 @@ public class WorldEventListener implements Listener {
                 }
                 return;
             }
-            // track participation
-            if (event instanceof EntityDamageByEntityEvent byEntity) {
-                EventInstance inst = manager.getMobInstance(event.getEntity().getUniqueId());
-                if (inst != null && event.getDamage() > 0) {
-                    Player attacker = resolveAttacker(byEntity.getDamager());
-                    if (attacker != null) {
-                        inst.addDamage(attacker.getUniqueId(), event.getDamage());
-                    }
-                }
-            }
+
+            // Unshielded carrier: cancel the raw hit (no knockback/driver
+            // interruption), store it, and the mover applies it to the
+            // invisible mule on the next step.
+            Player attacker = event instanceof EntityDamageByEntityEvent byEntity
+                    ? resolveAttacker(byEntity.getDamager()) : null;
+            double damage = event.getFinalDamage();
+
+            event.setCancelled(true);
+            manager.queueConvoyDamage(event.getEntity(), damage,
+                    attacker != null ? attacker.getUniqueId() : null);
+
+            if (owner != null && damage > 0 && attacker != null)
+                owner.addDamage(attacker.getUniqueId(), damage);
+            return;
+        }
+
+        // track participation
+        if (event instanceof EntityDamageByEntityEvent byEntity && event.getDamage() > 0 && owner != null) {
+            Player attacker = resolveAttacker(byEntity.getDamager());
+            if (attacker != null)
+                owner.addDamage(attacker.getUniqueId(), event.getDamage());
         }
     }
 
