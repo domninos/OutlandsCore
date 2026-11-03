@@ -9,7 +9,6 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.*;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.util.Vector;
 
 import java.io.File;
 import java.util.*;
@@ -26,6 +25,17 @@ public class PetManager {
     private final Map<UUID, PetSession> activeEntities = new HashMap<>();
     private final Set<UUID> petEntityIds = new HashSet<>();
     private BukkitTask followTask;
+
+    // Follow-loop config, cached at start()/reload() — no getters per tick.
+    private double petStep = 1.2;
+    private double petStepSq;
+    private double petFollowSq;
+    private double petTeleportSq;
+
+    // Scratch buffers for the follow loop (main-thread only; teleport consumes
+    // them synchronously) — replaces per-pet Location/Vector allocations.
+    private final Location scratchTarget = new Location(null, 0, 0, 0);
+    private final Location scratchNext = new Location(null, 0, 0, 0);
 
     public PetManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -131,9 +141,23 @@ public class PetManager {
 
     public void start() {
         stop();
+        cacheFollowSettings();
 
         long ticks = Math.max(1, plugin.getConfigUtil().getPetFollowUpdateTicks());
         followTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickFollow, ticks, ticks);
+    }
+
+    private void cacheFollowSettings() {
+        double speed = plugin.getConfigUtil().getPetFollowSpeed();
+        int interval = Math.max(1, plugin.getConfigUtil().getPetFollowUpdateTicks());
+        petStep = Math.max(0.1, speed * interval / 20.0);
+        petStepSq = petStep * petStep;
+
+        double follow = plugin.getConfigUtil().getPetFollowRange();
+        petFollowSq = follow * follow;
+
+        double teleport = plugin.getConfigUtil().getPetFollowTeleportRange();
+        petTeleportSq = teleport * teleport;
     }
 
     public void shutdown() {
@@ -162,6 +186,11 @@ public class PetManager {
         if (session == null)
             return;
 
+        disposePet(session);
+    }
+
+    /** Entity-side cleanup shared by removePet and the tick iterator. */
+    private void disposePet(PetSession session) {
         Entity entity = session.pet();
 
         if (entity == null)
@@ -194,63 +223,75 @@ public class PetManager {
         if (activeEntities.isEmpty())
             return;
 
-        double speed = plugin.getConfigUtil().getPetFollowSpeed();
-        int interval = Math.max(1, plugin.getConfigUtil().getPetFollowUpdateTicks());
-        double step = Math.max(0.1, speed * interval / 20.0);
-        double followSq = plugin.getConfigUtil().getPetFollowRange();
-        double teleportSq = plugin.getConfigUtil().getPetFollowTeleportRange();
-        followSq *= followSq;
-        teleportSq *= teleportSq;
+        // The respawn list is only allocated when a pet actually despawns.
+        List<Player> respawn = null;
 
-        List<Player> respawn = new ArrayList<>();
+        // Iterator removals are same-iteration (offline/dead-pet cases); the
+        // respawn SPAWN loop below is the only map mutation kept deferred.
+        Iterator<Map.Entry<UUID, PetSession>> iterator = activeEntities.entrySet().iterator();
 
-        // Snapshot: spawn/remove below mutates the backing map.
-        for (Map.Entry<UUID, PetSession> entry : new ArrayList<>(activeEntities.entrySet())) {
-            PetSession session = entry.getValue();
+        while (iterator.hasNext()) {
+            PetSession session = iterator.next().getValue();
             Player owner = session.owner();
             Entity pet = session.pet();
 
             if (owner == null || !owner.isOnline()
                     || !plugin.getRunManager().isPlayerInRun(owner.getUniqueId())) {
-                removePet(entry.getKey());
+                iterator.remove();
+                disposePet(session);
                 continue;
             }
 
             if (pet == null || !pet.isValid()) {
                 // Despawned (chunk unload etc.) — respawn at the owner.
-                removePet(entry.getKey());
+                iterator.remove();
+                disposePet(session);
+
+                if (respawn == null)
+                    respawn = new ArrayList<>();
+
                 respawn.add(owner);
                 continue;
             }
 
-            Location target = behind(owner);
+            behindInto(owner, scratchTarget);
+
             Location petLocation = pet.getLocation();
 
             if (!pet.getWorld().equals(owner.getWorld())
-                    || petLocation.distanceSquared(target) > teleportSq) {
-                pet.teleport(target);
+                    || petLocation.distanceSquared(scratchTarget) > petTeleportSq) {
+                pet.teleport(scratchTarget);
                 continue;
             }
 
-            if (petLocation.distanceSquared(target) <= followSq)
+            if (petLocation.distanceSquared(scratchTarget) <= petFollowSq)
                 continue;
 
-            // Smooth step toward the follow point; snap when the remaining
-            // distance is shorter than one step.
-            Vector direction = target.toVector().subtract(petLocation.toVector());
-            double length = direction.length();
+            // Smooth step toward the follow point; squared step compare, and a
+            // single sqrt only on the actually-moving branch.
+            double dx = scratchTarget.getX() - petLocation.getX();
+            double dy = scratchTarget.getY() - petLocation.getY();
+            double dz = scratchTarget.getZ() - petLocation.getZ();
+            double distSq = dx * dx + dy * dy + dz * dz;
 
-            if (length <= step) {
-                pet.teleport(target);
+            if (distSq <= petStepSq) {
+                pet.teleport(scratchTarget);
                 continue;
             }
 
-            direction.multiply(step / length);
-            Location next = petLocation.clone().add(direction);
-            next.setYaw(target.getYaw());
-            next.setPitch(target.getPitch());
-            pet.teleport(next);
+            double scale = petStep / Math.sqrt(distSq);
+
+            scratchNext.setWorld(petLocation.getWorld());
+            scratchNext.setX(petLocation.getX() + dx * scale);
+            scratchNext.setY(petLocation.getY() + dy * scale);
+            scratchNext.setZ(petLocation.getZ() + dz * scale);
+            scratchNext.setYaw(scratchTarget.getYaw());
+            scratchNext.setPitch(scratchTarget.getPitch());
+            pet.teleport(scratchNext);
         }
+
+        if (respawn == null)
+            return;
 
         for (Player owner : respawn) {
             if (owner.isOnline() && plugin.getRunManager().isPlayerInRun(owner.getUniqueId()))
@@ -267,13 +308,27 @@ public class PetManager {
         if (session == null || session.pet() == null || !session.pet().isValid())
             return;
 
-        session.pet().teleport(behind(player));
+        behindInto(player, scratchTarget);
+        session.pet().teleport(scratchTarget);
     }
 
-    private Location behind(Player player) {
-        Location loc = player.getLocation().clone();
-        Vector back = loc.getDirection().setY(0).normalize().multiply(-1.2);
-        return loc.add(back).add(0, 0.5, 0);
+    /**
+     * Fills {@code into} with the point 1.2 blocks behind the player, eye level +
+     * 0.5. Allocation-free: recomputed from the raw yaw (no getDirection Vector).
+     */
+    private void behindInto(Player player, Location into) {
+        Location loc = player.getLocation();
+
+        double yawRad = Math.toRadians(loc.getYaw());
+        double backX = Math.sin(yawRad) * 1.2;
+        double backZ = -Math.cos(yawRad) * 1.2;
+
+        into.setWorld(loc.getWorld());
+        into.setX(loc.getX() + backX);
+        into.setY(loc.getY() + 0.5);
+        into.setZ(loc.getZ() + backZ);
+        into.setYaw(loc.getYaw());
+        into.setPitch(loc.getPitch());
     }
 
     /**
@@ -337,7 +392,8 @@ public class PetManager {
         if (def == null || !data.ownsPet(def.id()))
             return;
 
-        Location loc = behind(player);
+        behindInto(player, scratchTarget);
+        Location loc = scratchTarget.clone();
 
         Entity entity = player.getWorld().spawnEntity(loc, def.entityType());
 

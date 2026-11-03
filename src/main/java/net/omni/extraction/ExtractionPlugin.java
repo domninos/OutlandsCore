@@ -5,14 +5,19 @@ import com.google.gson.GsonBuilder;
 import net.omni.extraction.area.*;
 import net.omni.extraction.areaeditor.AreaEditorListener;
 import net.omni.extraction.areaeditor.AreaEditorManager;
+import net.omni.extraction.areaeditor.SpawnMarkerManager;
 import net.omni.extraction.backpack.BackpackManager;
 import net.omni.extraction.boss.BossManager;
+import net.omni.extraction.boss.BossTemplateManager;
 import net.omni.extraction.boss.creator.BossCreatorListener;
 import net.omni.extraction.boss.creator.BossCreatorManager;
 import net.omni.extraction.chat.ActionBarManager;
 import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.chat.PaperChatRenderer;
 import net.omni.extraction.chat.SpigotChatRenderer;
+import net.omni.extraction.chests.StandaloneChestCommand;
+import net.omni.extraction.chests.StandaloneChestListener;
+import net.omni.extraction.chests.StandaloneChestManager;
 import net.omni.extraction.commands.*;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.config.ExtractionConfig;
@@ -31,21 +36,13 @@ import net.omni.extraction.loot.LootResolver;
 import net.omni.extraction.loot.LootTableManager;
 import net.omni.extraction.looteditor.LootEditorListener;
 import net.omni.extraction.looteditor.LootEditorManager;
-import net.omni.extraction.chests.StandaloneChestManager;
-import net.omni.extraction.chests.StandaloneChestListener;
-import net.omni.extraction.chests.StandaloneChestCommand;
-import net.omni.extraction.areaeditor.SpawnMarkerManager;
-import net.omni.extraction.listeners.SpawnMarkerListener;
-import net.omni.extraction.managers.IdleTaskManager;
 import net.omni.extraction.managers.*;
 import net.omni.extraction.mobs.MobResolver;
 import net.omni.extraction.mobs.MobTemplateManager;
-import net.omni.extraction.boss.BossTemplateManager;
 import net.omni.extraction.pack.PackManager;
 import net.omni.extraction.party.PartyListener;
 import net.omni.extraction.party.PartyManager;
 import net.omni.extraction.pets.PetManager;
-import net.omni.extraction.managers.AdminModeManager;
 import net.omni.extraction.relics.RelicEffectManager;
 import net.omni.extraction.relics.RelicListener;
 import net.omni.extraction.relics.RelicManager;
@@ -120,20 +117,28 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     TODO:
      -
-     -
-     -
-     -
      - make set walls (positions) that can be exploded via an item ONLY gotten from /extshop.
        - so like a wall bomb where it only breaks blocks horizontally and have it regenerated 5 mins later.
      -
      - fix
         - artifacts/charms should automatically replace the placeholder on /loadout when equipped.
         - when doing /extraction, make sure to give the artifact/charm item for them to right click it to where the loadout slot is. then, the placeholder item should have the "Drop item here" removed, as it is just a placeholder. so now, if player SHIFT + left/right click the placeholder, open the artifact or charm gui depending on which they shift clicked.
+        - when upgrading (or specifically purchasing enchantment), the armor in my /loadout is emptied apart from the compass.
+        - when claiming tokens (consume only 1 per right click.) Make sure to add check do right clicks only happen once (doesn't trigger InteractEvent for air and InteractAtBlock for block at the same time)
+        - right click on mob (in mob spawn with area wand) doesn't open editor
+        - remove convoy mode on wand, but instead have them use the command to set start position and end position for the convoy.
+          - if there's no set positions on the convoy, when it gets picked, log to console that there were no convoy route found.
+          - convoy also phases thru blocks
      -
+     -
+     - add /upgrades give {player} {upgrade_token} {amount}
+     - block block breaks
      -
      - add join / leave extraction messages
      -
      - drone custom entity model for texture
+     -
+     -
      -
 
      */
@@ -143,12 +148,8 @@ public final class ExtractionPlugin extends JavaPlugin {
     TODO v2
      - add API
      -
-     -
         -
          - add "Time remaining" for all party
-         -
-         -
-         -
          -
          -
          - daily/weekly missions
