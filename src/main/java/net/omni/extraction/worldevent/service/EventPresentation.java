@@ -4,9 +4,11 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
+import net.omni.extraction.messages.Messages;
 import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
 import net.omni.extraction.worldevent.WorldEvent.WaveType;
+import net.omni.extraction.worldevent.mutator.Mutator;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -57,6 +59,7 @@ public class EventPresentation {
         if (!event.getStartMessage().isBlank())
             broadcastAll(event.getStartMessage(), event, instance);
 
+        announceMutators(instance);
         showTitle(instance, event.getTitleTitle(), event.getTitleSubtitle());
         playSound(event, event.getStartSound());
         updateWaypoint(instance);
@@ -64,6 +67,33 @@ public class EventPresentation {
         String location = locationText(instance);
         ctx.plugin().sendConsole("<yellow>[World Event] " + event.getDisplayName()
                 + " started at " + location + ".</yellow>");
+    }
+
+    /**
+     * Broadcasts the active mutators right after the start broadcast —
+     * "No mutators" when the roll produced none.
+     */
+    public void announceMutators(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+        List<Mutator> mutators = instance.getActiveMutators();
+
+        if (mutators == null || mutators.isEmpty()) {
+            broadcastAll(Messages.EVENTS_MUTATORS_NONE.toString(), event, instance);
+            return;
+        }
+
+        StringBuilder names = new StringBuilder();
+
+        for (Mutator mutator : mutators) {
+            if (names.length() > 0)
+                names.append(", ");
+
+            names.append("<green>").append(mutator.type().name().toLowerCase(java.util.Locale.ROOT)
+                    .replace('_', ' ')).append("</green>");
+        }
+
+        broadcastAll(Messages.EVENTS_MUTATORS_ACTIVE
+                .replace("mutators", names.toString()), event, instance);
     }
 
     public void announceWave(EventInstance instance, int wave) {

@@ -40,6 +40,7 @@ public enum Messages {
     LOADOUT_COMPASS_UNDROPPABLE("loadout.compass-undroppable", "<red>The Extraction Compass cannot be dropped while you're in a run.</red>"),
     COMPASS_TRACKING("compass.tracking", "<green>Now tracking <white>%area%</white>.</green>"),
     COMPASS_NO_TARGET("compass.no-target", "<red>That area's location is unavailable from here.</red>"),
+    COMPASS_NO_AREAS("compass.no-areas", "<gray>You haven't discovered any areas yet — explore the extraction world to find more.</gray>"),
     UPGRADE_OPENED("upgrade.opened", "<gray>Opened your armor upgrade menu.</gray>"),
     BLOCK_BLOCKED("block.blocked", "<red>You cannot break or place blocks in Extraction.</red>"),
 
@@ -275,6 +276,8 @@ public enum Messages {
     PETS_PURCHASED("pets.purchased", "<green>You bought the pet <white>%pet%</white> for <white>%cost%</white> tokens!</green>"),
 
     EVENTS_MUTATORS_FORCED("events.mutators-forced", "<gray>Forced mutators: <white>%mutators%</white>.</gray>"),
+    EVENTS_MUTATORS_ACTIVE("events.mutators-active", "<yellow>Mutators this event: <white>%mutators%</white>.</yellow>"),
+    EVENTS_MUTATORS_NONE("events.mutators-none", "<gray>No mutators.</gray>"),
 
     EVENTS_AREA_ANCHORED("events.area-anchored", "<gray>Event anchored to area <white>%area%</white>.</gray>"),
     EVENTS_NAME_SET("events.name-set", "<green>Event <white>%event%</white> now displays as <white>%name%</white>.</green>"),

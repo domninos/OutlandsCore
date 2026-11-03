@@ -34,6 +34,7 @@ loadout:
 compass:
   tracking: "<green>Now tracking <white>%area%</white>.</green>"
   no-target: "<red>That area's location is unavailable from here.</red>"
+  no-areas: "<gray>You haven't discovered any areas yet — explore the extraction world to find more.</gray>"
 upgrade:
   opened: "<gray>Opened your armor upgrade menu.</gray>"
 block:
@@ -250,6 +251,8 @@ events:
   route-wand-none: "<red>Your wand is not armed for a convoy - run <white>/extraction events route {event} wand</white> first.</red>"
   route-needs-player: "<red>Only players can set convoy anchors.</red>"
   mutators-forced: "<gray>Forced mutators: <white>%mutators%</white>.</gray>"
+  mutators-active: "<yellow>Mutators this event: <white>%mutators%</white>.</yellow>"
+  mutators-none: "<gray>No mutators.</gray>"
   area-anchored: "<gray>Event anchored to area <white>%area%</white>.</gray>"
   name-set: "<green>Event <white>%event%</white> now displays as <white>%name%</white>.</green>"
   name-clear-hint: "<gray>Use <white>/extraction admin setname {event} clear</white> to reset it to the id.</gray>"
