@@ -8,7 +8,6 @@ import net.omni.extraction.area.Area;
 import net.omni.extraction.area.AreaChestLocation;
 import net.omni.extraction.area.AreaClearManager;
 import net.omni.extraction.area.AreaClearSession;
-import net.omni.extraction.area.AreaSpawnDefinition;
 import net.omni.extraction.chests.StandaloneChest;
 import net.omni.extraction.chests.StandaloneChestManager;
 import net.omni.extraction.loot.LootTable;
@@ -17,13 +16,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class HologramManager {
 
@@ -53,24 +46,12 @@ public class HologramManager {
         this.chestLineCache = new HashMap<>();
     }
 
-    private static String hologramName(Area area) {
-        return HologramUtils.areaHologramName(area);
+    public static String chestHologramName(Location anchor) {
+        return HologramUtils.chestHologramName(anchor);
     }
 
     private void init() {
         this.enabled = Bukkit.getPluginManager().getPlugin("DecentHolograms") != null;
-    }
-
-    private boolean available() {
-        if (!enabled)
-            return false;
-
-        try {
-            return DecentHologramsAPI.isRunning();
-        } catch (NoClassDefFoundError | RuntimeException ignored) {
-            enabled = false;
-            return false;
-        }
     }
 
     public void start() {
@@ -144,10 +125,6 @@ public class HologramManager {
         chestLineCache.clear();
     }
 
-    public static String chestHologramName(Location anchor) {
-        return HologramUtils.chestHologramName(anchor);
-    }
-
     /**
      * Creates or refreshes the persistent hologram above a configured chest
      * location. The text follows the area state: "ongoing" while a clear is
@@ -208,7 +185,7 @@ public class HologramManager {
         try {
             Hologram hologram = DHAPI.getHologram(name);
             if (hologram == null) {
-                hologram = DHAPI.createHologram(name, position, false, lines);
+                DHAPI.createHologram(name, position, false, lines);
                 lastChestPositions.put(name, position.clone());
                 appliedChestLines.put(name, lines);
                 lastChestState.put(name, stateKey);
@@ -283,7 +260,8 @@ public class HologramManager {
                 if (name != null)
                     expected.add(name);
             }
-        }        for (String name : new ArrayList<>(appliedChestLines.keySet()))
+        }
+        for (String name : new ArrayList<>(appliedChestLines.keySet()))
             if (!expected.contains(name))
                 removeChestHologram(name);
     }
@@ -338,10 +316,6 @@ public class HologramManager {
         }
     }
 
-    public static String standaloneHologramName(int id) {
-        return HologramUtils.standaloneHologramName(id);
-    }
-
     public void removeStandaloneHologram(int id) {
         removeChestHologram(standaloneHologramName(id));
     }
@@ -361,6 +335,22 @@ public class HologramManager {
             if (DHAPI.getHologram(name) != null)
                 DHAPI.removeHologram(name);
         } catch (RuntimeException ignored) {
+        }
+    }
+
+    public static String standaloneHologramName(int id) {
+        return HologramUtils.standaloneHologramName(id);
+    }
+
+    private boolean available() {
+        if (!enabled)
+            return false;
+
+        try {
+            return DecentHologramsAPI.isRunning();
+        } catch (NoClassDefFoundError | RuntimeException ignored) {
+            enabled = false;
+            return false;
         }
     }
 
@@ -411,10 +401,6 @@ public class HologramManager {
         return available();
     }
 
-    public static String eventWaypointName(String id) {
-        return HologramUtils.eventWaypointName(id);
-    }
-
     /**
      * Creates or refreshes the waypoint hologram for a world event. Not gated
      * on the general {@code holograms.enabled} toggle — events control their
@@ -442,7 +428,7 @@ public class HologramManager {
             Hologram hologram = DHAPI.getHologram(name);
 
             if (hologram == null) {
-                hologram = DHAPI.createHologram(name, position, false, lines);
+                DHAPI.createHologram(name, position, false, lines);
                 lastWaypointPositions.put(name, position.clone());
                 appliedWaypointLines.put(name, lines);
                 return name;
@@ -484,6 +470,14 @@ public class HologramManager {
         }
     }
 
+    public static String eventWaypointName(String id) {
+        return HologramUtils.eventWaypointName(id);
+    }
+
+    private boolean sameSpot(Location first, Location second) {
+        return HologramUtils.sameSpot(first, second);
+    }
+
     public void refreshAll() {
         if (!available())
             return;
@@ -496,23 +490,6 @@ public class HologramManager {
         area.setHologramLocation(location.clone());
         plugin.getAreaManager().save(area);
         updateHologram(area);
-    }
-
-    public void remove(Area area) {
-        area.setHologramLocation(null);
-        plugin.getAreaManager().save(area);
-
-        String name = hologramName(area);
-        lastLocations.remove(name);
-
-        if (!available())
-            return;
-
-        try {
-            if (DHAPI.getHologram(name) != null)
-                DHAPI.removeHologram(name);
-        } catch (RuntimeException ignored) {
-        }
     }
 
     public void updateHologram(Area area) {
@@ -538,10 +515,10 @@ public class HologramManager {
 
             if (hologram == null) {
                 Map<String, String> values = placeholderValues(area, stats);
-                List<String> lines = buildLines(area, values);
+                List<String> lines = buildLines(values);
                 if (lines.isEmpty()) return;
 
-                hologram = DHAPI.createHologram(name, location, false, lines);
+                DHAPI.createHologram(name, location, false, lines);
                 lastLocations.put(name, location.clone());
                 appliedHologramLines.put(name, lines);
                 lastAppliedSignature.put(name, sig);
@@ -558,7 +535,7 @@ public class HologramManager {
                 return;
 
             Map<String, String> values = placeholderValues(area, stats);
-            List<String> lines = buildLines(area, values);
+            List<String> lines = buildLines(values);
             if (lines.isEmpty()) return;
 
             DHAPI.setHologramLines(hologram, lines);
@@ -566,6 +543,10 @@ public class HologramManager {
             lastAppliedSignature.put(name, sig);
         } catch (RuntimeException ignored) {
         }
+    }
+
+    private static String hologramName(Area area) {
+        return HologramUtils.areaHologramName(area);
     }
 
     private Map<String, String> placeholderValues(Area area, Area.AreaStats stats) {
@@ -589,20 +570,7 @@ public class HologramManager {
         return values;
     }
 
-    /**
-     * Converts a MiniMessage string to DecentHolograms' native text format —
-     * delegates to {@link HologramUtils#toDh(String)}; kept as a member for the
-     * existing call sites (event presentation, standalone chest lines).
-     */
-    public String toDh(String raw) {
-        return HologramUtils.toDh(raw);
-    }
-
-    private boolean sameSpot(Location first, Location second) {
-        return HologramUtils.sameSpot(first, second);
-    }
-
-    private List<String> buildLines(Area area, Map<String, String> values) {
+    private List<String> buildLines(Map<String, String> values) {
         List<String> raw = plugin.getConfigUtil().getHologramLines();
         if (raw == null || raw.isEmpty())
             return List.of();
@@ -621,5 +589,31 @@ public class HologramManager {
         }
 
         return lines;
+    }
+
+    public void remove(Area area) {
+        area.setHologramLocation(null);
+        plugin.getAreaManager().save(area);
+
+        String name = hologramName(area);
+        lastLocations.remove(name);
+
+        if (!available())
+            return;
+
+        try {
+            if (DHAPI.getHologram(name) != null)
+                DHAPI.removeHologram(name);
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    /**
+     * Converts a MiniMessage string to DecentHolograms' native text format —
+     * delegates to {@link HologramUtils#toDh(String)}; kept as a member for the
+     * existing call sites (event presentation, standalone chest lines).
+     */
+    public String toDh(String raw) {
+        return HologramUtils.toDh(raw);
     }
 }
