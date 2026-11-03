@@ -757,26 +757,40 @@ public class WorldEventManager {
     }
 
     /**
-     * Registers newly split children (magma cubes / slimes) of an event mob into
-     * the same event instance so {@link #endEvent} can remove them together with
-     * the tracked parents; without this, split children (fresh UUIDs) linger in
-     * the world after the event ends.
+     * Deaths of splitting event mobs (magma cubes / slimes) spawn smaller copies
+     * with fresh UUIDs that never pass through spawn registration. Captures the
+     * parent's identity at death time and adopts the near-spawned children a few
+     * ticks later so {@link #endEvent} and the stale scan can still remove them.
+     * Must be called while the parent is still tracked (before handleMobDeath).
      */
-    public void registerSplitChildren(UUID parentUuid, List<org.bukkit.entity.LivingEntity> children) {
-        EventInstance instance = getMobInstance(parentUuid);
-        if (instance == null || children == null || children.isEmpty())
-            return;
+    public void captureSplitChildren(org.bukkit.entity.Entity dead) {
+        EventInstance instance = getMobInstance(dead.getUniqueId());
+        if (instance == null) return;
 
-        for (org.bukkit.entity.LivingEntity child : children) {
-            if (child == null)
-                continue;
+        String typeName = dead.getType().name();
+        Location origin = dead.getLocation().clone();
+        String eventId = instance.getEvent().getId();
 
-            mobInstances.put(child.getUniqueId(), instance);
-            instance.track(child.getUniqueId(), new ArrayList<>(), false);
-            instance.addTotal(1);
-            child.setPersistent(true);
-            child.setRemoveWhenFarAway(false);
-        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            World world = Bukkit.getWorld(origin.getWorld() == null
+                    ? "" : origin.getWorld().getName());
+
+            if (world == null || !active.containsKey(eventId))
+                return;
+
+            for (org.bukkit.entity.Entity entity : world.getNearbyEntities(origin, 1.5, 1.5, 1.5)) {
+                if (!entity.getType().name().equalsIgnoreCase(typeName)) continue;
+                if (mobInstances.containsKey(entity.getUniqueId())) continue;
+
+                mobInstances.put(entity.getUniqueId(), instance);
+                instance.track(entity.getUniqueId(), new ArrayList<>(), false);
+                instance.addTotal(1);
+                entity.setPersistent(true);
+
+                if (entity instanceof org.bukkit.entity.Mob mob)
+                    mob.setRemoveWhenFarAway(false);
+            }
+        }, 5L);
     }
 
     public boolean claimHarvestChest(Player player, Block block) {

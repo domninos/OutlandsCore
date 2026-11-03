@@ -35,7 +35,14 @@ public class AreaMobFactory {
 
         if (entity == null) return null;
 
-        applyDisplayName(entity, definition.getDisplayName());
+        entity.setPersistent(true);
+
+        if (entity instanceof org.bukkit.entity.Mob mob)
+            mob.setRemoveWhenFarAway(false);
+
+        if (definition.isBoss())
+            applyDisplayName(entity, definition.getDisplayName());
+
         applyHealth(entity, definition.getHealth());
         applyDamage(entity, definition.getDamage());
         applyEquipment(entity, definition.getEquipment());

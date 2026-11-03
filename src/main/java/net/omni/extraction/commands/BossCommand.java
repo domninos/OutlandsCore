@@ -7,10 +7,8 @@ import net.omni.extraction.mobs.MobTemplate;
 import net.omni.extraction.mobs.MobTemplateManager;
 import net.omni.extraction.util.MessageUtil;
 import net.omni.extraction.util.Permissions;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import java.util.List;

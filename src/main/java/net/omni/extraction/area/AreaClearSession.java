@@ -114,6 +114,10 @@ public class AreaClearSession {
         return drops != null ? drops : new ArrayList<>();
     }
 
+    public Map<UUID, AreaSpawnDefinition> getMobDefinitions() {
+        return mobDefinitions;
+    }
+
     public AreaSpawnDefinition getDefinitionFor(UUID uuid) {
         return mobDefinitions.get(uuid);
     }

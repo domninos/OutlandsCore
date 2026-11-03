@@ -37,6 +37,8 @@ public class WorldEventListener implements Listener {
 
     @EventHandler
     public void onEntityDeath(EntityDeathEvent event) {
+        plugin.getWorldEventManager().captureSplitChildren(event.getEntity());
+
         UUID uuid = event.getEntity().getUniqueId();
         WorldEventManager manager = plugin.getWorldEventManager();
         plugin.getBossManager().unregister(uuid);

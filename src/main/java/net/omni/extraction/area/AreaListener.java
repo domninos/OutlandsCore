@@ -30,6 +30,8 @@ public class AreaListener implements Listener {
         UUID uuid = event.getEntity().getUniqueId();
         plugin.getBossManager().unregister(uuid);
 
+        plugin.getAreaClearManager().captureSplitChildren(event.getEntity());
+
         if (!plugin.getAreaClearManager().isSessionMob(uuid)) return;
 
         boolean boss = plugin.getAreaClearManager().isBossMob(uuid);

@@ -190,35 +190,61 @@ public class AreaClearManager {
     }
 
     /**
-     * Registers a newly split child (e.g. a magma cube created by the death of a
-     * larger one) into the session of its parent so containment, boss-bar bookkeeping
-     * and clear completion all count it, and so {@link #cancelSession} removes it.
-     * Returns false when the parent was not a session mob.
+     * Deaths of splitting mobs (magma cubes, slimes) spawn smaller copies with
+     * fresh UUIDs that vanilla does not route through any registry. Captures the
+     * tracked parent's metadata at death time, then adopts the near-spawned
+     * children a few ticks later so containment, boss-bar bookkeeping, kill
+     * credit and cancel/shutdown cleanup all count them.
+     * Must be called while the parent is still tracked (before handleMobDeath).
      */
-    public boolean registerSplit(UUID parentUuid, LivingEntity child) {
-        AreaClearSession session = mobSessions.get(parentUuid);
-        if (session == null || child == null || child.isDead())
-            return false;
+    public void captureSplitChildren(Entity dead) {
+        AreaClearSession session = mobSessions.get(dead.getUniqueId());
+        if (session == null) return;
 
-        UUID id = child.getUniqueId();
-        AreaSpawnDefinition definition = session.getDefinitionFor(parentUuid);
+        String typeName = dead.getType().name();
+        Location origin = dead.getLocation().clone();
+        AreaSpawnDefinition definition = session.getDefinitionFor(dead.getUniqueId());
+        boolean wasBoss = session.isBossMob(dead.getUniqueId());
+        List<MobDrop> drops = session.getDropsFor(dead.getUniqueId());
+        String lootTable = session.getLootTableFor(dead.getUniqueId());
+        int lootRolls = session.getLootRollsFor(dead.getUniqueId());
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            World world = Bukkit.getWorld(session.getArea().getWorld());
+
+            if (world == null) return;
+
+            for (Entity entity : world.getNearbyEntities(origin, 1.5, 1.5, 1.5)) {
+                if (!entity.getType().name().equalsIgnoreCase(typeName)) continue;
+                if (mobSessions.containsKey(entity.getUniqueId())) continue;
+
+                adoptSplitMob(session, entity, origin, definition, wasBoss, drops, lootTable, lootRolls);
+            }
+        }, 5L);
+    }
+
+    private void adoptSplitMob(AreaClearSession session, Entity entity, Location origin,
+                               AreaSpawnDefinition definition, boolean wasBoss,
+                               List<MobDrop> drops, String lootTable, int lootRolls) {
+        UUID id = entity.getUniqueId();
+
+        entity.setPersistent(true);
+
+        if (entity instanceof org.bukkit.entity.Mob mob)
+            mob.setRemoveWhenFarAway(false);
 
         session.getMobs().add(id);
-        session.getMobOrigins().put(id, child.getLocation());
-        session.getMobDrops().put(id, session.getDropsFor(parentUuid));
-        session.getMobLootTables().put(id, session.getLootTableFor(parentUuid));
-        session.getMobLootRolls().put(id, session.getLootRollsFor(parentUuid));
+        session.getMobOrigins().put(id, entity.getLocation().clone());
+        session.getMobDrops().put(id, drops);
+        session.getMobLootTables().put(id, lootTable);
+        session.getMobLootRolls().put(id, lootRolls);
         if (definition != null)
             session.getMobDefinitions().put(id, definition);
         session.setTotalMobs(session.getTotalMobs() + 1);
         mobSessions.put(id, session);
-
-        child.setPersistent(true);
-        child.setRemoveWhenFarAway(false);
-        markSpillTag(child, session.getArea().getName());
+        markSpillTag(entity, session.getArea().getName());
 
         updateBossBar(session);
-        return true;
     }
 
     /**
