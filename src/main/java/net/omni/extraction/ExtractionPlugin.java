@@ -122,12 +122,6 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      -
      -
-     - Boss Creator
-        Create bosses with:
-        Health
-        Damage
-        Abilities
-        Loot
      -
      - make set walls (positions) that can be exploded via an item ONLY gotten from /extshop.
        - so like a wall bomb where it only breaks blocks horizontally and have it regenerated 5 mins later.
@@ -140,7 +134,6 @@ public final class ExtractionPlugin extends JavaPlugin {
      - add join / leave extraction messages
      -
      - drone custom entity model for texture
-     - pet doesn't follow smoothly. make the minimum 3/5 for the pets
      -
 
      */
