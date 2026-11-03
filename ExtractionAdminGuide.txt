@@ -1,0 +1,252 @@
+================================================================================
+                    EXTRACTION PLUGIN - ADMIN SETUP GUIDE
+================================================================================
+PaperMC 1.21.x | Java 21 | For server admins
+Note: {arg} = required argument, [arg] = optional argument
+
+--------------------------------------------------------------------------------
+1. INSTALL
+--------------------------------------------------------------------------------
+Requirements: PaperMC 1.21.x, Java 21.
+
+1. Drop Extraction-1.0.0.jar into your server's plugins/ folder.
+2. Start the server once. It generates plugins/Extraction/ with default configs:
+   - config.yml, messages.yml
+   - areas.yml, shop.yml, tokens.yml, loadout.yml, compass.yml, party.yml
+   - mobs.yml, bosses.yml, events.yml, loot_tables.yml
+   - relics/ folder (relics.yml, charms.yml, artifacts.yml)
+   - pack/ folder (resource pack)
+
+Upgrading from an older version: do NOT delete config.yml/messages.yml - old
+keys auto-migrate. Check console for warnings instead.
+
+--------------------------------------------------------------------------------
+2. SPAWNS & WORLD
+--------------------------------------------------------------------------------
+- The extraction world is settings.world-name in config.yml (default: outlands).
+  It must be loaded - Extraction spawns mobs/events only in that world.
+- /extraction setspawn
+    Sets the entry point where /extraction drops players. This is also
+    the destination convoy events escape toward.
+- /extraction setlobby
+    Sets where anyone joining WITHOUT an active run is teleported. Best placed
+    in a separate world (hub).
+- Test it: /extraction  (needs extraction.play - default true)
+
+--------------------------------------------------------------------------------
+3. CREATING AN AREA  (/areas - permission: extraction.areas)
+--------------------------------------------------------------------------------
+/areas create {name}
+/areas wand {name}
+    Gives you the editing wand for that area.
+
+Wand modes - sneak-right-click the wand to cycle BOUNDS > CHEST > SPAWN > CONVOY:
+
+  BOUNDS   Left-click   = set corner 1
+           Right-click  = set corner 2 (must enclose non-air blocks)
+
+  CHEST    Left-click   = add a loot container at the clicked block. Opens the
+                          loot-table picker GUI. The container material must be
+                          in config.yml "containers" (chest, barrel, shulker
+                          boxes, hopper, furnace...). A SHULKER_BOX entry
+                          matches every colored shulker.
+           Sneak-right  = remove the nearest chest marker
+
+  SPAWN    Left-click   = opens the 5-step spawn wizard on the clicked block:
+                          mob select > count > level > respawn > boss (Y/N).
+                          Writes a spawn-entry bound to that block. The wizard
+                          accepts mobs.yml/bosses.yml template ids, vanilla
+                          entity ids, or MythicMobs ids.
+
+  CONVOY   Left-click   = set convoy route START anchor
+           Right-click  = set route END anchor
+           (Arm the wand first: /extraction events route {event} wand)
+
+Post-setup utilities:
+
+/areas setchest {area} {index} {type|remove}
+    Assign a loot-table id to a chest (index from /areas chest list).
+/areas setchest {area} {index} key {keyId|remove}
+    Require a key item to open that chest (key defined in config.yml keys:).
+/areas setlevel {area} {level}
+    0 = derive from highest spawn level; stored override always wins.
+/areas reset {area}
+    Silently end the active clear and restore READY.
+/areas reload
+    Reloads mobs.yml + bosses.yml + areas + loot tables.
+
+LOOT TABLES (loot_tables.yml)
+
+  Example:
+      Easy:
+        icon: CHEST
+        hologram:                       # overrides loot.chest-hologram.ready
+          - "<gold>%area% loot ready"
+        items-per-chest: 6
+        entries:
+          - type: IRON_INGOT
+            weight: 10
+            amount: 4
+          - type: UPGRADE
+            weight: 2
+          - type: TOKENS
+            weight: 5
+            amount: 10
+          - type: KEY:chest_key
+            weight: 1
+          - type: EVENT:supply_crate_key
+            weight: 1
+            min-level: 2                # 0 = no level restriction
+
+  - Rolling is by weight only (default weight 10). Higher = more common.
+  - Each chest rolls a fresh batch of items-per-chest entries.
+  - Claiming loot: right-click a registered chest - it banks into your
+    /extraction storage.
+  - loot.claim-mode in config.yml:
+      instant = right-click immediately banks contents to storage
+      open    = chest opens for the clear owner; whatever is left inside is
+                banked to storage when the chest closes
+
+AREA MOBS & BOSS TEMPLATES
+
+/areas mob create {area} {id} {type} [mythic]
+    Creates a mob template (stored in mobs.yml).
+/areas mob set {area} {id} {field} {value}
+    Edit a template field (type, display-name, health, damage, level, count,
+    baby, respawn, equipment.helmet, drops, loot-table, ...).
+/areas mob list|info {area} {id}
+
+/boss create {id} {entityType} [mythic]
+    Creates a boss template (stored in bosses.yml).
+/boss edit {id}
+    Opens the GUI editor: stats, 6 abilities (SLAM, VOLLEY, TELEPORT_STRIKE,
+    HEAL, ENRAGE, TOXIC_AURA), item drops + bonus loot table.
+/boss spawn {id} [count]
+    Test-spawn the boss. /boss delete {id} removes it.
+/bosses list
+    List all boss templates (bosses is an alias of boss).
+
+FREE MODE VS COOLDOWN (config.yml)
+
+  settings:
+    time-limit-seconds: 900   # 0 = infinite run
+    cooldown-hours: 24        # 0 = no extract cooldown
+
+  Both = 0 > free mode: no run countdown, no extract cooldown, the actionbar
+  timer is hidden, and cleared areas auto re-enter for players standing inside.
+
+--------------------------------------------------------------------------------
+4. PLAYER WORKFLOW (commands to test with)
+--------------------------------------------------------------------------------
+/extraction                               Enter / leave extraction
+/extract                                  Extract early (banked loot is kept)
+/loadout                                  WYSIWYG inventory mirror GUI:
+                                          armor row + 36 slots + hotbar. Drag,
+                                          drop, number keys all work. Items
+                                          persist per player.
+/upgrade                                  Tier upgrade menu. Click a slot for a
+                                          purchase confirm, or drag an upgrade
+                                          token onto the slot. Next-tier only -
+                                          skipping tiers is rejected.
+/tokens                                   your token balance
+/extshop                                  Category shop hub: Consumables,
+                                          Enchantments, Gear Upgrades, Backpack
+/pets /charms /artifacts                  companion + relic menus
+/extraction party {create|invite|join|leave|kick|disband|chat}
+                                          DB-backed parties (cross-server with
+                                          MySQL + BungeeCord)
+
+ADMIN EXTRAS
+/extraction admin addhologram|sethologram|delhologram {area}
+/extraction admin packinfo                resource-pack diagnostics
+/extraction admin migratedb               one-time SQLite > MySQL copy
+/extraction forceextract {player}
+/drone /drone return                      drone mode (see note below)
+
+--------------------------------------------------------------------------------
+5. WORLD EVENTS (events.yml - samples: meteor_crash, storm_of_blood, supply_convoy)
+--------------------------------------------------------------------------------
+  Example:
+      events:
+        meteor_crash:
+          duration-seconds: 600
+          chance-per-check: 0.25
+          weight: 10                      # 0 = never auto-picked
+          trigger: schedule               # or "area" = fires on area entry
+          level: 3
+          loot-table: meteor
+          harvest-chests: 3               # chests spawned on success
+          mobs: [ { mob: husk, count: 10, level: 3 } ]
+          bosses: [ { mob: skeleton_king, count: 1, level: 3 } ]
+          waves:
+            type: timed                   # or "finite" for escalating waves
+            interval-seconds: 45
+            max: 6
+            reinforce-mobs: [husk, zombie]
+          terrain:  { radius: 6, depth: 3 }     # meteor only - crater regenerates
+          convoy:   { carrier: mule, speed: 1.0,
+                      step-blocks: 8, checkpoint-radius: 2 }  # convoy only
+          storm:    { zones: 3, radius: 8, damage-per-second: 2 }  # storm only
+
+  IMPORTANT: for waves.type: timed events you MUST list bosses: - success is
+  "all bosses dead", so with no bosses the first kill ends the event.
+
+ADMIN CONTROL
+/extraction events status                 what's running right now
+/extraction events start {id}             force-spawn a configured event
+/extraction events stop [id|all]
+/extraction events route {event} {start|end|clear|show|wand}
+                                          convoy route anchors
+
+Events only start when at least one player is online in the extraction world
+who has run /extraction. Event mob drops: mobs.yml "drops:" per template.
+Loot type EVENT: resolves via config.yml event-items:; key items via keys:.
+
+--------------------------------------------------------------------------------
+6. STORAGE & PERMISSIONS
+--------------------------------------------------------------------------------
+STORAGE
+- Default: SQLite  (plugins/Extraction/data/extraction.db)
+- Cross-server parties need MySQL:
+    storage.type: mysql  (+ storage.mysql.* settings) > FULL server restart >
+    then run /extraction admin migratedb once to copy existing SQLite rows.
+- /extraction reload does NOT switch the storage backend - only a restart does.
+
+PERMISSIONS (parent: extraction.*)
+  extraction.admin                 op    manager commands (/extraction admin ...)
+  extraction.areas                 op    /areas management
+  extraction.bosses                op    /boss templates
+  extraction.play                  true  enter extraction
+  extraction.party                 true  party system
+  extraction.drone                 true  drone mode
+  extraction.bypass.cooldown       false bypass extract cooldown
+
+PLACEHOLDERS (PlaceholderAPI, identifier "extraction")
+  %extraction_area%      current area name
+  %extraction_kills%     kills this run
+  %extraction_tokens%    token balance
+  %extraction_party%     party leader name
+  %extraction_timer%     run/cooldown timer
+  %extraction_clock%     server clock
+  %extraction_ip%        server ip
+
+--------------------------------------------------------------------------------
+7. PLUGINS NEEDED / OPTIONAL
+--------------------------------------------------------------------------------
+REQUIRED: none - Extraction runs standalone on Paper.
+
+RECOMMENDED
+  DecentHolograms    area, loot-chest and event-waypoint holograms
+                     (without it these are silently skipped)
+  PlaceholderAPI     %extraction_*% placeholders in other plugins
+
+OPTIONAL (enable features)
+  MythicMobs         custom mob/boss templates (e.g. skeleton_king)
+  FancyNpcs          drone-mode body avatar NPC (fallback: invisible stand)
+  Vault              exposes tokens as an economy to other plugins
+  MMOItems/ItemEdit/Nexo   "provider:" custom loot items
+  ProtocolLib        packet glow support
+  MariaDB driver     only for storage.type: mysql - downloaded automatically
+                     by the plugin (do not install manually)
+
+================================================================================
