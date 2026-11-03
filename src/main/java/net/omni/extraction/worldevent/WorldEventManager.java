@@ -124,15 +124,6 @@ public class WorldEventManager {
         startEvent(event.getId(), false);
     }
 
-    /**
-     * Runs one maintenance pass from outside (idle-server shutdown): tears down
-     * any leftover active events so their mobs/craters/boss bars don't freeze
-     * when the task stops.
-     */
-    public void runFinalSweep() {
-        tick();
-    }
-
     private void tick() {
         // Events only exist for players actually running Extraction. Once none
         // remain, end them so event mobs are not kept alive forever.
@@ -229,106 +220,6 @@ public class WorldEventManager {
         return startEvent(id, force, List.of());
     }
 
-    /**
-     * Starts an event with an optional forced mutator list (admin
-     * {@code /extraction events start {event} [random|mutatorType...]}). A
-     * non-empty {@code forcedMutators} picks the event's first matching mutator
-     * definition per requested type, bypassing the weighted roll, the
-     * mutators-max-selected cap, conditions and the enabled flag.
-     */
-    public EventStartResult startEvent(String id, boolean force, List<MutatorType> forcedMutators) {
-        return startEvent(id, force, null, forcedMutators);
-    }
-
-    /**
-     * Starts an event, optionally pinned to a named extraction {@code areaName}
-     * (case-insensitive; {@code here} anchors to the sender's feet — but this
-     * overload takes the resolved {@link Location} directly). Storm events
-     * always bind to the area containing/nearest the origin, so a charged
-     * start can force that choice explicitly.
-     */
-    public EventStartResult startEvent(String id, boolean force, Location forcedLocation,
-                                       List<MutatorType> forcedMutators) {
-        WorldEvent event = config.getEvent(id);
-        if (event == null)
-            return EventStartResult.NOT_FOUND;
-
-        if (active.containsKey(event.getId()))
-            return EventStartResult.ALREADY_ACTIVE;
-
-        if (!event.isEnabled())
-            return EventStartResult.DISABLED;
-
-        if (!force && !enabled)
-            return EventStartResult.DISABLED;
-
-        EventInstance instance = spawnEvent(event, forcedLocation, forcedMutators, true);
-        if (instance == null)
-            return EventStartResult.NO_SPAWNS;
-
-        active.put(event.getId(), instance);
-        ctx.presentation().announceStart(instance);
-        ctx.presentation().updateCompass();
-        return EventStartResult.STARTED;
-    }
-
-    /**
-     * Runtime rename of an event (admin setname): applies live (active event
-     * holograms/broadcasts read getDisplayName each fill) and persists to
-     * events.yml; null resets to the raw id.
-     */
-    public void setEventDisplayName(WorldEvent event, String name) {
-        if (event == null)
-            return;
-
-        event.setDisplayName(name);
-        config.saveDisplayName(event.getId(), name);
-
-        for (EventInstance instance : active.values()) {
-            if (instance.getEvent() == event)
-                ctx.presentation().updateWaypoint(instance);
-        }
-    }
-
-    /**
-     * Resolves an area token by name (case-insensitive) for admin event starts.
-     */
-    public Area findArea(String token) {
-        if (token == null || token.isBlank())
-            return null;
-
-        for (Area area : plugin.getAreaManager().getAreas()) {
-            if (area != null && area.getName().equalsIgnoreCase(token))
-                return area;
-        }
-
-        return null;
-    }
-
-    /**
-     * Resolves an admin-typed area token into the location to anchor an event
-     * start to: a defined area's center (or {@code here}), or null when the
-     * token names no area.
-     */
-    public Location resolveAreaAnchor(String token, Location playerLocation) {
-        if (token == null || token.isBlank())
-            return null;
-
-        if ("here".equalsIgnoreCase(token))
-            return playerLocation;
-
-        Area target = null;
-
-        for (Area area : plugin.getAreaManager().getAreas()) {
-            if (area != null && area.getName().equalsIgnoreCase(token))
-                target = area;
-        }
-
-        return target == null ? null : target.getCenter();
-    }
-
-    // ---- scheduling / starting ----
-
     public void endEvent(EventInstance instance, boolean success) {
         if (instance == null)
             return;
@@ -421,12 +312,47 @@ public class WorldEventManager {
         return eligible.getLast();
     }
 
-    private EventInstance spawnEvent(WorldEvent event, Location origin) {
-        return spawnEvent(event, origin, List.of(), false);
+    /**
+     * Starts an event with an optional forced mutator list (admin
+     * {@code /extraction events start {event} [random|mutatorType...]}). A
+     * non-empty {@code forcedMutators} picks the event's first matching mutator
+     * definition per requested type, bypassing the weighted roll, the
+     * mutators-max-selected cap, conditions and the enabled flag.
+     */
+    public EventStartResult startEvent(String id, boolean force, List<MutatorType> forcedMutators) {
+        return startEvent(id, force, null, forcedMutators);
     }
 
-    private EventInstance spawnEvent(WorldEvent event, Location origin, List<MutatorType> forcedMutators) {
-        return spawnEvent(event, origin, forcedMutators, false);
+    /**
+     * Starts an event, optionally pinned to a named extraction {@code areaName}
+     * (case-insensitive; {@code here} anchors to the sender's feet — but this
+     * overload takes the resolved {@link Location} directly). Storm events
+     * always bind to the area containing/nearest the origin, so a charged
+     * start can force that choice explicitly.
+     */
+    public EventStartResult startEvent(String id, boolean force, Location forcedLocation,
+                                       List<MutatorType> forcedMutators) {
+        WorldEvent event = config.getEvent(id);
+        if (event == null)
+            return EventStartResult.NOT_FOUND;
+
+        if (active.containsKey(event.getId()))
+            return EventStartResult.ALREADY_ACTIVE;
+
+        if (!event.isEnabled())
+            return EventStartResult.DISABLED;
+
+        if (!force && !enabled)
+            return EventStartResult.DISABLED;
+
+        EventInstance instance = spawnEvent(event, forcedLocation, forcedMutators, true);
+        if (instance == null)
+            return EventStartResult.NO_SPAWNS;
+
+        active.put(event.getId(), instance);
+        ctx.presentation().announceStart(instance);
+        ctx.presentation().updateCompass();
+        return EventStartResult.STARTED;
     }
 
     private EventInstance spawnEvent(WorldEvent event, Location origin, List<MutatorType> forcedMutators,
@@ -573,7 +499,11 @@ public class WorldEventManager {
         return selected;
     }
 
-    /** Forced selection: first matching mutator definition per requested type, no rolls/caps/conditions. */
+    // ---- scheduling / starting ----
+
+    /**
+     * Forced selection: first matching mutator definition per requested type, no rolls/caps/conditions.
+     */
     private List<Mutator> selectForcedMutators(WorldEvent event, List<MutatorType> forced) {
         List<Mutator> selected = new ArrayList<>();
 
@@ -660,6 +590,74 @@ public class WorldEventManager {
             }
         }
         return true;
+    }
+
+    /**
+     * Runs one maintenance pass from outside (idle-server shutdown): tears down
+     * any leftover active events so their mobs/craters/boss bars don't freeze
+     * when the task stops.
+     */
+    public void runFinalSweep() {
+        tick();
+    }
+
+    /**
+     * Runtime rename of an event (admin setname): applies live (active event
+     * holograms/broadcasts read getDisplayName each fill) and persists to
+     * events.yml; null resets to the raw id.
+     */
+    public void setEventDisplayName(WorldEvent event, String name) {
+        if (event == null)
+            return;
+
+        event.setDisplayName(name);
+        config.saveDisplayName(event.getId(), name);
+
+        for (EventInstance instance : active.values()) {
+            if (instance.getEvent() == event)
+                ctx.presentation().updateWaypoint(instance);
+        }
+    }
+
+    /**
+     * Resolves an area token by name (case-insensitive) for admin event starts.
+     */
+    public Area findArea(String token) {
+        if (token == null || token.isBlank())
+            return null;
+
+        for (Area area : plugin.getAreaManager().getAreas()) {
+            if (area != null && area.getName().equalsIgnoreCase(token))
+                return area;
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolves an admin-typed area token into the location to anchor an event
+     * start to: a defined area's center (or {@code here}), or null when the
+     * token names no area.
+     */
+    public Location resolveAreaAnchor(String token, Location playerLocation) {
+        if (token == null || token.isBlank())
+            return null;
+
+        if ("here".equalsIgnoreCase(token))
+            return playerLocation;
+
+        Area target = null;
+
+        for (Area area : plugin.getAreaManager().getAreas()) {
+            if (area != null && area.getName().equalsIgnoreCase(token))
+                target = area;
+        }
+
+        return target == null ? null : target.getCenter();
+    }
+
+    private EventInstance spawnEvent(WorldEvent event, Location origin, List<MutatorType> forcedMutators) {
+        return spawnEvent(event, origin, forcedMutators, false);
     }
 
     public void shutdown() {
@@ -757,6 +755,10 @@ public class WorldEventManager {
         return EventStartResult.STARTED;
     }
 
+    private EventInstance spawnEvent(WorldEvent event, Location origin) {
+        return spawnEvent(event, origin, List.of(), false);
+    }
+
     public boolean stopEvent(String id) {
         EventInstance instance = active.get(id.toLowerCase(Locale.ROOT));
         if (instance == null)
@@ -840,10 +842,6 @@ public class WorldEventManager {
         return ctx.loot().rollLootForMob(uuid);
     }
 
-    public EventInstance getMobInstance(UUID uuid) {
-        return mobInstances.get(uuid);
-    }
-
     /**
      * Deaths of splitting event mobs (magma cubes / slimes) spawn smaller copies
      * with fresh UUIDs that never pass through spawn registration. Captures the
@@ -888,6 +886,10 @@ public class WorldEventManager {
                     mob.setRemoveWhenFarAway(false);
             }
         }, 5L);
+    }
+
+    public EventInstance getMobInstance(UUID uuid) {
+        return mobInstances.get(uuid);
     }
 
     public boolean claimHarvestChest(Player player, Block block) {

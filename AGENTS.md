@@ -3,7 +3,7 @@
 ## Project
 Extraction â€” a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 - Package: `net.omni.extraction`
-- Artifact: `net.omni:Extraction:1.0.0`
+- Artifact: `net.omni:Extraction:1.1.0`
 - Main class: `net.omni.extraction.ExtractionPlugin`
 - Data file: `extraction.db` under `plugins/Extraction/data/` by default; or MariaDB/MySQL when `storage.type: mysql` (see Storage below)
 - Permissions: `extraction.*` with children `extraction.admin`, `extraction.play`, `extraction.areas`, `extraction.party`, `extraction.bypass.cooldown`
@@ -12,9 +12,10 @@ Extraction â€” a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 
 ## Build & verify
 - Compile: `mvn clean compile`
-- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) â†’ `target/Extraction-1.0.0.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.0.0.jar` into the server's `plugins/Extraction/` and restart â€” an IDE build does not deploy to the server folder.
-- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.0.0.jar` to confirm the server runs the current build.
+- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) â†’ `target/Extraction-1.1.0.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.1.0.jar` into the server's `plugins/Extraction/` and restart â€” an IDE build does not deploy to the server folder.
+- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.1.0.jar` to confirm the server runs the current build.
 - There is no test suite; compiling `mvn clean compile` is the verification step for syntax; `mvn clean package` is required before claiming a fix is deployed.
+- **Version-bump prompt (MAJOR releases only):** before declaring a major release/update finished, ask the user whether to bump the plugin version (`pom.xml` `<version>`); bump only on confirmation — do NOT prompt for small bugfix-only sessions. When a bump is confirmed, also update the version references inside this file (this section) so the docs stay in sync. Current version: `1.1.0` (bumped from `1.0.0` on 2026-11-03).
 
 ## Conventions
 
