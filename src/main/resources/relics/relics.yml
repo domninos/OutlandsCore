@@ -25,3 +25,11 @@ relic-gui:
   placeholder-lore:
     - "<gray>You haven't discovered this yet.</gray>"
     - "<gray>Find it by looting chests or killing mobs in areas.</gray>"
+  # Bottom-row button on /charms and /artifacts that opens the shop hub
+  shop-material: "GOLD_NUGGET"
+  shop-name: "<yellow>Buy on /extshop</yellow>"
+  shop-lore:
+    - "<gray>Own more relics by looting</gray>"
+    - "<gray>areas and killing mobs, or</gray>"
+    - "<gray>visit the shop hub.</gray>"
+    - "<gray>Click to open /extshop</gray>"

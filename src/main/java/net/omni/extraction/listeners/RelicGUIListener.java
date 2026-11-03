@@ -1,7 +1,9 @@
 package net.omni.extraction.listeners;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.relics.RelicGUI;
 import net.omni.extraction.relics.RelicHolder;
+import net.omni.extraction.shop.ShopManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -58,6 +60,11 @@ public class RelicGUIListener implements Listener {
 
         if (rawSlot < 0 || rawSlot >= size)
             return;
+
+        if (rawSlot == RelicGUI.shopSlot(size)) {
+            plugin.getShopManager().openHub(player);
+            return;
+        }
 
         plugin.getRelicManager().click(player, holder.category(), rawSlot);
     }

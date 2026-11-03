@@ -36,14 +36,14 @@ pets-gui:
 
 shop-hub:
   title: "<gradient:#00AAFF:#55FFFF>Extraction Shop</gradient>"
-  rows: 3
+  rows: 4
   filler:
     material: GRAY_STAINED_GLASS_PANE
     name: " "
   # Hub buttons. `slot` is the raw inventory slot in the hub.
   buttons:
     consumables:
-      slot: 10
+      slot: 19
       material: COOKED_BEEF
       name: "<yellow><bold>Consumables</bold></yellow>"
       lore:
@@ -51,7 +51,7 @@ shop-hub:
         - "<gray>with extraction tokens.</gray>"
         - "<gray>Click to open</gray>"
     enchantments:
-      slot: 12
+      slot: 21
       material: ENCHANTING_TABLE
       name: "<light_purple><bold>Enchantments</bold></light_purple>"
       lore:
@@ -59,7 +59,7 @@ shop-hub:
         - "<gray>armor and sword/axe/pickaxe.</gray>"
         - "<gray>Click to open</gray>"
     upgrades:
-      slot: 14
+      slot: 23
       material: NETHERITE_SWORD
       name: "<red><bold>Gear Upgrades</bold></red>"
       lore:
@@ -67,7 +67,7 @@ shop-hub:
         - "<gray>with tokens or buy tiers.</gray>"
         - "<gray>Click to open</gray>"
     backpack:
-      slot: 16
+      slot: 25
       material: CHEST
       name: "<aqua><bold>Backpacks</bold></aqua>"
       lore:
@@ -75,7 +75,7 @@ shop-hub:
         - "<gray>extra pages.</gray>"
         - "<gray>Click to open</gray>"
     pets:
-      slot: 20
+      slot: 27
       material: ALLAY_SPAWN_EGG
       name: "<light_purple><bold>Pets</bold></light_purple>"
       lore:
@@ -83,7 +83,7 @@ shop-hub:
         - "<gray>follow you during a run.</gray>"
         - "<gray>Click to open</gray>"
     close:
-      slot: 22
+      slot: 31
       material: BARRIER
       name: "<red><bold>Close</bold></red>"
       lore:

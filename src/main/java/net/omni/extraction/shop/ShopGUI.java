@@ -309,7 +309,15 @@ public class ShopGUI {
             renderer.setLore(meta, lore);
             item.setItemMeta(meta);
         }
-        inventory.setItem(num.intValue(), item);
+        int slot = num.intValue();
+
+        if (slot < 0 || slot >= inventory.getSize()) {
+            plugin.getLogger().warning("Shop hub button '" + key
+                    + "' slot " + slot + " is outside the " + inventory.getSize() + "-slot hub; skipped.");
+            return;
+        }
+
+        inventory.setItem(slot, item);
     }
 
     private List<String> parseLore(Object obj) {

@@ -18,14 +18,21 @@ public final class RelicGUI {
     private RelicGUI() {
     }
 
+    /** Center of the bottom row — mirrors the /pets shop button. */
+    public static int shopSlot(int inventorySize) {
+        return inventorySize - 5;
+    }
+
     public static Inventory build(ExtractionPlugin plugin, Player player, String category, PlayerData data) {
         ChatRenderer renderer = plugin.getChatRenderer();
         ConfigUtil config = plugin.getConfigUtil();
 
         List<RelicDefinition> definitions = plugin.getRelicManager().getDefinitions(category);
 
-        int rows = Math.clamp((int) Math.ceil(definitions.size() / 9.0), 3, config.getRelicGuiRows());
+        int contentRows = (int) Math.ceil(definitions.size() / 9.0);
+        int rows = Math.clamp(Math.max(2, contentRows) + 1, 3, config.getRelicGuiRows());
         int size = rows * 9;
+        int contentSize = (rows - 1) * 9;
 
         String title = RelicManager.KIND_ARTIFACT.equals(category)
                 ? plugin.getPackManager().titleWithTexture(config.getRelicGuiArtifactsTitle(), "relics-artifacts")
@@ -34,13 +41,33 @@ public final class RelicGUI {
         Inventory inv = renderer.createInventory(new RelicHolder(category), size, title);
 
         for (int i = 0; i < size; i++) {
-            if (i < definitions.size())
+            if (i < definitions.size() && i < contentSize)
                 inv.setItem(i, definitionItem(plugin, category, definitions.get(i), data));
             else
                 inv.setItem(i, filler(renderer, config));
         }
 
+        inv.setItem(shopSlot(size), shopButton(plugin));
+
         return inv;
+    }
+
+    private static ItemStack shopButton(ExtractionPlugin plugin) {
+        ChatRenderer renderer = plugin.getChatRenderer();
+        ConfigUtil config = plugin.getConfigUtil();
+
+        Material material = Material.matchMaterial(config.getRelicGuiShopMaterial());
+        if (material == null || !material.isItem())
+            material = Material.GOLD_NUGGET;
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            renderer.setDisplayName(meta, config.getRelicGuiShopName());
+            renderer.setLore(meta, config.getRelicGuiShopLore());
+            item.setItemMeta(meta);
+        }
+        return item;
     }
 
     private static ItemStack definitionItem(ExtractionPlugin plugin, String category,

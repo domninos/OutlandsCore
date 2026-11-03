@@ -82,6 +82,9 @@ public class ConfigUtil {
     private String relicGuiPlaceholderMaterial;
     private String relicGuiPlaceholderName;
     private List<String> relicGuiPlaceholderLore;
+    private String relicGuiShopMaterial;
+    private String relicGuiShopName;
+    private List<String> relicGuiShopLore;
 
     private Location spawnLocation;
     private Location lobbyLocation;
@@ -1101,6 +1104,15 @@ public class ConfigUtil {
         this.relicGuiPlaceholderLore = getAndDefaultStringList(ConfigKeys.RELIC_GUI_PLACEHOLDER_LORE, List.of(
                 "<gray>You haven't discovered this yet.</gray>",
                 "<gray>Find it by looting chests or killing mobs in areas.</gray>"), savedDefaults);
+        this.relicGuiShopMaterial = getAndDefaultString(ConfigKeys.RELIC_GUI_SHOP_MATERIAL,
+                "GOLD_NUGGET", savedDefaults);
+        this.relicGuiShopName = getAndDefaultString(ConfigKeys.RELIC_GUI_SHOP_NAME,
+                "<yellow>Buy on /extshop</yellow>", savedDefaults);
+        this.relicGuiShopLore = getAndDefaultStringList(ConfigKeys.RELIC_GUI_SHOP_LORE, List.of(
+                "<gray>Own more relics by looting</gray>",
+                "<gray>areas and killing mobs, or</gray>",
+                "<gray>visit the shop hub.</gray>",
+                "<gray>Click to open /extshop</gray>"), savedDefaults);
     }
 
     private void loadLootEditor(AtomicInteger savedDefaults) {
@@ -2892,5 +2904,17 @@ public class ConfigUtil {
 
     public List<String> getRelicGuiPlaceholderLore() {
         return relicGuiPlaceholderLore;
+    }
+
+    public String getRelicGuiShopMaterial() {
+        return relicGuiShopMaterial;
+    }
+
+    public String getRelicGuiShopName() {
+        return relicGuiShopName;
+    }
+
+    public List<String> getRelicGuiShopLore() {
+        return relicGuiShopLore;
     }
 }

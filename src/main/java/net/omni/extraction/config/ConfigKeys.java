@@ -43,6 +43,12 @@ public final class ConfigKeys {
     public static final String RELIC_GUI_PLACEHOLDER_NAME = "relic-gui.placeholder-name";
     public static final String RELIC_GUI_PLACEHOLDER_LORE = "relic-gui.placeholder-lore";
 
+    public static final String RELIC_GUI_SHOP_MATERIAL = "relic-gui.shop-material";
+
+    public static final String RELIC_GUI_SHOP_NAME = "relic-gui.shop-name";
+
+    public static final String RELIC_GUI_SHOP_LORE = "relic-gui.shop-lore";
+
     public static final String SHOP_GUI = "shop-gui";
     public static final String SHOP_GUI_TITLE = "shop-gui.title";
     public static final String SHOP_GUI_ROWS = "shop-gui.rows";
