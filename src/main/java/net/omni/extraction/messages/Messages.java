@@ -277,6 +277,8 @@ public enum Messages {
     EVENTS_MUTATORS_FORCED("events.mutators-forced", "<gray>Forced mutators: <white>%mutators%</white>.</gray>"),
 
     EVENTS_AREA_ANCHORED("events.area-anchored", "<gray>Event anchored to area <white>%area%</white>.</gray>"),
+    EVENTS_NAME_SET("events.name-set", "<green>Event <white>%event%</white> now displays as <white>%name%</white>.</green>"),
+    EVENTS_NAME_CLEAR_HINT("events.name-clear-hint", "<gray>Use <white>/extraction admin setname {event} clear</white> to reset it to the id.</gray>"),
     EVENTS_MUTATOR_SKIPPED("events.mutator-skipped", "<yellow>Unknown mutator <white>%mutator%</white> skipped. Types: DOUBLE_LOOT, ELITE_ENEMIES, NIGHTFALL, EXPLOSIVE_DEATHS, NO_REGENERATION.</yellow>"),
     ADMIN_MODE_ON("admin.mode-on", "<green>Admin mode enabled — creative, area clears and area events ignored. Run <white>/extraction admin</white> again to exit.</green>"),
     ADMIN_MODE_OFF("admin.mode-off", "<green>Admin mode disabled — inventory and gamemode restored.</green>"),

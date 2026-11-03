@@ -199,6 +199,7 @@ public class ExtractionCommand implements CommandExecutor {
                 MessageUtil.append("extraction admin delhologram {area}", "Remove the area hologram", help);
                 MessageUtil.append("extraction admin packinfo", "Dump resource pack hosting diagnostics", help);
                 MessageUtil.append("extraction admin migratedb", "Copy local SQLite data into the active MySQL backend", help);
+                MessageUtil.append("extraction admin setname {event} {name...}", "Set the event name shown in its hologram ('clear' resets to the id)", help);
             }
             case CATEGORY_EVENTS -> {
                 MessageUtil.append("extraction events status", "List world-event definitions and their state", help);
@@ -686,6 +687,34 @@ public class ExtractionCommand implements CommandExecutor {
 
         if (action.equals("migratedb") || action.equals("migrate-db")) {
             return handleMigrateDb(sender);
+        }
+
+        if (action.equals("setname")) {
+            if (args.length < 4) {
+                plugin.sendMessage(sender, Messages.USAGE.replace("usage",
+                        "/extraction admin setname {event} {name...}"));
+                return true;
+            }
+
+            WorldEvent event = plugin.getWorldEventManager().getEvent(args[2]);
+
+            if (event == null) {
+                plugin.sendMessage(sender, Messages.EVENTS_NOT_FOUND.replace("event", args[2]));
+                return true;
+            }
+
+            String name = String.join(" ", java.util.Arrays.copyOfRange(args, 3, args.length)).trim();
+            boolean clear = name.equalsIgnoreCase("clear");
+
+            plugin.getWorldEventManager().setEventDisplayName(event, clear ? null : name);
+
+            plugin.sendMessage(sender, Messages.EVENTS_NAME_SET.replace(
+                    "event", event.getId(),
+                    "name", clear ? event.getId() : event.getDisplayName()));
+
+            if (clear)
+                plugin.sendMessage(sender, Messages.EVENTS_NAME_CLEAR_HINT.toString());
+            return true;
         }
 
         if (args.length < 3) {

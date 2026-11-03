@@ -33,7 +33,7 @@ public class WorldEvent {
             new TerrainBlock(Material.SLIME_BLOCK, 1));
     private final String id;
     private final boolean enabled;
-    private final String displayName;
+    private String displayName;
     private final int weight;
     private final int cooldownSeconds;
     private final int durationSeconds;
@@ -192,6 +192,11 @@ public class WorldEvent {
 
     public String getDisplayName() {
         return displayName;
+    }
+
+    /** Runtime rename (admin setname) — persisted via WorldEventsConfig.saveDisplayName. */
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName == null || displayName.isBlank() ? id : displayName;
     }
 
     public int getWeight() {

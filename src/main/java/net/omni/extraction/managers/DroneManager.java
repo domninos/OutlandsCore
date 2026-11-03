@@ -19,6 +19,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Bee;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.Map;
@@ -267,13 +268,17 @@ public class DroneManager {
         Location bodyLoc = player.getLocation().clone();
         GameMode originalMode = player.getGameMode();
 
+        ItemStack[] armor = player.getInventory().getArmorContents();
+        ItemStack mainhand = player.getInventory().getItemInMainHand().clone();
+        ItemStack offhand = player.getInventory().getItemInOffHand().clone();
+
         ArmorStand bodyMarker = null;
         Npc bodyNpc = null;
         String npcId = null;
 
         if (fancyNpcHook.isAvailable()) {
             npcId = "drone_" + player.getName().toLowerCase() + "_" + ThreadLocalRandom.current().nextInt(1000, 9999);
-            bodyNpc = fancyNpcHook.spawnBodyNpc(player, bodyLoc, npcId);
+            bodyNpc = fancyNpcHook.spawnBodyNpc(player, bodyLoc, npcId, armor, mainhand, offhand);
 
             if (bodyNpc == null) {
                 npcId = null;
@@ -281,7 +286,7 @@ public class DroneManager {
         }
 
         if (bodyNpc == null) {
-            bodyMarker = DroneUtil.spawnBodyMarker(bodyLoc);
+            bodyMarker = DroneUtil.spawnBodyMarker(bodyLoc, armor, mainhand, offhand);
         }
 
         Location droneLoc = bodyLoc.clone().add(0, 1.6, 0);
@@ -293,10 +298,13 @@ public class DroneManager {
         }
 
         DroneSession session = new DroneSession(player.getUniqueId(), bodyLoc, originalMode, bodyMarker, bodyNpc, npcId, mount);
-        session.setArmor(player.getInventory().getArmorContents());
-        session.setOffhand(player.getInventory().getItemInOffHand().clone());
+        session.setArmor(armor);
+        session.setOffhand(offhand);
+        session.setMainhand(mainhand);
+
         player.getInventory().setArmorContents(null);
         player.getInventory().setItemInOffHand(null);
+        player.getInventory().setItemInMainHand(null);
 
         sessions.put(player.getUniqueId(), session);
 
@@ -404,11 +412,15 @@ public class DroneManager {
 
             if (session.getOffhand() != null)
                 player.getInventory().setItemInOffHand(session.getOffhand());
+
+            if (session.getMainhand() != null)
+                player.getInventory().setItemInMainHand(session.getMainhand());
         } catch (Exception ignored) {
         }
 
         session.setArmor(null);
         session.setOffhand(null);
+        session.setMainhand(null);
     }
 
     private void cleanupSession(DroneSession session) {

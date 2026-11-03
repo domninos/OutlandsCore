@@ -10,6 +10,7 @@ import org.bukkit.entity.Bee;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -34,6 +35,7 @@ public final class DroneUtil {
             mount.setRemoveWhenFarAway(false);
             mount.setSilent(true);
             mount.setCustomNameVisible(false);
+            mount.setInvisible(true);
 
             double maxHealth = Math.max(1, plugin.getConfigUtil().getDroneMaxHealth());
             AttributeInstance attribute = mount.getAttribute(Attribute.MAX_HEALTH);
@@ -50,14 +52,32 @@ public final class DroneUtil {
         }
     }
 
-    /** Invisible, invulnerable marker standing in for the pilot's body (FancyNpcs fallback). */
-    public static ArmorStand spawnBodyMarker(Location bodyLoc) {
+    /** Invisible-but-equipped marker standing in for the pilot's body (FancyNpcs fallback). */
+    public static ArmorStand spawnBodyMarker(Location bodyLoc, ItemStack[] armor,
+                                             ItemStack mainhand, ItemStack offhand) {
         ArmorStand marker = (ArmorStand) bodyLoc.getWorld().spawnEntity(bodyLoc, EntityType.ARMOR_STAND);
         marker.setVisible(false);
         marker.setGravity(false);
         marker.setInvulnerable(true);
         marker.setMarker(true);
         marker.setCustomNameVisible(false);
+
+        try {
+            if (armor != null && armor.length == 4) {
+                if (armor[0] != null) marker.setBoots(armor[0]);
+                if (armor[1] != null) marker.setLeggings(armor[1]);
+                if (armor[2] != null) marker.setChestplate(armor[2]);
+                if (armor[3] != null) marker.setHelmet(armor[3]);
+            }
+
+            if (mainhand != null && !mainhand.getType().isAir())
+                marker.getEquipment().setItemInMainHand(mainhand);
+
+            if (offhand != null && !offhand.getType().isAir())
+                marker.getEquipment().setItemInOffHand(offhand);
+        } catch (Throwable ignored) {
+        }
+
         return marker;
     }
 

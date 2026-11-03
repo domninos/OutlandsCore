@@ -264,6 +264,24 @@ public class WorldEventManager {
     }
 
     /**
+     * Runtime rename of an event (admin setname): applies live (active event
+     * holograms/broadcasts read getDisplayName each fill) and persists to
+     * events.yml; null resets to the raw id.
+     */
+    public void setEventDisplayName(WorldEvent event, String name) {
+        if (event == null)
+            return;
+
+        event.setDisplayName(name);
+        config.saveDisplayName(event.getId(), name);
+
+        for (EventInstance instance : active.values()) {
+            if (instance.getEvent() == event)
+                ctx.presentation().updateWaypoint(instance);
+        }
+    }
+
+    /**
      * Resolves an area token by name (case-insensitive) for admin event starts.
      */
     public Area findArea(String token) {

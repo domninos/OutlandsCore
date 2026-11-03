@@ -62,7 +62,7 @@ public class ExtractionTabCompleter implements TabCompleter {
             if (args[0].equalsIgnoreCase("admin") && sender.hasPermission(Permissions.ADMIN)) {
                 return StringUtil.copyPartialMatches(args[1],
                         List.of("setspawn", "setlobby", "addhologram", "sethologram", "delhologram",
-                                "packinfo", "migratedb"), new ArrayList<>());
+                                "packinfo", "migratedb", "setname"), new ArrayList<>());
             }
 
             if (args[0].equalsIgnoreCase("events") && sender.hasPermission(Permissions.ADMIN)) {
@@ -135,6 +135,16 @@ public class ExtractionTabCompleter implements TabCompleter {
                     .map(String::toUpperCase).toList());
             suggestions.removeAll(Arrays.stream(args, 3, args.length).toList());
             return StringUtil.copyPartialMatches(args[args.length - 1], suggestions, new ArrayList<>());
+        }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("admin")
+                && args[1].equalsIgnoreCase("setname")
+                && sender.hasPermission(Permissions.ADMIN)) {
+            List<String> ids = plugin.getWorldEventManager().getEvents().values().stream()
+                    .map(event -> event.getId())
+                    .toList();
+            return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
         }
 
         if (args.length == 3

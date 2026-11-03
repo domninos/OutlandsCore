@@ -23,6 +23,7 @@ public class DroneSession {
     private final Bee mount;
     private ItemStack[] armor;
     private ItemStack offhand;
+    private ItemStack mainhand;
     private BukkitTask task;
     private double battery;
     private boolean active;
@@ -59,8 +60,16 @@ public class DroneSession {
         this.offhand = offhand;
     }
 
+    public ItemStack getMainhand() {
+        return mainhand;
+    }
+
+    public void setMainhand(ItemStack mainhand) {
+        this.mainhand = mainhand;
+    }
+
     public boolean hasStrippedGear() {
-        return armor != null || offhand != null;
+        return armor != null || offhand != null || mainhand != null;
     }
 
     public UUID getPlayerId() {

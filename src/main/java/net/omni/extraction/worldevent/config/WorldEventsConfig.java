@@ -102,4 +102,14 @@ public class WorldEventsConfig {
         eventsConfig.set(path + ".y", null);
         eventsConfig.set(path + ".z", null);
     }
+
+    /** Persists events.<id>.display-name (admin setname); null clears the override. */
+    public void saveDisplayName(String id, String name) {
+        String path = "events." + id + ".display-name";
+
+        if (name == null || name.isBlank())
+            eventsConfig.set(path, null);
+        else
+            eventsConfig.set(path, name);
+    }
 }

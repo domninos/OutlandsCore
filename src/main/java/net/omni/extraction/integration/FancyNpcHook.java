@@ -4,11 +4,13 @@ import de.oliver.fancynpcs.api.FancyNpcsPlugin;
 import de.oliver.fancynpcs.api.Npc;
 import de.oliver.fancynpcs.api.NpcAttribute;
 import de.oliver.fancynpcs.api.NpcData;
+import de.oliver.fancynpcs.api.utils.NpcEquipmentSlot;
 import net.omni.extraction.ExtractionPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.List;
 import java.util.Locale;
@@ -47,11 +49,14 @@ public class FancyNpcHook {
 
     /**
      * Spawns a player-skinned FancyNpcs NPC of the player at the body location.
-     * The NPC is runtime-only (saveToFile=false) and removed on recall. Returns
-     * null when creation fails, in which case the caller falls back to an
-     * invisible ArmorStand marker.
+     * {@code armor} (order 0..3 = boots..helmet) and the held items are mirrored
+     * onto the NPC via NpcData equipment so the body looks exactly like the
+     * stripped pilot. The NPC is runtime-only (saveToFile=false) and removed on
+     * recall. Returns null when creation fails, in which case the caller falls
+     * back to an invisible ArmorStand marker.
      */
-    public Npc spawnBodyNpc(Player player, Location bodyLoc, String npcId) {
+    public Npc spawnBodyNpc(Player player, Location bodyLoc, String npcId,
+                            ItemStack[] armor, ItemStack mainhand, ItemStack offhand) {
         try {
             NpcData data = new NpcData(npcId, player.getUniqueId(), bodyLoc);
             data.setSkin(player.getName());
@@ -60,6 +65,8 @@ public class FancyNpcHook {
             data.setCollidable(false);
             data.setTurnToPlayer(false);
             data.setSpawnEntity(true);
+
+            applyEquipment(data, armor, mainhand, offhand);
 
             Npc npc = FancyNpcsPlugin.get().getNpcAdapter().apply(data);
             npc.setSaveToFile(false);
@@ -71,6 +78,31 @@ public class FancyNpcHook {
             plugin.getLogger().warning("Could not spawn FancyNpcs drone body for " + player.getName()
                     + ", falling back to armor stand marker: " + e.getMessage());
             return null;
+        }
+    }
+
+    /** Mirrors pilot gear onto the NPC (armor indices: 0 boots … 3 helmet). */
+    private void applyEquipment(NpcData data, ItemStack[] armor, ItemStack mainhand, ItemStack offhand) {
+        try {
+            if (mainhand != null && !mainhand.getType().isAir())
+                data.addEquipment(NpcEquipmentSlot.MAINHAND, mainhand);
+
+            if (offhand != null && !offhand.getType().isAir())
+                data.addEquipment(NpcEquipmentSlot.OFFHAND, offhand);
+
+            if (armor == null)
+                return;
+
+            NpcEquipmentSlot[] slots = {NpcEquipmentSlot.FEET, NpcEquipmentSlot.LEGS,
+                    NpcEquipmentSlot.CHEST, NpcEquipmentSlot.HEAD};
+
+            for (int i = 0; i < slots.length && i < armor.length; i++) {
+                ItemStack item = armor[i];
+
+                if (item != null && !item.getType().isAir())
+                    data.addEquipment(slots[i], item);
+            }
+        } catch (Throwable ignored) {
         }
     }
 
