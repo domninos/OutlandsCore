@@ -1,9 +1,9 @@
 package net.omni.extraction.backpack;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.util.LootItemUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.ItemSerializationUtil;
+import net.omni.extraction.util.LootItemUtil;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -13,11 +13,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Physical-item backpack: the bag is a tagged item in the player's inventory
@@ -48,73 +44,6 @@ public class BackpackManager {
     }
 
     // ---- tier / capacity helpers ----
-
-    public int getSlotCount(int tier) {
-        List<Integer> slots = plugin.getConfigUtil().getBackpackTierSlots();
-
-        int index = tier - 1;
-        if (index < 0 || index >= slots.size())
-            return 0;
-
-        return Math.max(0, slots.get(index));
-    }
-
-    private int capacity(int tier, int pages) {
-        int slots = getSlotCount(tier);
-        if (slots <= 0)
-            return 0;
-
-        return slots * Math.max(1, pages);
-    }
-
-    private List<ItemStack> padContents(List<ItemStack> contents, int capacity) {
-        if (contents == null)
-            contents = new ArrayList<>();
-
-        if (capacity <= 0)
-            return new ArrayList<>();
-
-        if (contents.size() > capacity)
-            return new ArrayList<>(contents.subList(0, capacity));
-
-        List<ItemStack> padded = new ArrayList<>(contents);
-        while (padded.size() < capacity)
-            padded.add(null);
-
-        return padded;
-    }
-
-    // ---- item tag helpers ----
-
-    public boolean isBackpackItem(ItemStack item) {
-        if (item == null || !item.hasItemMeta())
-            return false;
-
-        return item.getItemMeta().getPersistentDataContainer().has(keyBackpack, PersistentDataType.BYTE);
-    }
-
-    public String getUid(ItemStack item) {
-        if (!isBackpackItem(item))
-            return null;
-
-        return item.getItemMeta().getPersistentDataContainer().get(keyUid, PersistentDataType.STRING);
-    }
-
-    public int getTier(ItemStack item) {
-        if (!isBackpackItem(item))
-            return 1;
-
-        Integer tier = item.getItemMeta().getPersistentDataContainer().get(keyTier, PersistentDataType.INTEGER);
-        return tier != null ? Math.max(1, tier) : 1;
-    }
-
-    public int getPages(ItemStack item) {
-        if (!isBackpackItem(item))
-            return 1;
-
-        Integer pages = item.getItemMeta().getPersistentDataContainer().get(keyPages, PersistentDataType.INTEGER);
-        return pages != null ? Math.max(1, pages) : 1;
-    }
 
     private ItemStack withData(ItemStack item, String uid, int tier, int pages, List<ItemStack> contents) {
         ItemStack out = item.clone();
@@ -152,11 +81,11 @@ public class BackpackManager {
         return lore;
     }
 
-    // ---- construction + content access ----
-
     public ItemStack createBackpackItem(int tier, int pages) {
         return createBackpackItem(tier, pages, null);
     }
+
+    // ---- item tag helpers ----
 
     public ItemStack createBackpackItem(int tier, int pages, String ownerName) {
         Material material = plugin.getConfigUtil().getBackpackMaterial();
@@ -176,18 +105,6 @@ public class BackpackManager {
 
         return withData(item, null, tier, pages, new ArrayList<>());
     }
-
-    public List<ItemStack> readContents(ItemStack bag) {
-        if (!isBackpackItem(bag))
-            return new ArrayList<>();
-
-        String b64 = bag.getItemMeta().getPersistentDataContainer().get(keyContents, PersistentDataType.STRING);
-        List<ItemStack> items = ItemSerializationUtil.fromBase64(b64 != null ? b64 : "");
-
-        return padContents(items, capacity(getTier(bag), getPages(bag)));
-    }
-
-    // ---- run lifecycle ----
 
     public List<ItemStack> collectBackpackItems(Player player) {
         List<ItemStack> bags = new ArrayList<>();
@@ -209,6 +126,13 @@ public class BackpackManager {
         return bags;
     }
 
+    public boolean isBackpackItem(ItemStack item) {
+        if (item == null || !item.hasItemMeta())
+            return false;
+
+        return item.getItemMeta().getPersistentDataContainer().has(keyBackpack, PersistentDataType.BYTE);
+    }
+
     public void insertBackpacks(Player player, List<ItemStack> bags) {
         if (player == null || bags == null)
             return;
@@ -225,7 +149,9 @@ public class BackpackManager {
         }
     }
 
-    /** Replaces every backpack item in the snapshot list with null (indices preserved). */
+    /**
+     * Replaces every backpack item in the snapshot list with null (indices preserved).
+     */
     public List<ItemStack> purgeBackpackItems(List<ItemStack> items) {
         if (items == null)
             return new ArrayList<>();
@@ -236,7 +162,9 @@ public class BackpackManager {
         return out;
     }
 
-    /** Strips every backpack item currently in the player's inventory (post-restore dedupe). */
+    /**
+     * Strips every backpack item currently in the player's inventory (post-restore dedupe).
+     */
     public void removeBackpacksFromPlayer(Player player) {
         if (player == null)
             return;
@@ -250,7 +178,7 @@ public class BackpackManager {
             player.getInventory().setItemInOffHand(null);
     }
 
-    // ---- opening / GUI ----
+    // ---- construction + content access ----
 
     public void openBackpack(Player player, ItemStack bag) {
         if (!isBackpackItem(bag))
@@ -262,8 +190,80 @@ public class BackpackManager {
         openSession(player, session);
     }
 
+    public String getUid(ItemStack item) {
+        if (!isBackpackItem(item))
+            return null;
+
+        return item.getItemMeta().getPersistentDataContainer().get(keyUid, PersistentDataType.STRING);
+    }
+
+    public int getTier(ItemStack item) {
+        if (!isBackpackItem(item))
+            return 1;
+
+        Integer tier = item.getItemMeta().getPersistentDataContainer().get(keyTier, PersistentDataType.INTEGER);
+        return tier != null ? Math.max(1, tier) : 1;
+    }
+
+    // ---- run lifecycle ----
+
+    public int getPages(ItemStack item) {
+        if (!isBackpackItem(item))
+            return 1;
+
+        Integer pages = item.getItemMeta().getPersistentDataContainer().get(keyPages, PersistentDataType.INTEGER);
+        return pages != null ? Math.max(1, pages) : 1;
+    }
+
+    public List<ItemStack> readContents(ItemStack bag) {
+        if (!isBackpackItem(bag))
+            return new ArrayList<>();
+
+        String b64 = bag.getItemMeta().getPersistentDataContainer().get(keyContents, PersistentDataType.STRING);
+        List<ItemStack> items = ItemSerializationUtil.fromBase64(b64 != null ? b64 : "");
+
+        return padContents(items, capacity(getTier(bag), getPages(bag)));
+    }
+
     private void openSession(Player player, BackpackSession session) {
         player.openInventory(BackpackGUI.build(plugin, session));
+    }
+
+    private List<ItemStack> padContents(List<ItemStack> contents, int capacity) {
+        if (contents == null)
+            contents = new ArrayList<>();
+
+        if (capacity <= 0)
+            return new ArrayList<>();
+
+        if (contents.size() > capacity)
+            return new ArrayList<>(contents.subList(0, capacity));
+
+        List<ItemStack> padded = new ArrayList<>(contents);
+        while (padded.size() < capacity)
+            padded.add(null);
+
+        return padded;
+    }
+
+    // ---- opening / GUI ----
+
+    private int capacity(int tier, int pages) {
+        int slots = getSlotCount(tier);
+        if (slots <= 0)
+            return 0;
+
+        return slots * Math.max(1, pages);
+    }
+
+    public int getSlotCount(int tier) {
+        List<Integer> slots = plugin.getConfigUtil().getBackpackTierSlots();
+
+        int index = tier - 1;
+        if (index < 0 || index >= slots.size())
+            return 0;
+
+        return Math.max(0, slots.get(index));
     }
 
     public void navigate(Player player, int targetPage) {
@@ -326,7 +326,9 @@ public class BackpackManager {
         return sessions.get(player.getUniqueId());
     }
 
-    /** Persists any open bag session and drops it on quit (close events are not reliable on disconnect). */
+    /**
+     * Persists any open bag session and drops it on quit (close events are not reliable on disconnect).
+     */
     public void onQuit(Player player) {
         BackpackSession session = sessions.remove(player.getUniqueId());
         if (session != null)
@@ -411,9 +413,9 @@ public class BackpackManager {
             player.getInventory().setItemInOffHand(withData(offHand, uid, tier, pages, new ArrayList<>()));
 
         if (merged > 0)
-            plugin.sendMessage(player, Messages.BACKPACK_UNPACKED.replace("count", String.valueOf(merged)).toString());
+            plugin.sendMessage(player, Messages.BACKPACK_UNPACKED.replace("count", String.valueOf(merged)));
         if (overflow > 0)
-            plugin.sendMessage(player, Messages.BACKPACK_UNPACK_OVERFLOW.replace("count", String.valueOf(overflow)).toString());
+            plugin.sendMessage(player, Messages.BACKPACK_UNPACK_OVERFLOW.replace("count", String.valueOf(overflow)));
     }
 
     // ---- claim-all from the backpack GUI ----
@@ -453,7 +455,7 @@ public class BackpackManager {
 
         plugin.sendMessage(player, Messages.BACKPACK_CLAIMED_ALL.toString());
         if (overflow > 0)
-            plugin.sendMessage(player, Messages.BACKPACK_UNPACK_OVERFLOW.replace("count", String.valueOf(overflow)).toString());
+            plugin.sendMessage(player, Messages.BACKPACK_UNPACK_OVERFLOW.replace("count", String.valueOf(overflow)));
     }
 
     // ---- shop ----
@@ -480,7 +482,7 @@ public class BackpackManager {
 
         if (held != null && getTier(held) >= tier) {
             plugin.sendMessage(player, Messages.BACKPACK_ALREADY_OWNED
-                    .replace("tier", String.valueOf(getTier(held))).toString());
+                    .replace("tier", String.valueOf(getTier(held))));
             openShop(player);
             return;
         }
@@ -490,7 +492,7 @@ public class BackpackManager {
         if (!plugin.getTokenManager().hasTokens(uuid, price)) {
             plugin.sendMessage(player, Messages.TOKENS_INSUFFICIENT.replace(
                     "required", String.valueOf(price),
-                    "available", String.valueOf(plugin.getTokenManager().getTokens(uuid))).toString());
+                    "available", String.valueOf(plugin.getTokenManager().getTokens(uuid))));
             openShop(player);
             return;
         }
@@ -506,7 +508,7 @@ public class BackpackManager {
 
             plugin.sendMessage(player, Messages.BACKPACK_UPGRADED.replace(
                     "tier", String.valueOf(tier),
-                    "slots", String.valueOf(getSlotCount(tier))).toString());
+                    "slots", String.valueOf(getSlotCount(tier))));
         } else {
             ItemStack bag = createBackpackItem(tier, 1, player.getName());
             Map<Integer, ItemStack> leftover = player.getInventory().addItem(bag);
@@ -517,7 +519,7 @@ public class BackpackManager {
 
             plugin.sendMessage(player, Messages.BACKPACK_PURCHASED.replace(
                     "tier", String.valueOf(tier),
-                    "slots", String.valueOf(getSlotCount(tier))).toString());
+                    "slots", String.valueOf(getSlotCount(tier))));
         }
 
         openShop(player);
@@ -539,7 +541,7 @@ public class BackpackManager {
 
         if (currentPages + extraPages > maxPages) {
             plugin.sendMessage(player, Messages.BACKPACK_PAGINATION_MAXED
-                    .replace("pages", String.valueOf(currentPages)).toString());
+                    .replace("pages", String.valueOf(currentPages)));
             openShop(player);
             return;
         }
@@ -549,7 +551,7 @@ public class BackpackManager {
         if (!plugin.getTokenManager().hasTokens(uuid, price)) {
             plugin.sendMessage(player, Messages.TOKENS_INSUFFICIENT.replace(
                     "required", String.valueOf(price),
-                    "available", String.valueOf(plugin.getTokenManager().getTokens(uuid))).toString());
+                    "available", String.valueOf(plugin.getTokenManager().getTokens(uuid))));
             openShop(player);
             return;
         }
@@ -563,7 +565,7 @@ public class BackpackManager {
         player.getInventory().setItemInMainHand(withData(held, uid, tier, currentPages + extraPages, contents));
 
         plugin.sendMessage(player, Messages.BACKPACK_PAGINATION_PURCHASED
-                .replace("pages", String.valueOf(extraPages)).toString());
+                .replace("pages", String.valueOf(extraPages)));
 
         openShop(player);
     }
@@ -590,6 +592,14 @@ public class BackpackManager {
         return isBackpackItem(offHand) && containsKey(readContents(offHand), keyId);
     }
 
+    private boolean containsKey(List<ItemStack> items, String keyId) {
+        for (ItemStack item : items)
+            if (LootItemUtil.isKeyItem(item) && keyId.equals(LootItemUtil.getKeyId(item)))
+                return true;
+
+        return false;
+    }
+
     public boolean consumeKeyItem(Player player, String keyId) {
         if (player == null || keyId == null)
             return false;
@@ -597,13 +607,13 @@ public class BackpackManager {
         ItemStack[] contents = player.getInventory().getContents();
         for (int i = 0; i < contents.length; i++)
             if (LootItemUtil.isKeyItem(contents[i]) && keyId.equals(LootItemUtil.getKeyId(contents[i]))) {
-                player.getInventory().setItem(i, LootItemUtil.decrementKeyOrNull(contents[i]));
+                player.getInventory().setItem(i, LootItemUtil.decrementOrNull(contents[i]));
                 return true;
             }
 
         ItemStack offHand = player.getInventory().getItemInOffHand();
         if (LootItemUtil.isKeyItem(offHand) && keyId.equals(LootItemUtil.getKeyId(offHand))) {
-            player.getInventory().setItemInOffHand(LootItemUtil.decrementKeyOrNull(offHand));
+            player.getInventory().setItemInOffHand(LootItemUtil.decrementOrNull(offHand));
             return true;
         }
 
@@ -615,7 +625,7 @@ public class BackpackManager {
 
             for (int b = 0; b < bag.size(); b++) {
                 if (LootItemUtil.isKeyItem(bag.get(b)) && keyId.equals(LootItemUtil.getKeyId(bag.get(b)))) {
-                    bag.set(b, LootItemUtil.decrementKeyOrNull(bag.get(b)));
+                    bag.set(b, LootItemUtil.decrementOrNull(bag.get(b)));
                     player.getInventory().setItem(i, withData(contents[i], getUid(contents[i]),
                             getTier(contents[i]), getPages(contents[i]), bag));
                     return true;
@@ -628,21 +638,13 @@ public class BackpackManager {
 
             for (int b = 0; b < bag.size(); b++) {
                 if (LootItemUtil.isKeyItem(bag.get(b)) && keyId.equals(LootItemUtil.getKeyId(bag.get(b)))) {
-                    bag.set(b, LootItemUtil.decrementKeyOrNull(bag.get(b)));
+                    bag.set(b, LootItemUtil.decrementOrNull(bag.get(b)));
                     player.getInventory().setItemInOffHand(withData(offHand, getUid(offHand),
                             getTier(offHand), getPages(offHand), bag));
                     return true;
                 }
             }
         }
-
-        return false;
-    }
-
-    private boolean containsKey(List<ItemStack> items, String keyId) {
-        for (ItemStack item : items)
-            if (LootItemUtil.isKeyItem(item) && keyId.equals(LootItemUtil.getKeyId(item)))
-                return true;
 
         return false;
     }

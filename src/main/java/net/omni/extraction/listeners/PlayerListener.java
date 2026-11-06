@@ -1,7 +1,6 @@
 package net.omni.extraction.listeners;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.util.Permissions;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.loadout.LoadoutManager;
@@ -9,6 +8,7 @@ import net.omni.extraction.messages.Messages;
 import net.omni.extraction.pets.PetDefinition;
 import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.util.LootItemUtil;
+import net.omni.extraction.util.Permissions;
 import net.omni.extraction.util.RelicItemUtil;
 import net.omni.extraction.util.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
@@ -276,7 +276,7 @@ public class PlayerListener implements Listener {
 
             event.setCancelled(true);
             plugin.getTokenManager().addTokens(player.getUniqueId(), boosted);
-            LootItemUtil.consumeOne(item);
+            player.getInventory().setItemInMainHand(LootItemUtil.decrementOrNull(item));
 
             String note = boosted != amount && pd != null
                     ? buildPetBoostNote(pd) : "";
@@ -354,7 +354,7 @@ public class PlayerListener implements Listener {
 
         if (run != null) {
             run.addTime(minutes * 60);
-            LootItemUtil.consumeOne(item);
+            player.getInventory().setItemInMainHand(LootItemUtil.decrementOrNull(item));
 
             plugin.sendMessage(player, Messages.LOOT_TIME_ADDED.replace("time",
                     String.valueOf(minutes)));
@@ -364,7 +364,7 @@ public class PlayerListener implements Listener {
         PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
         data.addExtraTimeSeconds(minutes * 60);
         plugin.getPlayerDataManager().savePlayerShared(player.getUniqueId());
-        LootItemUtil.consumeOne(item);
+        player.getInventory().setItemInMainHand(LootItemUtil.decrementOrNull(item));
 
         plugin.sendMessage(player, Messages.LOOT_TIME_BANKED.replace("time",
                 String.valueOf(minutes)));

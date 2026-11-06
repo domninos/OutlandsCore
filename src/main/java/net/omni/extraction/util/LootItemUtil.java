@@ -4,7 +4,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -231,6 +230,12 @@ public class LootItemUtil {
         return item;
     }
 
+    public static String getKeyId(ItemStack item) {
+        if (!isKeyItem(item)) return null;
+
+        return item.getItemMeta().getPersistentDataContainer().get(KEY_KEY_ID, PersistentDataType.STRING);
+    }
+
     public static boolean isKeyItem(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return false;
         if (KEY_IS_KEY == null) return false;
@@ -238,30 +243,13 @@ public class LootItemUtil {
         return item.getItemMeta().getPersistentDataContainer().has(KEY_IS_KEY, PersistentDataType.BYTE);
     }
 
-    public static String getKeyId(ItemStack item) {
-        if (!isKeyItem(item)) return null;
-
-        return item.getItemMeta().getPersistentDataContainer().get(KEY_KEY_ID, PersistentDataType.STRING);
-    }
-
-    public static boolean consumeOne(ItemStack item) {
-        if (item == null)
-            return false;
-
-        int amount = item.getAmount() - 1;
-
-        if (amount <= 0) {
-            item.setType(Material.AIR);
-            item.setAmount(0);
-        } else {
-            item.setAmount(amount);
-        }
-
-        return true;
-    }
-
-    /** Consumes one from the item, returning null when the stack is emptied. */
-    public static ItemStack decrementKeyOrNull(ItemStack item) {
+    /**
+     * Consumes one from the item, returning the remaining stack or {@code null}
+     * when it was emptied. Callers must write the result back to the inventory
+     * (a stack read from an inventory is a live mirror, so clearing it via
+     * {@code setType(AIR)} would not clear the real slot).
+     */
+    public static ItemStack decrementOrNull(ItemStack item) {
         if (item == null)
             return null;
 
