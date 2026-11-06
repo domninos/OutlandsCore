@@ -24,6 +24,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
@@ -35,6 +36,7 @@ public class PlayerListener implements Listener {
     private static final long DEATH_RESPAWN_DELAY_TICKS = 2L;
     private final ExtractionPlugin plugin;
     private final Map<UUID, Long> lastBlockBlocked = new HashMap<>();
+    private final Map<UUID, Integer> lastRightClickTick = new HashMap<>();
     private boolean lobbyWorldWarned;
 
     public PlayerListener(ExtractionPlugin plugin) {
@@ -203,6 +205,7 @@ public class PlayerListener implements Listener {
         plugin.getPlayerDataManager().unloadPlayer(uuid);
         plugin.getGuiManager().removePlayer(uuid);
         lastBlockBlocked.remove(uuid);
+        lastRightClickTick.remove(uuid);
     }
 
     @EventHandler
@@ -236,12 +239,25 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
 
         if (plugin.getDroneManager().isInDrone(player)) return;
 
         Action action = event.getAction();
 
         if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
+
+        // PlayerInteractEvent fires once per hand; only process the main hand
+        // (the code below only ever reads the main-hand item anyway).
+        if (event.getHand() == EquipmentSlot.OFF_HAND) return;
+
+        // A single click can fire both an air and a block event in the same
+        // tick. Process at most one right-click per player per tick so items
+        // (tokens, time items, ...) are consumed exactly once.
+        int tick = Bukkit.getCurrentTick();
+        Integer previousTick = lastRightClickTick.put(uuid, tick);
+
+        if (previousTick != null && previousTick == tick) return;
 
         if (action == Action.RIGHT_CLICK_BLOCK
                 && event.getClickedBlock() != null
@@ -340,7 +356,8 @@ public class PlayerListener implements Listener {
             run.addTime(minutes * 60);
             LootItemUtil.consumeOne(item);
 
-            plugin.sendMessage(player, Messages.LOOT_TIME_ADDED.replace("time", String.valueOf(minutes)));
+            plugin.sendMessage(player, Messages.LOOT_TIME_ADDED.replace("time",
+                    String.valueOf(minutes)));
             return;
         }
 
@@ -349,7 +366,8 @@ public class PlayerListener implements Listener {
         plugin.getPlayerDataManager().savePlayerShared(player.getUniqueId());
         LootItemUtil.consumeOne(item);
 
-        plugin.sendMessage(player, Messages.LOOT_TIME_BANKED.replace("time", String.valueOf(minutes)));
+        plugin.sendMessage(player, Messages.LOOT_TIME_BANKED.replace("time",
+                String.valueOf(minutes)));
     }
 
     private String buildPetBoostNote(PlayerData data) {
