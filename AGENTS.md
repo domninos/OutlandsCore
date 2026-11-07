@@ -3,7 +3,7 @@
 ## Project
 Extraction â€” a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 - Package: `net.omni.extraction`
-- Artifact: `net.omni:Extraction:1.1.1`
+- Artifact: `net.omni:Extraction:1.1.3`
 - Main class: `net.omni.extraction.ExtractionPlugin`
 - Data file: `extraction.db` under `plugins/Extraction/data/` by default; or MariaDB/MySQL when `storage.type: mysql` (see Storage below)
 - Permissions: `extraction.*` with children `extraction.admin`, `extraction.play`, `extraction.areas`, `extraction.party`, `extraction.bypass.cooldown`
@@ -12,10 +12,10 @@ Extraction â€” a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 
 ## Build & verify
 - Compile: `mvn clean compile`
-- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) â†’ `target/Extraction-1.1.1.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.1.1.jar` into the server's `plugins/Extraction/` and restart â€” an IDE build does not deploy to the server folder.
-- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.1.1.jar` to confirm the server runs the current build.
+- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) â†’ `target/Extraction-1.1.3.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.1.3.jar` into the server's `plugins/Extraction/` and restart â€” an IDE build does not deploy to the server folder.
+- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.1.3.jar` to confirm the server runs the current build.
 - There is no test suite; compiling `mvn clean compile` is the verification step for syntax; `mvn clean package` is required before claiming a fix is deployed.
-- **Version-bump prompt (MAJOR releases only):** before declaring a major release/update finished, ask the user whether to bump the plugin version (`pom.xml` `<version>`); bump only on confirmation — do NOT prompt for small bugfix-only sessions. When a bump is confirmed, also update the version references inside this file (this section) so the docs stay in sync. Current version: `1.1.1` (bumped from `1.0.0` on 2026-11-03; → 1.1.1 mid-day).
+- **Version-bump prompt (MAJOR releases only):** before declaring a major release/update finished, ask the user whether to bump the plugin version (`pom.xml` `<version>`); bump only on confirmation — do NOT prompt for small bugfix-only sessions. When a bump is confirmed, also update the version references inside this file (this section) so the docs stay in sync. Current version: `1.1.3` (bumped from `1.0.0` on 2026-11-03; → 1.1.1 mid-day; → 1.1.3 with the convoy-route rework).
 
 ## Conventions
 
@@ -735,27 +735,32 @@ via `Math.sqrt` of the squared value only when needed.
     Samples (`supply_convoy`, `toxic_storm`) + `supply_crate_key`/`hazmat_fragment` event-items + the two loot
     tables (`supply_convoy`, `toxic_storm`) ship in resources. Convoy/storm state is memory-only (same restart
     caveat as craters: a hard kill mid-event loses it).
-  - **Convoy routes + car visual**: optional `convoy.start`/`convoy.end` anchors (`{world,x,y,z}`,
-    `WorldEvent.parseLocationSection`, `ConvoyConfig.start/end`) are edited live via
-    `/extraction events route {event} {start|end|clear|show|wand}` (perm `extraction.admin`, tab-completed through
+  - **Convoy routes + car visual**: both `convoy.start` and `convoy.end` anchors (`{world,x,y,z}`,
+    `WorldEvent.parseLocationSection`, `ConvoyConfig.start/end`) are REQUIRED and set live via
+    `/extraction events route {event} {start|end|clear|show}` (perm `extraction.admin`, tab-completed through
     `ExtractionTabCompleter`, wired in `ExtractionCommand.handleRoute` â†’ `WorldEventManager.setConvoyPoint`/
-    `clearConvoyPoint`/`getConvoyPoint` persist with `eventsConfig.set("events.<id>.convoy.start|end.*")` and
-    live-apply with `WorldEvent.setRoute` rebuilding the in-memory ConvoyConfig; mid-run changes warn "applies on the
-    next run"). The wand (`WandMode.CONVOY`, cycled like the others, lore added in `AreaManager.applyWandDisplay`)
-    sets anchors once armed via `â€¦ route {event} wand` (`WorldEventManager.convoyWands` UUIDâ†’eventId map +
-    `getWandEvent`/`setWandEvent`/`clearWandEvent`; `AreaWandListener.handleConvoy`: left-click = start, right-click
-    = end; sneak-right still cycles mode); `AreaSelectionVisualizer.drawConvoyMarker` shows pillars at both anchors.
-    `spawnEvent` overrides the origin with `convoyRouteStart(event)` (so `%location%` reads the start);
-    `startConvoyRoute` ends at `convoyRouteEnd` (configured `end` else `getConfigUtil().getSpawnLocation()` else world
-    spawn) and aborts with a clear warning when start/end are < 1 block apart. The **car** is a list of
+    `clearConvoyPoint`/`getConvoyPoint`). There is **no** convoy wand mode or `route wand` subcommand: `WandMode.CONVOY`,
+    `AreaWandListener.handleConvoy`, `AreaSelectionVisualizer.drawConvoyMarker`, `WorldEventManager.convoyWands` and the
+    wand message keys were removed. `ConvoyBehavior.setConvoyPoint` returns a `RoutePointResult`
+    (`RoutePointStatus` = `SET`/`NOT_CONVOY`/`INVALID_POINT`/`BLOCKED`): once BOTH anchors exist the whole route is
+    validated for solid blocks (0.25-block march checking the block at y and y+1); a blocked leg returns `BLOCKED`
+    with the first blocked location and does NOT persist the anchor. On `SET` it persists via
+    `eventsConfig.set("events.<id>.convoy.start|end.*")` and live-applies with `WorldEvent.setRoute` (mid-run changes
+    warn "applies on the next run"). `ConvoyBehavior.resolveConfiguredRoute` returns a `ResolvedRoute`
+    (`RouteStatus` = `OK`/`NOT_CONVOY`/`MISSING_ANCHORS`/`WORLD_UNAVAILABLE`) and requires both anchors + loaded
+    worlds; a convoy with an unusable or blocked route is skipped when picked (`spawnEvent` logs
+    `logUnusableRoute`/a blocked-coordinate warning and returns null; `startEvent` maps it to
+    `EventStartResult.NO_ROUTE`) â€” it never falls back to the event origin or extraction spawn, and the gate runs
+    before any mobs spawn. `spawnEvent` sets the origin to the start anchor. `startConvoyRoute` aborts with a clear
+    warning when start/end are < 1 block apart. The **car** is a list of
     `convoy.car: {material, dx, dy, dz, yaw}` parts (`WorldEvent.CarPart`): block materials spawn as
     `BlockDisplay`, others as `ItemDisplay`, all `setInvulnerable(true)` + `setTeleportDuration(2)` once
     (`spawnConvoyVisual`/`spawnCarPart`), repositioned every tick in `updateConvoy` (`updateConvoyVisual` rotates
     dx/dz by the carrier's yaw); the driver `Mob` is `setInvisible(true)`+`setSilent(true)` while any part exists.
     Cleanup via `clearConvoyVisual` in `endEvent` (covers `shutdown()`); `~64` part cap kept in mind â€” keep samples
     small. The `supply_convoy` sample ships a small truck scaffold; comment that `car` out to show the bare MULE.
-    Messages `events.route-set/cleared/show/show-empty/wand-arm/wand-none/needs-player/not-convoy` in
-    `Messages.java`/`messages.yml` (kept in sync).
+    Messages `events.route-set/route-blocked/route-cleared/route-show/route-show-empty/route-needs-player/not-convoy/no-route`
+    in `Messages.java`/`messages.yml` (kept in sync).
   - **Particle crash fix (meteor_crash)**: `Particle.FLASH` REQUIRES `org.bukkit.Color` data â€”
     `world.spawnParticle(Particle.FLASH, ...)` without it throws `IllegalArgumentException: missing required data
     class org.bukkit.Color` and kills `/extraction events start meteor_crash`. `impactEffect` now passes
@@ -846,9 +851,8 @@ via `Math.sqrt` of the squared value only when needed.
   `AreaManager.checkPlayerAreas`). When nothing is visible the new `compass.hidden.material/name` item shows.
   The bundled `artifacts.yml` explorer definition carries the effect (`value: 150`); activation uses the
   normal relic window (global default 60s unless a `duration:` is added).
-- Convoy route wand anchors use the **clicked block's top** (`block.getLocation().add(0, 1, 0)`; air clicks
-  fall back to the player's feet) instead of the player's eye/feet location, so start/end land exactly on the
-  block you aim at. The route code still adds 0.5 to X/Z before sampling.
+- Convoy route anchors are set by command at the player's feet (`/extraction events route {event} {start|end}`)
+  and require both anchors before the event can run. `ConvoyBehavior` adds 0.5 to X/Z before sampling.
 - Loot table editor reset: `LootTableManager` caches the bundled jar `loot_tables.yml` (`hasDefault`/`getDefault`),
   `LootEntry.copy()` clones entries, and the table view shows a `loot-editor.reset-*` icon at `SLOT_RESET` (47)
   only for tables with a shipped default. Plain click sends `loot-editor.reset-confirm`; **shift-click** replaces
