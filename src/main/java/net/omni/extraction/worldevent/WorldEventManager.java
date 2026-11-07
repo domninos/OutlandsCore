@@ -3,6 +3,8 @@ package net.omni.extraction.worldevent;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.area.AreaSpawnEntry;
+import net.omni.extraction.worldevent.behavior.ConvoyBehavior.ResolvedRoute;
+import net.omni.extraction.worldevent.behavior.ConvoyBehavior.RoutePointResult;
 import net.omni.extraction.worldevent.config.EventSettings;
 import net.omni.extraction.worldevent.config.WorldEventsConfig;
 import net.omni.extraction.worldevent.mutator.Mutator;
@@ -35,7 +37,6 @@ public class WorldEventManager {
     private final Map<String, EventInstance> active;
     private final Map<String, Long> cooldowns;
     private final Map<UUID, EventInstance> mobInstances;
-    private final Map<UUID, String> convoyWands;
     private final Set<UUID> compassPlayers;
     private boolean enabled;
     private int maxConcurrent;
@@ -52,10 +53,9 @@ public class WorldEventManager {
         this.active = new HashMap<>();
         this.cooldowns = new HashMap<>();
         this.mobInstances = new HashMap<>();
-        this.convoyWands = new HashMap<>();
         this.compassPlayers = new HashSet<>();
         this.ctx = new EventContext(plugin, config, this, active, cooldowns,
-                mobInstances, convoyWands, compassPlayers);
+                mobInstances, compassPlayers);
         readSettings();
     }
 
@@ -348,7 +348,7 @@ public class WorldEventManager {
 
         EventInstance instance = spawnEvent(event, forcedLocation, forcedMutators, true);
         if (instance == null)
-            return EventStartResult.NO_SPAWNS;
+            return event.isConvoy() ? EventStartResult.NO_ROUTE : EventStartResult.NO_SPAWNS;
 
         active.put(event.getId(), instance);
         ctx.presentation().announceStart(instance);
@@ -358,12 +358,26 @@ public class WorldEventManager {
 
     private EventInstance spawnEvent(WorldEvent event, Location origin, List<MutatorType> forcedMutators,
                                      boolean explicitOrigin) {
-        if (origin == null)
-            origin = ctx.spawner().pickOrigin(event);
+        if (event.isConvoy()) {
+            ResolvedRoute route = ctx.convoy().resolveConfiguredRoute(event);
+            if (!route.ok()) {
+                ctx.convoy().logUnusableRoute(event, route.status());
+                return null;
+            }
 
-        Location convoyStart = ctx.convoy().convoyRouteStart(event);
-        if (convoyStart != null)
-            origin = convoyStart;
+            Location blocked = ctx.convoy().findBlocked(event);
+            if (blocked != null) {
+                plugin.getLogger().warning("Convoy '" + event.getId()
+                        + "' route is blocked at " + blocked.getWorld().getName() + " "
+                        + blocked.getBlockX() + " " + blocked.getBlockY() + " " + blocked.getBlockZ()
+                        + " — skipping. Move its anchors with /extraction events route.");
+                return null;
+            }
+
+            origin = route.start();
+        } else if (origin == null) {
+            origin = ctx.spawner().pickOrigin(event);
+        }
 
         if (origin == null)
             return null;
@@ -919,7 +933,7 @@ public class WorldEventManager {
         return ctx.convoy().convoyGuardsRemaining(entity);
     }
 
-    public boolean setConvoyPoint(String id, String point, Location location) {
+    public RoutePointResult setConvoyPoint(String id, String point, Location location) {
         return ctx.convoy().setConvoyPoint(id, point, location);
     }
 
@@ -929,22 +943,6 @@ public class WorldEventManager {
 
     public boolean isConvoyEvent(String id) {
         return ctx.convoy().isConvoyEvent(id);
-    }
-
-    public String getDefaultConvoyEventId() {
-        return ctx.convoy().getDefaultConvoyEventId();
-    }
-
-    public String getWandEvent(UUID playerId) {
-        return ctx.convoy().getWandEvent(playerId);
-    }
-
-    public void setWandEvent(Player player, String eventId) {
-        ctx.convoy().setWandEvent(player, eventId);
-    }
-
-    public void clearWandEvent(UUID playerId) {
-        ctx.convoy().clearWandEvent(playerId);
     }
 
     public Location getConvoyPoint(String id, String point) {
@@ -1009,6 +1007,6 @@ public class WorldEventManager {
     }
 
     public enum EventStartResult {
-        STARTED, DISABLED, ALREADY_ACTIVE, NO_SPAWNS, NOT_FOUND
+        STARTED, DISABLED, ALREADY_ACTIVE, NO_SPAWNS, NO_ROUTE, NOT_FOUND
     }
 }

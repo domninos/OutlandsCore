@@ -48,15 +48,18 @@
 #     The crater regenerates its original terrain when all harvest chests are
 #     looted, and as a safety net when the event ends or the plugin stops.
 #   convoy: (supply-convoy events) the convoy spawns at its start anchor and
-#     walks a sampled straight-line route toward its end anchor. Anchors are
-#     OPTIONAL: unset start = event origin, unset end = the map's extraction
-#     spawn (settings spawn, found via server.properties level-name). Set them
-#     with /extraction events route {event} {start|end|clear|show|wand}. When
-#     both anchors are set the convoy ignores the global spawn selection.
+#     walks a sampled straight-line route toward its end anchor. BOTH anchors
+#     are REQUIRED: a convoy with an unset start or end is skipped with a
+#     console warning (never falls back to the event origin or extraction
+#     spawn). Set them with /extraction events route {event} {start|end|clear|show}
+#     (clicked block top; the wand no longer sets convoy points). The route is
+#     validated for solid blocks when the second anchor is set — a blocked leg
+#     rejects the anchor and reports the first blocked coordinate; an already
+#     blocked route is also skipped when the event is picked.
 #     Interception succeeds only when the carrier AND all escorts are dead —
 #     then harvest-chests spawn at the kill site; reaching the end anchor
 #     (escape-radius) counts as an escape and ends the event.
-#       start / end: {world, x, y, z} optional anchors (null = default route)
+#       start / end: {world, x, y, z} required anchors
 #       carrier: mob id (mobs.yml / vanilla / MythicMobs) driven as the boss
 #       carrier-name: display name given to the carrier (MiniMessage)
 #       speed: movement blocks/second multiplier 0.05-1.0 (1.0 ~ vanilla walk
@@ -153,8 +156,8 @@
 #               (or miniboss Roaming/Enraged).
 #
 # Convoy anchors + the car are set per-event inside the event's convoy section
-# (see the supply_convoy sample below); the running route ("start"/"end" as
-# world coords) is edited live with /extraction events route...
+# (see the supply_convoy sample below); both anchors are required and are edited
+# live with /extraction events route {event} {start|end|clear|show}.
 
 settings:
   enabled: true
@@ -333,10 +336,11 @@ events:
     level: 2
     loot-table: "supply_convoy"
     harvest-chests: 3
-    # The convoy marches a straight line from its start anchor (unset = event
-    # origin) toward its end anchor (unset = the map's extraction spawn); kill
-    # the carrier AND every escort before it escapes to loot the crates. The
-    # anchors below are just examples — /extraction events route edits them live.
+    # The convoy marches a straight line from its start anchor toward its end
+    # anchor; kill the carrier AND every escort before it escapes to loot the
+    # crates. BOTH anchors are REQUIRED — until they are set this event is
+    # skipped (with a console warning) whenever it is picked. Edit them live
+    # with /extraction events route {event} {start|end|clear|show}.
     convoy:
       carrier: "MULE"
       carrier-name: "<gold><bold>Supply Convoy</bold></gold>"
@@ -346,7 +350,7 @@ events:
       stuck-seconds: 10
       follow-range: 12
       escape-radius: 5
-      # Optional anchors (comment these out for the default route):
+      # Required anchors — uncomment and set both before this event can run:
       # start: { world: "outlands", x: 100, y: 64, z: 100 }
       # end:   { world: "outlands", x: 0,   y: 64, z: 0 }
       # Optional display-entity "truck" parts locked to the carrier (which is

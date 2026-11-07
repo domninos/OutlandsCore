@@ -7,7 +7,9 @@ import net.omni.extraction.worldevent.WorldEvent.EventSpawnLocation;
 import net.omni.extraction.worldevent.service.EventContext;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
@@ -29,10 +31,9 @@ public class ConvoyBehavior {
     }
 
     /**
-     * Builds the convoy's route (a sampled straight line from its start anchor —
-     * or the event origin — toward its end anchor, else the map's extraction
-     * spawn), spawns the carrier + its display-entity car and registers the
-     * carrier as a boss.
+     * Builds the convoy's route (a sampled straight line between its configured
+     * start and end anchors), spawns the carrier + its display-entity car and
+     * registers the carrier as a boss.
      */
     public boolean startConvoyRoute(EventInstance instance) {
         WorldEvent event = instance.getEvent();
@@ -42,41 +43,39 @@ public class ConvoyBehavior {
         if (world == null)
             return false;
 
-        Location dest = convoyRouteEnd(event, world);
+        ResolvedRoute route = resolveConfiguredRoute(event);
+        if (!route.ok()) {
+            logUnusableRoute(event, route.status());
+            return false;
+        }
 
+        Location dest = route.end();
         Vector dir = dest.toVector().subtract(origin.toVector());
         double dist = dir.length();
         if (dist < 1.0) {
             ctx.plugin().getLogger().warning("Convoy '" + event.getId()
                     + "' start and end anchors are too close (" + String.format("%.1f", dist)
-                    + " blocks) — the convoy cannot start. Use /extraction events route.");
+                    + " blocks) — the convoy cannot start.");
             return false;
         }
 
-        dir.normalize();
-
-        double step = Math.max(1, cfg.stepBlocks());
-        List<Location> points = instance.getConvoyPoints();
-        points.add(origin.clone());
-
-        if (world.getEnvironment() == World.Environment.NETHER) {
-            // Nether ceiling/caves make surface snapping unreliable — use a straight line.
-            for (double d = step; d < dist; d += step)
-                points.add(origin.clone().add(dir.clone().multiply(d)));
-        } else {
-            for (double d = step; d < dist; d += step)
-                points.add(groundSnapPoint(origin.clone().add(dir.clone().multiply(d))));
+        List<Location> points = buildRoutePoints(event, origin, dest, dist);
+        Location blocked = firstBlocked(points);
+        if (blocked != null) {
+            ctx.plugin().getLogger().warning("Convoy '" + event.getId()
+                    + "' route is blocked at " + locationString(blocked)
+                    + " — the convoy cannot start. Move its anchors with /extraction events route.");
+            return false;
         }
 
-        points.add(world.equals(dest.getWorld())
-                ? groundSnapPoint(dest.clone())
-                : origin.clone().add(dir.clone().multiply(dist)));
         if (!world.equals(dest.getWorld()))
             ctx.plugin().getLogger().warning("Convoy '" + event.getId()
                     + "' end anchor is in world '" + dest.getWorld().getName()
                     + "' but the convoy walks in '" + world.getName()
                     + "' — the route terminates at those in-world coordinates instead.");
 
+        instance.getConvoyPoints().clear();
+        instance.getConvoyPoints().addAll(points);
         instance.setConvoyRouteLength(dist);
         instance.setLastConvoyDist(Double.MAX_VALUE);
 
@@ -98,21 +97,133 @@ public class ConvoyBehavior {
     }
 
     /**
-     * Resolves the convoy's end anchor, else the map's extraction spawn.
+     * Resolves a convoy event's configured start/end anchors. Both anchors are
+     * required; a missing anchor or an unloaded world makes the event unusable.
      */
-    public Location convoyRouteEnd(WorldEvent event, World fallbackWorld) {
+    public ResolvedRoute resolveConfiguredRoute(WorldEvent event) {
+        if (event == null || !event.isConvoy())
+            return new ResolvedRoute(RouteStatus.NOT_CONVOY, null, null);
+
         WorldEvent.ConvoyConfig cfg = event.getConvoy();
-        if (cfg != null && cfg.end() != null) {
-            World world = Bukkit.getWorld(cfg.end().world());
-            if (world != null)
-                return new Location(world, cfg.end().x() + 0.5, cfg.end().y(), cfg.end().z() + 0.5);
+        if (cfg == null || cfg.start() == null || cfg.end() == null)
+            return new ResolvedRoute(RouteStatus.MISSING_ANCHORS, null, null);
+
+        Location start = anchorLocation(cfg.start());
+        Location end = anchorLocation(cfg.end());
+        if (start == null || end == null)
+            return new ResolvedRoute(RouteStatus.WORLD_UNAVAILABLE, null, null);
+
+        return new ResolvedRoute(RouteStatus.OK, start, end);
+    }
+
+    /**
+     * The first solid block on the configured route, or null when it is clear.
+     */
+    public Location findBlocked(WorldEvent event) {
+        ResolvedRoute route = resolveConfiguredRoute(event);
+        if (!route.ok())
+            return null;
+
+        double dist = route.start().toVector().distance(route.end().toVector());
+        if (dist < 1.0)
+            return route.start();
+
+        return firstBlocked(buildRoutePoints(event, route.start(), route.end(), dist));
+    }
+
+    public void logUnusableRoute(WorldEvent event, RouteStatus status) {
+        switch (status) {
+            case MISSING_ANCHORS -> ctx.plugin().getLogger().warning("Convoy '" + event.getId()
+                    + "' has no route configured (start/end) — skipping. Use /extraction events route "
+                    + event.getId() + " start|end.");
+            case WORLD_UNAVAILABLE -> ctx.plugin().getLogger().warning("Convoy '" + event.getId()
+                    + "' route anchor world is not loaded — skipping.");
+            default -> {
+            }
+        }
+    }
+
+    private Location anchorLocation(EventSpawnLocation anchor) {
+        World world = Bukkit.getWorld(anchor.world());
+        if (world == null)
+            return null;
+
+        return new Location(world, anchor.x() + 0.5, anchor.y(), anchor.z() + 0.5);
+    }
+
+    private List<Location> buildRoutePoints(WorldEvent event, Location origin, Location dest, double dist) {
+        WorldEvent.ConvoyConfig cfg = event.getConvoy();
+        World world = origin.getWorld();
+        List<Location> points = new ArrayList<>();
+        Vector dir = dest.toVector().subtract(origin.toVector()).normalize();
+        double step = Math.max(1, cfg.stepBlocks());
+
+        points.add(origin.clone());
+
+        if (world.getEnvironment() == World.Environment.NETHER) {
+            // Nether ceiling/caves make surface snapping unreliable — use a straight line.
+            for (double d = step; d < dist; d += step)
+                points.add(origin.clone().add(dir.clone().multiply(d)));
+        } else {
+            for (double d = step; d < dist; d += step)
+                points.add(groundSnapPoint(origin.clone().add(dir.clone().multiply(d))));
         }
 
-        Location spawn = ctx.plugin().getConfigUtil().getSpawnLocation();
-        if (spawn == null || spawn.getWorld() == null)
-            spawn = fallbackWorld.getSpawnLocation();
+        points.add(world.equals(dest.getWorld())
+                ? groundSnapPoint(dest.clone())
+                : origin.clone().add(dir.clone().multiply(dist)));
+        return points;
+    }
 
-        return spawn;
+    /**
+     * Returns the first solid block along the sampled route, or null when it is clear.
+     */
+    private Location firstBlocked(List<Location> points) {
+        for (int i = 1; i < points.size(); i++) {
+            Location blocked = firstBlocked(points.get(i - 1), points.get(i));
+            if (blocked != null)
+                return blocked;
+        }
+
+        return null;
+    }
+
+    private Location firstBlocked(Location from, Location to) {
+        World world = from.getWorld();
+        if (world == null || !world.equals(to.getWorld()))
+            return null;
+
+        Vector delta = to.toVector().subtract(from.toVector());
+        double distance = delta.length();
+        if (distance == 0)
+            return null;
+
+        double step = 0.25;
+        int samples = (int) Math.ceil(distance / step);
+        double increment = distance / samples;
+        Vector unit = delta.clone().normalize();
+
+        for (int i = 1; i <= samples; i++) {
+            Vector sample = from.toVector().add(unit.clone().multiply(increment * i));
+            int x = sample.getBlockX();
+            int y = sample.getBlockY();
+            int z = sample.getBlockZ();
+
+            if (isSolid(world.getBlockAt(x, y, z)) || isSolid(world.getBlockAt(x, y + 1, z)))
+                return new Location(world, x, y, z);
+        }
+
+        return null;
+    }
+
+    private boolean isSolid(Block block) {
+        Material material = block.getType();
+        return !material.isAir() && !material.isTransparent() && material.isSolid();
+    }
+
+    private String locationString(Location location) {
+        return location.getWorld().getName() + " " + location.getBlockX()
+                + " " + location.getBlockY() + " " + location.getBlockZ();
     }
 
     /**
@@ -481,26 +592,6 @@ public class ConvoyBehavior {
     }
 
     /**
-     * Resolves the convoy's configured start anchor, or null when this event is
-     * not a convoy / has no start / the world isn't loaded. When set, it becomes
-     * the event origin (and thus where the convoy spawns).
-     */
-    public Location convoyRouteStart(WorldEvent event) {
-        if (!event.isConvoy())
-            return null;
-
-        EventSpawnLocation anchor = event.getConvoy().start();
-        if (anchor == null)
-            return null;
-
-        World world = Bukkit.getWorld(anchor.world());
-        if (world == null)
-            return null;
-
-        return new Location(world, anchor.x() + 0.5, anchor.y(), anchor.z() + 0.5);
-    }
-
-    /**
      * Removes every car part's display entity (end of event / shutdown).
      */
     public void clearConvoyVisual(EventInstance instance) {
@@ -515,36 +606,58 @@ public class ConvoyBehavior {
 
     /**
      * Sets a convoy's start/end anchor to the given location, persisting it into
-     * events.yml and applying it live (takes effect on the next run). Returns
-     * false when the event isn't a convoy or the point name is unknown.
+     * events.yml and applying it live (takes effect on the next run). When both
+     * anchors are present the resulting route is scanned for solid blocks; a
+     * blocked route is rejected and the offending block is returned.
      */
-    public boolean setConvoyPoint(String id, String point, Location location) {
+    public RoutePointResult setConvoyPoint(String id, String point, Location location) {
         WorldEvent event = ctx.config().getEvent(id);
         if (event == null || !event.isConvoy())
-            return false;
+            return new RoutePointResult(RoutePointStatus.NOT_CONVOY, null);
 
-        if (!point.equalsIgnoreCase("start") && !point.equalsIgnoreCase("end"))
-            return false;
+        boolean startPoint;
 
-        ctx.config().saveConvoyPoint(event.getId(), point, location);
+        if (point.equalsIgnoreCase("start"))
+            startPoint = true;
+        else if (point.equalsIgnoreCase("end"))
+            startPoint = false;
+        else
+            return new RoutePointResult(RoutePointStatus.INVALID_POINT, null);
 
         WorldEvent.ConvoyConfig cfg = event.getConvoy();
         EventSpawnLocation anchor = new EventSpawnLocation(
                 location.getWorld() == null ? "" : location.getWorld().getName(),
                 location.getBlockX(), location.getBlockY(), location.getBlockZ());
-        EventSpawnLocation start = point.equalsIgnoreCase("start") ? anchor : cfg.start();
-        EventSpawnLocation end = point.equalsIgnoreCase("end") ? anchor : cfg.end();
+        EventSpawnLocation start = startPoint ? anchor : cfg.start();
+        EventSpawnLocation end = startPoint ? cfg.end() : anchor;
 
+        if (start != null && end != null) {
+            Location resolvedStart = anchorLocation(start);
+            Location resolvedEnd = anchorLocation(end);
+
+            if (resolvedStart != null && resolvedEnd != null) {
+                double dist = resolvedStart.toVector().distance(resolvedEnd.toVector());
+
+                if (dist >= 1.0) {
+                    Location blocked = firstBlocked(buildRoutePoints(event, resolvedStart, resolvedEnd, dist));
+                    if (blocked != null)
+                        return new RoutePointResult(RoutePointStatus.BLOCKED, blocked);
+                }
+            }
+        }
+
+        ctx.config().saveConvoyPoint(event.getId(), point, location);
         event.setRoute(start, end);
 
         if (ctx.manager().getActive(event.getId()) != null)
             ctx.plugin().sendConsole("<yellow>[World Event] Convoy route for '" + event.getId()
                     + "' changed mid-run — it applies to the next run.</yellow>");
-        return true;
+        return new RoutePointResult(RoutePointStatus.SET, null);
     }
 
     /**
-     * Removes a convoy's start/end anchor (falls back to the default route).
+     * Removes a convoy's start/end anchor; both must be set before the event can
+     * run again.
      */
     public boolean clearConvoyPoint(String id, String point) {
         WorldEvent event = ctx.config().getEvent(id);
@@ -565,46 +678,11 @@ public class ConvoyBehavior {
     }
 
     /**
-     * The id of the first configured convoy event, used as the wand's default
-     * target so CONVOY mode works without arming via a command. Null when the
-     * config declares no convoy event.
-     */
-    public String getDefaultConvoyEventId() {
-        for (WorldEvent event : ctx.config().getEvents().values()) {
-            if (event.isConvoy())
-                return event.getId();
-        }
-
-        return null;
-    }
-
-    /**
-     * The convoy event id currently armed onto the player's wand, or null.
-     */
-    public String getWandEvent(UUID playerId) {
-        return ctx.convoyWands().get(playerId);
-    }
-
-    /**
-     * Arms a convoy event onto the player's wand (CONVOY mode sets its anchors).
-     */
-    public void setWandEvent(Player player, String eventId) {
-        if (!isConvoyEvent(eventId))
-            return;
-
-        ctx.convoyWands().put(player.getUniqueId(), eventId);
-    }
-
-    /**
      * True when the event exists and has a convoy (i.e. it is a Supply Convoy).
      */
     public boolean isConvoyEvent(String id) {
         WorldEvent event = ctx.config().getEvent(id);
         return event != null && event.isConvoy();
-    }
-
-    public void clearWandEvent(UUID playerId) {
-        ctx.convoyWands().remove(playerId);
     }
 
     /**
@@ -699,5 +777,22 @@ public class ConvoyBehavior {
         instance.addConvoyDamage(amount);
         if (attacker != null)
             instance.setConvoyDamageAttacker(attacker);
+    }
+
+    public enum RouteStatus {
+        OK, NOT_CONVOY, MISSING_ANCHORS, WORLD_UNAVAILABLE
+    }
+
+    public record ResolvedRoute(RouteStatus status, Location start, Location end) {
+        public boolean ok() {
+            return status == RouteStatus.OK;
+        }
+    }
+
+    public enum RoutePointStatus {
+        SET, NOT_CONVOY, INVALID_POINT, BLOCKED
+    }
+
+    public record RoutePointResult(RoutePointStatus status, Location blockedAt) {
     }
 }
