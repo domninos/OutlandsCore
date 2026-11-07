@@ -59,6 +59,7 @@ public class ExtractionCommand implements CommandExecutor {
             case "tokens" -> handleTokens(sender);
             case "events" -> handleEvents(sender, args);
             case "party" -> partyCommand.handle(sender, args);
+            case "build" -> handleBuild(sender);
             case "admin" -> handleAdmin(sender, args);
             default -> {
                 plugin.sendMessage(sender, Messages.UNKNOWN_COMMAND.toString());
@@ -89,6 +90,21 @@ public class ExtractionCommand implements CommandExecutor {
             plugin.getExtractionManager().addExtractionPlayer(player);
             plugin.getWorldEventManager().attemptScheduledStart();
         }
+        return true;
+    }
+
+    private boolean handleBuild(CommandSender sender) {
+        if (!sender.hasPermission(Permissions.ADMIN)) {
+            plugin.sendMessage(sender, Messages.NO_PERMS.toString());
+            return true;
+        }
+
+        if (!(sender instanceof Player player)) {
+            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
+            return true;
+        }
+
+        plugin.getAdminModeManager().toggleBuild(player);
         return true;
     }
 
@@ -187,11 +203,12 @@ public class ExtractionCommand implements CommandExecutor {
                     help.append("\n  <dark_gray>Admin:</dark_gray>\n");
                     MessageUtil.append("tokens set {player} {amount}", "Set a player's token balance", help);
                     MessageUtil.append("tokens give {player} {amount}", "Give tokens to a player", help);
-                    MessageUtil.append("upgrade give {player} {token}", "Give an upgrade token", help);
+                    MessageUtil.append("upgrade give {player} {token} {amount}", "Give upgrade tokens", help);
                 }
             }
             case CATEGORY_ADMIN -> {
                 MessageUtil.append("extraction reload", "Reloads the config files and messages.yml", help);
+                MessageUtil.append("extraction build", "Toggle breaking/placing blocks during a run", help);
                 MessageUtil.append("extraction admin setspawn", "Set the Extraction entry spawn", help);
                 MessageUtil.append("extraction admin setlobby", "Set the lobby spawn (where joiners spawn)", help);
                 MessageUtil.append("extraction admin addhologram {area}", "Place the area hologram at your feet", help);

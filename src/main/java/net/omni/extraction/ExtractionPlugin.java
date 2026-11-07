@@ -132,7 +132,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      -
      - add /upgrades give {player} {upgrade_token} {amount}
-     - block block breaks
+     - block block breaks  (creative mode or survival) - as long as in /extraction
      -
      - add join / leave extraction messages
      -

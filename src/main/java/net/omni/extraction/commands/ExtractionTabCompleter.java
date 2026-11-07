@@ -39,6 +39,7 @@ public class ExtractionTabCompleter implements TabCompleter {
                 subcommands.add("admin");
                 subcommands.add("reload");
                 subcommands.add("events");
+                subcommands.add("build");
             }
 
             List<String> completions = new ArrayList<>();

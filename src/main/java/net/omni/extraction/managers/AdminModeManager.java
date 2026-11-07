@@ -11,7 +11,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -27,6 +29,7 @@ public class AdminModeManager implements Listener {
 
     private final ExtractionPlugin plugin;
     private final Map<UUID, SavedState> admins = new HashMap<>();
+    private final Set<UUID> buildMode = new HashSet<>();
 
     public AdminModeManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -34,6 +37,26 @@ public class AdminModeManager implements Listener {
 
     public boolean isAdmin(UUID uuid) {
         return admins.containsKey(uuid);
+    }
+
+    public boolean isBuildMode(UUID uuid) {
+        return buildMode.contains(uuid);
+    }
+
+    public void clearBuild(UUID uuid) {
+        buildMode.remove(uuid);
+    }
+
+    public void toggleBuild(Player player) {
+        UUID uuid = player.getUniqueId();
+
+        if (buildMode.remove(uuid)) {
+            plugin.sendMessage(player, Messages.ADMIN_BUILD_OFF.toString());
+            return;
+        }
+
+        buildMode.add(uuid);
+        plugin.sendMessage(player, Messages.ADMIN_BUILD_ON.toString());
     }
 
     public void toggle(Player player) {
@@ -82,6 +105,8 @@ public class AdminModeManager implements Listener {
 
     @EventHandler
     public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        buildMode.remove(event.getPlayer().getUniqueId());
+
         if (isAdmin(event.getPlayer().getUniqueId()))
             exit(event.getPlayer(), false);
     }
@@ -100,5 +125,6 @@ public class AdminModeManager implements Listener {
         }
 
         admins.clear();
+        buildMode.clear();
     }
 }
