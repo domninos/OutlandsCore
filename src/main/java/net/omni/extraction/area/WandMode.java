@@ -4,8 +4,7 @@ public enum WandMode {
 
     CORNER("Corner"),
     SPAWN("Spawn"),
-    CHEST("Chest"),
-    CONVOY("Convoy");
+    CHEST("Chest");
 
     private final String display;
 

@@ -4,7 +4,6 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.hologram.HologramManager;
 import net.omni.extraction.looteditor.LootEditorManager;
 import net.omni.extraction.messages.Messages;
-import net.omni.extraction.worldevent.WorldEventManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -65,52 +64,7 @@ public class AreaWandListener implements Listener {
             }
             case SPAWN -> handleSpawn(player, action, block, areaManager, item, sneaking, event);
             case CHEST -> handleChest(player, action, block, areaManager, item, sneaking, event);
-            case CONVOY -> handleConvoy(player, action, block, event);
         }
-    }
-
-    private void handleConvoy(Player player, Action action, Block block, PlayerInteractEvent event) {
-        boolean left = action == Action.LEFT_CLICK_BLOCK || action == Action.LEFT_CLICK_AIR;
-        boolean right = action == Action.RIGHT_CLICK_BLOCK || action == Action.RIGHT_CLICK_AIR;
-
-        if (!left && !right)
-            return;
-
-        event.setCancelled(true);
-
-        WorldEventManager manager = plugin.getWorldEventManager();
-        String eventId = manager.getWandEvent(player.getUniqueId());
-
-        if (eventId == null)
-            eventId = manager.getDefaultConvoyEventId();
-
-        if (eventId == null) {
-            plugin.sendMessage(player, Messages.EVENTS_ROUTE_WAND_NONE.toString());
-            return;
-        }
-
-        if (!manager.isConvoyEvent(eventId)) {
-            manager.clearWandEvent(player.getUniqueId());
-            plugin.sendMessage(player, Messages.EVENTS_ROUTE_WAND_NONE.toString());
-            return;
-        }
-
-        // Clicked block = top of that block (route code adds 0.5 to X/Z); air
-        // clicks still fall back to the player's feet.
-        Location location = block != null
-                ? block.getLocation().add(0, 1, 0)
-                : player.getLocation();
-
-        String point = left ? "start" : "end";
-        manager.setConvoyPoint(eventId, point, location);
-
-        plugin.sendMessage(player, Messages.EVENTS_ROUTE_SET.replace(
-                "event", manager.getEvent(eventId).getDisplayName(),
-                "point", point,
-                "location", location.getWorld().getName() + " "
-                        + location.getBlockX() + " "
-                        + location.getBlockY() + " "
-                        + location.getBlockZ()));
     }
 
     private void sendPos(Player player, Messages message, Location location) {

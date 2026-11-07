@@ -14,6 +14,7 @@ import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
 import net.omni.extraction.worldevent.WorldEventManager;
 import net.omni.extraction.worldevent.WorldEventManager.EventStartResult;
+import net.omni.extraction.worldevent.behavior.ConvoyBehavior.RoutePointResult;
 import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -222,7 +223,7 @@ public class ExtractionCommand implements CommandExecutor {
                 MessageUtil.append("extraction events status", "List world-event definitions and their state", help);
                 MessageUtil.append("extraction events start {event} [area] [random|mutator...]", "Force-start a world event", help);
                 MessageUtil.append("extraction events stop [event|all]", "Stop the running world event(s)", help);
-                MessageUtil.append("extraction events route {event} {start|end|clear|show|wand}", "Edit a convoy route", help);
+                MessageUtil.append("extraction events route {event} {start|end|clear|show}", "Edit a convoy route", help);
             }
             case CATEGORY_PARTY -> {
                 MessageUtil.append("extraction party create", "Create a party", help);
@@ -523,7 +524,7 @@ public class ExtractionCommand implements CommandExecutor {
     private void handleRoute(CommandSender sender, String[] args) {
         if (args.length < 3) {
             plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction events route {event} {start|end|clear|show|wand}"));
+                    .replace("usage", "/extraction events route {event} {start|end|clear|show}"));
             return;
         }
 
@@ -546,12 +547,22 @@ public class ExtractionCommand implements CommandExecutor {
                 }
 
                 Location location = player.getLocation();
-                manager.setConvoyPoint(id, action, location);
+                RoutePointResult result = manager.setConvoyPoint(id, action, location);
 
-                plugin.sendMessage(sender, Messages.EVENTS_ROUTE_SET.replace(
-                        "event", event.getDisplayName(),
-                        "point", action,
-                        "location", locString(location)));
+                switch (result.status()) {
+                    case SET -> plugin.sendMessage(sender, Messages.EVENTS_ROUTE_SET.replace(
+                            "event", event.getDisplayName(),
+                            "point", action,
+                            "location", locString(location)));
+                    case BLOCKED -> plugin.sendMessage(sender, Messages.EVENTS_ROUTE_BLOCKED.replace(
+                            "event", event.getDisplayName(),
+                            "point", action,
+                            "location", result.blockedAt() == null ? "?" : locString(result.blockedAt())));
+                    case NOT_CONVOY -> plugin.sendMessage(sender, Messages.EVENTS_NOT_CONVOY
+                            .replace("event", id));
+                    case INVALID_POINT -> plugin.sendMessage(sender, Messages.USAGE
+                            .replace("usage", "/extraction events route {event} {start|end|clear|show}"));
+                }
             }
             case "clear" -> {
                 manager.clearConvoyPoint(id, "start");
@@ -571,21 +582,11 @@ public class ExtractionCommand implements CommandExecutor {
 
                 plugin.sendMessage(sender, Messages.EVENTS_ROUTE_SHOW.replace(
                         "event", event.getDisplayName(),
-                        "start", start == null ? "default" : locString(start),
-                        "end", end == null ? "default" : locString(end)));
-            }
-            case "wand" -> {
-                if (!(sender instanceof Player player)) {
-                    plugin.sendMessage(sender, Messages.EVENTS_ROUTE_NEEDS_PLAYER.toString());
-                    return;
-                }
-
-                manager.setWandEvent(player, id);
-                plugin.sendMessage(sender, Messages.EVENTS_ROUTE_WAND_ARM
-                        .replace("event", event.getDisplayName()));
+                        "start", start == null ? "unset" : locString(start),
+                        "end", end == null ? "unset" : locString(end)));
             }
             default -> plugin.sendMessage(sender, Messages.USAGE
-                    .replace("usage", "/extraction events route {event} {start|end|clear|show|wand}"));
+                    .replace("usage", "/extraction events route {event} {start|end|clear|show}"));
         }
     }
 
@@ -659,6 +660,8 @@ public class ExtractionCommand implements CommandExecutor {
             case ALREADY_ACTIVE -> plugin.sendMessage(sender, Messages.EVENTS_ALREADY_ACTIVE
                     .replace("event", event.getDisplayName()));
             case NO_SPAWNS -> plugin.sendMessage(sender, Messages.EVENTS_NO_SPAWNS
+                    .replace("event", event.getDisplayName()));
+            case NO_ROUTE -> plugin.sendMessage(sender, Messages.EVENTS_NO_ROUTE
                     .replace("event", event.getDisplayName()));
             case NOT_FOUND -> plugin.sendMessage(sender, Messages.EVENTS_NOT_FOUND
                     .replace("event", event.getDisplayName()));

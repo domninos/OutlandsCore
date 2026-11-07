@@ -128,13 +128,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         - right click on mob (in mob spawn with area wand) doesn't open editor
         - remove convoy mode on wand, but instead have them use the command to set start position and end position for the convoy.
           - if there's no set positions on the convoy, when it gets picked, log to console that there were no convoy route found.
-          - convoy also phases thru blocks
+          - convoy also phases thru blocks, make this so it checks if the route for the convoy has blocks (when setting the start and end position)
      -
      -
-     - add /upgrades give {player} {upgrade_token} {amount}
-     - block block breaks  (creative mode or survival) - as long as in /extraction
-     -
-     - add join / leave extraction messages
      -
      - drone custom entity model for texture
      -

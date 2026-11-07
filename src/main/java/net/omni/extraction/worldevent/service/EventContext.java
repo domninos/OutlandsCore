@@ -37,7 +37,6 @@ public class EventContext {
     private final Map<String, EventInstance> active;
     private final Map<String, Long> cooldowns;
     private final Map<UUID, EventInstance> mobInstances;
-    private final Map<UUID, String> convoyWands;
     private final Set<UUID> compassPlayers;
 
     private final EventPresentation presentation;
@@ -53,15 +52,13 @@ public class EventContext {
 
     public EventContext(ExtractionPlugin plugin, WorldEventsConfig config, WorldEventManager manager,
                         Map<String, EventInstance> active, Map<String, Long> cooldowns,
-                        Map<UUID, EventInstance> mobInstances, Map<UUID, String> convoyWands,
-                        Set<UUID> compassPlayers) {
+                        Map<UUID, EventInstance> mobInstances, Set<UUID> compassPlayers) {
         this.plugin = plugin;
         this.config = config;
         this.manager = manager;
         this.active = active;
         this.cooldowns = cooldowns;
         this.mobInstances = mobInstances;
-        this.convoyWands = convoyWands;
         this.compassPlayers = compassPlayers;
         this.mobFactory = new AreaMobFactory(plugin);
 
@@ -111,10 +108,6 @@ public class EventContext {
 
     public Map<UUID, EventInstance> mobInstances() {
         return mobInstances;
-    }
-
-    public Map<UUID, String> convoyWands() {
-        return convoyWands;
     }
 
     public Set<UUID> compassPlayers() {

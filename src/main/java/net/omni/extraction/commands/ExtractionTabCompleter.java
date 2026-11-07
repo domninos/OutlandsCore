@@ -170,7 +170,7 @@ public class ExtractionTabCompleter implements TabCompleter {
                 && args[1].equalsIgnoreCase("route")
                 && sender.hasPermission(Permissions.ADMIN)) {
             return StringUtil.copyPartialMatches(args[3],
-                    List.of("start", "end", "clear", "show", "wand"), new ArrayList<>());
+                    List.of("start", "end", "clear", "show"), new ArrayList<>());
         }
 
         if (args.length == 3
