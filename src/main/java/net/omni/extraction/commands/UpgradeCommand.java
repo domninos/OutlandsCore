@@ -59,7 +59,7 @@ public class UpgradeCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length < 3) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/upgrade give {player} {token_key}"));
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/upgrade give {player} {token_key} {amount}"));
             return true;
         }
 
@@ -76,15 +76,41 @@ public class UpgradeCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        ItemStack tokenItem = plugin.getUpgradeManager().createUpgradeTokenItem(tokenKey);
-        if (tokenItem != null) {
+        int amount = 1;
+
+        if (args.length >= 4) {
+            try {
+                amount = Integer.parseInt(args[3]);
+            } catch (NumberFormatException exception) {
+                amount = -1;
+            }
+
+            if (amount <= 0) {
+                plugin.sendMessage(sender, Messages.USAGE.replace(
+                        "usage", "/upgrade give {player} {token_key} {amount}"));
+                return true;
+            }
+        }
+
+        ItemStack template = plugin.getUpgradeManager().createUpgradeTokenItem(tokenKey);
+        if (template == null)
+            return true;
+
+        int given = 0;
+
+        for (int i = 0; i < amount; i++) {
+            ItemStack tokenItem = template.clone();
+
             if (!target.getInventory().addItem(tokenItem).isEmpty())
                 target.getWorld().dropItemNaturally(target.getLocation(), tokenItem);
 
-            plugin.sendMessage(sender, Messages.ADMIN_GIVE_UPGRADE.replace(
-                    "player", target.getName(),
-                    "token", tokenKey));
+            given++;
         }
+
+        plugin.sendMessage(sender, Messages.ADMIN_GIVE_UPGRADE.replace(
+                "player", target.getName(),
+                "token", tokenKey,
+                "amount", String.valueOf(given)));
 
         return true;
     }
@@ -102,6 +128,10 @@ public class UpgradeCommand implements CommandExecutor, TabCompleter {
         if (args.length == 3 && args[0].equalsIgnoreCase("give") && sender.hasPermission(Permissions.ADMIN))
             return StringUtil.copyPartialMatches(args[2],
                     plugin.getConfigUtil().getUpgradeTokenDefinitions().keySet(), new ArrayList<>());
+
+        if (args.length == 4 && args[0].equalsIgnoreCase("give") && sender.hasPermission(Permissions.ADMIN))
+            return StringUtil.copyPartialMatches(args[3],
+                    List.of("1", "8", "16", "32", "64"), new ArrayList<>());
 
         return List.of();
     }
