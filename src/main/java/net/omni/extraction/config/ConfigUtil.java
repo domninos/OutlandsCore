@@ -37,6 +37,7 @@ public class ConfigUtil {
     private int cooldownHours;
     private boolean pvpEnabled;
     private boolean returnOnDisconnect;
+    private boolean broadcastRunMessages;
     private int baseTokens;
     private int perKillTokens;
     private int perEventTokens;
@@ -412,6 +413,7 @@ public class ConfigUtil {
         this.cooldownHours = getAndDefaultInt(ConfigKeys.COOLDOWN_HOURS, 24, savedDefaults);
         this.pvpEnabled = getAndDefaultBoolean(ConfigKeys.PVP_ENABLED, false, savedDefaults);
         this.returnOnDisconnect = getAndDefaultBoolean(ConfigKeys.RETURN_ON_DISCONNECT, true, savedDefaults);
+        this.broadcastRunMessages = getAndDefaultBoolean(ConfigKeys.BROADCAST_RUN_MESSAGES, true, savedDefaults);
         this.prefix = getAndDefaultString(ConfigKeys.MESSAGES_PREFIX,
                 "<gray>[</gray><gradient:#00AAFF:#55FFFF>Extraction</gradient><gray>]</gray> ", savedDefaults);
 
@@ -1681,6 +1683,10 @@ public class ConfigUtil {
 
     public boolean isReturnOnDisconnect() {
         return returnOnDisconnect;
+    }
+
+    public boolean isBroadcastRunMessagesEnabled() {
+        return broadcastRunMessages;
     }
 
     public int getBaseTokens() {

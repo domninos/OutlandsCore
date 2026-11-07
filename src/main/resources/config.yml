@@ -12,6 +12,9 @@ settings:
   # On their next login they are returned to the location they entered from,
   # their saved pre-run gear is restored, and loot/tokens are banked.
   return-on-disconnect: true
+  # Whether entering/leaving Extraction is announced to all online players.
+  # Message text lives in messages.yml under run.broadcast-entered / run.broadcast-left.
+  broadcast-run-messages: true
   # Extraction (outlands) entry spawn - where /extraction enter places players.
   # Set in-game with /extraction setspawn. Falls back to the world spawn if unset.
   spawn:

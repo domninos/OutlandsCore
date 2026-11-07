@@ -194,6 +194,8 @@ public class PlayerListener implements Listener {
         plugin.getBackpackManager().onQuit(player);
 
         if (plugin.getRunManager().isPlayerInRun(uuid)) {
+            plugin.getRunManager().announceQuit(uuid, player.getName());
+
             if (plugin.getConfigUtil().isReturnOnDisconnect())
                 plugin.getRunManager().handleDisconnect(uuid);
         }
@@ -385,6 +387,16 @@ public class PlayerListener implements Listener {
     }
 
     private boolean shouldBlockWorldEdit(Player player) {
+        UUID uuid = player.getUniqueId();
+
+        if (plugin.getRunManager().isPlayerInRun(uuid)) {
+            if (player.hasPermission(Permissions.ADMIN) && plugin.getAdminModeManager().isBuildMode(uuid))
+                return false;
+
+            notifyBlockBlocked(player);
+            return true;
+        }
+
         if (!player.getWorld().getName().equalsIgnoreCase(plugin.getConfigUtil().getWorldName()))
             return false;
 
@@ -394,6 +406,11 @@ public class PlayerListener implements Listener {
         if (plugin.getAreaManager().isWand(player.getInventory().getItemInMainHand()))
             return false;
 
+        notifyBlockBlocked(player);
+        return true;
+    }
+
+    private void notifyBlockBlocked(Player player) {
         long now = System.currentTimeMillis();
         Long last = lastBlockBlocked.get(player.getUniqueId());
 
@@ -401,8 +418,6 @@ public class PlayerListener implements Listener {
             lastBlockBlocked.put(player.getUniqueId(), now);
             plugin.sendMessage(player, Messages.BLOCK_BLOCKED.toString());
         }
-
-        return true;
     }
 
     @EventHandler

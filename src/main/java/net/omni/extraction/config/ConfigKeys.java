@@ -12,6 +12,7 @@ public final class ConfigKeys {
     public static final String COOLDOWN_HOURS = "settings.cooldown-hours";
     public static final String PVP_ENABLED = "settings.pvp-enabled";
     public static final String RETURN_ON_DISCONNECT = "settings.return-on-disconnect";
+    public static final String BROADCAST_RUN_MESSAGES = "settings.broadcast-run-messages";
     public static final String SPAWN = "settings.spawn";
     public static final String LOBBY = "settings.lobby";
 

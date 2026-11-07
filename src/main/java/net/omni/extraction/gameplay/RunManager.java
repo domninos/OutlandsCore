@@ -25,6 +25,7 @@ public class RunManager {
     private final TokenManager tokenManager;
 
     private final Map<UUID, ActiveRun> activeRuns;
+    private final Set<UUID> leaveAnnounced;
 
     public RunManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -32,10 +33,37 @@ public class RunManager {
         this.cooldownManager = plugin.getCooldownManager();
         this.tokenManager = plugin.getTokenManager();
         this.activeRuns = new HashMap<>();
+        this.leaveAnnounced = new HashSet<>();
     }
 
     public ActiveRun getActiveRun(UUID uuid) {
         return activeRuns.get(uuid);
+    }
+
+    private void announceEnter(String playerName) {
+        broadcastRunMessage(Messages.RUN_BROADCAST_ENTERED, playerName);
+    }
+
+    public void announceQuit(UUID uuid, String playerName) {
+        if (activeRuns.containsKey(uuid))
+            announceLeave(uuid, playerName);
+    }
+
+    private void announceLeave(UUID uuid, String playerName) {
+        if (!leaveAnnounced.add(uuid))
+            return;
+
+        broadcastRunMessage(Messages.RUN_BROADCAST_LEFT, playerName);
+    }
+
+    private void broadcastRunMessage(Messages message, String playerName) {
+        if (!plugin.getConfigUtil().isBroadcastRunMessagesEnabled())
+            return;
+
+        String line = message.replace("player", playerName);
+
+        for (Player online : Bukkit.getOnlinePlayers())
+            plugin.sendMessage(online, line);
     }
 
     public boolean enterRun(Player player) {
@@ -99,8 +127,10 @@ public class RunManager {
 
         int timeLimit = baseLimit > 0 ? baseLimit + extraTime : 0;
 
-        ActiveRun run = new ActiveRun(uuid, data.getReturnLocation(), System.currentTimeMillis(), timeLimit);
+        ActiveRun run = new ActiveRun(uuid, player.getName(), data.getReturnLocation(),
+                System.currentTimeMillis(), timeLimit);
         activeRuns.put(uuid, run);
+        leaveAnnounced.remove(uuid);
 
         if (timeLimit > 0)
             run.startTimer(plugin, this, player);
@@ -109,6 +139,7 @@ public class RunManager {
             plugin.sendMessage(player, Messages.RUN_EXTRA_TIME_APPLIED.replace("time", String.valueOf(bankedTime / 60)));
 
         plugin.sendMessage(player, Messages.RUN_ENTERED.toString());
+        announceEnter(player.getName());
 
         PetDefinition pet = plugin.getPetManager().getActive(data);
         if (pet != null && pet.boostPercent() > 0)
@@ -139,6 +170,8 @@ public class RunManager {
             return false;
 
         run.cancelTimer();
+        plugin.getAdminModeManager().clearBuild(uuid);
+        announceLeave(uuid, run.getPlayerName());
 
         Player player = Bukkit.getPlayer(uuid);
         PlayerData data = playerDataManager.getLoaded(uuid);
@@ -233,6 +266,8 @@ public class RunManager {
             return;
 
         run.cancelTimer();
+        plugin.getAdminModeManager().clearBuild(uuid);
+        announceLeave(uuid, run.getPlayerName());
 
         PlayerData data = playerDataManager.getLoaded(uuid);
         Player player = Bukkit.getPlayer(uuid);
@@ -307,6 +342,8 @@ public class RunManager {
             return;
 
         run.cancelTimer();
+        plugin.getAdminModeManager().clearBuild(uuid);
+        announceLeave(uuid, run.getPlayerName());
 
         PlayerData data = playerDataManager.getOrCreate(uuid);
 
@@ -394,6 +431,7 @@ public class RunManager {
         }
 
         activeRuns.clear();
+        leaveAnnounced.clear();
         plugin.getPetManager().shutdown();
     }
 
@@ -447,6 +485,7 @@ public class RunManager {
 
     public static class ActiveRun {
         private final UUID uuid;
+        private final String playerName;
         private final Location returnLocation;
         private final long startTime;
         private final int timeLimitSeconds;
@@ -456,8 +495,9 @@ public class RunManager {
         private int bossCount;
         private BukkitTask timerTask;
 
-        public ActiveRun(UUID uuid, Location returnLocation, long startTime, int timeLimitSeconds) {
+        public ActiveRun(UUID uuid, String playerName, Location returnLocation, long startTime, int timeLimitSeconds) {
             this.uuid = uuid;
+            this.playerName = playerName;
             this.returnLocation = returnLocation;
             this.startTime = startTime;
             this.timeLimitSeconds = timeLimitSeconds;
@@ -513,6 +553,10 @@ public class RunManager {
 
         public UUID getUuid() {
             return uuid;
+        }
+
+        public String getPlayerName() {
+            return playerName;
         }
 
         public Location getReturnLocation() {

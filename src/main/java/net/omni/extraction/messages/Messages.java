@@ -13,6 +13,8 @@ public enum Messages {
     RELOADED("reloaded", "<green>config files and messages.yml have been reloaded.</green>"),
 
     RUN_ENTERED("run.entered", "<green>You have entered Extraction! Extract before your time runs out.</green>"),
+    RUN_BROADCAST_ENTERED("run.broadcast-entered", "<green>%player% has entered Extraction.</green>"),
+    RUN_BROADCAST_LEFT("run.broadcast-left", "<gray>%player% has left Extraction.</gray>"),
     RUN_TIMER_ONE_MINUTE("run.timer-one-minute", "<yellow>1 minute remaining in Extraction!</yellow>"),
     RUN_TIMER_SECONDS("run.timer-seconds", "<red>%time% seconds remaining!</red>"),
     RUN_AUTO_EXTRACT("run.auto-extract", "<gold>Time is up! Automatically extracting...</gold>"),
@@ -148,7 +150,7 @@ public enum Messages {
 
     ADMIN_SET_TOKENS("admin.set-tokens", "<green>Set %player%'s tokens to %amount%.</green>"),
     ADMIN_GIVE_TOKENS("admin.give-tokens", "<green>Gave %amount% tokens to %player%.</green>"),
-    ADMIN_GIVE_UPGRADE("admin.give-upgrade", "<green>Gave %token% to %player%.</green>"),
+    ADMIN_GIVE_UPGRADE("admin.give-upgrade", "<green>Gave %amount%x %token% to %player%.</green>"),
     ADMIN_FORCE_EXTRACT("admin.force-extract", "<green>Force extracted %player% from Extraction.</green>"),
     ADMIN_SET_SPAWN("admin.set-spawn", "<green>Set the Extraction entry spawn in <white>%world%</white>.</green>"),
     ADMIN_SET_LOBBY("admin.set-lobby", "<green>Set the lobby spawn in <white>%world%</white>.</green>"),
@@ -287,6 +289,8 @@ public enum Messages {
     ADMIN_MODE_OFF("admin.mode-off", "<green>Admin mode disabled — inventory and gamemode restored.</green>"),
     ADMIN_MODE_BLOCKED_RUN("admin.mode-blocked-run", "<red>You cannot enter admin mode while inside a run — extract first.</red>"),
     ADMIN_MODE_BLOCKED_DRONE("admin.mode-blocked-drone", "<red>You cannot enter admin mode while piloting a drone.</red>"),
+    ADMIN_BUILD_ON("admin.build-on", "<green>Build mode enabled - you can now break and place blocks during runs.</green>"),
+    ADMIN_BUILD_OFF("admin.build-off", "<green>Build mode disabled - block edits are blocked again during runs.</green>"),
 
     AREA_HELP_TITLE("area.help-title", "  <gradient:#00AAFF:#55FFFF><bold>Areas</bold></gradient>"),
     AREA_HELP_CATEGORY_TITLE("area.help-category-title", "  <gradient:#00AAFF:#55FFFF><bold>Areas</bold></gradient> <dark_gray>-</dark_gray> <white>%category%</white>"),
