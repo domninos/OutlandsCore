@@ -249,10 +249,6 @@ public class PlayerListener implements Listener {
 
         if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
 
-        // PlayerInteractEvent fires once per hand; only process the main hand
-        // (the code below only ever reads the main-hand item anyway).
-        if (event.getHand() == EquipmentSlot.OFF_HAND) return;
-
         // A single click can fire both an air and a block event in the same
         // tick. Process at most one right-click per player per tick so items
         // (tokens, time items, ...) are consumed exactly once.
@@ -266,6 +262,18 @@ public class PlayerListener implements Listener {
                 && event.getClickedBlock().getType() == Material.CHEST
                 && plugin.getAreaClearManager().isLootChest(event.getClickedBlock().getLocation()))
             return;
+
+        // PlayerInteractEvent fires for the hand that triggered it. Tokens,
+        // relics and time items are main-hand only, but a backpack opens from
+        // either hand.
+        if (event.getHand() == EquipmentSlot.OFF_HAND) {
+            ItemStack offHand = player.getInventory().getItemInOffHand();
+
+            if (plugin.getBackpackManager().isBackpackItem(offHand))
+                handleBackpackInteract(player, event, action, offHand);
+
+            return;
+        }
 
         ItemStack item = player.getInventory().getItemInMainHand();
 
@@ -291,23 +299,7 @@ public class PlayerListener implements Listener {
         }
 
         if (plugin.getBackpackManager().isBackpackItem(item)) {
-            if (action == Action.RIGHT_CLICK_BLOCK) {
-                // Allow opening interactable blocks (chests, doors, ...) but
-                // never let the bag be placed against ordinary blocks.
-                if (event.getClickedBlock() == null || !event.getClickedBlock().getType().isInteractable())
-                    event.setCancelled(true);
-                return;
-            }
-
-            event.setCancelled(true);
-
-            RunManager.ActiveRun run = plugin.getRunManager().getActiveRun(player.getUniqueId());
-
-            if (run != null) {
-                plugin.getBackpackManager().openBackpack(player, item);
-            } else {
-                plugin.getBackpackManager().unpackContents(player, item);
-            }
+            handleBackpackInteract(player, event, action, item);
             return;
         }
 
@@ -372,6 +364,25 @@ public class PlayerListener implements Listener {
                 String.valueOf(minutes)));
     }
 
+    /**
+     * Opens (in a run) or unpacks (outside) a backpack on right-click. Clicking
+     * an interactable block (chest, door, ...) is left to vanilla so the block
+     * opens instead of the backpack.
+     */
+    private void handleBackpackInteract(Player player, PlayerInteractEvent event, Action action, ItemStack bag) {
+        if (action == Action.RIGHT_CLICK_BLOCK
+                && event.getClickedBlock() != null
+                && event.getClickedBlock().getType().isInteractable())
+            return;
+
+        event.setCancelled(true);
+
+        if (plugin.getRunManager().getActiveRun(player.getUniqueId()) != null)
+            plugin.getBackpackManager().openBackpack(player, bag);
+        else
+            plugin.getBackpackManager().unpackContents(player, bag);
+    }
+
     private String buildPetBoostNote(PlayerData data) {
         PetDefinition pet = plugin.getPetManager().getActive(data);
         if (pet == null || pet.boostPercent() <= 0)
@@ -422,6 +433,11 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
+        if (plugin.getBackpackManager().isBackpackItem(event.getItemInHand())) {
+            event.setCancelled(true);
+            return;
+        }
+
         if (shouldBlockWorldEdit(event.getPlayer()))
             event.setCancelled(true);
     }
