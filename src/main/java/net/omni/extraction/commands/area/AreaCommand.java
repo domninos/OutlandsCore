@@ -1,4 +1,4 @@
-package net.omni.extraction.commands;
+package net.omni.extraction.commands.area;
 
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;

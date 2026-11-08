@@ -1,4 +1,5 @@
-package net.omni.extraction.commands;
+package net.omni.extraction.commands.artifacts;
+import net.omni.extraction.commands.relics.RelicCommand;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.messages.Messages;

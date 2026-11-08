@@ -18,7 +18,18 @@ import net.omni.extraction.chat.SpigotChatRenderer;
 import net.omni.extraction.chests.StandaloneChestCommand;
 import net.omni.extraction.chests.StandaloneChestListener;
 import net.omni.extraction.chests.StandaloneChestManager;
-import net.omni.extraction.commands.*;
+import net.omni.extraction.commands.extraction.ExtractionCommand;
+import net.omni.extraction.commands.extract.ExtractCommand;
+import net.omni.extraction.commands.area.AreaCommand;
+import net.omni.extraction.commands.tokens.TokensCommand;
+import net.omni.extraction.commands.upgrade.UpgradeCommand;
+import net.omni.extraction.commands.loadout.LoadoutCommand;
+import net.omni.extraction.commands.shop.ShopCommand;
+import net.omni.extraction.commands.charms.CharmsCommand;
+import net.omni.extraction.commands.artifacts.ArtifactsCommand;
+import net.omni.extraction.commands.drone.DroneCommand;
+import net.omni.extraction.commands.pets.PetsCommand;
+import net.omni.extraction.commands.boss.BossCommand;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.config.ExtractionConfig;
 import net.omni.extraction.data.DatabaseManager;
@@ -137,7 +148,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      - when upgrading tokens in /upgrades, the old customized slots on the weapon/tools are back
      -
-     - split ExtractionManager to SubCommand, abstraction
+     - split ExtractionManager to SubCommand, abstraction. MainCommand - ExtractionCommand (and the rest of the commands. MainCommand -> commands that have subcommands)
      - add packages for each command
      - split commands and tabcompleter (different classes, same package)
      -

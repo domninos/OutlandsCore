@@ -1,7 +1,10 @@
-package net.omni.extraction.commands;
+package net.omni.extraction.commands.extraction;
 
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.commands.loadout.LoadoutCommand;
+import net.omni.extraction.commands.party.PartyCommand;
+import net.omni.extraction.commands.walls.WallsCommand;
 import net.omni.extraction.util.Permissions;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.loadout.LoadoutGuiHolder;

@@ -1,4 +1,4 @@
-package net.omni.extraction.commands;
+package net.omni.extraction.commands.extraction;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;

@@ -1,4 +1,4 @@
-package net.omni.extraction.commands;
+package net.omni.extraction.commands.shop;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.util.Permissions;
@@ -10,11 +10,11 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.NonNull;
 
-public class PetsCommand implements CommandExecutor {
+public class ShopCommand implements CommandExecutor {
 
     private final ExtractionPlugin plugin;
 
-    public PetsCommand(ExtractionPlugin plugin) {
+    public ShopCommand(ExtractionPlugin plugin) {
         this.plugin = plugin;
     }
 
@@ -30,15 +30,15 @@ public class PetsCommand implements CommandExecutor {
             return true;
         }
 
-        plugin.getPetManager().open(player);
+        plugin.getShopManager().openHub(player);
         return true;
     }
 
     public void register() {
-        PluginCommand cmd = plugin.getCommand("pets");
+        PluginCommand cmd = plugin.getCommand("extshop");
 
         if (cmd == null) {
-            plugin.sendConsole("<red>/pets is not registered in plugin.yml.</red>");
+            plugin.sendConsole("<red>/extshop is not registered in plugin.yml.</red>");
             return;
         }
 
