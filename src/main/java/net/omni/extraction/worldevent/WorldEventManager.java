@@ -229,7 +229,7 @@ public class WorldEventManager {
         if (instance.isCraterActive())
             ctx.terrain().restoreCrater(instance);
 
-        if (instance.hasMutator(MutatorType.NIGHTFALL)) {
+        if (!plugin.getConfigUtil().isAlwaysNight() && instance.hasMutator(MutatorType.NIGHTFALL)) {
             Mutator nf = instance.getMutator(MutatorType.NIGHTFALL);
             if (nf != null && nf.nightRestoreOnEnd() && instance.getOriginalWorldTime() >= 0 && instance.getOrigin() != null) {
                 org.bukkit.World w = instance.getOrigin().getWorld();
@@ -408,7 +408,8 @@ public class WorldEventManager {
                 ? selectMutators(event, instance, origin)
                 : selectForcedMutators(event, forcedMutators);
         instance.applyMutators(selectedMutators);
-        if (!selectedMutators.isEmpty() && event.isNightfallActive(instance)) {
+        if (!selectedMutators.isEmpty() && event.isNightfallActive(instance)
+                && !plugin.getConfigUtil().isAlwaysNight()) {
             World w = origin.getWorld();
             if (w != null) {
                 instance.setOriginalWorldTime(w.getTime());

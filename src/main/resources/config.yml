@@ -15,6 +15,10 @@ settings:
   # Whether entering/leaving Extraction is announced to all online players.
   # Message text lives in messages.yml under run.broadcast-entered / run.broadcast-left.
   broadcast-run-messages: true
+  # Keep the extraction world locked to night (daylight cycle disabled).
+  always-night: true
+  # Minecraft world time to hold while always-night is enabled (18000 = midnight).
+  night-time: 18000
   # Extraction (outlands) entry spawn - where /extraction enter places players.
   # Set in-game with /extraction setspawn. Falls back to the world spawn if unset.
   spawn:
@@ -422,3 +426,59 @@ boss-gui:
   # Click increments for stat/ability/loot editor pages.
   increments: [1, 5, 10]
   smallest: 1
+# ============================================================================
+# Natural (untracked) mob loot
+# ============================================================================
+# Any mob in the extraction world that is NOT part of an area clear, a world
+# event, a pet, a drone mount, or a boss is treated as a natural mob. Instead
+# of vanilla drops it rolls items from a loot table (loot_tables.yml).
+natural-mobs:
+  # When true, vanilla drops are replaced by the loot table roll.
+  replace-drops: true
+  # When false, replaced mobs grant no experience.
+  keep-exp: false
+  # Loot table used when a mob has no per-mob override below.
+  default-loot-table: Easy
+  # Rolls per death (each roll yields one entry from the table).
+  loot-rolls: 1
+  # Level passed to level-scaled loot tables (0 = unrestricted).
+  level: 1
+  # Per-mob overrides. Keys may be a mobs.yml template id or an EntityType
+  # (case-insensitive). Unknown loot tables fall back to vanilla drops.
+  per-mob:
+    zombie: Easy
+    skeleton: Easy
+
+# ============================================================================
+# Random natural mob spawner
+# ============================================================================
+# Periodically spawns configured mobs at random ground locations around
+# players who are inside the extraction world. Set enabled: false to disable.
+natural-spawner:
+  enabled: true
+  # How often (seconds) to attempt a spawn pass.
+  check-seconds: 60
+  # Attempts per pass (each attempt spawns one weighted pick).
+  spawns-per-check: 2
+  # Hard cap of alive spawner-spawned mobs tracked by the plugin.
+  max-alive: 40
+  # Horizontal spawn ring around a random eligible player (blocks).
+  min-radius: 24
+  max-radius: 96
+  # When true, only players who ran /extraction are used as anchors.
+  require-extraction-players: true
+  # Weighted mob list. "mob" accepts a mobs.yml template id, an EntityType,
+  # or a MythicMobs id (resolved by MobResolver).
+  mobs:
+    - mob: zombie
+      weight: 4
+      count: 2
+      level: 1
+    - mob: skeleton
+      weight: 3
+      count: 1
+      level: 1
+    - mob: skeleton_guard
+      weight: 1
+      count: 1
+      level: 2
