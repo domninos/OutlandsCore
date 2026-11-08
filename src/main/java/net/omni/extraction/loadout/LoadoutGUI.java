@@ -15,8 +15,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -36,6 +38,8 @@ public class LoadoutGUI {
     private Inventory inventory;
     private ItemStack filler;
     private final Set<Integer> touchedCells = new HashSet<>();
+    private final Map<Integer, ItemStack> renderedSnapshot = new HashMap<>();
+    private final Set<Integer> customizedAtOpen = new HashSet<>();
 
     public LoadoutGUI(ExtractionPlugin plugin, Player player) {
         this.plugin = plugin;
@@ -59,6 +63,7 @@ public class LoadoutGUI {
         resetTouched();
         ensureInventory();
         populate(inventory, data);
+        captureSnapshot(data);
         player.openInventory(inventory);
     }
 
@@ -66,6 +71,7 @@ public class LoadoutGUI {
         resetTouched();
         ensureInventory();
         populate(inventory, data);
+        captureSnapshot(data);
     }
 
     private void ensureInventory() {
@@ -125,6 +131,35 @@ public class LoadoutGUI {
         }
     }
 
+    /**
+     * Remembers what this open-session's view was supposed to hold (per cell)
+     * plus which cells were already customized, so close-time sync can tell a
+     * real edit from a stale/repainted/abandoned view. snapshots are clones so
+     * later view mutation cannot corrupt the comparison.
+     */
+    private void captureSnapshot(PlayerData data) {
+        renderedSnapshot.clear();
+        customizedAtOpen.clear();
+
+        for (int i = 0; i < plugin.getConfigUtil().getLoadoutGuiSize(); i++) {
+            if (data.isCellCustomized(i))
+                customizedAtOpen.add(i);
+        }
+
+        if (inventory == null)
+            return;
+
+        for (int i = 0; i < inventory.getSize(); i++) {
+            if (isFirstRowFillerCell(plugin, i))
+                continue;
+
+            ItemStack rendered = inventory.getItem(i);
+
+            if (rendered != null)
+                renderedSnapshot.put(i, rendered.clone());
+        }
+    }
+
     public void syncToData(PlayerData data) {
         if (inventory == null)
             return;
@@ -132,26 +167,40 @@ public class LoadoutGUI {
         Set<Integer> cells = new HashSet<>(touchedCells);
         int written = 0;
         int removed = 0;
+        int skipped = 0;
 
         for (int i : cells) {
             if (isFirstRowFillerCell(plugin, i))
                 continue;
 
             ItemStack current = inventory.getItem(i);
-            data.setCellCustomized(i, true);
+            ItemStack expected = renderedSnapshot.get(i);
+            boolean hadStored = customizedAtOpen.contains(i);
 
-            if (current == null) {
-                if (data.getItemAt(i) != null) {
-                    data.setItemAt(i, null);
-                    removed++;
-                }
+            // A view that still matches what was rendered is not an edit —
+            // do not touch it (this also means the cell keeps its tier default
+            // instead of being flagged customized-with-null).
+            if (sameStack(current, expected)) {
+                skipped++;
                 continue;
             }
 
-            ItemStack stored = data.getItemAt(i);
-            if (current.equals(stored))
-                continue;
+            if (current == null) {
+                // Removing is only meaningful for something that was actually
+                // stored; tier defaults regenerate, so an abandoned/repainted
+                // empty view must never wipe data.
+                if (!hadStored || data.getItemAt(i) == null) {
+                    skipped++;
+                    continue;
+                }
 
+                data.setCellCustomized(i, true);
+                data.setItemAt(i, null);
+                removed++;
+                continue;
+            }
+
+            data.setCellCustomized(i, true);
             data.setItemAt(i, current);
             written++;
         }
@@ -160,9 +209,16 @@ public class LoadoutGUI {
             long count = data.getLoadoutItems() == null
                     ? 0 : data.getLoadoutItems().stream().filter(Objects::nonNull).count();
             plugin.getLogger().info("Synced loadout for " + data.getUuid() + ": wrote " + written
-                    + ", removed " + removed + "; stored " + count + " item(s), "
+                    + ", removed " + removed + ", skipped " + skipped + "; stored " + count + " item(s), "
                     + data.getCustomizedCells().size() + " customized cell(s)");
         }
+    }
+
+    private static boolean sameStack(ItemStack a, ItemStack b) {
+        if (a == null && b == null)
+            return true;
+
+        return a != null && b != null && a.isSimilar(b);
     }
 
     private static ItemStack equippedRelicItem(ExtractionPlugin plugin, PlayerData data, LoadoutSlot slot) {

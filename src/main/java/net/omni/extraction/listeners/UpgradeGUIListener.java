@@ -171,17 +171,10 @@ public class UpgradeGUIListener implements Listener {
             return;
         }
 
-        PlayerData data = plugin.getPlayerDataManager().getOrCreate(player.getUniqueId());
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
         boolean success = plugin.getLoadoutManager().applyUpgradeToken(slot.getConfigKey(), tokenTier, data);
 
         if (success) {
-            // TODO fix display name being translated first
-            /*
-            error:
-                net.kyori.adventure.text.minimessage.internal.parser.ParsingExceptionImpl: Legacy formatting codes have been detected in a MiniMessage string - this is unsupported behaviour. Please refer to the Adventure documentation (https://docs.papermc.io/adventure/) for more information.
-        <green>Applied §7Iron Helmet Upgrade to your Helmet!</green>
-                       ^^
-             */
             plugin.sendMessage(player, Messages.LOADOUT_TOKEN_APPLIED.replace(
                     "token_name", token.hasItemMeta() && token.getItemMeta().hasDisplayName()
                             ? token.getItemMeta().getDisplayName() : token.getType().name(),
