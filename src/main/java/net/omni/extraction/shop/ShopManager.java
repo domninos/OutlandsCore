@@ -63,7 +63,9 @@ public class ShopManager {
 
             int cost = asInt(def.get("cost"), 0);
             if (cost > 0 && !tokens.hasTokens(uuid, cost)) {
-                plugin.sendMessage(player, Messages.SHOP_NOT_ENOUGH_TOKENS.replace("cost", String.valueOf(cost)).replace("tokens", String.valueOf(tokens.getTokens(uuid))));
+                plugin.sendMessage(player, Messages.SHOP_NOT_ENOUGH_TOKENS
+                        .replace("cost", String.valueOf(cost),
+                                "tokens", String.valueOf(tokens.getTokens(uuid))));
                 return;
             }
 
@@ -149,8 +151,8 @@ public class ShopManager {
 
         if (def.cost() > 0 && !tokens.hasTokens(player.getUniqueId(), def.cost())) {
             plugin.sendMessage(player, Messages.SHOP_NOT_ENOUGH_TOKENS
-                    .replace("cost", String.valueOf(def.cost()))
-                    .replace("tokens", String.valueOf(tokens.getTokens(player.getUniqueId()))));
+                    .replace("cost", String.valueOf(def.cost()),
+                            "tokens", String.valueOf(tokens.getTokens(player.getUniqueId()))));
             return;
         }
 
@@ -287,7 +289,9 @@ public class ShopManager {
 
         int cost = asInt(def.get("cost"), 0);
         if (cost > 0 && !tokens.hasTokens(uuid, cost)) {
-            plugin.sendMessage(player, Messages.SHOP_NOT_ENOUGH_TOKENS.replace("cost", String.valueOf(cost)).replace("tokens", String.valueOf(tokens.getTokens(uuid))));
+            plugin.sendMessage(player, Messages.SHOP_NOT_ENOUGH_TOKENS
+                    .replace("cost", String.valueOf(cost),
+                            "tokens", String.valueOf(tokens.getTokens(uuid))));
             return;
         }
 
@@ -324,8 +328,6 @@ public class ShopManager {
         plugin.sendMessage(player, Messages.SHOP_ENCHANT_APPLIED.replace("enchant", enchDisp).replace("target", targetDisp));
         plugin.getGuiManager().refreshShop(player);
     }
-
-    // moved to net.omni.extraction.util.StringUtils
 
     record Eligible(int cell, LoadoutSlot slot, ItemStack item) {
     }
