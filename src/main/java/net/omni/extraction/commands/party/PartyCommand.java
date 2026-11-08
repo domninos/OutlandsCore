@@ -1,12 +1,28 @@
 package net.omni.extraction.commands.party;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.commands.SubCommand;
+import net.omni.extraction.commands.party.sub.PartyChatSubCommand;
+import net.omni.extraction.commands.party.sub.PartyCreateSubCommand;
+import net.omni.extraction.commands.party.sub.PartyDisbandSubCommand;
+import net.omni.extraction.commands.party.sub.PartyInfoSubCommand;
+import net.omni.extraction.commands.party.sub.PartyInviteSubCommand;
+import net.omni.extraction.commands.party.sub.PartyJoinSubCommand;
+import net.omni.extraction.commands.party.sub.PartyKickSubCommand;
+import net.omni.extraction.commands.party.sub.PartyLeaveSubCommand;
+import net.omni.extraction.commands.party.sub.PartyListSubCommand;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.Permissions;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.util.StringUtil;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * Handles {@code /extraction party ...}.
@@ -17,9 +33,23 @@ public class PartyCommand {
             "/extraction party {create|invite|join|leave|kick|disband|list|info|chat} [player] [message]";
 
     private final ExtractionPlugin plugin;
+    private final Map<String, SubCommand> subCommands = new LinkedHashMap<>();
 
     public PartyCommand(ExtractionPlugin plugin) {
         this.plugin = plugin;
+        register(new PartyCreateSubCommand(plugin));
+        register(new PartyInviteSubCommand(plugin));
+        register(new PartyJoinSubCommand(plugin));
+        register(new PartyLeaveSubCommand(plugin));
+        register(new PartyKickSubCommand(plugin));
+        register(new PartyDisbandSubCommand(plugin));
+        register(new PartyListSubCommand(plugin));
+        register(new PartyInfoSubCommand(plugin));
+        register(new PartyChatSubCommand(plugin));
+    }
+
+    private void register(SubCommand subCommand) {
+        subCommands.put(subCommand.name().toLowerCase(Locale.ROOT), subCommand);
     }
 
     public boolean handle(CommandSender sender, String[] args) {
@@ -38,41 +68,39 @@ public class PartyCommand {
             return true;
         }
 
-        switch (args[1].toLowerCase()) {
-            case "create" -> plugin.getPartyManager().create(player);
-            case "invite" -> {
-                if (args.length < 3) {
-                    plugin.sendMessage(sender, Messages.PARTY_USAGE.replace("usage", USAGE));
-                    return true;
-                }
-                plugin.getPartyManager().invite(player, args[2]);
-            }
-            case "join" -> plugin.getPartyManager().join(player, args.length >= 3 ? args[2] : null);
-            case "leave" -> plugin.getPartyManager().leave(player);
-            case "kick" -> {
-                if (args.length < 3) {
-                    plugin.sendMessage(sender, Messages.PARTY_USAGE.replace("usage", USAGE));
-                    return true;
-                }
-                plugin.getPartyManager().kick(player, args[2]);
-            }
-            case "disband" -> plugin.getPartyManager().disband(player);
-            case "list" -> plugin.getPartyManager().list(player);
-            case "info" -> plugin.getPartyManager().info(player, args.length >= 3 ? args[2] : null);
-            case "chat" -> {
-                if (args.length < 3) {
-                    boolean newState = !plugin.getPartyManager().isPartyChatEnabled(player.getUniqueId());
-                    plugin.getPartyManager().setPartyChatMode(player, newState);
-                    return true;
-                }
+        SubCommand sub = subCommands.get(args[1].toLowerCase(Locale.ROOT));
 
-                String text = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
-
-                plugin.getPartyManager().chat(player, text);
-            }
-            default -> plugin.sendMessage(sender, Messages.PARTY_USAGE.replace("usage", USAGE));
+        if (sub == null) {
+            plugin.sendMessage(sender, Messages.PARTY_USAGE.replace("usage", USAGE));
+            return true;
         }
 
-        return true;
+        return sub.execute(sender, args);
+    }
+
+    public List<String> tabComplete(CommandSender sender, String[] args) {
+        if (args.length == 2) {
+            List<String> completions = new ArrayList<>();
+            StringUtil.copyPartialMatches(args[1], subCommands.keySet(), completions);
+            return completions;
+        }
+
+        if (args.length == 3) {
+            SubCommand sub = subCommands.get(args[1].toLowerCase(Locale.ROOT));
+
+            if (sub == null)
+                return List.of();
+
+            List<String> options = sub.tabComplete(sender, args);
+
+            if (options == null)
+                return null;
+
+            List<String> completions = new ArrayList<>();
+            StringUtil.copyPartialMatches(args[2], options, completions);
+            return completions;
+        }
+
+        return List.of();
     }
 }

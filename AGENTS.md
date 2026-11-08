@@ -151,10 +151,24 @@ via `Math.sqrt` of the squared value only when needed.
   makes the prefix configurable via `config.yml` -> `messages.prefix` (MiniMessage on Paper; converted to
   legacy on Spigot). `plugin.sendMessage()`/`sendConsole()` route through the renderer; startup console
   messages before config loads use `getLogger()`.
-- `commands/ExtractionCommand.java` (the `/extraction` command): enter / toggle-extract via RunManager,
-  help/about/reload/settokens/givetokens/giveupgrade/forceextract/setspawn/setlobby/storage/tokens/loadout +
-  `admin` (wraps `admin addhologram/sethologram/delhologram {area}`).
-  `handleReload` re-applies the prefix after `configUtil.reloadConfig()`.
+- **Command architecture** (`commands/MainCommand` + `commands/SubCommand`): every meaningful top-level command
+  extends `MainCommand` (an abstract `CommandExecutor` holding a `SubCommand` registry: `registerSubCommands`,
+  `getSubCommand`, `executeSubCommands` with `executeDefault` fallback, `completeSubCommands` + public
+  `tabComplete(sender, args)`) and dispatches to one `SubCommand` file per top-level action in a `sub/`
+  sub-package (`commands/<cmd>/sub/<Name>SubCommand.java`). `SubCommand` = `name()` / `execute(sender, args)`
+  (args include the subcommand name at index 0) / optional `tabComplete` (return `null` = default player-name
+  completion) / `usage()`. Simple GUI-opener commands (`Loadout`, `Shop`, `Pets`, `Drone`, `Charms`/`Artifacts`
+  via `commands/relics/RelicCommand`) stay plain executors. Inline tab completion lives in its own
+  `commands/<cmd>/<Cmd>TabCompleter.java` per package, which mostly delegates to the command's public
+  `tabComplete`; `AreaTabCompleter`/`BossTabCompleter` keep their own full logic (already-split).
+- `commands/extraction/ExtractionCommand.java` (the `/extraction` command, extends `MainCommand`): default =
+  enter / toggle-extract via RunManager (private `enter`, not a SubCommand) + `sub/` files: `About`,
+  `Admin` (bare = admin-mode toggle; setspawn/setlobby/packinfo/migratedb/setname/spawnmob/addhologram/
+  sethologram/delhologram), `Build`, `Events` (status/start/stop/route), `Help` (categorized help),
+  `Loadout` (delegates `LoadoutCommand`), `Party` (delegates `PartyCommand`), `Reload` (full reload chain;
+  re-applies the prefix via `configUtil.reloadConfig()` + `chatRenderer.setPrefix`), `Shop`, `Tokens`,
+  `Walls` (delegates `WallsCommand`). Unknown sub → `Messages.UNKNOWN_COMMAND`; unknown `/extraction args`
+  still route to tab via `tabComplete` override (admin-gated name list).
   Two separate spawns: `settings.spawn` (extraction/outlands entry, set via `/extraction setspawn`, used by
   `/extraction enter` + the convoy escape route) and `settings.lobby` (separate world Ã¢â‚¬â€ default
   `ExtractionSpawn` Ã¢â‚¬â€ set via `/extraction setlobby`). On join, `PlayerListener.onPlayerJoin` teleports any
@@ -163,8 +177,21 @@ via `Math.sqrt` of the squared value only when needed.
   world isn't loaded it does NOT fall back into the extraction world Ã¢â‚¬â€ the player stays where the server
   spawned them and a one-time warning is logged. `ConfigUtil.loadLobby(savedDefaults)` auto-adds
   `settings.lobby.world` to existing configs; `getLobbyLocation()`/`getLobbyWorldName()`.
-- `commands/AreaCommand.java` + `AreaTabCompleter.java`: `/areas` management (perm `extraction.areas`).
-- `commands/ExtractCommand.java`, `TokensCommand.java`, `UpgradeCommand.java`, `LoadoutCommand.java`.
+- `commands/area/AreaCommand.java` (extends `MainCommand`) + `AreaTabCompleter.java`: `/areas` management
+  (perm `extraction.areas`); all handlers are `sub/` files with shared mob helpers in
+  `commands/area/AreaCommandUtil` (`parseSpawnType`/`mythicExists`/`applyMythicAttributes`/`formatNumber`).
+- `commands/extract/ExtractCommand` (default extract + `sub/ExtractForceSubCommand`),
+  `commands/tokens/TokensCommand` (default balance + `sub/TokensSet|Give`),
+  `commands/upgrade/UpgradeCommand` (default open + `sub/UpgradeGiveSubCommand`),
+  `commands/loadout/LoadoutCommand.java` (plain opener, unchanged).
+- `commands/boss/BossCommand.java` (extends `MainCommand`, `sub/` = list/create/edit/delete/rename/settype/spawn
+  with shared `BossSub` base; bare/unknown = help; help kept in the command class).
+- `commands/party/PartyCommand.java` (plain handler class dispatched from `ExtractionCommand`'s `PartySubCommand`;
+  `sub/Party*SubCommand` files + shared `PartySub` base; `tabComplete(sender, args)` consumed by extraction tab).
+- `commands/walls/WallsCommand.java` (plain handler class; `sub/Wall{List,Remove,Create}SubCommand` + shared
+  `WallSub` base; owns the walls tab logic consumed by extraction tab).
+- `chests/StandaloneChestCommand.java` (`/extchest`, extends `MainCommand`, `sub/Chest{Add,List,Remove,Reload}SubCommand`
+  + `chests/ExtchestTabCompleter`).
 - `config/ConfigKeys.java`, `config/ConfigUtil.java`, `config/ConfigManager.java` (routes each config
   path to its owning split file), `config/ExtractionConfig.java` (generic per-file YAML IO).
 - `data/DatabaseManager.java` (SQLite `extraction.db` by default, or MariaDB/MySQL when `storage.type: mysql`;
@@ -218,7 +245,7 @@ via `Math.sqrt` of the squared value only when needed.
   through the `BungeeCord` channel (`Forward`/`ForwardToPlayer`, subchannel `extraction:party`, Gson payload)
   Ã¢â‚¬â€ gated by `party.cross-server` Ã¢â‚¬â€ via the package-private `memberArray`/`forwardAll`/`forwardToPlayer`
   shared by `PartyChat`/`Invites`.
-  `commands/PartyCommand.java` dispatches the subcommands (wired into `ExtractionCommand` `case "party"`).
+  `commands/PartyCommand.java` dispatches the subcommands (wired into `ExtractionCommand`'s `PartySubCommand`).
   **Threading:** every `PartyManager`/`PartyChat`/`Invites` DB operation runs on `DatabaseManager.supplyKeyed/
   runKeyed` (keyed by player UUID); player names/UUIDs/online targets are captured on the main thread before
   the async work, and cache indexing, chat delivery, and the BungeeCord relay run in a `mainExecutor()`
@@ -457,7 +484,7 @@ via `Math.sqrt` of the squared value only when needed.
 - Storage GUI allows **fully free** withdraw Ã¢â‚¬â€ item clicks, shift-click, drags, claim-all, nav and number-key
   transfers all work even mid-run (no `isWithdrawBlocked` gate; the `withdraw.blocked` message is unused/kept).
   `ExtractionManager.isExtractionPlayer` Ã¢â‚¬â€ the "in extraction" flag added on successful `enterRun`
-  (`ExtractionCommand.handleEnter`) and removed on extract/death (`RunManager.extractPlayer`/`handleDeath`) and
+  (`ExtractionCommand`'s private `enter`) and removed on extract/death (`RunManager.extractPlayer`/`handleDeath`) and
   on quit (`AreaSelectionVisualizer.onQuit`) Ã¢â‚¬â€ now ONLY drives scoreboard/actionbar/area-transition targeting.
   Opening the GUI stays allowed regardless.
 - Actionbar timer is disabled in free mode (`time-limit-seconds <= 0` AND `cooldown-hours <= 0`): `ActionBarManager.
@@ -743,7 +770,7 @@ via `Math.sqrt` of the squared value only when needed.
   - **Convoy routes + car visual**: both `convoy.start` and `convoy.end` anchors (`{world,x,y,z}`,
     `WorldEvent.parseLocationSection`, `ConvoyConfig.start/end`) are REQUIRED and set live via
     `/extraction events route {event} {start|end|clear|show}` (perm `extraction.admin`, tab-completed through
-    `ExtractionTabCompleter`, wired in `ExtractionCommand.handleRoute` Ã¢â€ â€™ `WorldEventManager.setConvoyPoint`/
+    `ExtractionTabCompleter`, wired in `EventsSubCommand.handleRoute` Ã¢â€ â€™ `WorldEventManager.setConvoyPoint`/
     `clearConvoyPoint`/`getConvoyPoint`). There is **no** convoy wand mode or `route wand` subcommand: `WandMode.CONVOY`,
     `AreaWandListener.handleConvoy`, `AreaSelectionVisualizer.drawConvoyMarker`, `WorldEventManager.convoyWands` and the
     wand message keys were removed. `ConvoyBehavior.setConvoyPoint` returns a `RoutePointResult`

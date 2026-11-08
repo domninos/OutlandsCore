@@ -45,6 +45,10 @@ public abstract class MainCommand implements CommandExecutor {
         return executeDefault(sender, args);
     }
 
+    public List<String> tabComplete(CommandSender sender, String[] args) {
+        return completeSubCommands(sender, args);
+    }
+
     protected List<String> completeSubCommands(CommandSender sender, String[] args) {
         if (args.length == 0) {
             return List.copyOf(subcommands.keySet());
