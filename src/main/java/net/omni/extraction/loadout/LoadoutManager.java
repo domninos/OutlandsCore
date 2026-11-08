@@ -113,11 +113,59 @@ public class LoadoutManager {
             }
 
             int targetSlot = inventorySlotForCell(cell);
-            if (targetSlot < 0 || targetSlot >= 36)
+            if (targetSlot < 0) {
+                // First-row charm/artifact/pet cells have no inventory slot of
+                // their own; hand the resolved item to free inventory space.
+                if (item != null)
+                    giveItem(player, item);
+
+                continue;
+            }
+
+            if (targetSlot >= 36)
                 continue;
 
             player.getInventory().setItem(targetSlot, item);
         }
+
+        deliverActiveRelic(player, data, LoadoutSlot.CHARM);
+        deliverActiveRelic(player, data, LoadoutSlot.ARTIFACT);
+    }
+
+    private void giveItem(Player player, ItemStack item) {
+        for (ItemStack leftover : player.getInventory().addItem(item).values())
+            player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+    }
+
+    /**
+     * Guarantees the active charm/artifact reaches the player even when its
+     * loadout cell was customized blank (which skips the default auto-grant).
+     * Only fires when the cell stores no item of its own, so a deliberately
+     * placed custom relic is never duplicated.
+     */
+    private void deliverActiveRelic(Player player, PlayerData data, LoadoutSlot slot) {
+        String kind = slot == LoadoutSlot.CHARM ? RelicManager.KIND_CHARM : RelicManager.KIND_ARTIFACT;
+        String id = slot == LoadoutSlot.CHARM ? data.getActiveCharm() : data.getActiveArtifact();
+
+        if (id == null || id.isBlank())
+            return;
+
+        int guiSlot = plugin.getConfigUtil().getLoadoutGuiSlot(slot.getConfigKey());
+
+        if (guiSlot < 0 || !data.isCellCustomized(guiSlot) || safeItem(data.getItemAt(guiSlot)) != null)
+            return;
+
+        RelicDefinition def = plugin.getRelicManager().getDefinition(kind, id);
+
+        if (def == null)
+            return;
+
+        ItemStack item = plugin.getRelicEffectManager().equippedItem(data.getUuid(), def);
+
+        if (item == null)
+            return;
+
+        giveItem(player, item);
     }
 
     private ItemStack resolveCellItem(PlayerData data, int cell) {

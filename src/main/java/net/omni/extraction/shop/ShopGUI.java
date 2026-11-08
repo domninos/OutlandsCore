@@ -14,7 +14,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -52,16 +51,17 @@ public class ShopGUI {
         return enchantKey;
     }
 
+    public int getTargetCellForSlot(int rawSlot) {
+        for (int i = 0; i < TARGET_SLOTS.length; i++)
+            if (TARGET_SLOTS[i] == rawSlot)
+                return getTargetCell(i);
+
+        return -1;
+    }
+
     public int getTargetCell(int index) {
         if (index < 0 || index >= targetCells.size()) return -1;
         return targetCells.get(index);
-    }
-
-    public int getTargetCellForSlot(int rawSlot) {
-        for (int i = 0; i < TARGET_SLOTS.length; i++) {
-            if (TARGET_SLOTS[i] == rawSlot) return getTargetCell(i);
-        }
-        return -1;
     }
 
     public void open(Player player, ShopView view) {
@@ -72,22 +72,6 @@ public class ShopGUI {
         player.openInventory(inventory);
     }
 
-    public void openEnchantTargets(Player player, String enchantKey) {
-        this.view = ShopView.ENCHANT_TARGETS;
-        this.enchantKey = enchantKey;
-        this.inventory = null;
-        build(player);
-        player.openInventory(inventory);
-    }
-
-    public void refresh(Player player) {
-        if (inventory == null) {
-            build(player);
-            return;
-        }
-        populate(player);
-    }
-
     private void build(Player player) {
         ConfigUtil config = plugin.getConfigUtil();
         ChatRenderer renderer = plugin.getChatRenderer();
@@ -95,8 +79,9 @@ public class ShopGUI {
         switch (view) {
             case HUB -> inventory = renderer.createInventory(new ShopHolder(), config.getShopHubSize(),
                     plugin.getPackManager().titleWithTexture(config.getShopHubTitle(), "backpack-shop"));
-            case CONSUMABLES -> inventory = renderer.createInventory(new ConsumablesHolder(), config.getShopConsumablesSize(),
-                    plugin.getPackManager().titleWithTexture(config.getShopConsumablesTitle(), "backpack-shop"));
+            case CONSUMABLES ->
+                    inventory = renderer.createInventory(new ConsumablesHolder(), config.getShopConsumablesSize(),
+                            plugin.getPackManager().titleWithTexture(config.getShopConsumablesTitle(), "backpack-shop"));
             case ENCHANTS -> inventory = renderer.createInventory(new EnchantShopHolder(), config.getEnchantmentsSize(),
                     plugin.getPackManager().titleWithTexture(config.getEnchantmentsTitle(), "relics-charms"));
             case ENCHANT_TARGETS -> inventory = renderer.createInventory(new EnchantTargetHolder(enchantKey), 27,
@@ -121,45 +106,6 @@ public class ShopGUI {
         }
     }
 
-    /** Pet shop: one icon per pet definition, in definition order. */
-    private void populatePets(Player player, ChatRenderer renderer) {
-        ConfigUtil config = plugin.getConfigUtil();
-        fillFiller(renderer, config.getPetsShopFillerMaterial(), config.getPetsShopFillerName());
-
-        ShopManager shop = plugin.getShopManager();
-        PlayerData data =
-                plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
-
-        int size = inventory.getSize();
-        List<PetDefinition> definitions =
-                plugin.getPetManager().getDefinitions();
-
-        for (int i = 0; i < definitions.size() && i < size - 9; i++) {
-            PetDefinition def = definitions.get(i);
-            boolean owned = data.ownsPet(def.id());
-
-            Material mat = Material.matchMaterial(def.icon());
-            if (mat == null || !mat.isItem()) mat = Material.PAPER;
-
-            ItemStack item = new ItemStack(mat);
-            ItemMeta meta = item.getItemMeta();
-            if (meta == null) continue;
-
-            renderer.setDisplayName(meta, def.name());
-
-            List<String> lore = new ArrayList<>();
-            for (String line : def.lore()) lore.add(line);
-            for (String line : config.getPetsGuiBoostLore())
-                lore.add(line.replace("%boost%", String.valueOf(def.boostPercent())));
-            for (String line : owned ? config.getPetsShopOwnedLore() : config.getPetsShopBuyLore())
-                lore.add(line.replace("%cost%", String.valueOf(def.cost())));
-
-            renderer.setLore(meta, lore);
-            item.setItemMeta(meta);
-            inventory.setItem(i, item);
-        }
-    }
-
     private void populateHub(ChatRenderer renderer) {
         ConfigUtil config = plugin.getConfigUtil();
         fillFiller(renderer, config.getShopHubFillerMaterial(), config.getShopHubFillerName());
@@ -179,34 +125,42 @@ public class ShopGUI {
 
         ShopManager shop = plugin.getShopManager();
         int size = inventory.getSize();
+
         for (Map.Entry<String, Map<String, Object>> entry : config.getShopConsumables().entrySet()) {
             Map<String, Object> def = entry.getValue();
-            if (!(def.get("slot") instanceof Number num)) continue;
+
+            if (!(def.get("slot") instanceof Number num))
+                continue;
+
             int slot = num.intValue();
-            if (slot < 0 || slot >= size) continue;
+            if (slot < 0 || slot >= size)
+                continue;
 
             int amount = shop.asInt(def.get("amount"), 1);
             int cost = shop.asInt(def.get("cost"), 0);
-            Material mat = Material.matchMaterial(String.valueOf(def.getOrDefault("material", "BREAD")));
-            if (mat == null) mat = Material.BREAD;
 
             ItemStack item = shop.createConsumableItem(def);
-            if (item == null) continue;
+            if (item == null)
+                continue;
 
             String name = String.valueOf(def.getOrDefault("name", entry.getKey()))
                     .replace("%amount%", String.valueOf(amount))
                     .replace("%cost%", String.valueOf(cost));
+
             List<String> lore = new ArrayList<>();
-            for (String line : parseLore(def.get("lore"))) {
-                lore.add(line.replace("%amount%", String.valueOf(amount)).replace("%cost%", String.valueOf(cost)));
-            }
+
+            for (String line : parseLore(def.get("lore")))
+                lore.add(line.replace("%amount%", String.valueOf(amount))
+                        .replace("%cost%", String.valueOf(cost)));
 
             ItemMeta meta = item.getItemMeta();
+
             if (meta != null) {
                 renderer.setDisplayName(meta, name);
                 renderer.setLore(meta, lore);
                 item.setItemMeta(meta);
             }
+
             inventory.setItem(slot, item);
         }
     }
@@ -275,6 +229,47 @@ public class ShopGUI {
         }
     }
 
+    /**
+     * Pet shop: one icon per pet definition, in definition order.
+     */
+    private void populatePets(Player player, ChatRenderer renderer) {
+        ConfigUtil config = plugin.getConfigUtil();
+        fillFiller(renderer, config.getPetsShopFillerMaterial(), config.getPetsShopFillerName());
+
+        PlayerData data =
+                plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
+
+        int size = inventory.getSize();
+        List<PetDefinition> definitions =
+                plugin.getPetManager().getDefinitions();
+
+        for (int i = 0; i < definitions.size() && i < size - 9; i++) {
+            PetDefinition def = definitions.get(i);
+            boolean owned = data.ownsPet(def.id());
+
+            Material mat = Material.matchMaterial(def.icon());
+            if (mat == null || !mat.isItem()) mat = Material.PAPER;
+
+            ItemStack item = new ItemStack(mat);
+            ItemMeta meta = item.getItemMeta();
+            if (meta == null) continue;
+
+            renderer.setDisplayName(meta, def.name());
+
+            List<String> lore = new ArrayList<>(def.lore());
+
+            for (String line : config.getPetsGuiBoostLore())
+                lore.add(line.replace("%boost%", String.valueOf(def.boostPercent())));
+
+            for (String line : owned ? config.getPetsShopOwnedLore() : config.getPetsShopBuyLore())
+                lore.add(line.replace("%cost%", String.valueOf(def.cost())));
+
+            renderer.setLore(meta, lore);
+            item.setItemMeta(meta);
+            inventory.setItem(i, item);
+        }
+    }
+
     private void fillFiller(ChatRenderer renderer, String materialName, String name) {
         Material material = Material.matchMaterial(materialName == null ? "" : materialName);
         if (material == null || material.isAir()) material = Material.GRAY_STAINED_GLASS_PANE;
@@ -327,5 +322,21 @@ public class ShopGUI {
             return out;
         }
         return new ArrayList<>();
+    }
+
+    public void openEnchantTargets(Player player, String enchantKey) {
+        this.view = ShopView.ENCHANT_TARGETS;
+        this.enchantKey = enchantKey;
+        this.inventory = null;
+        build(player);
+        player.openInventory(inventory);
+    }
+
+    public void refresh(Player player) {
+        if (inventory == null) {
+            build(player);
+            return;
+        }
+        populate(player);
     }
 }

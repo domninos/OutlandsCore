@@ -196,7 +196,7 @@ public class RelicManager {
                 : data.ownsArtifact(def.id());
 
         if (alreadyKnown) {
-            plugin.sendMessage(player, Messages.RELIC_ALREADY_OWNED.replace("relic", def.name()));
+            equipOwned(player, data, def);
             return;
         }
 
@@ -210,6 +210,29 @@ public class RelicManager {
         plugin.getPlayerDataManager().savePlayerShared(player.getUniqueId());
 
         plugin.sendMessage(player, Messages.RELIC_LEARNED.replace("relic", def.name()));
+    }
+
+    /**
+     * Right-clicking an already-owned relic equips it to its loadout slot
+     * (mirrors the selection-GUI equip click; the item is not consumed).
+     */
+    private void equipOwned(Player player, PlayerData data, RelicDefinition def) {
+        if (def.isCharm())
+            data.setActiveCharm(def.id());
+        else
+            data.setActiveArtifact(def.id());
+
+        String slotKey = def.isCharm() ? "charm" : "artifact";
+        int guiSlot = plugin.getConfigUtil().getLoadoutGuiSlot(slotKey);
+
+        if (guiSlot >= 0) {
+            data.setCellCustomized(guiSlot, false);
+            data.setItemAt(guiSlot, null);
+        }
+
+        plugin.getPlayerDataManager().savePlayerShared(player.getUniqueId());
+        plugin.getRelicEffectManager().applyPassive(player);
+        plugin.sendMessage(player, Messages.RELIC_EQUIPPED.replace("relic", def.name()));
     }
 
     public RelicDefinition getDefinition(String id) {

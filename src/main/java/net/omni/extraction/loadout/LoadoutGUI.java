@@ -104,6 +104,11 @@ public class LoadoutGUI {
                 // the equipped relic; a dragged arrangement wins once customized.
                 if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT) {
                     item = equippedRelicItem(plugin, data, slot);
+
+                    if (item == null) {
+                        item = createDropPlaceholder(plugin, slot);
+                        pane = true;
+                    }
                 } else {
                     int tierLevel = plugin.getLoadoutManager().getEffectiveTier(data, slot);
 
@@ -252,18 +257,15 @@ public class LoadoutGUI {
             return item;
 
         if (slot == LoadoutSlot.OFFHAND) {
-            plugin.getChatRenderer().setDisplayName(meta, "<yellow>Drop item here</yellow>");
-            plugin.getChatRenderer().setLore(meta, List.of(
-                    "", "<gray>Click or drag an item onto this slot</gray>"));
-        } else if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT) {
-            String sub = slot == LoadoutSlot.CHARM ? "charms" : "artifacts";
+            plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
+        } else if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT || slot == LoadoutSlot.PET) {
+            String sub = slot == LoadoutSlot.CHARM ? "charms"
+                    : slot == LoadoutSlot.ARTIFACT ? "artifacts" : "pets";
             plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
             plugin.getChatRenderer().setLore(meta, List.of(
                     "", "<gray>Shift-click to open your " + sub + "</gray>"));
         } else {
             plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
-            plugin.getChatRenderer().setLore(meta, List.of(
-                    "", "<gray>Drop an item here</gray>"));
         }
 
         item.setItemMeta(meta);

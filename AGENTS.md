@@ -512,13 +512,18 @@ via `Math.sqrt` of the squared value only when needed.
   `LoadoutGUI`/`PlayerListener`/`LoadoutManager` use `LoadoutManager.inventorySlotForCell(cell)`
   (â‰¤8 â†’ -1, â‰¥36 â†’ cell-36, else cell). `populate` shows the stored item for
   customized cells and the live tier default (`buildTierItem`, same item as `/upgrade`) for uncustomized
-  category cells; charm/artifact/pet + offhand cells show a tagged *drop-here* pane while empty
-  (`LoadoutSlot.isPlaceholderSlot()`, `LoadoutGUI.createDropPlaceholder`: labelled panes for charm/artifact/pet,
-  a "Drop item here" pane for offhand at the top-row end). Charm/artifact/pet panes are MOVABLE markers:
+  category cells; charm/artifact/pet + offhand cells show a tagged placeholder pane while empty
+  (`LoadoutSlot.isPlaceholderSlot()`, `LoadoutGUI.createDropPlaceholder`: slot-name titled panes only, no
+  "Drop item here" wording; charm/artifact/pet panes keep a "Shift-click to open your charms/artifacts/pets"
+  lore hint). Default charm/artifact cells fall back to the pane when no active relic is equipped (previously
+  they rendered blank).
+  Charm/artifact/pet panes are MOVABLE markers:
   `handleLoadoutClick` lets an empty cursor pick them up (no cancel; the vacated cell is marked touched so it
   goes blank) and placing them elsewhere stores the pane verbatim (`syncToData` no longer clears placeholders),
   so the moved marker persists in `loadout_items` and the old cell never regenerates it. The offhand pane is the
   only fixed drop-here target â€” empty cursor is always cancelled on it. Item on cursor replaces any pane.
+  SHIFT+left/right-clicking a charm/artifact/pet cell (pane or real item) opens the matching GUI —
+  `RelicManager.open` for charm/artifact, `PetManager.open` for pet — fired before the generic shift-click cancel.
   `onInventoryClose` nulls a placeholder left on the cursor so panes never leak out.
   Legacy
   `isPlaceholder`/`untagPlaceholder` kept as an inert safety so tagged panes never show as stored or grant
@@ -894,6 +899,15 @@ via `Math.sqrt` of the squared value only when needed.
   and `RelicManager.createRelicItem` caches one droppable/grantable template per `kind|id` (cleared in
   `reload()`); both hand out clones. Per-player/composed variants (e.g. `RelicItemUtil.createItem` with
   cooldown `nameOverride` via `RelicEffectManager.equippedItem`) are NOT cached.
+- Active-relic delivery + right-click equip: `LoadoutManager.applyLoadout` after its cell loop calls
+  `deliverActiveRelic` for charm and artifact — when that cell is customized but stores no real item (e.g. a
+  moved placeholder marker / dragged-away relic) the `equippedItem` version is handed to free inventory via the
+  shared `giveItem` helper (overflow drops at the player) instead of being silently skipped. First-row
+  non-armor/offhand cells (charm/artifact/pet if configured there) now also get their resolved item via
+  `giveItem` instead of being discarded by the `-1` slot mapping. Right-clicking an ownED droppable relic item
+  no longer prints `RELIC_ALREADY_OWNED`: `RelicManager.learn` → `equipOwned` sets it active, resets the loadout
+  cell to default, saves shared, applies passives and sends `RELIC_EQUIPPED` (item NOT consumed); un-owned
+  relics still consume + unlock.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

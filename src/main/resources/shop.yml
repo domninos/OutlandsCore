@@ -90,7 +90,7 @@ shop-hub:
         - "<gray>Close the shop</gray>"
 
 # Consumables category. Each entry is bought for `cost` tokens and the item is
-# granted to the player (overflow goes to /extraction storage).
+# granted to the player.
 shop:
   consumables:
     title: "<gradient:#00AAFF:#55FFFF>Consumables</gradient>"

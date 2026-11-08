@@ -134,9 +134,9 @@ loadout:
 # placeholder pane as their default. Charm/artifact/pet panes are MOVABLE
 # markers: pick them up and place them on any other cell — the marker stays
 # there (it persists) and the old cell stays blank. The off-hand pane is a
-# fixed "Drop item here" drop-target that can never be picked up. Dropping a
-# real item onto any pane replaces it. Panes are display-only and never enter
-# the run inventory.
+# fixed drop-target that can never be picked up. Dropping a real item onto any
+# pane replaces it. Panes are display-only and never enter the run inventory.
+# Shift-left/right-clicking a charm or artifact pane opens that relic GUI.
 loadout-gui:
   title: "<gradient:#00AAFF:#55FFFF>Extraction Loadout</gradient>"
   rows: 5
