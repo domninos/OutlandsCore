@@ -16,6 +16,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Input;
 import org.bukkit.Location;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Bee;
 import org.bukkit.entity.Player;
@@ -52,6 +54,7 @@ public class DroneManager {
 
     private final ExtractionPlugin plugin;
     private final FancyNpcHook fancyNpcHook;
+
     private final Map<UUID, DroneSession> sessions = new ConcurrentHashMap<>();
     private final Map<UUID, BossBar> bossBars = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lowHpWarnings = new ConcurrentHashMap<>();
@@ -74,6 +77,198 @@ public class DroneManager {
         Bukkit.getPluginManager().registerEvents(listener, plugin);
 
         this.updateTicks = Math.max(1, plugin.getConfigUtil().getDroneUpdateTicks());
+    }
+
+    public DroneSession getSession(Player player) {
+        return sessions.get(player.getUniqueId());
+    }
+
+    /**
+     * Finds the session whose drone mount is the given entity (for damage/death/target events).
+     */
+    public DroneSession getSessionByMount(org.bukkit.entity.Entity entity) {
+        if (entity == null)
+            return null;
+
+        for (DroneSession session : sessions.values())
+            if (entity.equals(session.getMount()))
+                return session;
+
+        return null;
+    }
+
+    public void stop() {
+        for (UUID uuid : sessions.keySet()) {
+            Player player = Bukkit.getPlayer(uuid);
+
+            if (player != null)
+                recall(player);
+            else {
+                DroneSession session = sessions.get(uuid);
+                if (session != null)
+                    cleanupSession(session);
+
+            }
+        }
+
+        sessions.clear();
+        bossBars.clear();
+    }
+
+    public boolean recall(Player player) {
+        DroneSession session = sessions.remove(player.getUniqueId());
+        if (session == null)
+            return false;
+
+        BossBar bar = bossBars.remove(player.getUniqueId());
+        if (bar != null)
+            player.hideBossBar(bar);
+
+
+        lowHpWarnings.remove(player.getUniqueId());
+        lastHum.remove(player.getUniqueId());
+
+        restoreStrippedGear(session, player);
+
+        try {
+            if (player.getVehicle() != null)
+                player.leaveVehicle();
+
+            player.setGameMode(session.getOriginalGameMode());
+
+            Location returnLoc = session.getBodyLocation();
+            returnLoc.setYaw(session.getBodyYaw());
+            returnLoc.setPitch(session.getBodyPitch());
+            player.teleport(returnLoc);
+        } catch (Exception ignored) {
+            player.setGameMode(GameMode.SURVIVAL);
+        }
+
+        DroneUtil.restoreVisibility(plugin, player);
+
+        cleanupSession(session);
+        return true;
+    }
+
+    private void cleanupSession(DroneSession session) {
+        BukkitTask task = session.getTask();
+
+        if (task != null) {
+            session.setTask(null);
+
+            try {
+                task.cancel();
+            } catch (Exception ignored) {
+            }
+        }
+
+        DroneUtil.removeEntitySafe(session.getBodyMarker());
+        fancyNpcHook.removeBodyNpc(session.getBodyNpc());
+        DroneUtil.removeEntitySafe(session.getMount());
+
+        if (session.getNpcId() != null) {
+            plugin.getLogger().info("Removed drone session for " + session.getPlayerId()
+                    + " (npc: " + session.getNpcId() + ")");
+        }
+    }
+
+    /**
+     * The pilot flies bare (armor + off-hand stripped at activate) so mobs target
+     * the drone body; this restores the originals, used on recall and on
+     * disconnect so the emptied slots never persist to the DB.
+     */
+    private void restoreStrippedGear(DroneSession session, Player player) {
+        if (session == null || !session.hasStrippedGear())
+            return;
+
+        try {
+            if (session.getArmor() != null)
+                player.getInventory().setArmorContents(session.getArmor());
+
+            if (session.getOffhand() != null)
+                player.getInventory().setItemInOffHand(session.getOffhand());
+
+            if (session.getMainhand() != null)
+                player.getInventory().setItemInMainHand(session.getMainhand());
+        } catch (Exception ignored) {
+        }
+
+        session.setArmor(null);
+        session.setOffhand(null);
+        session.setMainhand(null);
+    }
+
+    public boolean activate(Player player) {
+        if (isInDrone(player)) {
+            return false;
+        }
+
+        Location bodyLoc = player.getLocation().clone();
+        GameMode originalMode = player.getGameMode();
+
+        ItemStack[] armor = player.getInventory().getArmorContents();
+        ItemStack mainhand = player.getInventory().getItemInMainHand().clone();
+        ItemStack offhand = player.getInventory().getItemInOffHand().clone();
+
+        ArmorStand bodyMarker = null;
+        Npc bodyNpc = null;
+        String npcId = null;
+
+        if (fancyNpcHook.isAvailable()) {
+            npcId = "drone_" + player.getName().toLowerCase() + "_" + ThreadLocalRandom.current().nextInt(1000, 9999);
+            bodyNpc = fancyNpcHook.spawnBodyNpc(player, bodyLoc, npcId, armor, mainhand, offhand);
+
+            if (bodyNpc == null)
+                npcId = null;
+        }
+
+        if (bodyNpc == null)
+            bodyMarker = DroneUtil.spawnBodyMarker(bodyLoc, armor, mainhand, offhand);
+
+
+        Location droneLoc = bodyLoc.clone().add(0, 1.6, 0);
+        Bee mount = DroneUtil.spawnDroneMount(plugin, droneLoc);
+
+        if (mount == null) {
+            cleanupBody(bodyMarker, bodyNpc);
+            return false;
+        }
+
+        DroneSession session = new DroneSession(player.getUniqueId(), bodyLoc, originalMode, bodyMarker, bodyNpc, npcId, mount);
+        session.setArmor(armor);
+        session.setOffhand(offhand);
+        session.setMainhand(mainhand);
+
+        player.getInventory().setArmorContents(null);
+        player.getInventory().setItemInOffHand(null);
+        player.getInventory().setItemInMainHand(null);
+
+        sessions.put(player.getUniqueId(), session);
+
+        if (!mount.addPassenger(player)) {
+            recall(player);
+            return false;
+        }
+
+        DroneUtil.applyPilotInvisibility(plugin, player);
+
+        session.setTask(Bukkit.getScheduler().runTaskTimer(plugin, () -> tickSession(session), updateTicks, updateTicks));
+
+        BossBar bar = BossBar.bossBar(Component.text("Drone Battery: 100%")
+                .color(NamedTextColor.GREEN), 1.0f, BossBar.Color.GREEN, BossBar.Overlay.PROGRESS);
+        player.showBossBar(bar);
+        bossBars.put(player.getUniqueId(), bar);
+
+        return true;
+    }
+
+    public boolean isInDrone(Player player) {
+        return sessions.containsKey(player.getUniqueId());
+    }
+
+    private void cleanupBody(ArmorStand bodyMarker, Npc bodyNpc) {
+        DroneUtil.removeEntitySafe(bodyMarker);
+        fancyNpcHook.removeBodyNpc(bodyNpc);
     }
 
     /**
@@ -200,13 +395,13 @@ public class DroneManager {
         boolean wasAscend = Boolean.TRUE.equals(prevAscend.get(uuid));
         boolean wasDescend = Boolean.TRUE.equals(prevDescend.get(uuid));
 
-        if (ascend && !wasAscend) {
+        if (ascend && !wasAscend)
             DroneSounds.ascend(loc);
-        }
 
-        if (descend && !wasDescend) {
+
+        if (descend && !wasDescend)
             DroneSounds.descend(loc);
-        }
+
 
         prevAscend.put(uuid, ascend);
         prevDescend.put(uuid, descend);
@@ -222,116 +417,12 @@ public class DroneManager {
         }
     }
 
-    public DroneSession getSession(Player player) {
-        return sessions.get(player.getUniqueId());
-    }
-
-    /**
-     * Finds the session whose drone mount is the given entity (for damage/death/target events).
-     */
-    public DroneSession getSessionByMount(org.bukkit.entity.Entity entity) {
-        if (entity == null) {
-            return null;
-        }
-
-        for (DroneSession session : sessions.values()) {
-            if (entity.equals(session.getMount())) {
-                return session;
-            }
-        }
-
-        return null;
-    }
-
-    public void stop() {
-        for (UUID uuid : sessions.keySet()) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
-                recall(player);
-            } else {
-                DroneSession session = sessions.get(uuid);
-                if (session != null) {
-                    cleanupSession(session);
-                }
-            }
-        }
-        sessions.clear();
-
-        bossBars.clear();
-    }
-
-    public boolean activate(Player player) {
-        if (isInDrone(player)) {
-            return false;
-        }
-
-        Location bodyLoc = player.getLocation().clone();
-        GameMode originalMode = player.getGameMode();
-
-        ItemStack[] armor = player.getInventory().getArmorContents();
-        ItemStack mainhand = player.getInventory().getItemInMainHand().clone();
-        ItemStack offhand = player.getInventory().getItemInOffHand().clone();
-
-        ArmorStand bodyMarker = null;
-        Npc bodyNpc = null;
-        String npcId = null;
-
-        if (fancyNpcHook.isAvailable()) {
-            npcId = "drone_" + player.getName().toLowerCase() + "_" + ThreadLocalRandom.current().nextInt(1000, 9999);
-            bodyNpc = fancyNpcHook.spawnBodyNpc(player, bodyLoc, npcId, armor, mainhand, offhand);
-
-            if (bodyNpc == null) {
-                npcId = null;
-            }
-        }
-
-        if (bodyNpc == null) {
-            bodyMarker = DroneUtil.spawnBodyMarker(bodyLoc, armor, mainhand, offhand);
-        }
-
-        Location droneLoc = bodyLoc.clone().add(0, 1.6, 0);
-        Bee mount = DroneUtil.spawnDroneMount(plugin, droneLoc);
-
-        if (mount == null) {
-            cleanupBody(bodyMarker, bodyNpc);
-            return false;
-        }
-
-        DroneSession session = new DroneSession(player.getUniqueId(), bodyLoc, originalMode, bodyMarker, bodyNpc, npcId, mount);
-        session.setArmor(armor);
-        session.setOffhand(offhand);
-        session.setMainhand(mainhand);
-
-        player.getInventory().setArmorContents(null);
-        player.getInventory().setItemInOffHand(null);
-        player.getInventory().setItemInMainHand(null);
-
-        sessions.put(player.getUniqueId(), session);
-
-        if (!mount.addPassenger(player)) {
-            recall(player);
-            return false;
-        }
-
-        DroneUtil.applyPilotInvisibility(plugin, player);
-
-        session.setTask(Bukkit.getScheduler().runTaskTimer(plugin, () -> tickSession(session), updateTicks, updateTicks));
-
-        BossBar bar = BossBar.bossBar(Component.text("Drone Battery: 100%")
-                .color(NamedTextColor.GREEN), 1.0f, BossBar.Color.GREEN, BossBar.Overlay.PROGRESS);
-        player.showBossBar(bar);
-        bossBars.put(player.getUniqueId(), bar);
-
-        return true;
-    }
-
     /**
      * Called by DroneListener when the drone mount takes damage.
      */
     public void handleMountDamaged(DroneSession session) {
-        if (session == null || session.getMount() == null || !session.getMount().isValid()) {
+        if (session == null || session.getMount() == null || !session.getMount().isValid())
             return;
-        }
 
         DroneSounds.hurt(session.getMount().getLocation());
 
@@ -340,7 +431,8 @@ public class DroneManager {
             return;
         }
 
-        double maxHealth = session.getMount().getMaxHealth();
+        AttributeInstance maxHealthAtt = session.getMount().getAttribute(Attribute.MAX_HEALTH);
+        double maxHealth = maxHealthAtt == null ? 0 : maxHealthAtt.getValue();
         double health = session.getMount().getHealth();
 
         if (maxHealth > 0 && health / maxHealth <= 0.25) {
@@ -358,15 +450,13 @@ public class DroneManager {
      * Called by DroneListener when the drone mount dies: the drone is destroyed.
      */
     public void handleMountDestroyed(DroneSession session) {
-        if (session == null) {
+        if (session == null)
             return;
-        }
 
         Player player = Bukkit.getPlayer(session.getPlayerId());
 
-        if (session.getMount() != null) {
+        if (session.getMount() != null)
             DroneSounds.destroyed(session.getMount().getLocation());
-        }
 
         if (player != null) {
             plugin.sendMessage(player, Messages.DRONE_DESTROYED.toString());
@@ -379,122 +469,22 @@ public class DroneManager {
         }
     }
 
-
-    private void cleanupBody(ArmorStand bodyMarker, Npc bodyNpc) {
-        DroneUtil.removeEntitySafe(bodyMarker);
-        fancyNpcHook.removeBodyNpc(bodyNpc);
-    }
-
     public void handleDisconnect(Player player) {
         DroneSession session = sessions.get(player.getUniqueId());
+
         if (session != null) {
             restoreStrippedGear(session, player);
             cleanupSession(session);
         }
+
         sessions.remove(player.getUniqueId());
         bossBars.remove(player.getUniqueId());
         lowHpWarnings.remove(player.getUniqueId());
         lastHum.remove(player.getUniqueId());
     }
 
-    /**
-     * The pilot flies bare (armor + off-hand stripped at activate) so mobs target
-     * the drone body; this restores the originals, used on recall and on
-     * disconnect so the emptied slots never persist to the DB.
-     */
-    private void restoreStrippedGear(DroneSession session, Player player) {
-        if (session == null || !session.hasStrippedGear())
-            return;
-
-        try {
-            if (session.getArmor() != null)
-                player.getInventory().setArmorContents(session.getArmor());
-
-            if (session.getOffhand() != null)
-                player.getInventory().setItemInOffHand(session.getOffhand());
-
-            if (session.getMainhand() != null)
-                player.getInventory().setItemInMainHand(session.getMainhand());
-        } catch (Exception ignored) {
-        }
-
-        session.setArmor(null);
-        session.setOffhand(null);
-        session.setMainhand(null);
-    }
-
-    private void cleanupSession(DroneSession session) {
-        BukkitTask task = session.getTask();
-
-        if (task != null) {
-            session.setTask(null);
-
-            try {
-                task.cancel();
-            } catch (Exception ignored) {
-            }
-        }
-
-        DroneUtil.removeEntitySafe(session.getBodyMarker());
-        fancyNpcHook.removeBodyNpc(session.getBodyNpc());
-        DroneUtil.removeEntitySafe(session.getMount());
-
-        if (session.getNpcId() != null) {
-            plugin.getLogger().info("Removed drone session for " + session.getPlayerId()
-                    + " (npc: " + session.getNpcId() + ")");
-        }
-    }
-
     public void handleWorldChange(Player player) {
-        if (isInDrone(player)) {
+        if (isInDrone(player))
             recall(player);
-        }
-    }
-
-    public boolean isInDrone(Player player) {
-        return sessions.containsKey(player.getUniqueId());
-    }
-
-    public boolean recall(Player player) {
-        DroneSession session = sessions.remove(player.getUniqueId());
-        if (session == null) {
-            return false;
-        }
-
-        BossBar bar = bossBars.remove(player.getUniqueId());
-        if (bar != null) {
-            player.hideBossBar(bar);
-        }
-
-        lowHpWarnings.remove(player.getUniqueId());
-        lastHum.remove(player.getUniqueId());
-
-        restoreStrippedGear(session, player);
-
-        try {
-            if (player.getVehicle() != null) {
-                player.leaveVehicle();
-            }
-        } catch (Exception ignored) {
-        }
-
-        DroneUtil.restoreVisibility(plugin, player);
-
-        try {
-            player.setGameMode(session.getOriginalGameMode());
-        } catch (Exception ignored) {
-            player.setGameMode(GameMode.SURVIVAL);
-        }
-
-        try {
-            Location returnLoc = session.getBodyLocation();
-            returnLoc.setYaw(session.getBodyYaw());
-            returnLoc.setPitch(session.getBodyPitch());
-            player.teleport(returnLoc);
-        } catch (Exception ignored) {
-        }
-
-        cleanupSession(session);
-        return true;
     }
 }

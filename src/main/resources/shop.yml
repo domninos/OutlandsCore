@@ -147,10 +147,31 @@ shop:
         amount: 1
         cost: 200
         wall_bomb: true
+        custom-model-data: 1001
+        model: "extraction/wall_bomb"
         name: "<red><bold>Wall Bomb</bold></red>"
         lore:
           - "<gray>Throw at a registered wall to</gray>"
           - "<gray>breach it. Regenerates later.</gray>"
+          - "<gold>Cost: %cost% tokens</gold>"
+          - "<gray>Click to buy</gray>"
+      smoke_grenade:
+        slot: 24
+        material: SNOWBALL
+        amount: 1
+        cost: 120
+        smoke_grenade: true
+        custom-model-data: 1002
+        model: "extraction/smoke_grenade"
+        radius: 6
+        duration-seconds: 15
+        blind-seconds: 6
+        particle: LARGE_SMOKE
+        tick-rate: 5
+        name: "<gray><bold>Smoke Grenade</bold></gray>"
+        lore:
+          - "<gray>Clouds a 6-block radius with</gray>"
+          - "<gray>blinding smoke on impact.</gray>"
           - "<gold>Cost: %cost% tokens</gold>"
           - "<gray>Click to buy</gray>"
 

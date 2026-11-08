@@ -49,38 +49,24 @@ public class ShopGUIListener implements Listener {
 
         if (event.getView().getTopInventory().getHolder() instanceof ConsumablesHolder) {
             event.setCancelled(true);
-            if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER) {
+            if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER)
                 plugin.getShopManager().purchaseConsumable(player, event.getRawSlot());
-            }
+
             return;
         }
 
         if (event.getView().getTopInventory().getHolder() instanceof PetsShopHolder) {
             event.setCancelled(true);
-            if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER) {
+
+            if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER)
                 plugin.getShopManager().purchasePet(player, event.getRawSlot());
-            }
+
             return;
         }
 
         if (event.getView().getTopInventory().getHolder() instanceof BackpackShopHolder) {
             event.setCancelled(true);
             handleBackpackShopClick(player, event);
-        }
-    }
-
-    @EventHandler
-    public void onInventoryDrag(InventoryDragEvent event) {
-        if (!(event.getWhoClicked() instanceof Player))
-            return;
-
-        Object holder = event.getView().getTopInventory().getHolder();
-
-        if (holder instanceof ShopHolder
-                || holder instanceof ConsumablesHolder
-                || holder instanceof BackpackShopHolder
-                || holder instanceof PetsShopHolder) {
-            event.setCancelled(true);
         }
     }
 
@@ -158,5 +144,20 @@ public class ShopGUIListener implements Listener {
             case BackpackShopGUI.SLOT_TIER_4 -> 4;
             default -> 0;
         };
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player))
+            return;
+
+        Object holder = event.getView().getTopInventory().getHolder();
+
+        if (holder instanceof ShopHolder
+                || holder instanceof ConsumablesHolder
+                || holder instanceof BackpackShopHolder
+                || holder instanceof PetsShopHolder) {
+            event.setCancelled(true);
+        }
     }
 }

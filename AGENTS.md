@@ -951,6 +951,20 @@ via `Math.sqrt` of the squared value only when needed.
   restores every wall where `destroyedUntil > 0` and `<= now` (or at load if it already expired), playing a sound;
   `WallManager.reload()` recomputes from `walls.yml` on `/extraction reload`. The one-second tick iterates walls
   continuously from `start()` to `stop()`, so it is always running once the plugin is enabled.
+- **Smoke grenades** (`smoke/`): shop consumables with `smoke_grenade: true` (defaults in shop.yml `smoke_grenade`,
+  key `radius` 1-24, `duration-seconds` 1-300, `blind-seconds` 0-30, `particle` (default `LARGE_SMOKE`),
+  `tick-rate` 1-40). The item is tagged (PDC `smoke_grenade` + per-item settings `smoke_grenade_radius/...`) so it
+  survives inventory/reload; right-click cancels the click, consumes one stack slot, throttles per tick and launches a
+  tagged `Snowball` (`smoke_grenade_projectile`) with the settings PDC-encoded. Impact (`SmokeGrenadeManager.detonate`)
+  spawns a ticking task (`tick-rate`) that
+  emits a particle cloud (`radius` × 2 per tick), applies `BLINDNESS` to living entities inside every tick-rate cycle,
+  cancels `EntityTargetEvent` for mobs whose target location is inside the cloud, and clears existing mob targets
+  (`Mob#setTarget(null)`) while the cloud is active. Clouds are in-memory (`clouds` set), cleaned on reload/stop;
+  `SmokeGrenadeListener` also blocks mob targeting during the cloud (`EventPriority.LOW`).
+- **Shop custom model data** (`shop/ShopManager.createConsumableItem`): consumable defs support `custom-model-data`
+  (int OR string) and optional `model` (string). Ints go into `CustomModelDataComponent.setFloats(...)`, strings into
+  `setStrings(...)`; both end up on the ItemMeta PDC through `setCustomModelDataComponent(...)` so resource packs can
+  use the pack's model paths (`extraction/wall_bomb`, `extraction/smoke_grenade` in the default shop.yml).
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

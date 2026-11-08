@@ -59,6 +59,8 @@ import net.omni.extraction.world.NightManager;
 import net.omni.extraction.world.WorldTimeListener;
 import net.omni.extraction.walls.WallBombListener;
 import net.omni.extraction.walls.WallManager;
+import net.omni.extraction.smoke.SmokeGrenadeListener;
+import net.omni.extraction.smoke.SmokeGrenadeManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -113,6 +115,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private ShopManager shopManager;
     private WorldEventManager worldEventManager;
     private WallManager wallManager;
+    private SmokeGrenadeManager smokeGrenadeManager;
     private PartyManager partyManager;
     private PartyListener partyListener;
     private DroneManager droneManager;
@@ -201,6 +204,9 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         if (wallManager != null)
             wallManager.stop();
+
+        if (smokeGrenadeManager != null)
+            smokeGrenadeManager.stop();
 
         if (corpseManager != null)
             corpseManager.shutdown();
@@ -306,6 +312,8 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         this.wallManager = new WallManager(this);
         this.wallManager.load();
+
+        this.smokeGrenadeManager = new SmokeGrenadeManager(this);
 
         this.areaManager = new AreaManager(this, mobResolver);
         this.areaManager.load();
@@ -441,6 +449,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private void registerListeners() {
         new PlayerListener(this).register();
         new WallBombListener(this).register();
+        new SmokeGrenadeListener(this).register();
         new ShopGUIListener(this).register();
         new EnchantGUIListener(this).register();
         new UpgradeGUIListener(this).register();
@@ -656,6 +665,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public WallManager getWallManager() {
         return wallManager;
+    }
+
+    public SmokeGrenadeManager getSmokeGrenadeManager() {
+        return smokeGrenadeManager;
     }
 
     public DroneManager getDroneManager() {

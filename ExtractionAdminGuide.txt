@@ -161,7 +161,12 @@ FREE MODE VS COOLDOWN (config.yml)
                                           skipping tiers is rejected.
 /tokens                                   your token balance
 /extshop                                  Category shop hub: Consumables,
-                                          Enchantments, Gear Upgrades, Backpack
+                                          Enchantments, Gear Upgrades, Backpack.
+                                          Wall Bomb (right-click throw, breaches
+                                          registered walls) + Smoke Grenade
+                                          (right-click throw, blinding smoke that
+                                          disorients mobs). Both support
+                                          custom-model-data / model textures.
 /pets /charms /artifacts                  companion + relic menus
 /extraction party {create|invite|join|leave|kick|disband|chat}
                                           DB-backed parties (cross-server with
