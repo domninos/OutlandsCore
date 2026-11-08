@@ -122,13 +122,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      - fix
         - artifacts/charms should automatically replace the placeholder on /loadout when equipped.
-        - when doing /extraction, make sure to give the artifact/charm item for them to right click it to where the loadout slot is. then, the placeholder item should have the "Drop item here" removed, as it is just a placeholder. so now, if player SHIFT + left/right click the placeholder, open the artifact or charm gui depending on which they shift clicked.
-        - when upgrading (or specifically purchasing enchantment), the armor in my /loadout is emptied apart from the compass.
-        - when claiming tokens (consume only 1 per right click.) Make sure to add check do right clicks only happen once (doesn't trigger InteractEvent for air and InteractAtBlock for block at the same time)
-        - right click on mob (in mob spawn with area wand) doesn't open editor
-        - remove convoy mode on wand, but instead have them use the command to set start position and end position for the convoy.
-          - if there's no set positions on the convoy, when it gets picked, log to console that there were no convoy route found.
-          - convoy also phases thru blocks, make this so it checks if the route for the convoy has blocks (when setting the start and end position)
+        - when doing /extraction, make sure to give the artifact/charm item for them to right click it to where the loadout slot is. then, the placeholder item should have the "Drop item here" removed, as it is just a placeholder. so now, if player SHIFT + left/right click the placeholder on the loadout gui, open the artifact or charm gui depending on which they shift clicked.
      -
      -
      -

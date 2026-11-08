@@ -328,6 +328,7 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getActionBarManager().reload();
         plugin.getHologramManager().reload();
         plugin.getLootTableManager().reload();
+        plugin.getLootResolver().reload();
         plugin.getPetManager().reload();
         plugin.getRelicManager().reload();
         plugin.getRelicEffectManager().reload();

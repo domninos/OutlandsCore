@@ -15,6 +15,13 @@ public class UpgradeManager {
     private final ConfigUtil configUtil;
     private final Map<String, List<UpgradeTier>> tiersBySlot;
 
+    /**
+     * Definition-built upgrade-token display items, one per token key. Callers
+     * receive clones (drop/merge paths mutate stack amounts); cleared by
+     * {@link #reload()} so edited token definitions can't leave stale items.
+     */
+    private final Map<String, ItemStack> tokenItemCache = new HashMap<>();
+
     public UpgradeManager(ExtractionPlugin plugin, ConfigUtil configUtil) {
         this.plugin = plugin;
         this.configUtil = configUtil;
@@ -106,6 +113,11 @@ public class UpgradeManager {
     }
 
     public ItemStack createUpgradeTokenItem(String tokenKey) {
+        ItemStack cached = tokenItemCache.get(tokenKey);
+
+        if (cached != null)
+            return cached.clone();
+
         Map<String, Object> def = configUtil.getUpgradeTokenDefinitions().get(tokenKey);
         if (def == null)
             return null;
@@ -129,11 +141,14 @@ public class UpgradeManager {
             }
         }
 
-        return UpgradeTokenUtil.createTokenItem(material, displayName, loreBuilder.toString(), slot, tier);
+        ItemStack item = UpgradeTokenUtil.createTokenItem(material, displayName, loreBuilder.toString(), slot, tier);
+        tokenItemCache.put(tokenKey, item);
+        return item.clone();
     }
 
     public void reload() {
         tiersBySlot.clear();
+        tokenItemCache.clear();
         loadTiers();
     }
 }

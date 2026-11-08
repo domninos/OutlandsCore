@@ -9,10 +9,12 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.Supplier;
 
 /**
  * Shared resolution of loot drop types into concrete ItemStacks. Used by both
@@ -35,9 +37,21 @@ public class LootResolver {
     private final ExtractionPlugin plugin;
     private final Random random;
 
+    /**
+     * Definition-built loot item templates (tokens, time, keys, event items),
+     * keyed by canonical signature. Templates are never handed out directly —
+     * callers always receive a clone, since drop/merge paths mutate stack
+     * amounts in place. Main-thread only (clear/startup/shutdown paths).
+     */
+    private final Map<String, ItemStack> templateCache = new HashMap<>();
+
     public LootResolver(ExtractionPlugin plugin) {
         this.plugin = plugin;
         this.random = new Random();
+    }
+
+    public void reload() {
+        templateCache.clear();
     }
 
     public List<ItemStack> resolveDropItems(String type, int amount) {
@@ -76,9 +90,11 @@ public class LootResolver {
                 return result;
             }
 
-            ItemStack item = LootItemUtil.createEventItem(itemId, def);
-            item.setAmount(Math.max(1, amount));
-            result.add(item);
+            result.add(cached("event|" + itemId.toLowerCase(Locale.ROOT) + "|" + amount, () -> {
+                ItemStack item = LootItemUtil.createEventItem(itemId, def);
+                item.setAmount(Math.max(1, amount));
+                return item;
+            }));
             return result;
         }
 
@@ -147,12 +163,13 @@ public class LootResolver {
                         }
                     }
 
-                    result.add(LootItemUtil.createTokenItem(mat, name,
-                            loreBuilder.isEmpty() ? null : loreBuilder.toString(), amount));
+                    result.add(cached("token|" + key + "|" + amount, () -> LootItemUtil.createTokenItem(mat, name,
+                            loreBuilder.isEmpty() ? null : loreBuilder.toString(), amount)));
                 } else {
                     String mat = plugin.getConfigUtil().getLootTokenItemMaterial();
                     String name = plugin.getConfigUtil().getLootTokenItemName();
-                    result.add(LootItemUtil.createTokenItem(mat, name, null, amount));
+                    result.add(cached("token|<legacy>|" + amount,
+                            () -> LootItemUtil.createTokenItem(mat, name, null, amount)));
                 }
             }
             case "UPGRADE" -> {
@@ -188,10 +205,11 @@ public class LootResolver {
                         }
                     }
 
-                    result.add(LootItemUtil.createTimeItem(mat, name,
-                            loreBuilder.isEmpty() ? null : loreBuilder.toString(), Math.max(1, minutes)));
+                    result.add(cached("time|" + key + "|" + minutes, () -> LootItemUtil.createTimeItem(mat, name,
+                            loreBuilder.isEmpty() ? null : loreBuilder.toString(), Math.max(1, minutes))));
                 } else {
-                    result.add(LootItemUtil.createTimeItem(DEFAULT_TIME_MATERIAL, DEFAULT_TIME_NAME, null, amount));
+                    result.add(cached("time|<legacy>|" + amount,
+                            () -> LootItemUtil.createTimeItem(DEFAULT_TIME_MATERIAL, DEFAULT_TIME_NAME, null, amount)));
                 }
             }
             default -> plugin.getLogger().warning("Unknown loot entry type '" + type + "'.");
@@ -236,6 +254,21 @@ public class LootResolver {
             return null;
         }
 
-        return LootItemUtil.createKeyItem(keyId, def);
+        return cached("key|" + keyId.toLowerCase(Locale.ROOT), () -> LootItemUtil.createKeyItem(keyId, def));
+    }
+
+    /**
+     * Returns a clone of the cached template for {@code signature}, rebuilding
+     * it once on first use. Callers may freely amount-mutate the result.
+     */
+    private ItemStack cached(String signature, Supplier<ItemStack> builder) {
+        ItemStack template = templateCache.get(signature);
+
+        if (template == null) {
+            template = builder.get();
+            templateCache.put(signature, template);
+        }
+
+        return template.clone();
     }
 }

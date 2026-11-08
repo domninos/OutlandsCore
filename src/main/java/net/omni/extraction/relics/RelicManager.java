@@ -12,6 +12,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -30,6 +31,13 @@ public class RelicManager {
     private final List<RelicDefinition> charms = new ArrayList<>();
     private final List<RelicDefinition> artifacts = new ArrayList<>();
 
+    /**
+     * Droppable/grantable relic item templates keyed by {@code kind|id}.
+     * Callers receive clones (the learn path consumes stack amounts); cleared
+     * by {@link #reload()} so edited relic definitions can't leave stale items.
+     */
+    private final Map<String, ItemStack> relicItemCache = new HashMap<>();
+
     public RelicManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
     }
@@ -37,6 +45,7 @@ public class RelicManager {
     public void reload() {
         charms.clear();
         artifacts.clear();
+        relicItemCache.clear();
 
         loadFile("relics/charms.yml", KIND_CHARM, charms);
         loadFile("relics/artifacts.yml", KIND_ARTIFACT, artifacts);
@@ -151,10 +160,19 @@ public class RelicManager {
     }
 
     /**
-     * Builds the droppable/grantable relic item for a definition.
+     * Builds the droppable/grantable relic item for a definition. Served from
+     * a per-definition template cache (as a clone).
      */
     public ItemStack createRelicItem(RelicDefinition def) {
-        return RelicItemUtil.createItem(def);
+        String key = def.category() + "|" + def.id().toLowerCase(Locale.ROOT);
+        ItemStack cached = relicItemCache.get(key);
+
+        if (cached != null)
+            return cached.clone();
+
+        ItemStack item = RelicItemUtil.createItem(def);
+        relicItemCache.put(key, item);
+        return item.clone();
     }
 
     /**

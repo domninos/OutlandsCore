@@ -3,7 +3,7 @@
 ## Project
 Extraction â€” a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 - Package: `net.omni.extraction`
-- Artifact: `net.omni:Extraction:1.1.3`
+- Artifact: `net.omni:Extraction:1.1.4`
 - Main class: `net.omni.extraction.ExtractionPlugin`
 - Data file: `extraction.db` under `plugins/Extraction/data/` by default; or MariaDB/MySQL when `storage.type: mysql` (see Storage below)
 - Permissions: `extraction.*` with children `extraction.admin`, `extraction.play`, `extraction.areas`, `extraction.party`, `extraction.bypass.cooldown`
@@ -12,10 +12,10 @@ Extraction â€” a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 
 ## Build & verify
 - Compile: `mvn clean compile`
-- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) â†’ `target/Extraction-1.1.3.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.1.3.jar` into the server's `plugins/Extraction/` and restart â€” an IDE build does not deploy to the server folder.
-- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.1.3.jar` to confirm the server runs the current build.
+- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) â†’ `target/Extraction-1.1.4.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.1.4.jar` into the server's `plugins/Extraction/` and restart â€” an IDE build does not deploy to the server folder.
+- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.1.4.jar` to confirm the server runs the current build.
 - There is no test suite; compiling `mvn clean compile` is the verification step for syntax; `mvn clean package` is required before claiming a fix is deployed.
-- **Version-bump prompt (MAJOR releases only):** before declaring a major release/update finished, ask the user whether to bump the plugin version (`pom.xml` `<version>`); bump only on confirmation — do NOT prompt for small bugfix-only sessions. When a bump is confirmed, also update the version references inside this file (this section) so the docs stay in sync. Current version: `1.1.3` (bumped from `1.0.0` on 2026-11-03; → 1.1.1 mid-day; → 1.1.3 with the convoy-route rework).
+- **Version-bump prompt (MAJOR releases only):** before declaring a major release/update finished, ask the user whether to bump the plugin version (`pom.xml` `<version>`); bump only on confirmation — do NOT prompt for small bugfix-only sessions. When a bump is confirmed, also update the version references inside this file (this section) so the docs stay in sync. Current version: `1.1.4` (bumped from `1.0.0` on 2026-11-03; → 1.1.1 mid-day; → 1.1.3 with the convoy-route rework; → 1.1.4 with the loadout-wipe + wand-spawn-editor fixes).
 
 ## Conventions
 
@@ -865,6 +865,35 @@ via `Math.sqrt` of the squared value only when needed.
   toward its follow point, and snaps it on world change / long stray. `PetListener` also snaps the pet one tick
   after `PlayerTeleportEvent` (MONITOR) via `PetManager.snapToOwner`. `reload()` restarts the follow task so an
   interval change applies immediately.
+- Loadout close-sync is snapshot-based (armor-wipe fix): `LoadoutGUI` captures a per-session snapshot of the
+  rendered view (`renderedSnapshot` clones + `customizedAtOpen` set, taken in `open`/`refresh` right after
+  `populate`) and `syncToData` only reconciles TOUCHED cells whose view actually differs from the snapshot —
+  an unchanged rendered cell is skipped (never flagged customized), and a null view never persists for a cell
+  that had no stored item before the session (tier defaults regenerate). The old logic wrote "customized +
+  null" for any touched cell whose view was empty at close, so a plain empty-cursor click on the rendered tier
+  armor (allowed by `LoadoutGUIListener` without cancel) plus any GUI close permanently blanked all armor
+  cells while the un-pickupable offhand compass survived ("armor emptied apart from the compass"). Deliberate
+  removal of stored (customized) items still works; the sync INFO log gained a `skipped` count. Also
+  `UpgradeGUIListener.applyUpgrade` now uses the cache-only `getLoaded` instead of `getOrCreate` so a tier
+  grant can never land on an unloaded blank instance.
+- SPAWN-wand right-click on an entity now opens the spawn editor (`AreaWandListener` new
+  `PlayerInteractEntityEvent`/`PlayerInteractAtEntityEvent` handlers, cancel + `EquipmentSlot.HAND` + drone
+  guard + open-session guard; block-click behavior unchanged): spawn-marker clicks mirror the existing
+  marker path (and pre-empt the marker listener to avoid a stray new-entry wizard on marker entities); a mob
+  tracked by the area's clear session resolves its entry via `AreaClearSession.getDefinitionFor` →
+  definition `boundLocation` matched to the area's `AreaSpawnEntry` (block-coordinate + world compare) and
+  edits it in place; any other entity (session-untracked lingering mobs, etc.) opens a NEW-entry wizard
+  anchored at the clicked entity's position. Areas with an active clear send the existing `AREA_EDIT_LOCKED`
+  message (same as marker clicks) per user choice.
+- Loot item templates are cached (no per-roll MiniMessage rebuild): `LootResolver` keeps
+  `templateCache` keyed `token|<defKey>|<amount>` / `time|<timeKey>|<minutes>` / `key|<keyId>` /
+  `event|<itemId>|<amount>` (legacy empty-section fallbacks use `<legacy>`); every hit returns
+  `template.clone()` because `mergeStacks`/handout paths mutate amounts; the relod path is
+  `LootResolver.reload()`, wired into `/extraction reload` next to `getLootTableManager().reload()`.
+  `UpgradeManager.createUpgradeTokenItem` caches one display item per token key (cleared in `reload()`),
+  and `RelicManager.createRelicItem` caches one droppable/grantable template per `kind|id` (cleared in
+  `reload()`); both hand out clones. Per-player/composed variants (e.g. `RelicItemUtil.createItem` with
+  cooldown `nameOverride` via `RelicEffectManager.equippedItem`) are NOT cached.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;
