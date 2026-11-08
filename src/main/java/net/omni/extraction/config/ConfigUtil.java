@@ -3,6 +3,7 @@ package net.omni.extraction.config;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.AreaChestLocation;
 import net.omni.extraction.compass.CompassIcon;
+import net.omni.extraction.natural.NaturalSpawnEntry;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -13,6 +14,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -90,6 +92,23 @@ public class ConfigUtil {
     private Location spawnLocation;
     private Location lobbyLocation;
     private String lobbyWorld = "ExtractionSpawn";
+    private boolean alwaysNight = true;
+    private int nightTime = 18000;
+
+    private boolean naturalReplaceDrops = true;
+    private boolean naturalKeepExp = false;
+    private String naturalDefaultLootTable = "Easy";
+    private int naturalLootRolls = 1;
+    private int naturalLootLevel = 1;
+    private final Map<String, String> naturalLootTables = new HashMap<>();
+    private boolean naturalSpawnerEnabled = true;
+    private int naturalSpawnerCheckSeconds = 60;
+    private int naturalSpawnerSpawnsPerCheck = 2;
+    private int naturalSpawnerMaxAlive = 40;
+    private double naturalSpawnerMinRadius = 24;
+    private double naturalSpawnerMaxRadius = 96;
+    private boolean naturalSpawnerRequireExtraction = true;
+    private final List<NaturalSpawnEntry> naturalSpawnerMobs = new ArrayList<>();
     private int areaAutoSaveSeconds;
     private int areaStateCheckSeconds;
     private boolean mobContainmentEnabled;
@@ -414,6 +433,8 @@ public class ConfigUtil {
         this.pvpEnabled = getAndDefaultBoolean(ConfigKeys.PVP_ENABLED, false, savedDefaults);
         this.returnOnDisconnect = getAndDefaultBoolean(ConfigKeys.RETURN_ON_DISCONNECT, true, savedDefaults);
         this.broadcastRunMessages = getAndDefaultBoolean(ConfigKeys.BROADCAST_RUN_MESSAGES, true, savedDefaults);
+        this.alwaysNight = getAndDefaultBoolean(ConfigKeys.ALWAYS_NIGHT, true, savedDefaults);
+        this.nightTime = Math.clamp(getAndDefaultInt(ConfigKeys.NIGHT_TIME, 18000, savedDefaults), 0, 24000);
         this.prefix = getAndDefaultString(ConfigKeys.MESSAGES_PREFIX,
                 "<gray>[</gray><gradient:#00AAFF:#55FFFF>Extraction</gradient><gray>]</gray> ", savedDefaults);
 
@@ -443,6 +464,8 @@ public class ConfigUtil {
                 ConfigKeys.AREAS_OUTLINE_POINT_REMOVE_RADIUS, 3, savedDefaults);
 
         loadAreaEditor(savedDefaults);
+        loadNaturalMobs(savedDefaults);
+        loadNaturalSpawner(savedDefaults);
         loadLoadoutTiers(savedDefaults);
         loadLoadoutDefaults(savedDefaults);
         loadUpgradeTokenDefinitions(savedDefaults);
@@ -658,6 +681,93 @@ public class ConfigUtil {
                 }
             }
         }
+    }
+
+    private void loadNaturalMobs(AtomicInteger savedDefaults) {
+        naturalLootTables.clear();
+
+        this.naturalReplaceDrops = getAndDefaultBoolean(
+                ConfigKeys.NATURAL_MOBS_REPLACE_DROPS, true, savedDefaults);
+        this.naturalKeepExp = getAndDefaultBoolean(
+                ConfigKeys.NATURAL_MOBS_KEEP_EXP, false, savedDefaults);
+        this.naturalDefaultLootTable = getAndDefaultString(
+                ConfigKeys.NATURAL_MOBS_DEFAULT_LOOT_TABLE, "Easy", savedDefaults);
+        this.naturalLootRolls = Math.max(1, getAndDefaultInt(
+                ConfigKeys.NATURAL_MOBS_LOOT_ROLLS, 1, savedDefaults));
+        this.naturalLootLevel = Math.max(0, getAndDefaultInt(
+                ConfigKeys.NATURAL_MOBS_LEVEL, 1, savedDefaults));
+
+        ConfigurationSection perMob = configManager.forPath(ConfigKeys.NATURAL_MOBS_PER_MOB)
+                .getConfigurationSection(ConfigKeys.NATURAL_MOBS_PER_MOB);
+
+        if (perMob == null)
+            return;
+
+        for (String mobId : perMob.getKeys(false)) {
+            String table = perMob.getString(mobId);
+
+            if (table != null && !table.isBlank())
+                naturalLootTables.put(mobId.toLowerCase(Locale.ROOT), table);
+        }
+    }
+
+    private void loadNaturalSpawner(AtomicInteger savedDefaults) {
+        naturalSpawnerMobs.clear();
+
+        this.naturalSpawnerEnabled = getAndDefaultBoolean(
+                ConfigKeys.NATURAL_SPAWNER_ENABLED, true, savedDefaults);
+        this.naturalSpawnerCheckSeconds = Math.max(1, getAndDefaultInt(
+                ConfigKeys.NATURAL_SPAWNER_CHECK_SECONDS, 60, savedDefaults));
+        this.naturalSpawnerSpawnsPerCheck = Math.max(1, getAndDefaultInt(
+                ConfigKeys.NATURAL_SPAWNER_SPAWNS_PER_CHECK, 2, savedDefaults));
+        this.naturalSpawnerMaxAlive = Math.max(0, getAndDefaultInt(
+                ConfigKeys.NATURAL_SPAWNER_MAX_ALIVE, 40, savedDefaults));
+        this.naturalSpawnerMinRadius = Math.max(1.0, getAndDefaultDouble(
+                ConfigKeys.NATURAL_SPAWNER_MIN_RADIUS, 24.0, savedDefaults));
+        this.naturalSpawnerMaxRadius = Math.max(naturalSpawnerMinRadius, getAndDefaultDouble(
+                ConfigKeys.NATURAL_SPAWNER_MAX_RADIUS, 96.0, savedDefaults));
+        this.naturalSpawnerRequireExtraction = getAndDefaultBoolean(
+                ConfigKeys.NATURAL_SPAWNER_REQUIRE_EXTRACTION, true, savedDefaults);
+
+        if (!configManager.forPath(ConfigKeys.NATURAL_SPAWNER_MOBS)
+                .contains(ConfigKeys.NATURAL_SPAWNER_MOBS)) {
+            configManager.write(ConfigKeys.NATURAL_SPAWNER_MOBS, getDefaultNaturalSpawnerMobs());
+            savedDefaults.incrementAndGet();
+        }
+
+        for (Map<?, ?> map : configManager.forPath(ConfigKeys.NATURAL_SPAWNER_MOBS)
+                .getMapList(ConfigKeys.NATURAL_SPAWNER_MOBS)) {
+            Object mob = map.get("mob");
+
+            if (mob == null || String.valueOf(mob).isBlank())
+                continue;
+
+            int weight = map.get("weight") instanceof Number num ? num.intValue() : 1;
+            int count = map.get("count") instanceof Number num ? num.intValue() : 1;
+            int level = map.get("level") instanceof Number num ? num.intValue() : 1;
+
+            naturalSpawnerMobs.add(new NaturalSpawnEntry(String.valueOf(mob),
+                    Math.max(1, weight), Math.max(1, count), Math.max(1, level)));
+        }
+    }
+
+    private List<Map<String, Object>> getDefaultNaturalSpawnerMobs() {
+        List<Map<String, Object>> mobs = new ArrayList<>();
+
+        mobs.add(naturalSpawnerEntry("zombie", 4, 2, 1));
+        mobs.add(naturalSpawnerEntry("skeleton", 3, 1, 1));
+        mobs.add(naturalSpawnerEntry("skeleton_guard", 1, 1, 2));
+
+        return mobs;
+    }
+
+    private Map<String, Object> naturalSpawnerEntry(String mob, int weight, int count, int level) {
+        Map<String, Object> entry = new HashMap<>();
+        entry.put("mob", mob);
+        entry.put("weight", weight);
+        entry.put("count", count);
+        entry.put("level", level);
+        return entry;
     }
 
     private void loadKeyDefinitions(AtomicInteger savedDefaults) {
@@ -1667,6 +1777,71 @@ public class ConfigUtil {
 
     public String getWorldName() {
         return worldName;
+    }
+
+    public boolean isAlwaysNight() {
+        return alwaysNight;
+    }
+
+    public int getNightTime() {
+        return nightTime;
+    }
+
+    public boolean isNaturalReplaceDrops() {
+        return naturalReplaceDrops;
+    }
+
+    public boolean isNaturalKeepExp() {
+        return naturalKeepExp;
+    }
+
+    public String getNaturalDefaultLootTable() {
+        return naturalDefaultLootTable;
+    }
+
+    public int getNaturalLootRolls() {
+        return naturalLootRolls;
+    }
+
+    public int getNaturalLootLevel() {
+        return naturalLootLevel;
+    }
+
+    /** Per-mob loot table overrides keyed by lowercased mob id / entity type. */
+    public Map<String, String> getNaturalLootTables() {
+        return naturalLootTables;
+    }
+
+    public boolean isNaturalSpawnerEnabled() {
+        return naturalSpawnerEnabled;
+    }
+
+    public int getNaturalSpawnerCheckSeconds() {
+        return naturalSpawnerCheckSeconds;
+    }
+
+    public int getNaturalSpawnerSpawnsPerCheck() {
+        return naturalSpawnerSpawnsPerCheck;
+    }
+
+    public int getNaturalSpawnerMaxAlive() {
+        return naturalSpawnerMaxAlive;
+    }
+
+    public double getNaturalSpawnerMinRadius() {
+        return naturalSpawnerMinRadius;
+    }
+
+    public double getNaturalSpawnerMaxRadius() {
+        return naturalSpawnerMaxRadius;
+    }
+
+    public boolean isNaturalSpawnerRequireExtraction() {
+        return naturalSpawnerRequireExtraction;
+    }
+
+    public List<NaturalSpawnEntry> getNaturalSpawnerMobs() {
+        return naturalSpawnerMobs;
     }
 
     public int getTimeLimitSeconds() {

@@ -9,6 +9,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 public class ExtractionTabCompleter implements TabCompleter {
     private final ExtractionPlugin plugin;
@@ -63,7 +65,7 @@ public class ExtractionTabCompleter implements TabCompleter {
             if (args[0].equalsIgnoreCase("admin") && sender.hasPermission(Permissions.ADMIN)) {
                 return StringUtil.copyPartialMatches(args[1],
                         List.of("setspawn", "setlobby", "addhologram", "sethologram", "delhologram",
-                                "packinfo", "migratedb", "setname"), new ArrayList<>());
+                                "packinfo", "migratedb", "setname", "spawnmob"), new ArrayList<>());
             }
 
             if (args[0].equalsIgnoreCase("events") && sender.hasPermission(Permissions.ADMIN)) {
@@ -97,6 +99,19 @@ public class ExtractionTabCompleter implements TabCompleter {
 
             names.addAll(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
             return StringUtil.copyPartialMatches(args[2], names, new ArrayList<>());
+        }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("admin")
+                && args[1].equalsIgnoreCase("spawnmob")
+                && sender.hasPermission(Permissions.ADMIN)) {
+            List<String> ids = new ArrayList<>(plugin.getMobTemplateManager().getIds());
+
+            for (EntityType type : EntityType.values())
+                if (type.isAlive() && type.isSpawnable())
+                    ids.add(type.name().toLowerCase(Locale.ROOT));
+
+            return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
         }
 
         if (args.length == 3

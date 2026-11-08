@@ -162,6 +162,10 @@ public enum Messages {
     ADMIN_MIGRATED("admin.migrated", "<green>Migrated <white>%count%</white> player row(s) to MySQL.</green>"),
     ADMIN_MIGRATE_FAILED("admin.migrate-failed", "<red>Migration failed. Check the console for details.</red>"),
 
+    NATURAL_SPAWNED("natural.spawned", "<green>Spawned <white>%count%x %mob%</white>.</green>"),
+    NATURAL_SPAWN_FAILED("natural.spawn-failed", "<red>Failed to spawn <white>%mob%</white>.</red>"),
+    NATURAL_UNKNOWN_MOB("natural.unknown-mob", "<red>Unknown mob id <white>%mob%</white>.</red>"),
+
     PARTY_USAGE("party.usage", "<red>Usage: %usage%</red>"),
     PARTY_NO_PERM("party.no-perm", "<red>You do not have permission to use the party system.</red>"),
     PARTY_ALREADY_IN("party.already-in", "<red>You are already in a party.</red>"),

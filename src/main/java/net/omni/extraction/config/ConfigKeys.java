@@ -15,6 +15,26 @@ public final class ConfigKeys {
     public static final String BROADCAST_RUN_MESSAGES = "settings.broadcast-run-messages";
     public static final String SPAWN = "settings.spawn";
     public static final String LOBBY = "settings.lobby";
+    public static final String ALWAYS_NIGHT = "settings.always-night";
+    public static final String NIGHT_TIME = "settings.night-time";
+
+    public static final String NATURAL_MOBS = "natural-mobs";
+    public static final String NATURAL_MOBS_REPLACE_DROPS = "natural-mobs.replace-drops";
+    public static final String NATURAL_MOBS_KEEP_EXP = "natural-mobs.keep-exp";
+    public static final String NATURAL_MOBS_DEFAULT_LOOT_TABLE = "natural-mobs.default-loot-table";
+    public static final String NATURAL_MOBS_LOOT_ROLLS = "natural-mobs.loot-rolls";
+    public static final String NATURAL_MOBS_LEVEL = "natural-mobs.level";
+    public static final String NATURAL_MOBS_PER_MOB = "natural-mobs.per-mob";
+
+    public static final String NATURAL_SPAWNER = "natural-spawner";
+    public static final String NATURAL_SPAWNER_ENABLED = "natural-spawner.enabled";
+    public static final String NATURAL_SPAWNER_CHECK_SECONDS = "natural-spawner.check-seconds";
+    public static final String NATURAL_SPAWNER_SPAWNS_PER_CHECK = "natural-spawner.spawns-per-check";
+    public static final String NATURAL_SPAWNER_MAX_ALIVE = "natural-spawner.max-alive";
+    public static final String NATURAL_SPAWNER_MIN_RADIUS = "natural-spawner.min-radius";
+    public static final String NATURAL_SPAWNER_MAX_RADIUS = "natural-spawner.max-radius";
+    public static final String NATURAL_SPAWNER_REQUIRE_EXTRACTION = "natural-spawner.require-extraction-players";
+    public static final String NATURAL_SPAWNER_MOBS = "natural-spawner.mobs";
 
     public static final String EXTRACT_BASE_TOKENS = "extraction.base-tokens";
     public static final String EXTRACT_PER_KILL = "extraction.per-kill";

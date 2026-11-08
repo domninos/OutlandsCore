@@ -218,6 +218,7 @@ public class ExtractionCommand implements CommandExecutor {
                 MessageUtil.append("extraction admin packinfo", "Dump resource pack hosting diagnostics", help);
                 MessageUtil.append("extraction admin migratedb", "Copy local SQLite data into the active MySQL backend", help);
                 MessageUtil.append("extraction admin setname {event} {name...}", "Set the event name shown in its hologram ('clear' resets to the id)", help);
+                MessageUtil.append("extraction admin spawnmob {mobId} [count] [level]", "Spawn a natural mob at your location", help);
             }
             case CATEGORY_EVENTS -> {
                 MessageUtil.append("extraction events status", "List world-event definitions and their state", help);
@@ -334,6 +335,8 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getRelicEffectManager().reload();
         plugin.getPackManager().reload();
         plugin.getWorldEventManager().reload();
+        plugin.getNaturalSpawnManager().start();
+        plugin.getNightManager().apply();
         plugin.getIdleTaskManager().sync();
 
         plugin.getCooldownManager().applyConfig();
@@ -736,6 +739,59 @@ public class ExtractionCommand implements CommandExecutor {
 
             if (clear)
                 plugin.sendMessage(sender, Messages.EVENTS_NAME_CLEAR_HINT.toString());
+            return true;
+        }
+
+        if (action.equals("spawnmob")) {
+            if (args.length < 3) {
+                plugin.sendMessage(sender, Messages.USAGE.replace("usage",
+                        "/extraction admin spawnmob {mobId} [count] [level]"));
+                return true;
+            }
+
+            if (!(sender instanceof Player player)) {
+                plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
+                return true;
+            }
+
+            String mobId = args[2];
+
+            if (!plugin.getMobResolver().isKnownMobId(mobId)) {
+                plugin.sendMessage(sender, Messages.NATURAL_UNKNOWN_MOB.replace("mob", mobId));
+                return true;
+            }
+
+            int count = 1;
+            int level = 1;
+
+            if (args.length >= 4) {
+                try {
+                    count = Math.max(1, Integer.parseInt(args[3]));
+                } catch (NumberFormatException ignored) {
+                    plugin.sendMessage(sender, Messages.USAGE.replace("usage",
+                            "/extraction admin spawnmob {mobId} [count] [level]"));
+                    return true;
+                }
+            }
+
+            if (args.length >= 5) {
+                try {
+                    level = Math.max(1, Integer.parseInt(args[4]));
+                } catch (NumberFormatException ignored) {
+                    plugin.sendMessage(sender, Messages.USAGE.replace("usage",
+                            "/extraction admin spawnmob {mobId} [count] [level]"));
+                    return true;
+                }
+            }
+
+            int spawned = plugin.getNaturalSpawnManager()
+                    .spawnManually(mobId, count, level, player.getLocation());
+
+            if (spawned <= 0)
+                plugin.sendMessage(sender, Messages.NATURAL_SPAWN_FAILED.replace("mob", mobId));
+            else
+                plugin.sendMessage(sender, Messages.NATURAL_SPAWNED.replace("mob", mobId, "count", String.valueOf(spawned)));
+
             return true;
         }
 

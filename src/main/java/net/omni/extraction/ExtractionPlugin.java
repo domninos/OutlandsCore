@@ -39,6 +39,8 @@ import net.omni.extraction.looteditor.LootEditorManager;
 import net.omni.extraction.managers.*;
 import net.omni.extraction.mobs.MobResolver;
 import net.omni.extraction.mobs.MobTemplateManager;
+import net.omni.extraction.natural.NaturalMobListener;
+import net.omni.extraction.natural.NaturalSpawnManager;
 import net.omni.extraction.pack.PackManager;
 import net.omni.extraction.party.PartyListener;
 import net.omni.extraction.party.PartyManager;
@@ -53,6 +55,8 @@ import net.omni.extraction.upgrade.UpgradeManager;
 import net.omni.extraction.util.*;
 import net.omni.extraction.worldevent.WorldEventListener;
 import net.omni.extraction.worldevent.WorldEventManager;
+import net.omni.extraction.world.NightManager;
+import net.omni.extraction.world.WorldTimeListener;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -111,6 +115,8 @@ public final class ExtractionPlugin extends JavaPlugin {
     private DroneManager droneManager;
     private BossManager bossManager;
     private BossCreatorManager bossCreatorManager;
+    private NaturalSpawnManager naturalSpawnManager;
+    private NightManager nightManager;
 
 
     /*
@@ -120,10 +126,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      - make set walls (positions) that can be exploded via an item ONLY gotten from /extshop.
        - so like a wall bomb where it only breaks blocks horizontally and have it regenerated 5 mins later.
      -
-     - fix
-        - artifacts/charms should automatically replace the placeholder on /loadout when equipped.
-        - when doing /extraction, make sure to give the artifact/charm item for them to right click it to where the loadout slot is. then, the placeholder item should have the "Drop item here" removed, as it is just a placeholder. so now, if player SHIFT + left/right click the placeholder on the loadout gui, open the artifact or charm gui depending on which they shift clicked.
-     -
+     - however
      -
      -
      - drone custom entity model for texture
@@ -195,6 +198,12 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         if (spawnMarkerManager != null)
             spawnMarkerManager.stop();
+
+        if (naturalSpawnManager != null)
+            naturalSpawnManager.shutdown();
+
+        if (nightManager != null)
+            nightManager.shutdown();
 
         if (petManager != null)
             petManager.shutdown();
@@ -324,6 +333,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         adminModeManager = new AdminModeManager(this);
 
+        naturalSpawnManager = new NaturalSpawnManager(this);
+        nightManager = new NightManager(this);
+        nightManager.apply();
+
         registerCommands();
         registerListeners();
         adminModeManager.register();
@@ -336,6 +349,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         bossManager.start();
         standaloneChestManager.start();
         spawnMarkerManager.start();
+        naturalSpawnManager.start();
 
         if (configUtil.isScoreboardEnabled())
             scoreboardManager.start();
@@ -431,6 +445,8 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         new StandaloneChestListener(this).register();
         new SpawnMarkerListener(this).register();
+        new NaturalMobListener(this).register();
+        new WorldTimeListener(this).register();
         this.partyListener = new PartyListener(this);
         partyListener.register();
     }
@@ -631,6 +647,14 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public BossCreatorManager getBossCreatorManager() {
         return bossCreatorManager;
+    }
+
+    public NaturalSpawnManager getNaturalSpawnManager() {
+        return naturalSpawnManager;
+    }
+
+    public NightManager getNightManager() {
+        return nightManager;
     }
 
     public PackManager getPackManager() {
