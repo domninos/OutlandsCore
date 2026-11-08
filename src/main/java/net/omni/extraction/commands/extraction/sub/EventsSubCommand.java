@@ -5,6 +5,7 @@ import net.omni.extraction.area.Area;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.Permissions;
+import net.omni.extraction.util.TimeUtil;
 import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
 import net.omni.extraction.worldevent.WorldEventManager;
@@ -144,7 +145,7 @@ public class EventsSubCommand implements SubCommand {
             } else {
                 long cooldown = manager.getCooldownRemaining(event.getId());
                 state = cooldown > 0
-                        ? Messages.EVENTS_STATUS_COOLDOWN.replace("time", formatTime(cooldown))
+                        ? Messages.EVENTS_STATUS_COOLDOWN.replace("time", TimeUtil.formatSeconds(cooldown))
                         : Messages.EVENTS_STATUS_READY.toString();
             }
 
@@ -339,14 +340,6 @@ public class EventsSubCommand implements SubCommand {
             case NOT_FOUND -> plugin.sendMessage(sender, Messages.EVENTS_NOT_FOUND
                     .replace("event", event.getDisplayName()));
         }
-    }
-
-    private String formatTime(long seconds) {
-        long minutes = seconds / 60;
-        long secs = seconds % 60;
-
-        if (minutes > 0) return minutes + "m " + secs + "s";
-        return secs + "s";
     }
 
     private List<String> partial(String input, List<String> options) {

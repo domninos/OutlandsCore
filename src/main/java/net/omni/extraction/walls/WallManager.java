@@ -3,6 +3,7 @@ package net.omni.extraction.walls;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.config.ExtractionConfig;
+import net.omni.extraction.util.TimeUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -224,8 +225,7 @@ public class WallManager implements Runnable {
         if (remaining > 0L) {
             if (thrower != null)
                 plugin.sendMessage(thrower, Messages.WALL_ALREADY_BREACHED
-                        .replace("id", best.getId())
-                        .replace("time", formatDuration(remaining)));
+                        .replace("id", best.getId(), "time", TimeUtil.formatSeconds(remaining)));
             return false;
         }
 
@@ -238,8 +238,7 @@ public class WallManager implements Runnable {
 
         if (thrower != null)
             plugin.sendMessage(thrower, Messages.WALL_BOMB_BREACHED
-                    .replace("id", best.getId())
-                    .replace("time", formatDuration(best.getRegenSeconds())));
+                    .replace("id", best.getId(), "time", TimeUtil.formatSeconds(best.getRegenSeconds())));
 
         return true;
     }
@@ -423,29 +422,5 @@ public class WallManager implements Runnable {
         }
 
         return blocks;
-    }
-
-    public static String formatDuration(long seconds) {
-        if (seconds >= 3600L) {
-            long hours = seconds / 3600L;
-            long minutes = (seconds % 3600L) / 60L;
-
-            if (minutes > 0L)
-                return hours + "h " + minutes + "m";
-
-            return hours + "h";
-        }
-
-        if (seconds >= 60L) {
-            long minutes = seconds / 60L;
-            long rest = seconds % 60L;
-
-            if (rest > 0L)
-                return minutes + "m " + rest + "s";
-
-            return minutes + "m";
-        }
-
-        return seconds + "s";
     }
 }

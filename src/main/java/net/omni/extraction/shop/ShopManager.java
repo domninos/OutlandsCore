@@ -424,7 +424,7 @@ public class ShopManager {
         String enchDisp = enchName.replace("_", " ").toLowerCase(Locale.ROOT);
         enchDisp = StringUtils.capitalize(enchDisp) + " " + StringUtils.toRoman(level);
         String targetDisp = slot.getDisplayName();
-        plugin.sendMessage(player, Messages.SHOP_ENCHANT_APPLIED.replace("enchant", enchDisp).replace("target", targetDisp));
+        plugin.sendMessage(player, Messages.SHOP_ENCHANT_APPLIED.replace("enchant", enchDisp, "target", targetDisp));
         plugin.getGuiManager().refreshShop(player);
     }
 

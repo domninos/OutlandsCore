@@ -5,6 +5,7 @@ import net.omni.extraction.area.Area;
 import net.omni.extraction.area.AreaManager;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.TimeUtil;
 import org.bukkit.command.CommandSender;
 
 public class SetLevelSubCommand implements SubCommand {
@@ -40,16 +41,9 @@ public class SetLevelSubCommand implements SubCommand {
             return true;
         }
 
-        int level;
+        Integer level = TimeUtil.parseInt(args[2]);
 
-        try {
-            level = Integer.parseInt(args[2]);
-        } catch (NumberFormatException e) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas setlevel {area} {level}"));
-            return true;
-        }
-
-        if (level < 1) {
+        if (level == null || level < 1) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas setlevel {area} {level}"));
             return true;
         }

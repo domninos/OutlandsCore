@@ -2,6 +2,7 @@ package net.omni.extraction.commands.walls.sub;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.TimeUtil;
 import net.omni.extraction.walls.Wall;
 import net.omni.extraction.walls.WallManager;
 import org.bukkit.command.CommandSender;
@@ -46,11 +47,11 @@ public class WallListSubCommand extends WallSub {
 
         for (Wall wall : list) {
             plugin.sendMessage(sender, Messages.WALL_LIST_ENTRY
-                    .replace("id", wall.getId())
-                    .replace("radius", String.valueOf(wall.getRadius()))
-                    .replace("orientation", wall.getOrientation().getDisplay())
-                    .replace("time", WallManager.formatDuration(wall.getRegenSeconds()))
-                    .replace("state", wall.getStateLabel(now)));
+                    .replace("id", wall.getId(),
+                            "radius", String.valueOf(wall.getRadius()),
+                            "orientation", wall.getOrientation().getDisplay(),
+                            "time", TimeUtil.formatSeconds(wall.getRegenSeconds()),
+                            "state", wall.getStateLabel(now)));
         }
     }
 }

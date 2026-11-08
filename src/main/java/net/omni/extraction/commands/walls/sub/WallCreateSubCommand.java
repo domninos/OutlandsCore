@@ -3,6 +3,7 @@ package net.omni.extraction.commands.walls.sub;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.Permissions;
+import net.omni.extraction.util.TimeUtil;
 import net.omni.extraction.walls.WallManager;
 import net.omni.extraction.walls.WallOrientation;
 import org.bukkit.World;
@@ -10,22 +11,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.Locale;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class WallCreateSubCommand extends WallSub {
-
-    private static final Pattern TIME_PATTERN =
-            Pattern.compile("^(\\d+)\\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours)?$");
-
-    private static final Map<String, Long> TIME_UNITS = Map.ofEntries(
-            Map.entry("s", 1L), Map.entry("sec", 1L), Map.entry("secs", 1L),
-            Map.entry("second", 1L), Map.entry("seconds", 1L),
-            Map.entry("m", 60L), Map.entry("min", 60L), Map.entry("mins", 60L),
-            Map.entry("minute", 60L), Map.entry("minutes", 60L),
-            Map.entry("h", 3600L), Map.entry("hr", 3600L), Map.entry("hrs", 3600L),
-            Map.entry("hour", 3600L), Map.entry("hours", 3600L));
 
     public WallCreateSubCommand(ExtractionPlugin plugin) {
         super(plugin);
@@ -64,7 +51,7 @@ public class WallCreateSubCommand extends WallSub {
             return true;
         }
 
-        Integer radius = parseInt(args[2]);
+        Integer radius = TimeUtil.parseInt(args[2]);
 
         if (radius == null || radius < 1 || radius > WallManager.MAX_RADIUS) {
             plugin.sendMessage(sender, Messages.WALL_INVALID_RADIUS.toString());
@@ -78,7 +65,7 @@ public class WallCreateSubCommand extends WallSub {
             return true;
         }
 
-        Integer seconds = parseSeconds(args[4]);
+        Integer seconds = TimeUtil.parseSeconds(args[4]);
 
         if (seconds == null || seconds <= 0) {
             plugin.sendMessage(sender, Messages.WALL_INVALID_TIME.toString());
@@ -103,10 +90,10 @@ public class WallCreateSubCommand extends WallSub {
 
         switch (result) {
             case OK -> plugin.sendMessage(sender, Messages.WALL_CREATED
-                    .replace("id", id)
-                    .replace("radius", String.valueOf(radius))
-                    .replace("orientation", orientation.getDisplay())
-                    .replace("time", WallManager.formatDuration(seconds)));
+                    .replace("id", id,
+                            "radius", String.valueOf(radius),
+                            "orientation", orientation.getDisplay(),
+                            "time", TimeUtil.formatSeconds(seconds)));
             case EXISTS -> plugin.sendMessage(sender, Messages.WALL_EXISTS.replace("id", id));
             case NO_BLOCKS -> plugin.sendMessage(sender, Messages.WALL_NO_BLOCKS.toString());
             case WORLD_MISSING -> plugin.sendMessage(sender, Messages.WALL_WRONG_WORLD.toString());
@@ -114,37 +101,5 @@ public class WallCreateSubCommand extends WallSub {
         }
 
         return true;
-    }
-
-    private Integer parseInt(String raw) {
-        try {
-            return Integer.parseInt(raw);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
-    private Integer parseSeconds(String raw) {
-        if (raw == null)
-            return null;
-
-        Matcher matcher = TIME_PATTERN.matcher(raw.trim().toLowerCase(Locale.ROOT));
-
-        if (!matcher.matches())
-            return null;
-
-        try {
-            long value = Long.parseLong(matcher.group(1));
-            String unit = matcher.group(2);
-            long multiplier = unit == null ? 1L : TIME_UNITS.getOrDefault(unit, 1L);
-            long total = value * multiplier;
-
-            if (total <= 0L || total > 86400L * 7L)
-                return null;
-
-            return (int) total;
-        } catch (NumberFormatException ex) {
-            return null;
-        }
     }
 }

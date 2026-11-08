@@ -4,6 +4,7 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.Permissions;
+import net.omni.extraction.util.TimeUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -41,15 +42,17 @@ public class TokensGiveSubCommand implements SubCommand {
             return true;
         }
 
-        try {
-            int amount = Integer.parseInt(args[2]);
-            plugin.getTokenManager().addTokens(target.getUniqueId(), amount);
-            plugin.sendMessage(sender, Messages.ADMIN_GIVE_TOKENS.replace(
-                    "player", target.getName(),
-                    "amount", String.valueOf(amount)));
-        } catch (NumberFormatException e) {
+        Integer amount = TimeUtil.parseInt(args[2]);
+
+        if (amount == null) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/tokens give {player} {amount}"));
+            return true;
         }
+
+        plugin.getTokenManager().addTokens(target.getUniqueId(), amount);
+        plugin.sendMessage(sender, Messages.ADMIN_GIVE_TOKENS.replace(
+                "player", target.getName(),
+                "amount", String.valueOf(amount)));
 
         return true;
     }

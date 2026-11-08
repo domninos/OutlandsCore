@@ -4,6 +4,7 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.Permissions;
+import net.omni.extraction.util.TimeUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -55,11 +56,12 @@ public class UpgradeGiveSubCommand implements SubCommand {
         int amount = 1;
 
         if (args.length >= 4) {
-            try {
-                amount = Integer.parseInt(args[3]);
-            } catch (NumberFormatException exception) {
+            Integer parsed = TimeUtil.parseInt(args[3]);
+
+            if (parsed == null)
                 amount = -1;
-            }
+            else
+                amount = parsed;
 
             if (amount <= 0) {
                 plugin.sendMessage(sender, Messages.USAGE.replace(

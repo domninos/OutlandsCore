@@ -42,12 +42,17 @@ public class PartyManager {
 
     static final String BUNGEE_CHANNEL = "BungeeCord";
     static final String PARTY_CHANNEL = "extraction:party";
+
     private final ExtractionPlugin plugin;
+
     private final Map<UUID, UUID> membershipByPlayer = new ConcurrentHashMap<>();
     private final Map<UUID, Party> partiesById = new ConcurrentHashMap<>();
     private final Set<UUID> loading = ConcurrentHashMap.newKeySet();
+
     private final PartyChat partyChat;
     private final Invites invites;
+
+    private PartyListener partyListener;
 
     public PartyManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -55,15 +60,19 @@ public class PartyManager {
         this.invites = new Invites(plugin, this);
     }
 
+    public void registerListener() {
+        this.partyListener = new PartyListener(plugin);
+
+        partyListener.register();
+    }
+
     public void shutdown() {
         membershipByPlayer.clear();
         partiesById.clear();
         loading.clear();
         partyChat.clear();
-    }
 
-    public void reload() {
-        // Config is re-read through ConfigUtil; nothing to rebuild here.
+        partyListener.shutdown();
     }
 
     public void handleQuit(Player player) {

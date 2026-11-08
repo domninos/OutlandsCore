@@ -484,8 +484,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new SpawnMarkerListener(this).register();
         new NaturalMobListener(this).register();
         new WorldTimeListener(this).register();
-        this.partyListener = new PartyListener(this);
-        partyListener.register();
+        partyManager.registerListener();
     }
 
     private void startSaveTask() {

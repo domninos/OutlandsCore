@@ -5,6 +5,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
+import net.omni.extraction.util.TimeUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +56,7 @@ public class Wall {
         long remaining = remainingSeconds(now);
 
         if (remaining > 0L)
-            return "BREACHED " + WallManager.formatDuration(remaining);
+            return "BREACHED " + TimeUtil.formatSeconds(remaining);
 
         return "INTACT";
     }

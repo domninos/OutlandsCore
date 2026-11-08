@@ -2,6 +2,7 @@ package net.omni.extraction.commands.boss.sub;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.TimeUtil;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -37,13 +38,15 @@ public class BossSpawnSubCommand extends BossSub {
         int count = 1;
 
         if (args.length > 2) {
-            try {
-                count = Integer.parseInt(args[2]);
-            } catch (NumberFormatException exception) {
+            Integer parsed = TimeUtil.parseInt(args[2]);
+
+            if (parsed == null) {
                 plugin.sendMessage(sender, Messages.BOSS_USAGE.replace("usage",
                         "/boss spawn {boss} [count]"));
                 return true;
             }
+
+            count = parsed;
         }
 
         if (!isBoss(sender, id))
