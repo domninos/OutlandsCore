@@ -1,0 +1,7 @@
+# Extraction walls.
+# Registered via the WALL area-wand mode: left-click a block, then run
+# `/extraction walls {id} {radius} {horizontal|vertical} {time}`.
+# The block snapshot is saved here; `destroyed-until` is set while a wall is
+# breached and the regen task restores it after that timestamp (ms epoch).
+# Normally edited only through the commands above.
+walls: {}

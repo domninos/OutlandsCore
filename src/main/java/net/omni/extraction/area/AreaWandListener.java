@@ -69,6 +69,7 @@ public class AreaWandListener implements Listener {
             }
             case SPAWN -> handleSpawn(player, action, block, areaManager, item, sneaking, event);
             case CHEST -> handleChest(player, action, block, areaManager, item, sneaking, event);
+            case WALL -> handleWall(player, action, block, event);
         }
     }
 
@@ -268,6 +269,15 @@ public class AreaWandListener implements Listener {
         }
 
         plugin.getAreaEditorManager().openChestEditor(player, area, block.getLocation());
+    }
+
+    private void handleWall(Player player, Action action, Block block, PlayerInteractEvent event) {
+        if (action != Action.LEFT_CLICK_BLOCK || block == null)
+            return;
+
+        event.setCancelled(true);
+        plugin.getWallManager().setPending(player, block.getLocation(), player.getLocation().getYaw());
+        sendPos(player, Messages.WALL_POSITION_SET, block.getLocation());
     }
 
     private Area resolveArea(AreaManager areaManager, Player player, ItemStack item) {

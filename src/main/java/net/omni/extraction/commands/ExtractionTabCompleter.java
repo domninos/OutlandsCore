@@ -41,6 +41,7 @@ public class ExtractionTabCompleter implements TabCompleter {
                 subcommands.add("admin");
                 subcommands.add("reload");
                 subcommands.add("events");
+                subcommands.add("walls");
                 subcommands.add("build");
             }
 
@@ -73,7 +74,42 @@ public class ExtractionTabCompleter implements TabCompleter {
                         List.of("status", "list", "start", "stop", "route"), new ArrayList<>());
             }
 
-            return Collections.emptyList();
+            if (args[0].equalsIgnoreCase("walls") && sender.hasPermission(Permissions.ADMIN)) {
+                List<String> suggestions = new ArrayList<>(List.of("list", "remove"));
+
+                for (String id : plugin.getWallManager().getIds())
+                    suggestions.add(id);
+
+                return StringUtil.copyPartialMatches(args[1], suggestions, new ArrayList<>());
+            }
+
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("walls")
+                && sender.hasPermission(Permissions.ADMIN)) {
+            if (args[1].equalsIgnoreCase("remove")) {
+                List<String> ids = List.copyOf(plugin.getWallManager().getIds());
+                return StringUtil.copyPartialMatches(args[2], ids, new ArrayList<>());
+            }
+
+            return StringUtil.copyPartialMatches(args[2],
+                    List.of("4", "6", "8"), new ArrayList<>());
+        }
+
+        if (args.length == 4
+                && args[0].equalsIgnoreCase("walls")
+                && sender.hasPermission(Permissions.ADMIN)) {
+            return StringUtil.copyPartialMatches(args[3],
+                    List.of("horizontal", "vertical"), new ArrayList<>());
+        }
+
+        if (args.length == 5
+                && args[0].equalsIgnoreCase("walls")
+                && sender.hasPermission(Permissions.ADMIN)) {
+            return StringUtil.copyPartialMatches(args[4],
+                    List.of("300s", "5m", "1h"), new ArrayList<>());
+        }
+
+        return Collections.emptyList();
         }
 
         if (args.length == 3

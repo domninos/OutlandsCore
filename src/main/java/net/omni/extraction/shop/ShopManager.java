@@ -107,6 +107,9 @@ public class ShopManager {
             }
             item.setItemMeta(pm);
         }
+        if (Boolean.parseBoolean(String.valueOf(def.getOrDefault("wall_bomb", "false")))) {
+            plugin.getWallManager().tagWallBomb(item);
+        }
         return item;
     }
 

@@ -40,7 +40,7 @@ keys auto-migrate. Check console for warnings instead.
 /areas wand {name}
     Gives you the editing wand for that area.
 
-Wand modes - sneak-right-click the wand to cycle BOUNDS > CHEST > SPAWN > CONVOY:
+Wand modes - sneak-right-click the wand to cycle BOUNDS > CHEST > SPAWN > CONVOY > WALL:
 
   BOUNDS   Left-click   = set corner 1
            Right-click  = set corner 2 (must enclose non-air blocks)
@@ -61,6 +61,17 @@ Wand modes - sneak-right-click the wand to cycle BOUNDS > CHEST > SPAWN > CONVOY
   CONVOY   Left-click   = set convoy route START anchor
            Right-click  = set route END anchor
            (Arm the wand first: /extraction events route {event} wand)
+
+  WALL     Left-click   = set the wall center + facing plane (vertical walls
+                          face the direction you look at that moment - stay
+                          facing straight N/S or E/W).
+                          Then register it:
+                          /extraction walls {id} {radius} {horizontal|vertical} {regen_time}
+                          {regen_time} = 300s, 5m or 1h (bare number = seconds).
+                          A wall bomb bought in /extshop breaches the whole wall;
+                          it regenerates after {regen_time}.
+          /extraction walls list
+          /extraction walls remove {id}
 
 Post-setup utilities:
 

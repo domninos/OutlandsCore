@@ -613,6 +613,10 @@ public class AreaManager {
                 lore.add(mini.deserialize("<gray>Left-click a block: <gold>choose loot table</gold></gray>"));
                 lore.add(mini.deserialize("<gray>Shift + left-click: <yellow>clear chest</yellow></gray>"));
             }
+            case WALL -> {
+                lore.add(mini.deserialize("<gray>Left-click a block: <aqua>set wall center</aqua></gray>"));
+                lore.add(mini.deserialize("<gray>Then: <white>/extraction walls {id} {radius} {horizontal|vertical} {time}</white></gray>"));
+            }
         }
 
         lore.add(Component.empty());

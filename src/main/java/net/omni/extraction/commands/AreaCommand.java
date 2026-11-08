@@ -175,17 +175,21 @@ public class AreaCommand implements CommandExecutor {
 
         AreaManager areaManager = plugin.getAreaManager();
         String areaName = null;
-        WandMode mode = WandMode.CORNER;
+        WandMode mode = null;
 
         if (args.length >= 2) {
             Area area = areaManager.getArea(args[1]);
 
-            if (area == null) {
-                plugin.sendMessage(player, Messages.AREA_NOT_FOUND.replace("area", args[1]));
-                return true;
-            }
+            if (area != null) {
+                areaName = area.getName();
+            } else {
+                mode = WandMode.parse(args[1], null);
 
-            areaName = area.getName();
+                if (mode == null) {
+                    plugin.sendMessage(player, Messages.AREA_NOT_FOUND.replace("area", args[1]));
+                    return true;
+                }
+            }
         }
 
         if (args.length >= 3) {
@@ -196,6 +200,9 @@ public class AreaCommand implements CommandExecutor {
                 return true;
             }
         }
+
+        if (mode == null)
+            mode = WandMode.CORNER;
 
         player.getInventory().addItem(areaManager.createWand(areaName, mode));
         plugin.sendMessage(player, Messages.AREA_WAND_GIVEN.replace("mode", mode.getDisplay()));

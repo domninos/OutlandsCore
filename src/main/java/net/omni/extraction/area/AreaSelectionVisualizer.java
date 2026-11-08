@@ -122,6 +122,12 @@ public class AreaSelectionVisualizer implements Listener {
                     if (bound != null)
                         drawChestMarker(player, bound);
                 }
+                case WALL -> {
+                    Location pending = plugin.getWallManager().getPendingLocation(player.getUniqueId());
+
+                    if (pending != null)
+                        marker(player, pending, outlineDust);
+                }
             }
         }
 

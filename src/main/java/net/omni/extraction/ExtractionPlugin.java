@@ -57,6 +57,8 @@ import net.omni.extraction.worldevent.WorldEventListener;
 import net.omni.extraction.worldevent.WorldEventManager;
 import net.omni.extraction.world.NightManager;
 import net.omni.extraction.world.WorldTimeListener;
+import net.omni.extraction.walls.WallBombListener;
+import net.omni.extraction.walls.WallManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -110,6 +112,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private PackManager packManager;
     private ShopManager shopManager;
     private WorldEventManager worldEventManager;
+    private WallManager wallManager;
     private PartyManager partyManager;
     private PartyListener partyListener;
     private DroneManager droneManager;
@@ -124,10 +127,16 @@ public final class ExtractionPlugin extends JavaPlugin {
     TODO:
      -
      - make set walls (positions) that can be exploded via an item ONLY gotten from /extshop.
-       - so like a wall bomb where it only breaks blocks horizontally and have it regenerated 5 mins later.
+       - so like a wall bomb where it only breaks blocks horizontally and have it regenerated (configurable - 5 mins) later.
+       - using a command /extraction walls {id} {radius} {horizontal/vertical} {regeneration_time}
+       - apply mode to wand. so 1 left click of the wand, then use the command to set and apply the settings to that specific wall
+       - smoke grenades
      -
      - when upgrading tokens in /upgrades, the old customized slots on the weapon/tools are back
      -
+     - split ExtractionManager to SubCommand, abstraction
+     - add packages for each command
+     - split commands and tabcompleter (different classes, same package)
      -
      - drone custom entity model for texture
      -
@@ -189,6 +198,9 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         if (worldEventManager != null)
             worldEventManager.shutdown();
+
+        if (wallManager != null)
+            wallManager.stop();
 
         if (corpseManager != null)
             corpseManager.shutdown();
@@ -292,6 +304,9 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.mobResolver = new MobResolver(this);
         this.lootResolver = new LootResolver(this);
 
+        this.wallManager = new WallManager(this);
+        this.wallManager.load();
+
         this.areaManager = new AreaManager(this, mobResolver);
         this.areaManager.load();
         this.areaClearManager = new AreaClearManager(this, areaManager, lootResolver);
@@ -350,6 +365,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         standaloneChestManager.start();
         spawnMarkerManager.start();
         naturalSpawnManager.start();
+        wallManager.start();
 
         if (configUtil.isScoreboardEnabled())
             scoreboardManager.start();
@@ -424,6 +440,7 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     private void registerListeners() {
         new PlayerListener(this).register();
+        new WallBombListener(this).register();
         new ShopGUIListener(this).register();
         new EnchantGUIListener(this).register();
         new UpgradeGUIListener(this).register();
@@ -635,6 +652,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public WorldEventManager getWorldEventManager() {
         return worldEventManager;
+    }
+
+    public WallManager getWallManager() {
+        return wallManager;
     }
 
     public DroneManager getDroneManager() {

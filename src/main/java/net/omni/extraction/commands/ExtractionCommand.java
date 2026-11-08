@@ -34,10 +34,12 @@ public class ExtractionCommand implements CommandExecutor {
 
     private final ExtractionPlugin plugin;
     private final PartyCommand partyCommand;
+    private final WallsCommand wallsCommand;
 
     public ExtractionCommand(ExtractionPlugin plugin) {
         this.plugin = plugin;
         this.partyCommand = new PartyCommand(plugin);
+        this.wallsCommand = new WallsCommand(plugin);
     }
 
     @Override
@@ -59,6 +61,7 @@ public class ExtractionCommand implements CommandExecutor {
             case "shop" -> handleShop(sender);
             case "tokens" -> handleTokens(sender);
             case "events" -> handleEvents(sender, args);
+            case "walls" -> wallsCommand.handle(sender, args);
             case "party" -> partyCommand.handle(sender, args);
             case "build" -> handleBuild(sender);
             case "admin" -> handleAdmin(sender, args);
@@ -219,6 +222,9 @@ public class ExtractionCommand implements CommandExecutor {
                 MessageUtil.append("extraction admin migratedb", "Copy local SQLite data into the active MySQL backend", help);
                 MessageUtil.append("extraction admin setname {event} {name...}", "Set the event name shown in its hologram ('clear' resets to the id)", help);
                 MessageUtil.append("extraction admin spawnmob {mobId} [count] [level]", "Spawn a natural mob at your location", help);
+                MessageUtil.append("extraction walls {id} {radius} {horizontal|vertical} {time}", "Register a wall at the wand position ({time} = 300s/5m/1h)", help);
+                MessageUtil.append("extraction walls list", "List registered walls", help);
+                MessageUtil.append("extraction walls remove {id}", "Remove a wall", help);
             }
             case CATEGORY_EVENTS -> {
                 MessageUtil.append("extraction events status", "List world-event definitions and their state", help);
@@ -335,6 +341,7 @@ public class ExtractionCommand implements CommandExecutor {
         plugin.getRelicEffectManager().reload();
         plugin.getPackManager().reload();
         plugin.getWorldEventManager().reload();
+        plugin.getWallManager().reload();
         plugin.getNaturalSpawnManager().start();
         plugin.getNightManager().apply();
         plugin.getIdleTaskManager().sync();

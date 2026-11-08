@@ -141,6 +141,18 @@ shop:
           - "<gray>Instant health II.</gray>"
           - "<gold>Cost: %cost% tokens</gold>"
           - "<gray>Click to buy</gray>"
+      wall_bomb:
+        slot: 22
+        material: TNT
+        amount: 1
+        cost: 200
+        wall_bomb: true
+        name: "<red><bold>Wall Bomb</bold></red>"
+        lore:
+          - "<gray>Throw at a registered wall to</gray>"
+          - "<gray>breach it. Regenerates later.</gray>"
+          - "<gold>Cost: %cost% tokens</gold>"
+          - "<gray>Click to buy</gray>"
 
 # Enchantment unlocks. Clicking an enchant opens a target picker showing only the
 # player's loadout items the enchant can go on (`targets` = loadout slot keys).
