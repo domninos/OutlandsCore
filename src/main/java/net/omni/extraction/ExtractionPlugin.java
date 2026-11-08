@@ -126,7 +126,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      - make set walls (positions) that can be exploded via an item ONLY gotten from /extshop.
        - so like a wall bomb where it only breaks blocks horizontally and have it regenerated 5 mins later.
      -
-     - however
+     - when upgrading tokens in /upgrades, the old customized slots on the weapon/tools are back
      -
      -
      - drone custom entity model for texture

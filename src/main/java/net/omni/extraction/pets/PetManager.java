@@ -14,7 +14,7 @@ import java.io.File;
 import java.util.*;
 
 /**
- * Loads pet definitions from {@code pets/pets.yml}, owns the run-scoped pet
+ * Loads pet definitions from {@code pets.yml}, owns the run-scoped pet
  * entity lifecycle (one equipped pet per run, trailing the player) and the
  * token booster. All token payout paths consult {@link #getBoostPercent}.
  */
@@ -64,10 +64,10 @@ public class PetManager {
     }
 
     private void loadFile() {
-        File file = new File(plugin.getDataFolder(), "pets/pets.yml");
+        File file = new File(plugin.getDataFolder(), "pets.yml");
 
         if (!file.exists())
-            plugin.saveResource("pets/pets.yml", false);
+            plugin.saveResource("pets.yml", false);
 
         YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
 
