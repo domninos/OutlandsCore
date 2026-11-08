@@ -1,7 +1,5 @@
 package net.omni.extraction.util;
 
-import java.util.Locale;
-
 public final class StringUtils {
     private StringUtils() {
     }
@@ -12,38 +10,40 @@ public final class StringUtils {
         }
         String[] parts = s.split(" ");
         StringBuilder sb = new StringBuilder();
+
         for (String p : parts) {
-            if (p.isEmpty()) {
+            if (p.isEmpty())
                 continue;
-            }
+
             sb.append(Character.toUpperCase(p.charAt(0))).append(p.substring(1)).append(" ");
         }
+
         return sb.toString().trim();
     }
 
     public static String toRoman(int n) {
-        if (n == 1) {
+        if (n == 1)
             return "I";
-        }
-        if (n == 2) {
+
+        if (n == 2)
             return "II";
-        }
-        if (n == 3) {
+
+        if (n == 3)
             return "III";
-        }
-        if (n == 4) {
+
+        if (n == 4)
             return "IV";
-        }
-        if (n == 5) {
+
+        if (n == 5)
             return "V";
-        }
+
         return String.valueOf(n);
     }
 
     public static String stripTags(String s) {
-        if (s == null) {
+        if (s == null)
             return "";
-        }
+
         return s.replaceAll("<[^>]+>", "");
     }
 }

@@ -78,7 +78,9 @@ public class ShopManager {
             int dropped = giveOrDrop(player, toGive);
             String name = String.valueOf(def.getOrDefault("name", entry.getKey()));
 
-            plugin.sendMessage(player, Messages.SHOP_PURCHASED.replace("item", StringUtils.stripTags(name)).replace("cost", String.valueOf(cost)));
+            plugin.sendMessage(player, Messages.SHOP_PURCHASED
+                    .replace("item", StringUtils.stripTags(name),
+                            "cost", String.valueOf(cost)));
 
             if (dropped > 0)
                 plugin.sendMessage(player, Messages.SHOP_INVENTORY_FULL.replace("count", String.valueOf(dropped)));

@@ -18,18 +18,18 @@ import net.omni.extraction.chat.SpigotChatRenderer;
 import net.omni.extraction.chests.StandaloneChestCommand;
 import net.omni.extraction.chests.StandaloneChestListener;
 import net.omni.extraction.chests.StandaloneChestManager;
-import net.omni.extraction.commands.extraction.ExtractionCommand;
-import net.omni.extraction.commands.extract.ExtractCommand;
 import net.omni.extraction.commands.area.AreaCommand;
+import net.omni.extraction.commands.artifacts.ArtifactsCommand;
+import net.omni.extraction.commands.boss.BossCommand;
+import net.omni.extraction.commands.charms.CharmsCommand;
+import net.omni.extraction.commands.drone.DroneCommand;
+import net.omni.extraction.commands.extract.ExtractCommand;
+import net.omni.extraction.commands.extraction.ExtractionCommand;
+import net.omni.extraction.commands.loadout.LoadoutCommand;
+import net.omni.extraction.commands.pets.PetsCommand;
+import net.omni.extraction.commands.shop.ShopCommand;
 import net.omni.extraction.commands.tokens.TokensCommand;
 import net.omni.extraction.commands.upgrade.UpgradeCommand;
-import net.omni.extraction.commands.loadout.LoadoutCommand;
-import net.omni.extraction.commands.shop.ShopCommand;
-import net.omni.extraction.commands.charms.CharmsCommand;
-import net.omni.extraction.commands.artifacts.ArtifactsCommand;
-import net.omni.extraction.commands.drone.DroneCommand;
-import net.omni.extraction.commands.pets.PetsCommand;
-import net.omni.extraction.commands.boss.BossCommand;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.config.ExtractionConfig;
 import net.omni.extraction.data.DatabaseManager;
@@ -53,7 +53,6 @@ import net.omni.extraction.mobs.MobTemplateManager;
 import net.omni.extraction.natural.NaturalMobListener;
 import net.omni.extraction.natural.NaturalSpawnManager;
 import net.omni.extraction.pack.PackManager;
-import net.omni.extraction.party.PartyListener;
 import net.omni.extraction.party.PartyManager;
 import net.omni.extraction.pets.PetManager;
 import net.omni.extraction.relics.RelicEffectManager;
@@ -62,16 +61,16 @@ import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.scoreboard.ScoreboardListener;
 import net.omni.extraction.scoreboard.ScoreboardManager;
 import net.omni.extraction.shop.ShopManager;
-import net.omni.extraction.upgrade.UpgradeManager;
-import net.omni.extraction.util.*;
-import net.omni.extraction.worldevent.WorldEventListener;
-import net.omni.extraction.worldevent.WorldEventManager;
-import net.omni.extraction.world.NightManager;
-import net.omni.extraction.world.WorldTimeListener;
-import net.omni.extraction.walls.WallBombListener;
-import net.omni.extraction.walls.WallManager;
 import net.omni.extraction.smoke.SmokeGrenadeListener;
 import net.omni.extraction.smoke.SmokeGrenadeManager;
+import net.omni.extraction.upgrade.UpgradeManager;
+import net.omni.extraction.util.*;
+import net.omni.extraction.walls.WallBombListener;
+import net.omni.extraction.walls.WallManager;
+import net.omni.extraction.world.NightManager;
+import net.omni.extraction.world.WorldTimeListener;
+import net.omni.extraction.worldevent.WorldEventListener;
+import net.omni.extraction.worldevent.WorldEventManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -128,7 +127,6 @@ public final class ExtractionPlugin extends JavaPlugin {
     private WallManager wallManager;
     private SmokeGrenadeManager smokeGrenadeManager;
     private PartyManager partyManager;
-    private PartyListener partyListener;
     private DroneManager droneManager;
     private BossManager bossManager;
     private BossCreatorManager bossCreatorManager;
@@ -140,17 +138,13 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     TODO:
      -
-     - make set walls (positions) that can be exploded via an item ONLY gotten from /extshop.
-       - so like a wall bomb where it only breaks blocks horizontally and have it regenerated (configurable - 5 mins) later.
-       - using a command /extraction walls {id} {radius} {horizontal/vertical} {regeneration_time}
-       - apply mode to wand. so 1 left click of the wand, then use the command to set and apply the settings to that specific wall
-       - smoke grenades
+     - smoke grenade -> replace smoke with campfire smoke
+     - fix mob spawn right click mob editor, it spawns the mob every second i'm holding the wand. shouldn't be.
      -
      - when upgrading tokens in /upgrades, the old customized slots on the weapon/tools are back
+     - this happens when moving other cells as well. it resets to the default slots for them.
+     - have 5 -> charms, 6 -> artifacts, 7 -> pets slots in loadout gui. dont make them movable
      -
-     - split ExtractionManager to SubCommand, abstraction. MainCommand - ExtractionCommand (and the rest of the commands. MainCommand -> commands that have subcommands)
-     - add packages for each command
-     - split commands and tabcompleter (different classes, same package)
      -
      - drone custom entity model for texture
      -
@@ -256,9 +250,6 @@ public final class ExtractionPlugin extends JavaPlugin {
             bossCreatorManager.closeAll();
 
         extractionManager.flush();
-
-        if (partyListener != null)
-            partyListener.shutdown();
 
         if (partyManager != null)
             partyManager.shutdown();
