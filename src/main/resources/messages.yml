@@ -200,6 +200,8 @@ natural:
   spawned: "<green>Spawned <white>%count%x %mob%</white>.</green>"
   spawn-failed: "<red>Failed to spawn <white>%mob%</white>.</red>"
   unknown-mob: "<red>Unknown mob id <white>%mob%</white>.</red>"
+loot-drop:
+  inventory-full: "<red>Your inventory is full.</red>"
 party:
   usage: "<red>Usage: %usage%</red>"
   no-perm: "<red>You do not have permission to use the party system.</red>"

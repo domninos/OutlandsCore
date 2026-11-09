@@ -109,6 +109,21 @@ public class ConfigUtil {
     private double naturalSpawnerMaxRadius = 96;
     private boolean naturalSpawnerRequireExtraction = true;
     private final List<NaturalSpawnEntry> naturalSpawnerMobs = new ArrayList<>();
+    private boolean lootDropEnabled = true;
+    private String lootDropPickupMode = "click";
+    private double lootDropPickupRange = 4.0;
+    private double lootDropPickupRaySize = 0.35;
+    private int lootDropPickupCooldownMs = 250;
+    private boolean lootDropPickupHotkey = true;
+    private boolean lootDropPickupRightClick = true;
+    private boolean lootDropBeamEnabled = true;
+    private String lootDropBeamParticle = "END_ROD";
+    private int lootDropBeamUpdateTicks = 10;
+    private double lootDropBeamHeight = 2.5;
+    private double lootDropBeamSpacing = 0.5;
+    private int lootDropBeamMaxParticles = 200;
+    private boolean lootDropGlowEnabled = true;
+    private double lootDropGlowRadius = 24.0;
     private int areaAutoSaveSeconds;
     private int areaStateCheckSeconds;
     private boolean mobContainmentEnabled;
@@ -466,6 +481,7 @@ public class ConfigUtil {
         loadAreaEditor(savedDefaults);
         loadNaturalMobs(savedDefaults);
         loadNaturalSpawner(savedDefaults);
+        loadLootDrop(savedDefaults);
         loadLoadoutTiers(savedDefaults);
         loadLoadoutDefaults(savedDefaults);
         loadUpgradeTokenDefinitions(savedDefaults);
@@ -749,6 +765,39 @@ public class ConfigUtil {
             naturalSpawnerMobs.add(new NaturalSpawnEntry(String.valueOf(mob),
                     Math.max(1, weight), Math.max(1, count), Math.max(1, level)));
         }
+    }
+
+    private void loadLootDrop(AtomicInteger savedDefaults) {
+        this.lootDropEnabled = getAndDefaultBoolean(
+                ConfigKeys.LOOT_DROP_ENABLED, true, savedDefaults);
+        this.lootDropPickupMode = getAndDefaultString(
+                ConfigKeys.LOOT_DROP_PICKUP_MODE, "click", savedDefaults).toLowerCase(Locale.ROOT);
+        this.lootDropPickupRange = Math.clamp(getAndDefaultDouble(
+                ConfigKeys.LOOT_DROP_PICKUP_RANGE, 4.0, savedDefaults), 1.0, 8.0);
+        this.lootDropPickupRaySize = Math.clamp(getAndDefaultDouble(
+                ConfigKeys.LOOT_DROP_PICKUP_RAY_SIZE, 0.35, savedDefaults), 0.05, 1.0);
+        this.lootDropPickupCooldownMs = Math.clamp(getAndDefaultInt(
+                ConfigKeys.LOOT_DROP_PICKUP_COOLDOWN_MS, 250, savedDefaults), 0, 2000);
+        this.lootDropPickupHotkey = getAndDefaultBoolean(
+                ConfigKeys.LOOT_DROP_PICKUP_HOTKEY, true, savedDefaults);
+        this.lootDropPickupRightClick = getAndDefaultBoolean(
+                ConfigKeys.LOOT_DROP_PICKUP_RIGHT_CLICK, true, savedDefaults);
+        this.lootDropBeamEnabled = getAndDefaultBoolean(
+                ConfigKeys.LOOT_DROP_BEAM_ENABLED, true, savedDefaults);
+        this.lootDropBeamParticle = getAndDefaultString(
+                ConfigKeys.LOOT_DROP_BEAM_PARTICLE, "END_ROD", savedDefaults);
+        this.lootDropBeamUpdateTicks = Math.clamp(getAndDefaultInt(
+                ConfigKeys.LOOT_DROP_BEAM_UPDATE_TICKS, 10, savedDefaults), 1, 40);
+        this.lootDropBeamHeight = Math.clamp(getAndDefaultDouble(
+                ConfigKeys.LOOT_DROP_BEAM_HEIGHT, 2.5, savedDefaults), 0.5, 8.0);
+        this.lootDropBeamSpacing = Math.clamp(getAndDefaultDouble(
+                ConfigKeys.LOOT_DROP_BEAM_SPACING, 0.5, savedDefaults), 0.1, 2.0);
+        this.lootDropBeamMaxParticles = Math.clamp(getAndDefaultInt(
+                ConfigKeys.LOOT_DROP_BEAM_MAX_PARTICLES, 200, savedDefaults), 0, 1000);
+        this.lootDropGlowEnabled = getAndDefaultBoolean(
+                ConfigKeys.LOOT_DROP_GLOW_ENABLED, true, savedDefaults);
+        this.lootDropGlowRadius = Math.clamp(getAndDefaultDouble(
+                ConfigKeys.LOOT_DROP_GLOW_RADIUS, 24.0, savedDefaults), 1.0, 64.0);
     }
 
     private List<Map<String, Object>> getDefaultNaturalSpawnerMobs() {
@@ -1810,6 +1859,70 @@ public class ConfigUtil {
     /** Per-mob loot table overrides keyed by lowercased mob id / entity type. */
     public Map<String, String> getNaturalLootTables() {
         return naturalLootTables;
+    }
+
+    public boolean isLootDropEnabled() {
+        return lootDropEnabled;
+    }
+
+    public String getLootDropPickupMode() {
+        return lootDropPickupMode;
+    }
+
+    public boolean isLootDropClickPickup() {
+        return "click".equals(lootDropPickupMode);
+    }
+
+    public double getLootDropPickupRange() {
+        return lootDropPickupRange;
+    }
+
+    public double getLootDropPickupRaySize() {
+        return lootDropPickupRaySize;
+    }
+
+    public int getLootDropPickupCooldownMs() {
+        return lootDropPickupCooldownMs;
+    }
+
+    public boolean isLootDropPickupHotkey() {
+        return lootDropPickupHotkey;
+    }
+
+    public boolean isLootDropPickupRightClick() {
+        return lootDropPickupRightClick;
+    }
+
+    public boolean isLootDropBeamEnabled() {
+        return lootDropBeamEnabled;
+    }
+
+    public String getLootDropBeamParticle() {
+        return lootDropBeamParticle;
+    }
+
+    public int getLootDropBeamUpdateTicks() {
+        return lootDropBeamUpdateTicks;
+    }
+
+    public double getLootDropBeamHeight() {
+        return lootDropBeamHeight;
+    }
+
+    public double getLootDropBeamSpacing() {
+        return lootDropBeamSpacing;
+    }
+
+    public int getLootDropBeamMaxParticles() {
+        return lootDropBeamMaxParticles;
+    }
+
+    public boolean isLootDropGlowEnabled() {
+        return lootDropGlowEnabled;
+    }
+
+    public double getLootDropGlowRadius() {
+        return lootDropGlowRadius;
     }
 
     public boolean isNaturalSpawnerEnabled() {

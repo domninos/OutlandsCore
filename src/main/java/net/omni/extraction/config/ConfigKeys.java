@@ -36,6 +36,23 @@ public final class ConfigKeys {
     public static final String NATURAL_SPAWNER_REQUIRE_EXTRACTION = "natural-spawner.require-extraction-players";
     public static final String NATURAL_SPAWNER_MOBS = "natural-spawner.mobs";
 
+    public static final String LOOT_DROP = "loot-drop";
+    public static final String LOOT_DROP_ENABLED = "loot-drop.enabled";
+    public static final String LOOT_DROP_PICKUP_MODE = "loot-drop.pickup.mode";
+    public static final String LOOT_DROP_PICKUP_RANGE = "loot-drop.pickup.range";
+    public static final String LOOT_DROP_PICKUP_RAY_SIZE = "loot-drop.pickup.ray-size";
+    public static final String LOOT_DROP_PICKUP_COOLDOWN_MS = "loot-drop.pickup.cooldown-ms";
+    public static final String LOOT_DROP_PICKUP_HOTKEY = "loot-drop.pickup.hotkey";
+    public static final String LOOT_DROP_PICKUP_RIGHT_CLICK = "loot-drop.pickup.right-click";
+    public static final String LOOT_DROP_BEAM_ENABLED = "loot-drop.beam.enabled";
+    public static final String LOOT_DROP_BEAM_PARTICLE = "loot-drop.beam.particle";
+    public static final String LOOT_DROP_BEAM_UPDATE_TICKS = "loot-drop.beam.update-ticks";
+    public static final String LOOT_DROP_BEAM_HEIGHT = "loot-drop.beam.height";
+    public static final String LOOT_DROP_BEAM_SPACING = "loot-drop.beam.spacing";
+    public static final String LOOT_DROP_BEAM_MAX_PARTICLES = "loot-drop.beam.max-particles-per-tick";
+    public static final String LOOT_DROP_GLOW_ENABLED = "loot-drop.glow.enabled";
+    public static final String LOOT_DROP_GLOW_RADIUS = "loot-drop.glow.radius";
+
     public static final String EXTRACT_BASE_TOKENS = "extraction.base-tokens";
     public static final String EXTRACT_PER_KILL = "extraction.per-kill";
     public static final String EXTRACT_PER_EVENT = "extraction.per-event";

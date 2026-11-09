@@ -482,3 +482,37 @@ natural-spawner:
       weight: 1
       count: 1
       level: 2
+
+# ============================================================================
+# Dropped loot beams + click pickup
+# ============================================================================
+# Every item dropped by a mob in the extraction world gets a light beam and
+# an optional glow. In click mode, vanilla item pickup is disabled and players
+# collect beams by pressing F (swap-hands) or holding right-click while aiming
+# at the item.
+loot-drop:
+  enabled: true
+  pickup:
+    # click = cancel vanilla pickup and use hotkey/right-click
+    # vanilla = leave normal walking-over-items pickup enabled
+    mode: click
+    range: 4.0
+    # How far off the crosshair an item can be and still be picked.
+    ray-size: 0.35
+    # Minimum milliseconds between two click pickups by the same player.
+    cooldown-ms: 250
+    hotkey: true
+    right-click: true
+  beam:
+    enabled: true
+    particle: END_ROD
+    # Particle refresh period (1-40 ticks).
+    update-ticks: 10
+    height: 2.5
+    spacing: 0.5
+    # Hard particle budget per refresh pass across all tracked drops.
+    max-particles-per-tick: 200
+  glow:
+    enabled: true
+    # Only glow while a player is within this many blocks of the drop.
+    radius: 24.0

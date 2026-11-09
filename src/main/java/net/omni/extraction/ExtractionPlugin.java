@@ -45,6 +45,8 @@ import net.omni.extraction.loadout.LoadoutGUI;
 import net.omni.extraction.loadout.LoadoutManager;
 import net.omni.extraction.loot.LootResolver;
 import net.omni.extraction.loot.LootTableManager;
+import net.omni.extraction.lootdrop.LootDropListener;
+import net.omni.extraction.lootdrop.LootDropManager;
 import net.omni.extraction.looteditor.LootEditorListener;
 import net.omni.extraction.looteditor.LootEditorManager;
 import net.omni.extraction.managers.*;
@@ -132,14 +134,18 @@ public final class ExtractionPlugin extends JavaPlugin {
     private BossCreatorManager bossCreatorManager;
     private NaturalSpawnManager naturalSpawnManager;
     private NightManager nightManager;
+    private LootDropManager lootDropManager;
 
 
     /*
 
     TODO:
      -
-     - drone custom entity model for texture
+     - charm/artifact/pet placeholder should have different placeholder panes
+     - charm/artifact should open their relic gui with right click
      -
+     - drone custom entity model for texture
+     - resource pack: custom loot beam/model enhancement
      -
 
      */
@@ -217,6 +223,9 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         if (nightManager != null)
             nightManager.shutdown();
+
+        if (lootDropManager != null)
+            lootDropManager.stop();
 
         if (petManager != null)
             petManager.shutdown();
@@ -351,6 +360,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         naturalSpawnManager = new NaturalSpawnManager(this);
         nightManager = new NightManager(this);
         nightManager.apply();
+        lootDropManager = new LootDropManager(this);
 
         registerCommands();
         registerListeners();
@@ -366,6 +376,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         spawnMarkerManager.start();
         naturalSpawnManager.start();
         wallManager.start();
+        lootDropManager.start();
 
         if (configUtil.isScoreboardEnabled())
             scoreboardManager.start();
@@ -464,6 +475,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new StandaloneChestListener(this).register();
         new SpawnMarkerListener(this).register();
         new NaturalMobListener(this).register();
+        new LootDropListener(this).register();
         new WorldTimeListener(this).register();
         partyManager.registerListener();
     }
@@ -680,6 +692,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public NightManager getNightManager() {
         return nightManager;
+    }
+
+    public LootDropManager getLootDropManager() {
+        return lootDropManager;
     }
 
     public PackManager getPackManager() {

@@ -185,6 +185,8 @@ public enum Messages {
     NATURAL_SPAWN_FAILED("natural.spawn-failed", "<red>Failed to spawn <white>%mob%</white>.</red>"),
     NATURAL_UNKNOWN_MOB("natural.unknown-mob", "<red>Unknown mob id <white>%mob%</white>.</red>"),
 
+    LOOT_DROP_INVENTORY_FULL("loot-drop.inventory-full", "<red>Your inventory is full.</red>"),
+
     PARTY_USAGE("party.usage", "<red>Usage: %usage%</red>"),
     PARTY_NO_PERM("party.no-perm", "<red>You do not have permission to use the party system.</red>"),
     PARTY_ALREADY_IN("party.already-in", "<red>You are already in a party.</red>"),

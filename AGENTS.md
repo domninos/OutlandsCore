@@ -1034,6 +1034,33 @@ via `Math.sqrt` of the squared value only when needed.
   `LootItemUtil.*` (time/token/key/event), `UpgradeTokenUtil`, `LoadoutManager.buildTierItem`,
   `BackpackManager.createBackpackItem`, `LootEditorManager.entryIcon` (real loot preview clone),
   `UpgradeGUI` slot item/filler (tier base + empty-name `Component.empty()` clear), wands/PDC panes.
+- **Loot beams + click pickup (`lootdrop/`)**: config.yml `loot-drop.*` (ConfigKeys `LOOT_DROP_*`,
+  ConfigUtil `loadLootDrop` + getters). Every item in `EntityDeathEvent#getDrops()` for a non-Player death
+  in the extraction world gets a PDC marker (`LootDropManager.pendingKey`, `loot_drop_pending`) at
+  MONITOR priority (so area/natural/world-event/normal listeners finish rewriting drops first);
+  `ItemSpawnEvent` then strips the marker and `LootDropManager.handleSpawn` registers the item UUID
+  (`drops`, keyed by entity UUID - later merge/vanilla pickup can't re-tag). Registry is memory-only;
+  `EntityPickupItemEvent` (MONITOR), `EntityRemoveEvent` (MONITOR), `ItemDespawnEvent` (MONITOR) untrack;
+  `ItemMergeEvent` registers both sides (EntityRemove cleans the removed half). While enabled, a repeating
+  beam task (`beam.update-ticks`) walks the droplist (`LinkedHashMap`): marks invalid/off-world items
+  untracked, spawns a vertical particle column from the item up to `beam.height` every `beam.spacing`
+  blocks (config `beam.particle`, default `END_ROD`; an unknown name disables beams with a warning until
+  reload, a particle throwing `IllegalArgumentException` does the same), and applies **vanilla position
+  glow** anywhere a player sits within `glow.radius` (only tracked when the manager set it - `glowApplied`
+  is cleared without touching pre-existing glow on reload/stop). `max-particles-per-tick` is the global
+  particle budget for one pass. Pickup has `pickup.mode`:
+  `vanilla` = untouched; `click` (default) cancels `PlayerAttemptPickupItemEvent` for tracked items and
+  collects via **F** (`PlayerSwapHandItemsEvent`, `pickup.hotkey`, single press) or **hold right-click**
+  (`PlayerInteractEvent` RIGHT_CLICK_AIR/BLOCK + `pickup.right-click`, `EquipmentSlot.HAND`, skipped for
+  interactive blocks - there is no Bukkit API for a real right-click hold, so the repeated use-item
+  events approximate it). `LootDropManager.findTarget` ray-picks the target: one
+  `rayTraceBlocks` per interaction, then tangent/projection tolerance `ray-size + item bbox halfwidth`
+  against the tracked droplist (min distance wins, no hits before the item). `tryPickup` throttles per
+  player (`cooldown-ms`), `addItem`s the stack - full inventory keeps the item + `loot-drop.inventory-full`,
+  a partial fit leaves the remainder on the entity (`Item#setItemStack`), full removal plays
+  `ENTITY_ITEM_PICKUP`. Drone pilots are excluded; cooldowns cleared on quit. Reload (`/extraction reload`
+  -> `LootDropManager.reload()`) keeps tracked items, restarts the task (new `beam.update-ticks`) and
+  clears glow; disable purges the registry.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

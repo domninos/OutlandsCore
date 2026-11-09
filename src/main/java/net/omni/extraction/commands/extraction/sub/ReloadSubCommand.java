@@ -67,6 +67,7 @@ public class ReloadSubCommand implements SubCommand {
         plugin.getWorldEventManager().reload();
         plugin.getWallManager().reload();
         plugin.getNaturalSpawnManager().start();
+        plugin.getLootDropManager().reload();
         plugin.getNightManager().apply();
         plugin.getIdleTaskManager().sync();
 
