@@ -14,6 +14,7 @@ import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.mobs.MobTemplate;
 import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.relics.RelicManager;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
@@ -852,36 +853,33 @@ public class AreaEditorManager {
     }
 
     private ItemStack categoryTab(String material, String name, boolean active) {
-        ItemStack item = new ItemStack(resolveMaterial(material));
         String display = active ? name + " <green>✓</green>" : name;
-        item.editMeta(meta -> plugin.getChatRenderer().setDisplayName(meta, display));
-        return item;
+        return button(material, display);
     }
 
     private ItemStack filler(ConfigUtil config) {
-        ItemStack item = new ItemStack(resolveMaterial(config.getAreaEditorFillerMaterial()));
-        item.editMeta(meta -> {
-            String name = config.getAreaEditorFillerName();
-            if (name != null && !name.isBlank())
-                plugin.getChatRenderer().setDisplayName(meta, name);
-        });
-        return item;
+        String name = config.getAreaEditorFillerName();
+
+        if (name != null && name.isBlank())
+            name = null;
+
+        return button(resolveMaterial(config.getAreaEditorFillerMaterial()), name);
+    }
+
+    private ItemStack button(Material material, String name) {
+        return button(material, name, null);
+    }
+
+    private ItemStack button(Material material, String name, List<String> lore) {
+        return ItemUtil.createItem(material, name, lore);
     }
 
     private ItemStack button(String material, String name) {
-        ItemStack item = new ItemStack(resolveMaterial(material));
-        item.editMeta(meta -> plugin.getChatRenderer().setDisplayName(meta, name));
-        return item;
+        return button(material, name, null);
     }
 
     private ItemStack button(String material, String name, List<String> lore) {
-        ItemStack item = new ItemStack(resolveMaterial(material));
-        item.editMeta(meta -> {
-            plugin.getChatRenderer().setDisplayName(meta, name);
-            if (lore != null && !lore.isEmpty())
-                plugin.getChatRenderer().setLore(meta, lore);
-        });
-        return item;
+        return button(resolveMaterial(material), name, lore);
     }
 
     private ItemStack valueItem(String material, String name) {
@@ -889,13 +887,7 @@ public class AreaEditorManager {
     }
 
     private ItemStack valueItem(String material, String name, String lore) {
-        ItemStack item = new ItemStack(resolveMaterial(material));
-        item.editMeta(meta -> {
-            plugin.getChatRenderer().setDisplayName(meta, name);
-            if (lore != null)
-                plugin.getChatRenderer().setLore(meta, List.of(lore));
-        });
-        return item;
+        return button(material, name, lore == null ? null : List.of(lore));
     }
 
     private ItemStack textItem(String material, String name) {

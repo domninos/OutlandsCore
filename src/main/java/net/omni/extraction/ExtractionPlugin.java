@@ -280,7 +280,7 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         UpgradeTokenUtil.init(this);
         LootItemUtil.init(this);
-        RelicItemUtil.init(this);
+        ItemUtil.init(this);
         LoadoutGUI.init(this);
         PacketGlow.init(this);
 

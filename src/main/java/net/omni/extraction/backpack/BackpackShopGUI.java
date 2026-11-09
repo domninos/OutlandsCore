@@ -3,11 +3,11 @@ package net.omni.extraction.backpack;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.config.ConfigUtil;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,34 +36,34 @@ public final class BackpackShopGUI {
         Inventory inv = renderer.createInventory(new BackpackShopHolder(), size,
                 plugin.getPackManager().titleWithTexture(config.getShopGuiTitle(), "backpack-shop"));
 
-        ItemStack filler = button(renderer, Material.GRAY_STAINED_GLASS_PANE, " ", null);
+        ItemStack filler = button(plugin, Material.GRAY_STAINED_GLASS_PANE, " ", null);
         for (int i = 0; i < size; i++)
             inv.setItem(i, filler);
 
         int tiers = config.getBackpackTierSlots().size();
 
         if (tiers >= 1)
-            inv.setItem(SLOT_TIER_1, tierButton(config, manager, renderer, held != null, heldTier,
+            inv.setItem(SLOT_TIER_1, tierButton(plugin, config, manager, held != null, heldTier,
                     1, Material.LEATHER_CHESTPLATE));
         if (tiers >= 2)
-            inv.setItem(SLOT_TIER_2, tierButton(config, manager, renderer, held != null, heldTier,
+            inv.setItem(SLOT_TIER_2, tierButton(plugin, config, manager, held != null, heldTier,
                     2, Material.IRON_CHESTPLATE));
         if (tiers >= 3)
-            inv.setItem(SLOT_TIER_3, tierButton(config, manager, renderer, held != null, heldTier,
+            inv.setItem(SLOT_TIER_3, tierButton(plugin, config, manager, held != null, heldTier,
                     3, Material.DIAMOND_CHESTPLATE));
         if (tiers >= 4)
-            inv.setItem(SLOT_TIER_4, tierButton(config, manager, renderer, held != null, heldTier,
+            inv.setItem(SLOT_TIER_4, tierButton(plugin, config, manager, held != null, heldTier,
                     4, Material.NETHERITE_CHESTPLATE));
 
-        inv.setItem(SLOT_PAGINATION, paginationButton(config, manager, renderer, held));
+        inv.setItem(SLOT_PAGINATION, paginationButton(plugin, config, manager, held));
 
-        inv.setItem(SLOT_CLOSE, button(renderer, Material.BARRIER,
+        inv.setItem(SLOT_CLOSE, button(plugin, Material.BARRIER,
                 "<red><bold>Close</bold></red>", List.of("<gray>Close the shop</gray>")));
 
         return inv;
     }
 
-    private static ItemStack tierButton(ConfigUtil config, BackpackManager manager, ChatRenderer renderer,
+    private static ItemStack tierButton(ExtractionPlugin plugin, ConfigUtil config, BackpackManager manager,
                                         boolean holding, int heldTier, int tier, Material material) {
         int price = config.getBackpackTierPrice(tier);
         int slots = manager.getSlotCount(tier);
@@ -81,12 +81,12 @@ public final class BackpackShopGUI {
             lore.add("<gray>Click to buy</gray>");
         }
 
-        return button(renderer, material,
+        return button(plugin, material,
                 "<yellow><bold>Tier " + tier + " Backpack</bold></yellow>", lore);
     }
 
-    private static ItemStack paginationButton(ConfigUtil config, BackpackManager manager,
-                                              ChatRenderer renderer, ItemStack held) {
+    private static ItemStack paginationButton(ExtractionPlugin plugin, ConfigUtil config, BackpackManager manager,
+                                              ItemStack held) {
         int current = held != null ? manager.getPages(held) : 0;
         int max = config.getBackpackMaxPages();
         int price = config.getBackpackPaginationPrice();
@@ -109,23 +109,11 @@ public final class BackpackShopGUI {
             }
         }
 
-        return button(renderer, Material.CHEST,
+        return button(plugin, Material.CHEST,
                 "<aqua><bold>Extra Pages</bold></aqua>", lore);
     }
 
-    private static ItemStack button(ChatRenderer renderer, Material material, String name, List<String> lore) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta != null) {
-            renderer.setDisplayName(meta, name);
-
-            if (lore != null)
-                renderer.setLore(meta, lore);
-
-            item.setItemMeta(meta);
-        }
-
-        return item;
+    private static ItemStack button(ExtractionPlugin plugin, Material material, String name, List<String> lore) {
+        return ItemUtil.createItem(material, name, lore);
     }
 }

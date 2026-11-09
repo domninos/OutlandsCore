@@ -7,6 +7,7 @@ import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.ItemUtil;
 import net.omni.extraction.util.LootItemUtil;
 import net.omni.extraction.util.StringUtils;
 import org.bukkit.Location;
@@ -576,20 +577,6 @@ public class LootEditorManager {
     }
 
     private ItemStack item(String materialName, String name, List<String> lore) {
-        Material material = Material.matchMaterial(materialName == null ? "" : materialName);
-
-        if (material == null || !material.isItem())
-            material = Material.PAPER;
-
-        ItemStack stack = new ItemStack(material);
-        ItemMeta meta = stack.getItemMeta();
-
-        if (meta != null) {
-            plugin.getChatRenderer().setDisplayName(meta, name);
-            plugin.getChatRenderer().setLore(meta, lore);
-            stack.setItemMeta(meta);
-        }
-
-        return stack;
+        return ItemUtil.createItem(materialName, "PAPER", name, lore);
     }
 }

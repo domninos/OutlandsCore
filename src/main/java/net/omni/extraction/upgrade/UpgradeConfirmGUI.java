@@ -1,11 +1,11 @@
 package net.omni.extraction.upgrade;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.loadout.LoadoutManager;
 import net.omni.extraction.loadout.LoadoutSlot;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -83,30 +83,7 @@ public final class UpgradeConfirmGUI {
 
     private static ItemStack createItem(ExtractionPlugin plugin, String materialName, String fallback,
                                         String name, List<String> lore) {
-        Material material = Material.matchMaterial(materialName);
-
-        if (material == null || material.isAir())
-            material = Material.matchMaterial(fallback);
-
-        if (material == null)
-            material = Material.PAPER;
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta == null)
-            return item;
-
-        ChatRenderer renderer = plugin.getChatRenderer();
-
-        if (name != null && !name.isEmpty())
-            renderer.setDisplayName(meta, name);
-
-        if (!lore.isEmpty())
-            renderer.setLore(meta, lore);
-
-        item.setItemMeta(meta);
-        return item;
+        return ItemUtil.createItem(materialName, fallback, name, lore);
     }
 
     private static void fillFiller(ExtractionPlugin plugin, Inventory inventory) {

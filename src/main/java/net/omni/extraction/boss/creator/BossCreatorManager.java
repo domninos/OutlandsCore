@@ -5,6 +5,7 @@ import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.mobs.*;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -45,7 +46,7 @@ public class BossCreatorManager {
             Player player = plugin.getServer().getPlayer(uuid);
 
             if (player != null && player.getOpenInventory().getTopInventory().getHolder()
-                    instanceof BossCreatorHolder holder)
+                    instanceof BossCreatorHolder)
                 player.closeInventory();
 
             sessions.remove(uuid);
@@ -79,7 +80,7 @@ public class BossCreatorManager {
             inventory.setItem(slot, filler());
 
         switch (session.getPage()) {
-            case LIST -> renderList(player, inventory, session);
+            case LIST -> renderList(inventory, session);
             case STATS -> renderStats(inventory, session, template);
             case ABILITIES -> renderAbilities(inventory, session, template);
             case ABILITY -> renderAbility(inventory, session, template);
@@ -91,7 +92,7 @@ public class BossCreatorManager {
         player.openInventory(inventory);
     }
 
-    private void renderList(Player player, Inventory inventory, BossCreatorSession session) {
+    private void renderList(Inventory inventory, BossCreatorSession session) {
         List<MobTemplate> bosses = bosses();
         int size = session.getSize();
         int contentSize = size - 9;
@@ -473,8 +474,7 @@ public class BossCreatorManager {
             BossAbilityType type = BossAbilityType.SLAM;
 
             if (!template.getAbilities().isEmpty()) {
-                BossAbilityType last = template.getAbilities()
-                        .get(template.getAbilities().size() - 1).getType();
+                BossAbilityType last = template.getAbilities().getLast().getType();
                 BossAbilityType[] types = BossAbilityType.values();
                 type = types[(last.ordinal() + 1) % types.length];
             }
@@ -625,7 +625,7 @@ public class BossCreatorManager {
             return;
 
         if (click.isRightClick()) {
-            MobDrop removed = template.getDrops().remove(index);
+            template.getDrops().remove(index);
             plugin.getBossTemplateManager().saveBosses();
             render(player, session);
             plugin.sendMessage(player, Messages.BOSS_LOOT_REMOVED.replace("boss", template.getId()));
@@ -667,7 +667,7 @@ public class BossCreatorManager {
         }
 
         int step = config().getBossGuiIncrements().isEmpty()
-                ? 1 : config().getBossGuiIncrements().get(0);
+                ? 1 : config().getBossGuiIncrements().getFirst();
 
         switch (slot) {
             case 19 -> template.getDrops().set(session.getDropIndex(),
@@ -826,7 +826,7 @@ public class BossCreatorManager {
 
     private ItemStack dropIcon(MobDrop drop, int index) {
         List<ItemStack> resolved = plugin.getLootResolver().resolveDropItems(drop.getType(), 1);
-        Material material = resolved.isEmpty() ? Material.NETHER_STAR : resolved.get(0).getType();
+        Material material = resolved.isEmpty() ? Material.NETHER_STAR : resolved.getFirst().getType();
 
         return item(material, "<yellow>Drop #%index%</yellow>"
                         .replace("%index%", String.valueOf(index)),
@@ -870,26 +870,19 @@ public class BossCreatorManager {
     }
 
     private ItemStack item(String material, String name, List<String> lore) {
-        Material parsed = Material.matchMaterial(material);
-        return item(parsed == null ? Material.STONE : parsed, name, lore);
+        return ItemUtil.createItem(material, "STONE", name, lore);
     }
 
     private ItemStack item(String material, String name) {
-        Material parsed = Material.matchMaterial(material);
-        return item(parsed == null ? Material.STONE : parsed, name);
+        return ItemUtil.createItem(material, "STONE", name, List.of());
     }
 
     private ItemStack item(Material material, String name) {
-        return item(material, name, List.of());
+        return ItemUtil.createItem(material, name, List.of());
     }
 
     private ItemStack item(Material material, String name, List<String> lore) {
-        ItemStack item = new ItemStack(material);
-        item.editMeta(meta -> {
-            plugin.getChatRenderer().setDisplayName(meta, name);
-            plugin.getChatRenderer().setLore(meta, lore);
-        });
-        return item;
+        return ItemUtil.createItem(material, name, lore);
     }
 
     private ItemStack filler() {
@@ -903,9 +896,9 @@ public class BossCreatorManager {
             return 1;
 
         if (click.isShiftClick())
-            return increments.get(increments.size() - 1);
+            return increments.getLast();
 
-        return Math.max(1, increments.get(0));
+        return Math.max(1, increments.getFirst());
     }
 
     private String value(double number) {

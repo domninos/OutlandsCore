@@ -1,10 +1,10 @@
 package net.omni.extraction.upgrade;
 
-import net.omni.extraction.util.UpgradeTokenUtil;
-
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.loadout.LoadoutSlot;
+import net.omni.extraction.util.ItemUtil;
+import net.omni.extraction.util.UpgradeTokenUtil;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
@@ -66,8 +66,7 @@ public class UpgradeManager {
                 continue;
             }
 
-            Object tierObj = def.get("upgrade-tier");
-            int tier = tierObj instanceof Number num ? num.intValue() : 1;
+            int tier = ItemUtil.asInt(def.get("upgrade-tier"), 1);
             int maxTier = getMaxTier(slot);
 
             if (tier <= 0) {
@@ -90,16 +89,16 @@ public class UpgradeManager {
         return null;
     }
 
-    public boolean canUpgrade(LoadoutSlot slot, int currentTier) {
-        return currentTier < getMaxTier(slot);
-    }
-
     public int getMaxTier(LoadoutSlot slot) {
         return getTiersForSlot(slot).size();
     }
 
     public List<UpgradeTier> getTiersForSlot(LoadoutSlot slot) {
         return tiersBySlot.getOrDefault(slot.getConfigKey(), Collections.emptyList());
+    }
+
+    public boolean canUpgrade(LoadoutSlot slot, int currentTier) {
+        return currentTier < getMaxTier(slot);
     }
 
     public UpgradeTier getNextTier(LoadoutSlot slot, int currentTier) {
@@ -125,9 +124,8 @@ public class UpgradeManager {
         String material = (String) def.getOrDefault("material", "PAPER");
         String displayName = (String) def.getOrDefault("display-name", "<gray>Upgrade Token</gray>");
         String slot = (String) def.getOrDefault("upgrade-slot", "WEAPON");
-        Object tierObj = def.get("upgrade-tier");
 
-        int tier = tierObj instanceof Number num ? num.intValue() : 1;
+        int tier = ItemUtil.asInt(def.get("upgrade-tier"), 1);
 
         StringBuilder loreBuilder = new StringBuilder();
         Object loreObj = def.get("lore");

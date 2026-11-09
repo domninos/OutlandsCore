@@ -5,6 +5,7 @@ import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.HologramUtils;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -70,7 +71,7 @@ public class StandaloneChestManager {
             ConfigurationSection def = section.getConfigurationSection(key);
             if (def == null) continue;
 
-            int id = parseInt(key, -1);
+            int id = ItemUtil.asInt(key, -1);
             if (id < 0) continue;
 
             World world = Bukkit.getWorld(def.getString("world", ""));
@@ -94,14 +95,6 @@ public class StandaloneChestManager {
         }
 
         plugin.sendConsole("<green>Loaded " + chests.size() + " standalone chest(s).</green>");
-    }
-
-    private int parseInt(String raw, int fallback) {
-        try {
-            return Integer.parseInt(raw);
-        } catch (NumberFormatException e) {
-            return fallback;
-        }
     }
 
     /**

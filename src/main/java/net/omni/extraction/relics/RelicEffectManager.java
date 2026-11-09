@@ -5,7 +5,7 @@ import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.messages.Messages;
-import net.omni.extraction.util.RelicItemUtil;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
@@ -390,13 +390,13 @@ public class RelicEffectManager {
 
         for (int i = 0; i < inv.getSize(); i++) {
             ItemStack item = inv.getItem(i);
-            if (!RelicItemUtil.isRelic(item))
+            if (!ItemUtil.isRelic(item))
                 continue;
 
-            if (!def.id().equalsIgnoreCase(RelicItemUtil.getId(item)))
+            if (!def.id().equalsIgnoreCase(ItemUtil.getId(item)))
                 continue;
 
-            inv.setItem(i, RelicItemUtil.createItem(def, label, EQUIP_LORE));
+            inv.setItem(i, ItemUtil.createItem(def, label, EQUIP_LORE));
             changed = true;
         }
 
@@ -466,7 +466,7 @@ public class RelicEffectManager {
      * The exact item shown in /loadout and granted during a run: state-aware name + equip lore.
      */
     public ItemStack equippedItem(UUID uuid, RelicDefinition def) {
-        return RelicItemUtil.createItem(def, displayName(uuid, def), EQUIP_LORE);
+        return ItemUtil.createItem(def, displayName(uuid, def), EQUIP_LORE);
     }
 
     /**

@@ -1,6 +1,6 @@
 package net.omni.extraction.relics;
 
-import net.omni.extraction.util.RelicItemUtil;
+import net.omni.extraction.util.ItemUtil;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.data.PlayerData;
@@ -170,7 +170,7 @@ public class RelicManager {
         if (cached != null)
             return cached.clone();
 
-        ItemStack item = RelicItemUtil.createItem(def);
+        ItemStack item = ItemUtil.createItem(def);
         relicItemCache.put(key, item);
         return item.clone();
     }
@@ -179,12 +179,12 @@ public class RelicManager {
      * Consumes a relic item to permanently unlock it.
      */
     public void learn(Player player, ItemStack item) {
-        String kind = RelicItemUtil.getKind(item);
+        String kind = ItemUtil.getKind(item);
 
         if (kind == null)
             return;
 
-        RelicDefinition def = getDefinition(RelicItemUtil.getId(item));
+        RelicDefinition def = getDefinition(ItemUtil.getId(item));
 
         if (def == null)
             return;

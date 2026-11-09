@@ -9,7 +9,7 @@ import net.omni.extraction.pets.PetDefinition;
 import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.util.LootItemUtil;
 import net.omni.extraction.util.Permissions;
-import net.omni.extraction.util.RelicItemUtil;
+import net.omni.extraction.util.ItemUtil;
 import net.omni.extraction.util.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -303,10 +303,10 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        if (RelicItemUtil.isRelic(item)) {
+        if (ItemUtil.isRelic(item)) {
             event.setCancelled(true);
 
-            String relicId = RelicItemUtil.getId(item);
+            String relicId = ItemUtil.getId(item);
             PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
 
             boolean equipped = relicId != null

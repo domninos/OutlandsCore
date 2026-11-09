@@ -12,10 +12,10 @@ Extraction - a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 
 ## Build & verify
 - Compile: `mvn clean compile`
-- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) - `target/Extraction-1.2.0.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.2.0.jar` into the server's `plugins/Extraction/` and restart - an IDE build does not deploy to the server folder.
-- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.2.0.jar` to confirm the server runs the current build.
+- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) - `target/Extraction-1.2.1.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.2.1.jar` into the server's `plugins/Extraction/` and restart - an IDE build does not deploy to the server folder.
+- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.2.1.jar` to confirm the server runs the current build.
 - There is no test suite; compiling `mvn clean compile` is the verification step for syntax; `mvn clean package` is required before claiming a fix is deployed.
-- **Version-bump prompt (MAJOR releases only):** before declaring a major release/update finished, ask the user whether to bump the plugin version (`pom.xml` `<version>`); bump only on confirmation â€” do NOT prompt for small bugfix-only sessions. When a bump is confirmed, also update the version references inside this file (this section) so the docs stay in sync. Current version: `1.2.0` (bumped from `1.0.0` on 2026-11-03; â†’ 1.1.1 mid-day; â†’ 1.1.3 with the convoy-route rework; â†’ 1.1.4 with the loadout-wipe + wand-spawn-editor fixes; â†’ 1.2.0, re-bumped on 2026-11-08, with walls + natural mob loot/spawning + always-night).
+- **Version-bump prompt (MAJOR releases only):** before declaring a major release/update finished, ask the user whether to bump the plugin version (`pom.xml` `<version>`); bump only on confirmation â€” do NOT prompt for small bugfix-only sessions. When a bump is confirmed, also update the version references inside this file (this section) so the docs stay in sync. Current version: `1.2.1` (bumped from `1.0.0` on 2026-11-03; â†’ 1.1.1 mid-day; â†’ 1.1.3 with the convoy-route rework; â†’ 1.1.4 with the loadout-wipe + wand-spawn-editor fixes; â†’ 1.2.0, re-bumped on 2026-11-08, with walls + natural mob loot/spawning + always-night).
 
 ## Conventions
 
@@ -393,7 +393,7 @@ via `Math.sqrt` of the squared value only when needed.
   `(ExtractionPlugin)` ctor + `register()` wired in `ExtractionPlugin.registerListeners()`.
   `ShopGUI.getTargetCellForSlot(rawSlot)` is the single source for the enchant target-slot map.
 - Utility package: `util/StringUtils` holds `capitalize`/`toRoman`/`stripTags`; `LootItemUtil`, `MessageUtil`,
-  `RelicItemUtil`, and `UpgradeTokenUtil` live in `net.omni.extraction.util` (stateful `ConfigUtil` stays in `config/`).
+  `RelicItemUtil` (now `ItemUtil`), and `UpgradeTokenUtil` live in `net.omni.extraction.util` (stateful `ConfigUtil` stays in `config/`).
 - Multiple loot chest locations per area with optional per-chest loot table type (`AreaChestLocation`); wand
   CHEST add/remove-nearest; `/areas setchest`; legacy `loot.chest-location` migrates on load.
 - `PaperChatRenderer.toComponent` converts legacy `§` codes to MiniMessage tags so mixed placeholder/message
@@ -924,7 +924,7 @@ via `Math.sqrt` of the squared value only when needed.
   `LootResolver.reload()`, wired into `/extraction reload` next to `getLootTableManager().reload()`.
   `UpgradeManager.createUpgradeTokenItem` caches one display item per token key (cleared in `reload()`),
   and `RelicManager.createRelicItem` caches one droppable/grantable template per `kind|id` (cleared in
-  `reload()`); both hand out clones. Per-player/composed variants (e.g. `RelicItemUtil.createItem` with
+  `reload()`); both hand out clones. Per-player/composed variants (e.g. `ItemUtil.createItem` with
   cooldown `nameOverride` via `RelicEffectManager.equippedItem`) are NOT cached.
 - Active-relic delivery + right-click equip: `LoadoutManager.applyLoadout` after its cell loop calls
   `deliverActiveRelic` for charm and artifact â€” when that cell is customized but stores no real item (e.g. a
@@ -988,10 +988,24 @@ via `Math.sqrt` of the squared value only when needed.
   cancels `EntityTargetEvent` for mobs whose target location is inside the cloud, and clears existing mob targets
   (`Mob#setTarget(null)`) while the cloud is active. Clouds are in-memory (`clouds` set), cleaned on reload/stop;
   `SmokeGrenadeListener` also blocks mob targeting during the cloud (`EventPriority.LOW`).
-- **Shop custom model data** (`shop/ShopManager.createConsumableItem`): consumable defs support `custom-model-data`
-  (int OR string) and optional `model` (string). Ints go into `CustomModelDataComponent.setFloats(...)`, strings into
-  `setStrings(...)`; both end up on the ItemMeta PDC through `setCustomModelDataComponent(...)` so resource packs can
-  use the pack's model paths (`extraction/wall_bomb`, `extraction/smoke_grenade` in the default shop.yml).
+- **Item creation single source (`util/ItemUtil`)**: the class is a rename+merge of the old `RelicItemUtil`
+  (init at `ExtractionPlugin` still provides the `is_relic`/`relic_kind`/`relic_id` keys - relics, shop,
+  custom model data and the generic material/name/lore builders all funnel through its private `build`).
+  Overloads: `createItem(plugin, Map def)` (ex-`ShopManager.createConsumableItem` - potion tinting, model
+  data, then `wall_bomb`/`smoke_grenade` PDC tags applied LAST so later meta edits can't wipe them; no
+  name/lore - ShopGUI overlays placeholder-templated text), `createItem(RelicDefinition, nameOverride,
+  extraLore, cmd)` (+ shorter overloads; lore = def.lore() + extraLore, `.setMaxStackSize(1)`, relic PDC),
+  and `createItem(plugin, materialName, fallback, name, lore)` / `createItem(plugin, Material, name, lore)`
+  for simple visible icons. `applyModelData(meta, def)` (int `custom-model-data` -> `setFloats`, string ->
+  `setStrings`, `model` appended - resource-pack model paths `extraction/wall_bomb`/`extraction/smoke_grenade`)
+  and `asInt(Object, int)` live here too. `ShopManager.createConsumableItem` is a one-line delegate; the
+  simple GUI icon builders (`ShopGUI.placeButton`/`populateEnchants`, `LootEditorManager.item`,
+  `BossCreatorManager.item/nav/filler`, `AreaEditorManager.button/valueItem/categoryTab/filler`,
+  `UpgradeConfirmGUI.createItem`, `BackpackShopGUI.button`) and the `UpgradeManager`/`StandaloneChestManager`
+  int coercions all call `ItemUtil`. Relic custom model data uses the component API now (legacy
+  `setCustomModelData(int)` retired). Bespoke placeholder-heavy builders stay local:
+  `LootItemUtil.*` (time/token/key/event), `UpgradeTokenUtil`, `LoadoutManager.buildTierItem`,
+  `BackpackManager.createBackpackItem`, wands/PDC panes.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

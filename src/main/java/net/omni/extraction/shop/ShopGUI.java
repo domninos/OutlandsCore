@@ -6,6 +6,7 @@ import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.pets.PetDefinition;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -136,10 +137,10 @@ public class ShopGUI {
             if (slot < 0 || slot >= size)
                 continue;
 
-            int amount = shop.asInt(def.get("amount"), 1);
-            int cost = shop.asInt(def.get("cost"), 0);
+            int amount = ItemUtil.asInt(def.get("amount"), 1);
+            int cost = ItemUtil.asInt(def.get("cost"), 0);
 
-            ItemStack item = shop.createConsumableItem(def);
+            ItemStack item = ItemUtil.createItem(plugin, def);
             if (item == null)
                 continue;
 
@@ -177,16 +178,15 @@ public class ShopGUI {
             int slot = num.intValue();
             if (slot < 0 || slot >= size) continue;
 
-            Material mat = Material.matchMaterial(String.valueOf(def.getOrDefault("material", "ENCHANTED_BOOK")));
-            if (mat == null) mat = Material.ENCHANTED_BOOK;
-            int cost = shop.asInt(def.get("cost"), 0);
+            int cost = ItemUtil.asInt(def.get("cost"), 0);
             String name = String.valueOf(def.getOrDefault("name", entry.getKey())).replace("%cost%", String.valueOf(cost));
             List<String> lore = new ArrayList<>();
             for (String line : parseLore(def.get("lore"))) {
                 lore.add(line.replace("%cost%", String.valueOf(cost)));
             }
 
-            ItemStack item = new ItemStack(mat);
+            ItemStack item = ItemUtil.createItem(plugin, def);
+
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 renderer.setDisplayName(meta, name);
@@ -291,19 +291,10 @@ public class ShopGUI {
         if (def == null) return;
         if (!(def.get("slot") instanceof Number num)) return;
 
-        Material mat = Material.matchMaterial(String.valueOf(def.getOrDefault("material", "STONE")));
-        if (mat == null) mat = Material.STONE;
-
         String name = String.valueOf(def.getOrDefault("name", key));
         List<String> lore = parseLore(def.get("lore"));
 
-        ItemStack item = new ItemStack(mat);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            renderer.setDisplayName(meta, name);
-            renderer.setLore(meta, lore);
-            item.setItemMeta(meta);
-        }
+        ItemStack item = ItemUtil.createItem((String) def.getOrDefault("material", "STONE"), "STONE", name, lore);
         int slot = num.intValue();
 
         if (slot < 0 || slot >= inventory.getSize()) {

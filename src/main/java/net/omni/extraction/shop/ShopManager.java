@@ -11,18 +11,12 @@ import net.omni.extraction.pets.PetDefinition;
 import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.upgrade.UpgradeTier;
+import net.omni.extraction.util.ItemUtil;
 import net.omni.extraction.util.StringUtils;
-import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.PotionMeta;
-import org.bukkit.inventory.meta.components.CustomModelDataComponent;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
-import org.bukkit.potion.PotionType;
 
 import java.util.*;
 
@@ -58,7 +52,7 @@ public class ShopManager {
             if (num.intValue() != rawSlot)
                 continue;
 
-            int cost = asInt(def.get("cost"), 0);
+            int cost = ItemUtil.asInt(def.get("cost"), 0);
             if (cost > 0 && !tokens.hasTokens(uuid, cost)) {
                 plugin.sendMessage(player, Messages.SHOP_NOT_ENOUGH_TOKENS
                         .replace("cost", String.valueOf(cost),
@@ -90,62 +84,8 @@ public class ShopManager {
         }
     }
 
-    public int asInt(Object obj, int def) {
-        if (obj instanceof Number num)
-            return num.intValue();
-
-        if (obj == null)
-            return def;
-
-        try {
-            return Integer.parseInt(String.valueOf(obj));
-        } catch (Exception e) {
-            return def;
-        }
-    }
-
     public ItemStack createConsumableItem(Map<String, Object> def) {
-        Material mat = Material.matchMaterial(String.valueOf(def.getOrDefault("material", "BREAD")));
-
-        if (mat == null)
-            mat = Material.BREAD;
-
-        int amount = asInt(def.get("amount"), 1);
-
-        ItemStack item = new ItemStack(mat, Math.min(amount, 64));
-
-        if (def.containsKey("potion_type") && item.getItemMeta() instanceof PotionMeta pm) {
-            String ptype = String.valueOf(def.get("potion_type"));
-
-            try {
-                pm.setBasePotionType(PotionType.valueOf(ptype));
-            } catch (Exception ignored) {
-            }
-
-            int plevel = asInt(def.get("potion_level"), 1);
-            PotionEffectType pet = PotionEffectType.getByName(ptype);
-
-            if (pet != null) {
-                int duration = pet.isInstant() ? 1 : 20 * 30;
-                pm.addCustomEffect(new PotionEffect(pet, duration, plevel - 1), true);
-            }
-
-            item.setItemMeta(pm);
-        }
-
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            applyModelData(meta, def);
-            item.setItemMeta(meta);
-        }
-
-        if (Boolean.parseBoolean(String.valueOf(def.getOrDefault("wall_bomb", "false"))))
-            plugin.getWallManager().tagWallBomb(item);
-
-        if (Boolean.parseBoolean(String.valueOf(def.getOrDefault("smoke_grenade", "false"))))
-            plugin.getSmokeGrenadeManager().tagSmokeGrenade(item, def);
-
-        return item;
+        return ItemUtil.createItem(plugin, def);
     }
 
     private int giveOrDrop(Player player, ItemStack item) {
@@ -162,30 +102,6 @@ public class ShopManager {
         }
 
         return dropped;
-    }
-
-    private void applyModelData(ItemMeta meta, Map<String, Object> def) {
-        Object cmd = def.get("custom-model-data");
-        Object model = def.get("model");
-
-        if (cmd == null && model == null)
-            return;
-
-        CustomModelDataComponent component = meta.getCustomModelDataComponent();
-
-        if (cmd instanceof Number num)
-            component.setFloats(List.of(num.floatValue()));
-        else if (cmd != null && !String.valueOf(cmd).isBlank())
-            component.setStrings(List.of(String.valueOf(cmd)));
-
-        if (model != null && !String.valueOf(model).isBlank()) {
-            List<String> strings = new ArrayList<>(component.getStrings());
-
-            strings.add(String.valueOf(model));
-            component.setStrings(strings);
-        }
-
-        meta.setCustomModelDataComponent(component);
     }
 
     public void openEnchants(Player player) {
@@ -388,7 +304,7 @@ public class ShopManager {
             return;
         }
 
-        int cost = asInt(def.get("cost"), 0);
+        int cost = ItemUtil.asInt(def.get("cost"), 0);
         if (cost > 0 && !tokens.hasTokens(uuid, cost)) {
             plugin.sendMessage(player, Messages.SHOP_NOT_ENOUGH_TOKENS
                     .replace("cost", String.valueOf(cost),
@@ -397,7 +313,7 @@ public class ShopManager {
         }
 
         String enchName = String.valueOf(def.getOrDefault("enchant", ""));
-        int level = asInt(def.get("level"), 1);
+        int level = ItemUtil.asInt(def.get("level"), 1);
         Enchantment ench = Enchantment.getByName(enchName.toUpperCase(Locale.ROOT));
         if (ench == null) {
             // try registry-like fallback not needed; keep consistent with LoadoutManager
