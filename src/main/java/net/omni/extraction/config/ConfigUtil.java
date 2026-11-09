@@ -116,14 +116,17 @@ public class ConfigUtil {
     private int lootDropPickupCooldownMs = 250;
     private boolean lootDropPickupHotkey = true;
     private boolean lootDropPickupRightClick = true;
+    private int lootDropTrackerMaxPerChunk = 24;
+    private int lootDropTrackerMaxTracked = 256;
     private boolean lootDropBeamEnabled = true;
     private String lootDropBeamParticle = "END_ROD";
     private int lootDropBeamUpdateTicks = 10;
     private double lootDropBeamHeight = 2.5;
     private double lootDropBeamSpacing = 0.5;
     private int lootDropBeamMaxParticles = 200;
+    private double lootDropBeamViewRadius = 32.0;
     private boolean lootDropGlowEnabled = true;
-    private double lootDropGlowRadius = 24.0;
+    private int lootDropGlowUpdateTicks = 5;
     private int areaAutoSaveSeconds;
     private int areaStateCheckSeconds;
     private boolean mobContainmentEnabled;
@@ -782,6 +785,10 @@ public class ConfigUtil {
                 ConfigKeys.LOOT_DROP_PICKUP_HOTKEY, true, savedDefaults);
         this.lootDropPickupRightClick = getAndDefaultBoolean(
                 ConfigKeys.LOOT_DROP_PICKUP_RIGHT_CLICK, true, savedDefaults);
+        this.lootDropTrackerMaxPerChunk = Math.clamp(getAndDefaultInt(
+                ConfigKeys.LOOT_DROP_TRACKING_MAX_PER_CHUNK, 24, savedDefaults), 1, 128);
+        this.lootDropTrackerMaxTracked = Math.clamp(getAndDefaultInt(
+                ConfigKeys.LOOT_DROP_TRACKING_MAX_TRACKED, 256, savedDefaults), 1, 4096);
         this.lootDropBeamEnabled = getAndDefaultBoolean(
                 ConfigKeys.LOOT_DROP_BEAM_ENABLED, true, savedDefaults);
         this.lootDropBeamParticle = getAndDefaultString(
@@ -794,10 +801,12 @@ public class ConfigUtil {
                 ConfigKeys.LOOT_DROP_BEAM_SPACING, 0.5, savedDefaults), 0.1, 2.0);
         this.lootDropBeamMaxParticles = Math.clamp(getAndDefaultInt(
                 ConfigKeys.LOOT_DROP_BEAM_MAX_PARTICLES, 200, savedDefaults), 0, 1000);
+        this.lootDropBeamViewRadius = Math.clamp(getAndDefaultDouble(
+                ConfigKeys.LOOT_DROP_BEAM_VIEW_RADIUS, 32.0, savedDefaults), 8.0, 128.0);
         this.lootDropGlowEnabled = getAndDefaultBoolean(
                 ConfigKeys.LOOT_DROP_GLOW_ENABLED, true, savedDefaults);
-        this.lootDropGlowRadius = Math.clamp(getAndDefaultDouble(
-                ConfigKeys.LOOT_DROP_GLOW_RADIUS, 24.0, savedDefaults), 1.0, 64.0);
+        this.lootDropGlowUpdateTicks = Math.clamp(getAndDefaultInt(
+                ConfigKeys.LOOT_DROP_GLOW_UPDATE_TICKS, 5, savedDefaults), 1, 40);
     }
 
     private List<Map<String, Object>> getDefaultNaturalSpawnerMobs() {
@@ -1893,6 +1902,14 @@ public class ConfigUtil {
         return lootDropPickupRightClick;
     }
 
+    public int getLootDropTrackerMaxPerChunk() {
+        return lootDropTrackerMaxPerChunk;
+    }
+
+    public int getLootDropTrackerMaxTracked() {
+        return lootDropTrackerMaxTracked;
+    }
+
     public boolean isLootDropBeamEnabled() {
         return lootDropBeamEnabled;
     }
@@ -1917,12 +1934,16 @@ public class ConfigUtil {
         return lootDropBeamMaxParticles;
     }
 
+    public double getLootDropBeamViewRadius() {
+        return lootDropBeamViewRadius;
+    }
+
     public boolean isLootDropGlowEnabled() {
         return lootDropGlowEnabled;
     }
 
-    public double getLootDropGlowRadius() {
-        return lootDropGlowRadius;
+    public int getLootDropGlowUpdateTicks() {
+        return lootDropGlowUpdateTicks;
     }
 
     public boolean isNaturalSpawnerEnabled() {

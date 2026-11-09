@@ -44,14 +44,17 @@ public final class ConfigKeys {
     public static final String LOOT_DROP_PICKUP_COOLDOWN_MS = "loot-drop.pickup.cooldown-ms";
     public static final String LOOT_DROP_PICKUP_HOTKEY = "loot-drop.pickup.hotkey";
     public static final String LOOT_DROP_PICKUP_RIGHT_CLICK = "loot-drop.pickup.right-click";
+    public static final String LOOT_DROP_TRACKING_MAX_PER_CHUNK = "loot-drop.tracking.max-per-chunk";
+    public static final String LOOT_DROP_TRACKING_MAX_TRACKED = "loot-drop.tracking.max-tracked";
     public static final String LOOT_DROP_BEAM_ENABLED = "loot-drop.beam.enabled";
     public static final String LOOT_DROP_BEAM_PARTICLE = "loot-drop.beam.particle";
     public static final String LOOT_DROP_BEAM_UPDATE_TICKS = "loot-drop.beam.update-ticks";
     public static final String LOOT_DROP_BEAM_HEIGHT = "loot-drop.beam.height";
     public static final String LOOT_DROP_BEAM_SPACING = "loot-drop.beam.spacing";
     public static final String LOOT_DROP_BEAM_MAX_PARTICLES = "loot-drop.beam.max-particles-per-tick";
+    public static final String LOOT_DROP_BEAM_VIEW_RADIUS = "loot-drop.beam.view-radius";
     public static final String LOOT_DROP_GLOW_ENABLED = "loot-drop.glow.enabled";
-    public static final String LOOT_DROP_GLOW_RADIUS = "loot-drop.glow.radius";
+    public static final String LOOT_DROP_GLOW_UPDATE_TICKS = "loot-drop.glow.update-ticks";
 
     public static final String EXTRACT_BASE_TOKENS = "extraction.base-tokens";
     public static final String EXTRACT_PER_KILL = "extraction.per-kill";

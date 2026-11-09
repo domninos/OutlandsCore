@@ -503,6 +503,12 @@ loot-drop:
     cooldown-ms: 250
     hotkey: true
     right-click: true
+  tracking:
+    # Hard cap of tracked drops per chunk. Drops beyond the cap stay vanilla
+    # (no beam/glow/click pickup) so a hot spot cannot flood particles.
+    max-per-chunk: 24
+    # Hard cap of tracked drops overall.
+    max-tracked: 256
   beam:
     enabled: true
     particle: END_ROD
@@ -512,7 +518,9 @@ loot-drop:
     spacing: 0.5
     # Hard particle budget per refresh pass across all tracked drops.
     max-particles-per-tick: 200
+    # Only beam drops near players (blocks).
+    view-radius: 32
   glow:
     enabled: true
-    # Only glow while a player is within this many blocks of the drop.
-    radius: 24.0
+    # Per-player highlight refresh period (1-40 ticks).
+    update-ticks: 5

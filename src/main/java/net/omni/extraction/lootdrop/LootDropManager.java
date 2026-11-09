@@ -3,6 +3,7 @@ package net.omni.extraction.lootdrop;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.PacketGlow;
 import org.bukkit.Bukkit;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
@@ -21,6 +22,7 @@ import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -31,13 +33,20 @@ import java.util.UUID;
 
 public class LootDropManager {
 
+    private static final long SWEEP_TICKS = 40L;
+    private static final int GLOW_CHUNK_RADIUS = 1;
+    private static final int BEAM_CHUNK_RADIUS = 2;
+
     private final ExtractionPlugin plugin;
     private final NamespacedKey pendingKey;
-    private final Map<UUID, Item> drops = new LinkedHashMap<>();
-    private final Set<UUID> glowApplied = new HashSet<>();
+    private final Map<UUID, TrackedDrop> drops = new HashMap<>();
+    private final Map<Long, Set<UUID>> byChunk = new HashMap<>();
+    private final Map<UUID, Map<Integer, Item>> viewerGlow = new HashMap<>();
     private final Map<UUID, Long> lastPickup = new LinkedHashMap<>();
 
-    private BukkitTask task;
+    private BukkitTask beamTask;
+    private BukkitTask glowTask;
+    private BukkitTask sweepTask;
     private boolean enabled;
     private boolean clickPickup;
     private boolean pickupHotkey;
@@ -46,14 +55,17 @@ public class LootDropManager {
     private double pickupRangeSq;
     private double pickupRaySize;
     private long pickupCooldownMs;
+    private int trackerMaxPerChunk;
+    private int trackerMaxTracked;
     private boolean beamEnabled;
     private Particle beamParticle;
     private int beamUpdateTicks;
     private double beamHeight;
     private double beamSpacing;
     private int beamMaxParticles;
+    private double beamViewRadius;
     private boolean glowEnabled;
-    private double glowRadiusSq;
+    private int glowUpdateTicks;
     private String worldName;
 
     public LootDropManager(ExtractionPlugin plugin) {
@@ -66,14 +78,15 @@ public class LootDropManager {
     }
 
     public void stop() {
-        cancelTask();
+        cancelTasks();
+        clearGlowAll();
         clearTracked();
         lastPickup.clear();
     }
 
     public void reload() {
-        cancelTask();
-        clearGlow();
+        cancelTasks();
+        clearGlowAll();
 
         ConfigUtil config = plugin.getConfigUtil();
         this.enabled = config.isLootDropEnabled();
@@ -84,14 +97,16 @@ public class LootDropManager {
         this.pickupRangeSq = pickupRange * pickupRange;
         this.pickupRaySize = config.getLootDropPickupRaySize();
         this.pickupCooldownMs = config.getLootDropPickupCooldownMs();
+        this.trackerMaxPerChunk = config.getLootDropTrackerMaxPerChunk();
+        this.trackerMaxTracked = config.getLootDropTrackerMaxTracked();
         this.beamEnabled = config.isLootDropBeamEnabled();
         this.beamUpdateTicks = config.getLootDropBeamUpdateTicks();
         this.beamHeight = config.getLootDropBeamHeight();
         this.beamSpacing = config.getLootDropBeamSpacing();
         this.beamMaxParticles = config.getLootDropBeamMaxParticles();
+        this.beamViewRadius = config.getLootDropBeamViewRadius();
         this.glowEnabled = config.isLootDropGlowEnabled();
-        double glowRadius = config.getLootDropGlowRadius();
-        this.glowRadiusSq = glowRadius * glowRadius;
+        this.glowUpdateTicks = config.getLootDropGlowUpdateTicks();
         this.worldName = config.getWorldName();
         this.beamParticle = parseParticle(config.getLootDropBeamParticle());
 
@@ -100,8 +115,15 @@ public class LootDropManager {
             return;
         }
 
-        task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick,
+        beamTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickBeam,
                 beamUpdateTicks, beamUpdateTicks);
+
+        if (glowEnabled)
+            glowTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickGlow,
+                    glowUpdateTicks, glowUpdateTicks);
+
+        sweepTask = Bukkit.getScheduler().runTaskTimer(plugin, this::sweep,
+                SWEEP_TICKS, SWEEP_TICKS);
     }
 
     public boolean isEnabled() {
@@ -148,8 +170,7 @@ public class LootDropManager {
         if (!enabled || !isExtractionWorld(item.getWorld()))
             return false;
 
-        drops.put(item.getUniqueId(), item);
-        return true;
+        return track(item);
     }
 
     public boolean isTracked(Item item) {
@@ -163,25 +184,21 @@ public class LootDropManager {
         if (!enabled || !isExtractionWorld(item.getWorld()))
             return;
 
-        drops.putIfAbsent(item.getUniqueId(), item);
+        if (!drops.containsKey(item.getUniqueId()))
+            track(item);
     }
 
     public void untrack(Item item) {
         if (item == null)
             return;
 
-        untrack(item.getUniqueId());
-    }
+        UUID entityId = item.getUniqueId();
+        TrackedDrop tracked = drops.remove(entityId);
 
-    public void untrack(UUID entityId) {
-        drops.remove(entityId);
+        if (tracked != null)
+            removeChunkKey(tracked.chunkKey, entityId);
 
-        if (glowApplied.remove(entityId)) {
-            var entity = Bukkit.getEntity(entityId);
-
-            if (entity != null)
-                entity.setGlowing(false);
-        }
+        clearGlowForItem(item);
     }
 
     public Item findTarget(Player player) {
@@ -202,36 +219,56 @@ public class LootDropManager {
 
         Item best = null;
         double bestDistanceSq = Double.MAX_VALUE;
+        int centerX = eye.getBlockX() >> 4;
+        int centerZ = eye.getBlockZ() >> 4;
 
-        for (Item item : drops.values()) {
-            if (!item.isValid() || item.isDead() || !item.getWorld().equals(player.getWorld()))
-                continue;
+        for (int dx = -GLOW_CHUNK_RADIUS; dx <= GLOW_CHUNK_RADIUS; dx++) {
+            for (int dz = -GLOW_CHUNK_RADIUS; dz <= GLOW_CHUNK_RADIUS; dz++) {
+                Set<UUID> ids = byChunk.get(chunkKey(centerX + dx, centerZ + dz));
 
-            Vector center = item.getLocation()
-                    .add(0, item.getHeight() * 0.5, 0)
-                    .toVector();
-            Vector offset = center.subtract(eyeVector);
-            double distanceSq = offset.lengthSquared();
+                if (ids == null)
+                    continue;
 
-            if (distanceSq > pickupRangeSq || distanceSq >= bestDistanceSq)
-                continue;
+                for (UUID entityId : ids) {
+                    TrackedDrop tracked = drops.get(entityId);
 
-            double along = offset.dot(direction);
+                    if (tracked == null)
+                        continue;
 
-            if (along <= 0)
-                continue;
+                    Item item = tracked.item;
 
-            double perpendicularSq = distanceSq - (along * along);
-            double allowed = pickupRaySize + Math.max(item.getWidth(), item.getHeight()) * 0.5;
+                    if (!item.isValid() || item.isDead()
+                            || !item.getWorld().equals(player.getWorld()))
+                        continue;
 
-            if (perpendicularSq > allowed * allowed)
-                continue;
+                    Vector center = item.getLocation()
+                            .add(0, item.getHeight() * 0.5, 0)
+                            .toVector();
+                    Vector offset = center.subtract(eyeVector);
+                    double distanceSq = offset.lengthSquared();
 
-            if (blockDistanceSq < distanceSq - 0.25)
-                continue;
+                    if (distanceSq > pickupRangeSq || distanceSq >= bestDistanceSq)
+                        continue;
 
-            best = item;
-            bestDistanceSq = distanceSq;
+                    double along = offset.dot(direction);
+
+                    if (along <= 0)
+                        continue;
+
+                    double perpendicularSq = distanceSq - (along * along);
+                    double allowed = pickupRaySize
+                            + Math.max(item.getWidth(), item.getHeight()) * 0.5;
+
+                    if (perpendicularSq > allowed * allowed)
+                        continue;
+
+                    if (blockDistanceSq < distanceSq - 0.25)
+                        continue;
+
+                    best = item;
+                    bestDistanceSq = distanceSq;
+                }
+            }
         }
 
         return best;
@@ -253,6 +290,7 @@ public class LootDropManager {
     }
 
     public void forgetPlayer(UUID playerId) {
+        viewerGlow.remove(playerId);
         lastPickup.remove(playerId);
     }
 
@@ -269,9 +307,8 @@ public class LootDropManager {
         Map<Integer, ItemStack> leftover = player.getInventory().addItem(toAdd);
 
         if (leftover.isEmpty()) {
-            UUID entityId = item.getUniqueId();
             item.remove();
-            untrack(entityId);
+            untrack(item);
             playPickupSound(player);
             return true;
         }
@@ -293,66 +330,220 @@ public class LootDropManager {
         return true;
     }
 
-    private void tick() {
-        if (!enabled)
+    private boolean track(Item item) {
+        if (drops.size() >= trackerMaxTracked)
+            return false;
+
+        Location location = item.getLocation();
+        long key = chunkKey(location);
+        Set<UUID> bucket = byChunk.computeIfAbsent(key, k -> new HashSet<>());
+
+        if (bucket.size() >= trackerMaxPerChunk)
+            return false;
+
+        UUID entityId = item.getUniqueId();
+        drops.put(entityId, new TrackedDrop(item, key));
+        bucket.add(entityId);
+        return true;
+    }
+
+    private void removeChunkKey(long key, UUID entityId) {
+        Set<UUID> bucket = byChunk.get(key);
+
+        if (bucket == null)
             return;
 
-        List<Player> players = new ArrayList<>();
+        bucket.remove(entityId);
 
-        for (Player player : Bukkit.getOnlinePlayers())
-            if (isExtractionWorld(player.getWorld()))
-                players.add(player);
+        if (bucket.isEmpty())
+            byChunk.remove(key);
+    }
+
+    private void tickBeam() {
+        if (!enabled || !beamEnabled || beamParticle == null)
+            return;
+
+        Set<Long> activeChunks = activeChunkKeys(BEAM_CHUNK_RADIUS);
+
+        if (activeChunks.isEmpty())
+            return;
 
         int particleBudget = beamMaxParticles;
-        Iterator<Map.Entry<UUID, Item>> iterator = drops.entrySet().iterator();
 
-        while (iterator.hasNext()) {
-            Map.Entry<UUID, Item> entry = iterator.next();
-            Item item = entry.getValue();
+        for (Long key : activeChunks) {
+            Set<UUID> ids = byChunk.get(key);
 
-            if (item == null || !item.isValid() || item.isDead()
-                    || !isExtractionWorld(item.getWorld())) {
-                if (glowApplied.remove(entry.getKey()) && item != null)
-                    item.setGlowing(false);
+            if (ids == null)
+                continue;
 
-                iterator.remove();
+            for (UUID entityId : new ArrayList<>(ids)) {
+                if (particleBudget <= 0)
+                    return;
+
+                TrackedDrop tracked = drops.get(entityId);
+
+                if (tracked == null)
+                    continue;
+
+                Item item = tracked.item;
+
+                if (!item.isValid() || item.isDead()
+                        || !isExtractionWorld(item.getWorld()))
+                    continue;
+
+                particleBudget -= spawnBeam(item, particleBudget);
+            }
+        }
+    }
+
+    private void tickGlow() {
+        if (!enabled || !glowEnabled || !clickPickup)
+            return;
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!isExtractionWorld(player.getWorld())) {
+                clearViewerGlow(player);
                 continue;
             }
 
-            if (glowEnabled)
-                updateGlow(item, players);
-            else
-                clearGlow(item);
+            Item target = findTarget(player);
 
-            if (beamEnabled && beamParticle != null && particleBudget > 0)
-                particleBudget -= spawnBeam(item, particleBudget);
+            if (target == null) {
+                clearViewerGlow(player);
+                continue;
+            }
+
+            setViewerGlow(player, target);
         }
     }
 
-    private void updateGlow(Item item, List<Player> players) {
-        Location itemLocation = item.getLocation();
-        boolean near = false;
+    private void sweep() {
+        if (!enabled)
+            return;
 
-        for (Player player : players) {
-            if (player.getLocation().distanceSquared(itemLocation) <= glowRadiusSq) {
-                near = true;
-                break;
+        List<TrackedDrop> stale = null;
+
+        for (TrackedDrop tracked : drops.values()) {
+            Item item = tracked.item;
+
+            if (!item.isValid() || item.isDead() || !isExtractionWorld(item.getWorld())) {
+                if (stale == null)
+                    stale = new ArrayList<>();
+
+                stale.add(tracked);
+            } else
+                updateChunkKey(tracked, item.getLocation());
+        }
+
+        if (stale != null)
+            for (TrackedDrop tracked : stale)
+                untrack(tracked.item);
+    }
+
+    private void updateChunkKey(TrackedDrop tracked, Location location) {
+        long key = chunkKey(location);
+
+        if (key == tracked.chunkKey)
+            return;
+
+        UUID entityId = tracked.item.getUniqueId();
+        removeChunkKey(tracked.chunkKey, entityId);
+        tracked.chunkKey = key;
+        byChunk.computeIfAbsent(key, k -> new HashSet<>()).add(entityId);
+    }
+
+    private Set<Long> activeChunkKeys(int chunkRadius) {
+        Set<Long> active = new HashSet<>();
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!isExtractionWorld(player.getWorld()))
+                continue;
+
+            Location location = player.getLocation();
+            int centerX = location.getBlockX() >> 4;
+            int centerZ = location.getBlockZ() >> 4;
+
+            for (int dx = -chunkRadius; dx <= chunkRadius; dx++) {
+                for (int dz = -chunkRadius; dz <= chunkRadius; dz++)
+                    active.add(chunkKey(centerX + dx, centerZ + dz));
             }
         }
 
-        if (near) {
-            if (!item.isGlowing()) {
-                item.setGlowing(true);
-                glowApplied.add(item.getUniqueId());
-            }
-        } else {
-            clearGlow(item);
+        return active;
+    }
+
+    private void setViewerGlow(Player player, Item item) {
+        UUID viewerId = player.getUniqueId();
+        int entityId = item.getEntityId();
+        Map<Integer, Item> current = viewerGlow.computeIfAbsent(viewerId, k -> new HashMap<>());
+
+        if (current.containsKey(entityId)) {
+            if (current.size() > 1)
+                clearViewerGlowExcept(player, entityId);
+
+            return;
+        }
+
+        clearViewerGlow(player);
+        current.put(entityId, item);
+        PacketGlow.setGlow(player, item, true);
+    }
+
+    private void clearViewerGlow(Player player) {
+        Map<Integer, Item> current = viewerGlow.remove(player.getUniqueId());
+
+        if (current == null)
+            return;
+
+        for (Item item : new ArrayList<>(current.values()))
+            PacketGlow.setGlow(player, item, false);
+    }
+
+    private void clearViewerGlowExcept(Player player, int entityId) {
+        Map<Integer, Item> current = viewerGlow.get(player.getUniqueId());
+
+        if (current == null)
+            return;
+
+        List<Integer> stale = new ArrayList<>(current.keySet());
+        stale.remove((Integer) entityId);
+
+        for (Integer staleId : stale) {
+            Item item = current.remove(staleId);
+
+            if (item != null)
+                PacketGlow.setGlow(player, item, false);
         }
     }
 
-    private void clearGlow(Item item) {
-        if (glowApplied.remove(item.getUniqueId()))
-            item.setGlowing(false);
+    private void clearGlowForItem(Item item) {
+        int entityId = item.getEntityId();
+
+        for (Map.Entry<UUID, Map<Integer, Item>> entry : viewerGlow.entrySet()) {
+            Map<Integer, Item> current = entry.getValue();
+            Item glowing = current.remove(entityId);
+
+            if (glowing == null)
+                continue;
+
+            Player viewer = Bukkit.getPlayer(entry.getKey());
+
+            if (viewer != null)
+                PacketGlow.setGlow(viewer, item, false);
+
+            if (current.isEmpty())
+                viewerGlow.remove(entry.getKey());
+        }
+    }
+
+    private void clearGlowAll() {
+        for (Player player : Bukkit.getOnlinePlayers())
+            clearViewerGlow(player);
+    }
+
+    private void clearTracked() {
+        for (TrackedDrop tracked : new ArrayList<>(drops.values()))
+            untrack(tracked.item);
     }
 
     private int spawnBeam(Item item, int budget) {
@@ -409,33 +600,38 @@ public class LootDropManager {
                 SoundCategory.PLAYERS, 0.5f, 1.5f);
     }
 
-    private void clearGlow() {
-        for (UUID entityId : new ArrayList<>(glowApplied)) {
-            var entity = Bukkit.getEntity(entityId);
-
-            if (entity != null)
-                entity.setGlowing(false);
-        }
-
-        glowApplied.clear();
+    private long chunkKey(Location location) {
+        return chunkKey(location.getBlockX() >> 4, location.getBlockZ() >> 4);
     }
 
-    private void clearTracked() {
-        for (UUID entityId : new ArrayList<>(glowApplied)) {
-            var entity = Bukkit.getEntity(entityId);
-
-            if (entity != null)
-                entity.setGlowing(false);
-        }
-
-        glowApplied.clear();
-        drops.clear();
+    private long chunkKey(int chunkX, int chunkZ) {
+        return ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
     }
 
-    private void cancelTask() {
-        if (task != null) {
-            task.cancel();
-            task = null;
+    private void cancelTasks() {
+        if (beamTask != null) {
+            beamTask.cancel();
+            beamTask = null;
+        }
+
+        if (glowTask != null) {
+            glowTask.cancel();
+            glowTask = null;
+        }
+
+        if (sweepTask != null) {
+            sweepTask.cancel();
+            sweepTask = null;
+        }
+    }
+
+    private static final class TrackedDrop {
+        private final Item item;
+        private long chunkKey;
+
+        private TrackedDrop(Item item, long chunkKey) {
+            this.item = item;
+            this.chunkKey = chunkKey;
         }
     }
 }

@@ -1039,28 +1039,35 @@ via `Math.sqrt` of the squared value only when needed.
   in the extraction world gets a PDC marker (`LootDropManager.pendingKey`, `loot_drop_pending`) at
   MONITOR priority (so area/natural/world-event/normal listeners finish rewriting drops first);
   `ItemSpawnEvent` then strips the marker and `LootDropManager.handleSpawn` registers the item UUID
-  (`drops`, keyed by entity UUID - later merge/vanilla pickup can't re-tag). Registry is memory-only;
-  `EntityPickupItemEvent` (MONITOR), `EntityRemoveEvent` (MONITOR), `ItemDespawnEvent` (MONITOR) untrack;
-  `ItemMergeEvent` registers both sides (EntityRemove cleans the removed half). While enabled, a repeating
-  beam task (`beam.update-ticks`) walks the droplist (`LinkedHashMap`): marks invalid/off-world items
-  untracked, spawns a vertical particle column from the item up to `beam.height` every `beam.spacing`
-  blocks (config `beam.particle`, default `END_ROD`; an unknown name disables beams with a warning until
-  reload, a particle throwing `IllegalArgumentException` does the same), and applies **vanilla position
-  glow** anywhere a player sits within `glow.radius` (only tracked when the manager set it - `glowApplied`
-  is cleared without touching pre-existing glow on reload/stop). `max-particles-per-tick` is the global
-  particle budget for one pass. Pickup has `pickup.mode`:
-  `vanilla` = untouched; `click` (default) cancels `PlayerAttemptPickupItemEvent` for tracked items and
-  collects via **F** (`PlayerSwapHandItemsEvent`, `pickup.hotkey`, single press) or **hold right-click**
-  (`PlayerInteractEvent` RIGHT_CLICK_AIR/BLOCK + `pickup.right-click`, `EquipmentSlot.HAND`, skipped for
-  interactive blocks - there is no Bukkit API for a real right-click hold, so the repeated use-item
-  events approximate it). `LootDropManager.findTarget` ray-picks the target: one
-  `rayTraceBlocks` per interaction, then tangent/projection tolerance `ray-size + item bbox halfwidth`
-  against the tracked droplist (min distance wins, no hits before the item). `tryPickup` throttles per
-  player (`cooldown-ms`), `addItem`s the stack - full inventory keeps the item + `loot-drop.inventory-full`,
-  a partial fit leaves the remainder on the entity (`Item#setItemStack`), full removal plays
-  `ENTITY_ITEM_PICKUP`. Drone pilots are excluded; cooldowns cleared on quit. Reload (`/extraction reload`
-  -> `LootDropManager.reload()`) keeps tracked items, restarts the task (new `beam.update-ticks`) and
-  clears glow; disable purges the registry.
+  (`drops`) into the **chunk-bucketed registry** (`drops` + `byChunk` key = chunk-coord long) - later
+  merge/vanilla pickup can't re-tag. Registry is memory-only; `EntityPickupItemEvent` (MONITOR),
+  `EntityRemoveEvent` (MONITOR), `ItemDespawnEvent` (MONITOR) untrack; `ItemMergeEvent` registers both
+  sides (EntityRemove cleans the removed half). **Tracking caps**: `tracking.max-per-chunk` (24) refuses
+  to track drops into an already-full chunk bucket (they stay vanilla), and `tracking.max-tracked` (256)
+  is the global cap - both make a single hot spot physically unable to flood the task/particles.
+  **Beams** are `beam.update-ticks`(10) driven but *chunk-filtered*: a 5x5-chunk radius around every
+  extraction-world player is computed first and only buckets inside it are walked (`beam.view-radius`
+  comment says why). Config `beam.particle` (`END_ROD`) - unknown name disables beams with a warning
+  until reload; a particle throwing `IllegalArgumentException` does the same. `beam.max-particles-per-tick`
+  is the global particle budget per pass.
+  **Per-player highlight** (`glow.enabled`, `glow.update-ticks` = 5): vanilla glow is gone in favor of
+  per-viewer `util/PacketGlow` - the manager's repeating task calls `findTarget(player)` for each online
+  extraction-world player and flips PacketGlow on/off only on state change (viewer state =
+  `viewerGlow` map viewer -> entityId -> Item). Glow follows the exact ray-trace target - no `glow.radius`
+  anymore. Extra cleanup on item untrack/despawn/reload/stop/player quit (PacketGlow's own map already clears
+  on quit via AreaListener).
+  Pickup has `pickup.mode`: `vanilla` = untouched; `click` (default) cancels `PlayerAttemptPickupItemEvent`
+  for tracked items and collects via **F** (`PlayerSwapHandItemsEvent`, `pickup.hotkey`, single press) or
+  **hold right-click** (`PlayerInteractEvent` RIGHT_CLICK_AIR/BLOCK + `pickup.right-click`,
+  `EquipmentSlot.HAND`, skipped for interactive blocks - there is no Bukkit API for a real right-click
+  hold, so the repeated use-item events approximate it). `LootDropManager.findTarget` walks the 3x3 chunk
+  buckets around the player and does one `rayTraceBlocks` per interaction, then tangent/projection
+  tolerance `ray-size + item bbox halfwidth` (min distance wins, no hits before the item).
+  `tryPickup` throttles per player (`cooldown-ms`), `addItem`s the stack - full inventory keeps the item +
+  `loot-drop.inventory-full`, a partial fit leaves the remainder on the entity (`Item#setItemStack`),
+  full removal plays `ENTITY_ITEM_PICKUP`. Drone pilots are excluded; cooldowns cleared on quit.
+  Reload (`/extraction reload` -> `LootDropManager.reload()`) keeps tracked items, restarts tasks
+  (new `beam.update-ticks`/`glow.update-ticks`) and clears glow; disable purges the registry.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

@@ -143,6 +143,7 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      - charm/artifact/pet placeholder should have different placeholder panes
      - charm/artifact should open their relic gui with right click
+     - spawnMarkerManager#reconcile, fix creating new Sets every time.
      -
      - drone custom entity model for texture
      - resource pack: custom loot beam/model enhancement
