@@ -1,8 +1,8 @@
 package net.omni.extraction.chests.sub;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.chests.StandaloneChestManager;
+import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.command.CommandSender;
 

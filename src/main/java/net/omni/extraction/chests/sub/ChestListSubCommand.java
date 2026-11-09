@@ -1,14 +1,13 @@
 package net.omni.extraction.chests.sub;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.chests.StandaloneChest;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
-import net.omni.extraction.chests.StandaloneChest;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 
 import java.util.Collection;
-import java.util.List;
 
 public class ChestListSubCommand implements SubCommand {
 
@@ -35,14 +34,14 @@ public class ChestListSubCommand implements SubCommand {
         plugin.sendMessage(sender, Messages.CHEST_LIST_HEADER.toString());
 
         for (StandaloneChest chest : chests) {
-            Location loc = chest.getLocation();
+            Location loc = chest.location();
             String world = loc.getWorld() == null ? "?" : loc.getWorld().getName();
 
             plugin.sendMessage(sender, Messages.CHEST_LIST_ENTRY.replace(
-                    "id", String.valueOf(chest.getId()),
+                    "id", String.valueOf(chest.id()),
                     "location", world + " " + loc.getBlockX() + " " + loc.getBlockY() + " " + loc.getBlockZ(),
-                    "table", chest.getLootTable() == null ? "none" : chest.getLootTable(),
-                    "key", chest.getKeyId() == null ? "-" : chest.getKeyId()));
+                    "table", chest.lootTable() == null ? "none" : chest.lootTable(),
+                    "key", chest.keyId() == null ? "-" : chest.keyId()));
         }
 
         return true;

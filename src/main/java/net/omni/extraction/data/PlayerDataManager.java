@@ -24,9 +24,9 @@ public class PlayerDataManager {
     private final Map<UUID, PlayerData> cache;
     private final Set<UUID> pending = new LinkedHashSet<>();
     private final Object queueLock = new Object();
+    private final int queueSize;
     private volatile boolean disabled;
     private int pendingChanges;
-    private final int queueSize;
 
     public PlayerDataManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -312,7 +312,7 @@ public class PlayerDataManager {
         List<Map.Entry<UUID, PlayerData>> entries = new ArrayList<>(batch.entrySet());
 
         if (entries.size() == 1) {
-            Map.Entry<UUID, PlayerData> entry = entries.get(0);
+            Map.Entry<UUID, PlayerData> entry = entries.getFirst();
             writePlayerToDb(entry.getKey(), entry.getValue());
             return;
         }
@@ -411,12 +411,12 @@ public class PlayerDataManager {
      * and force-loads unloaded instances so later cache reads cannot see
      * stale-empty data. In-flight edits win over the database snapshot.
      */
-    public PlayerData loadPlayerBlocking(UUID uuid) {
+    public void loadPlayerBlocking(UUID uuid) {
         PlayerData data = cache.get(uuid);
 
         if (data != null) {
             if (data.isLoaded())
-                return data;
+                return;
         } else {
             PlayerData fresh = newData(uuid);
             PlayerData previous = cache.putIfAbsent(uuid, fresh);
@@ -426,12 +426,11 @@ public class PlayerDataManager {
         if (!loadRowInto(data)) {
             plugin.getLogger().warning("Player data for " + data.getUuid()
                     + " could not be loaded and stays unloaded (it will not be persisted until a load succeeds).");
-            return data;
+            return;
         }
 
         data.setLoaded(true);
         data.clearDirty();
-        return data;
     }
 
     /**

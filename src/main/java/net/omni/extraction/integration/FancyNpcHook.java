@@ -22,7 +22,9 @@ import java.util.UUID;
  */
 public class FancyNpcHook {
 
-    /** Attribute/value names probed for a lying corpse pose (best effort). */
+    /**
+     * Attribute/value names probed for a lying corpse pose (best effort).
+     */
     private static final List<String> LYING_ATTRIBUTE_NAMES = List.of("pose", "lying", "sleeping", "laying");
 
     private final ExtractionPlugin plugin;
@@ -81,7 +83,9 @@ public class FancyNpcHook {
         }
     }
 
-    /** Mirrors pilot gear onto the NPC (armor indices: 0 boots … 3 helmet). */
+    /**
+     * Mirrors pilot gear onto the NPC (armor indices: 0 boots … 3 helmet).
+     */
     private void applyEquipment(NpcData data, ItemStack[] armor, ItemStack mainhand, ItemStack offhand) {
         try {
             if (mainhand != null && !mainhand.getType().isAir())
@@ -137,7 +141,9 @@ public class FancyNpcHook {
         }
     }
 
-    /** Best-effort lying pose; silently skipped when the attribute doesn't exist. */
+    /**
+     * Best-effort lying pose; silently skipped when the attribute doesn't exist.
+     */
     private void applyLyingPose(NpcData data) {
         try {
             for (String attributeName : LYING_ATTRIBUTE_NAMES) {

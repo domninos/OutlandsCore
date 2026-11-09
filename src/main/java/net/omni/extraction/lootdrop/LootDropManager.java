@@ -4,14 +4,7 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.PacketGlow;
-import org.bukkit.Bukkit;
-import org.bukkit.FluidCollisionMode;
-import org.bukkit.Location;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -21,15 +14,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class LootDropManager {
 
@@ -59,13 +44,10 @@ public class LootDropManager {
     private int trackerMaxTracked;
     private boolean beamEnabled;
     private Particle beamParticle;
-    private int beamUpdateTicks;
     private double beamHeight;
     private double beamSpacing;
     private int beamMaxParticles;
-    private double beamViewRadius;
     private boolean glowEnabled;
-    private int glowUpdateTicks;
     private String worldName;
 
     public LootDropManager(ExtractionPlugin plugin) {
@@ -84,6 +66,88 @@ public class LootDropManager {
         lastPickup.clear();
     }
 
+    private void cancelTasks() {
+        if (beamTask != null) {
+            beamTask.cancel();
+            beamTask = null;
+        }
+
+        if (glowTask != null) {
+            glowTask.cancel();
+            glowTask = null;
+        }
+
+        if (sweepTask != null) {
+            sweepTask.cancel();
+            sweepTask = null;
+        }
+    }
+
+    private void clearGlowAll() {
+        for (Player player : Bukkit.getOnlinePlayers())
+            clearViewerGlow(player);
+    }
+
+    private void clearTracked() {
+        for (TrackedDrop tracked : new ArrayList<>(drops.values()))
+            untrack(tracked.item);
+    }
+
+    private void clearViewerGlow(Player player) {
+        Map<Integer, Item> current = viewerGlow.remove(player.getUniqueId());
+
+        if (current == null)
+            return;
+
+        for (Item item : new ArrayList<>(current.values()))
+            PacketGlow.setGlow(player, item, false);
+    }
+
+    public void untrack(Item item) {
+        if (item == null)
+            return;
+
+        UUID entityId = item.getUniqueId();
+        TrackedDrop tracked = drops.remove(entityId);
+
+        if (tracked != null)
+            removeChunkKey(tracked.chunkKey, entityId);
+
+        clearGlowForItem(item);
+    }
+
+    private void removeChunkKey(long key, UUID entityId) {
+        Set<UUID> bucket = byChunk.get(key);
+
+        if (bucket == null)
+            return;
+
+        bucket.remove(entityId);
+
+        if (bucket.isEmpty())
+            byChunk.remove(key);
+    }
+
+    private void clearGlowForItem(Item item) {
+        int entityId = item.getEntityId();
+
+        for (Map.Entry<UUID, Map<Integer, Item>> entry : viewerGlow.entrySet()) {
+            Map<Integer, Item> current = entry.getValue();
+            Item glowing = current.remove(entityId);
+
+            if (glowing == null)
+                continue;
+
+            Player viewer = Bukkit.getPlayer(entry.getKey());
+
+            if (viewer != null)
+                PacketGlow.setGlow(viewer, item, false);
+
+            if (current.isEmpty())
+                viewerGlow.remove(entry.getKey());
+        }
+    }
+
     public void reload() {
         cancelTasks();
         clearGlowAll();
@@ -100,13 +164,13 @@ public class LootDropManager {
         this.trackerMaxPerChunk = config.getLootDropTrackerMaxPerChunk();
         this.trackerMaxTracked = config.getLootDropTrackerMaxTracked();
         this.beamEnabled = config.isLootDropBeamEnabled();
-        this.beamUpdateTicks = config.getLootDropBeamUpdateTicks();
+        int beamUpdateTicks = config.getLootDropBeamUpdateTicks();
         this.beamHeight = config.getLootDropBeamHeight();
         this.beamSpacing = config.getLootDropBeamSpacing();
         this.beamMaxParticles = config.getLootDropBeamMaxParticles();
-        this.beamViewRadius = config.getLootDropBeamViewRadius();
+        double beamViewRadius = config.getLootDropBeamViewRadius();
         this.glowEnabled = config.isLootDropGlowEnabled();
-        this.glowUpdateTicks = config.getLootDropGlowUpdateTicks();
+        int glowUpdateTicks = config.getLootDropGlowUpdateTicks();
         this.worldName = config.getWorldName();
         this.beamParticle = parseParticle(config.getLootDropBeamParticle());
 
@@ -155,26 +219,50 @@ public class LootDropManager {
         stack.setItemMeta(meta);
     }
 
-    public boolean handleSpawn(Item item) {
+    public void handleSpawn(Item item) {
         ItemStack stack = item.getItemStack();
         ItemMeta meta = stack.getItemMeta();
 
         if (meta == null
                 || !meta.getPersistentDataContainer().has(pendingKey, PersistentDataType.BYTE))
-            return false;
+            return;
 
         meta.getPersistentDataContainer().remove(pendingKey);
         stack.setItemMeta(meta);
         item.setItemStack(stack);
 
         if (!enabled || !isExtractionWorld(item.getWorld()))
-            return false;
+            return;
 
-        return track(item);
+        track(item);
     }
 
-    public boolean isTracked(Item item) {
-        return item != null && drops.containsKey(item.getUniqueId());
+    private boolean isExtractionWorld(World world) {
+        return world != null && world.getName().equalsIgnoreCase(worldName);
+    }
+
+    private void track(Item item) {
+        if (drops.size() >= trackerMaxTracked)
+            return;
+
+        Location location = item.getLocation();
+        long key = chunkKey(location);
+        Set<UUID> bucket = byChunk.computeIfAbsent(key, k -> new HashSet<>());
+
+        if (bucket.size() >= trackerMaxPerChunk)
+            return;
+
+        UUID entityId = item.getUniqueId();
+        drops.put(entityId, new TrackedDrop(item, key));
+        bucket.add(entityId);
+    }
+
+    private long chunkKey(Location location) {
+        return chunkKey(location.getBlockX() >> 4, location.getBlockZ() >> 4);
+    }
+
+    private long chunkKey(int chunkX, int chunkZ) {
+        return ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
     }
 
     public void trackMerge(Item item) {
@@ -186,19 +274,6 @@ public class LootDropManager {
 
         if (!drops.containsKey(item.getUniqueId()))
             track(item);
-    }
-
-    public void untrack(Item item) {
-        if (item == null)
-            return;
-
-        UUID entityId = item.getUniqueId();
-        TrackedDrop tracked = drops.remove(entityId);
-
-        if (tracked != null)
-            removeChunkKey(tracked.chunkKey, entityId);
-
-        clearGlowForItem(item);
     }
 
     public Item findTarget(Player player) {
@@ -289,9 +364,8 @@ public class LootDropManager {
         return collect(player, item);
     }
 
-    public void forgetPlayer(UUID playerId) {
-        viewerGlow.remove(playerId);
-        lastPickup.remove(playerId);
+    public boolean isTracked(Item item) {
+        return item != null && drops.containsKey(item.getUniqueId());
     }
 
     private boolean collect(Player player, Item item) {
@@ -330,33 +404,14 @@ public class LootDropManager {
         return true;
     }
 
-    private boolean track(Item item) {
-        if (drops.size() >= trackerMaxTracked)
-            return false;
-
-        Location location = item.getLocation();
-        long key = chunkKey(location);
-        Set<UUID> bucket = byChunk.computeIfAbsent(key, k -> new HashSet<>());
-
-        if (bucket.size() >= trackerMaxPerChunk)
-            return false;
-
-        UUID entityId = item.getUniqueId();
-        drops.put(entityId, new TrackedDrop(item, key));
-        bucket.add(entityId);
-        return true;
+    private void playPickupSound(Player player) {
+        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP,
+                SoundCategory.PLAYERS, 0.5f, 1.5f);
     }
 
-    private void removeChunkKey(long key, UUID entityId) {
-        Set<UUID> bucket = byChunk.get(key);
-
-        if (bucket == null)
-            return;
-
-        bucket.remove(entityId);
-
-        if (bucket.isEmpty())
-            byChunk.remove(key);
+    public void forgetPlayer(UUID playerId) {
+        viewerGlow.remove(playerId);
+        lastPickup.remove(playerId);
     }
 
     private void tickBeam() {
@@ -489,16 +544,6 @@ public class LootDropManager {
         PacketGlow.setGlow(player, item, true);
     }
 
-    private void clearViewerGlow(Player player) {
-        Map<Integer, Item> current = viewerGlow.remove(player.getUniqueId());
-
-        if (current == null)
-            return;
-
-        for (Item item : new ArrayList<>(current.values()))
-            PacketGlow.setGlow(player, item, false);
-    }
-
     private void clearViewerGlowExcept(Player player, int entityId) {
         Map<Integer, Item> current = viewerGlow.get(player.getUniqueId());
 
@@ -514,36 +559,6 @@ public class LootDropManager {
             if (item != null)
                 PacketGlow.setGlow(player, item, false);
         }
-    }
-
-    private void clearGlowForItem(Item item) {
-        int entityId = item.getEntityId();
-
-        for (Map.Entry<UUID, Map<Integer, Item>> entry : viewerGlow.entrySet()) {
-            Map<Integer, Item> current = entry.getValue();
-            Item glowing = current.remove(entityId);
-
-            if (glowing == null)
-                continue;
-
-            Player viewer = Bukkit.getPlayer(entry.getKey());
-
-            if (viewer != null)
-                PacketGlow.setGlow(viewer, item, false);
-
-            if (current.isEmpty())
-                viewerGlow.remove(entry.getKey());
-        }
-    }
-
-    private void clearGlowAll() {
-        for (Player player : Bukkit.getOnlinePlayers())
-            clearViewerGlow(player);
-    }
-
-    private void clearTracked() {
-        for (TrackedDrop tracked : new ArrayList<>(drops.values()))
-            untrack(tracked.item);
     }
 
     private int spawnBeam(Item item, int budget) {
@@ -588,40 +603,6 @@ public class LootDropManager {
             plugin.getLogger().warning("Unknown loot-drop beam particle '" + name
                     + "' - beams disabled until the next reload.");
             return null;
-        }
-    }
-
-    private boolean isExtractionWorld(World world) {
-        return world != null && world.getName().equalsIgnoreCase(worldName);
-    }
-
-    private void playPickupSound(Player player) {
-        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP,
-                SoundCategory.PLAYERS, 0.5f, 1.5f);
-    }
-
-    private long chunkKey(Location location) {
-        return chunkKey(location.getBlockX() >> 4, location.getBlockZ() >> 4);
-    }
-
-    private long chunkKey(int chunkX, int chunkZ) {
-        return ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
-    }
-
-    private void cancelTasks() {
-        if (beamTask != null) {
-            beamTask.cancel();
-            beamTask = null;
-        }
-
-        if (glowTask != null) {
-            glowTask.cancel();
-            glowTask = null;
-        }
-
-        if (sweepTask != null) {
-            sweepTask.cancel();
-            sweepTask = null;
         }
     }
 

@@ -1,7 +1,6 @@
 package net.omni.extraction.commands.area.sub;
 
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.MessageUtil;
@@ -20,12 +19,6 @@ public class HelpSubCommand implements SubCommand {
     private static final String AREA_CATEGORY_UTILITY = "utility";
     private static final List<String> AREA_HELP_CATEGORIES = List.of(
             AREA_CATEGORY_SETUP, AREA_CATEGORY_MOBS, AREA_CATEGORY_LOOT, AREA_CATEGORY_UTILITY);
-
-    private final ExtractionPlugin plugin;
-
-    public HelpSubCommand(ExtractionPlugin plugin) {
-        this.plugin = plugin;
-    }
 
     @Override
     public String name() {

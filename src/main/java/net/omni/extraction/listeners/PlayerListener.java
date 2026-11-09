@@ -7,14 +7,16 @@ import net.omni.extraction.loadout.LoadoutManager;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.pets.PetDefinition;
 import net.omni.extraction.relics.RelicDefinition;
+import net.omni.extraction.util.ItemUtil;
 import net.omni.extraction.util.LootItemUtil;
 import net.omni.extraction.util.Permissions;
-import net.omni.extraction.util.ItemUtil;
 import net.omni.extraction.util.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -68,7 +70,6 @@ public class PlayerListener implements Listener {
         runManager.handleDeath(uuid);
         runManager.restoreDeathGear(player);
 
-        Location finalLocation = returnLocation;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!player.isValid() || !player.isOnline())
                 return;
@@ -76,12 +77,17 @@ public class PlayerListener implements Listener {
             player.setInvulnerable(true);
             player.setFireTicks(0);
             player.setFallDistance(0);
-            player.setHealth(player.getMaxHealth());
+
+            AttributeInstance attributeInstance = player.getAttribute(Attribute.MAX_HEALTH);
+
+            if (attributeInstance != null)
+                player.setHealth(attributeInstance.getBaseValue());
+
             player.setFoodLevel(20);
             player.setSaturation(5.0f);
 
-            if (finalLocation != null && finalLocation.getWorld() != null)
-                player.teleport(finalLocation);
+            if (returnLocation != null && returnLocation.getWorld() != null)
+                player.teleport(returnLocation);
 
             player.setInvulnerable(false);
 
@@ -385,8 +391,10 @@ public class PlayerListener implements Listener {
 
     private String buildPetBoostNote(PlayerData data) {
         PetDefinition pet = plugin.getPetManager().getActive(data);
+
         if (pet == null || pet.boostPercent() <= 0)
             return "";
+
         return Messages.PETS_BOOST_NOTE.replace(
                 "pet", pet.name(), "boost", String.valueOf(pet.boostPercent()));
     }

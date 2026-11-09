@@ -140,10 +140,30 @@ public final class ExtractionPlugin extends JavaPlugin {
     /*
 
     TODO:
+     - WallCommand + SubCommand
+     - PartyCommand + SubCommand
+       - party join,kick should just say that the target player does not have a party instead of force loading db.
+       - rework party database architecture. cache all players who joined that has a party. if player is in a party, load the entire party so if other party members joins again, no need to re-load the party off db.
+       - party/Invites should use DatabaseManager's supply (if async or sync)
+     - For all tab completes, make sure to just return null if that argument is for online players. null = returns list of all online players.
+     - also check all pattern matching, patterns (regex) should be a constant variable instead of inline initialization
+     - LootResolver should use ItemUtil (import all necessary methods from LootItemUtil to ItemUtil)
+     - LootDropManager double beamViewRadius = config.getLootDropBeamViewRadius(); not used
+     - have CorseManager's Npc have the arm and legs kinda broken (random torso turn)
+     - AdminModeManager should have PlayerQuitEvent to PlayerListener
+     - move MobTemplateManager's parseBoolean on StringUtils
+     - have all Enchantment.getByKey and Particle.valueOf/Sound.valueOf should have a Util of their own (ref: ShopManager, EventPresentation#decodeSound)
+     - have UpgradeGUI utilize ItemUtil as well as UpgradeTokenUtil import relevant methods to ItemUtil
+     - move all geometric checks (like loot beam raytrace, NaturalSpawnManager#pickLocation) to a GeomUtil)
+     - have Wall#matches and relevant ones to GeomUtil
+     - have ConvoyBehavior#moveConvoy utilize GeomUtil
+     - have StormBehavior#pickStormPoint and clampToArea utilize GeomUtil
+     - have EventSpawner#offsetOrigin utilize GeomUtil
+     - have all methods that check for nearestPlayer utilize GeomUtil#nearestPlayer (ref: RoamBehavior#nearestPlayer)
+     - have TerrainService#applyCrater utilize GeomUtil
+     - similarly, add an EntityUtil
+     - make a BossBarManager, move all related to boss bars on that (ref: EventPresentation#setupBossBar)
      -
-     - charm/artifact/pet placeholder should have different placeholder panes
-     - charm/artifact should open their relic gui with right click
-     - spawnMarkerManager#reconcile, fix creating new Sets every time.
      -
      - drone custom entity model for texture
      - resource pack: custom loot beam/model enhancement
@@ -293,7 +313,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.playerDataManager = new PlayerDataManager(this);
         this.partyManager = new PartyManager(this);
         this.backpackManager = new BackpackManager(this);
-        this.extractionManager = new ExtractionManager(this);
+        this.extractionManager = new ExtractionManager();
 
         this.cooldownManager = new CooldownManager(this, playerDataManager);
         this.tokenManager = new TokenManager(playerDataManager);

@@ -26,6 +26,7 @@ public class HarvestChestService {
 
     private final EventContext ctx;
     private final Map<Location, HarvestChest> harvestChests = new HashMap<>();
+
     public HarvestChestService(EventContext ctx) {
         this.ctx = ctx;
     }

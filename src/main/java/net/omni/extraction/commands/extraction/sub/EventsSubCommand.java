@@ -16,6 +16,7 @@ import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -82,26 +83,12 @@ public class EventsSubCommand implements SubCommand {
                     return partial(args[2], ids);
                 }
 
-                if (args.length >= 4) {
-                    List<String> suggestions = new ArrayList<>();
-                    suggestions.add("here");
+                List<String> suggestions = getMutations();
 
-                    for (Area area : plugin.getAreaManager().getAreas())
-                        if (area != null)
-                            suggestions.add(area.getName());
-
-                    suggestions.add("random");
-                    suggestions.add("DOUBLE_LOOT");
-                    suggestions.add("ELITE_ENEMIES");
-                    suggestions.add("NIGHTFALL");
-                    suggestions.add("EXPLOSIVE_DEATHS");
-                    suggestions.add("NO_REGENERATION");
-
-                    suggestions.removeAll(Arrays.stream(args, 3, args.length)
-                            .map(String::toUpperCase).toList());
-                    suggestions.removeAll(Arrays.stream(args, 3, args.length).toList());
-                    return partial(args[args.length - 1], suggestions);
-                }
+                suggestions.removeAll(Arrays.stream(args, 3, args.length)
+                        .map(String::toUpperCase).toList());
+                suggestions.removeAll(Arrays.stream(args, 3, args.length).toList());
+                return partial(args[args.length - 1], suggestions);
             }
             case "stop" -> {
                 if (args.length == 3) {
@@ -128,6 +115,29 @@ public class EventsSubCommand implements SubCommand {
         }
 
         return List.of();
+    }
+
+    private List<String> partial(String input, List<String> options) {
+        List<String> completions = new ArrayList<>();
+        StringUtil.copyPartialMatches(input, options, completions);
+        return completions;
+    }
+
+    private @NonNull List<String> getMutations() {
+        List<String> suggestions = new ArrayList<>();
+        suggestions.add("here");
+
+        for (Area area : plugin.getAreaManager().getAreas())
+            if (area != null)
+                suggestions.add(area.getName());
+
+        suggestions.add("random");
+        suggestions.add("DOUBLE_LOOT");
+        suggestions.add("ELITE_ENEMIES");
+        suggestions.add("NIGHTFALL");
+        suggestions.add("EXPLOSIVE_DEATHS");
+        suggestions.add("NO_REGENERATION");
+        return suggestions;
     }
 
     private void handleStatus(CommandSender sender, WorldEventManager manager) {
@@ -320,11 +330,6 @@ public class EventsSubCommand implements SubCommand {
         return new StartArgs(areaLoc, forced);
     }
 
-    private String locString(Location location) {
-        String world = location.getWorld() == null ? "?" : location.getWorld().getName();
-        return world + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ();
-    }
-
     private void sendStartResult(CommandSender sender, EventStartResult result, WorldEvent event) {
         switch (result) {
             case STARTED -> plugin.sendMessage(sender, Messages.EVENTS_STARTED
@@ -342,10 +347,9 @@ public class EventsSubCommand implements SubCommand {
         }
     }
 
-    private List<String> partial(String input, List<String> options) {
-        List<String> completions = new ArrayList<>();
-        StringUtil.copyPartialMatches(input, options, completions);
-        return completions;
+    private String locString(Location location) {
+        String world = location.getWorld() == null ? "?" : location.getWorld().getName();
+        return world + " " + location.getBlockX() + " " + location.getBlockY() + " " + location.getBlockZ();
     }
 
     private record StartArgs(Location location, List<MutatorType> mutators) {

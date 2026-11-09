@@ -1,14 +1,10 @@
 package net.omni.extraction.walls;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.messages.Messages;
 import net.omni.extraction.config.ExtractionConfig;
+import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.TimeUtil;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Sound;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -18,27 +14,12 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class WallManager implements Runnable {
 
-    public enum CreateResult {
-        OK, EXISTS, NO_PENDING, NO_BLOCKS, WORLD_MISSING
-    }
-
-    public record PendingWall(String worldName, int x, int y, int z, float yaw) {
-    }
-
     public static final int MAX_RADIUS = 32;
-
     private final ExtractionPlugin plugin;
     private final ExtractionConfig config;
     private final NamespacedKey bombItemKey;
@@ -46,12 +27,15 @@ public class WallManager implements Runnable {
     private final Map<String, Wall> walls = new LinkedHashMap<>();
     private final Map<UUID, PendingWall> pending = new LinkedHashMap<>();
     private BukkitTask task;
-
     public WallManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
         this.config = new ExtractionConfig(plugin, "walls.yml");
         this.bombItemKey = new NamespacedKey(plugin, "wall_bomb");
         this.bombProjectileKey = new NamespacedKey(plugin, "wall_bomb_projectile");
+    }
+
+    public void reload() {
+        load();
     }
 
     public void load() {
@@ -96,8 +80,36 @@ public class WallManager implements Runnable {
             saveAll();
     }
 
-    public void reload() {
-        load();
+    private Wall decode(ConfigurationSection section) {
+        String id = section.getName().toLowerCase(Locale.ROOT);
+        String worldName = section.getString("world");
+        int x = section.getInt("x");
+        int y = section.getInt("y");
+        int z = section.getInt("z");
+        int radius = section.getInt("radius");
+        WallOrientation orientation = WallOrientation.parse(section.getString("orientation", "vertical"));
+        String axis = section.getString("axis", "Y");
+        int regenSeconds = section.getInt("regen-seconds");
+        long destroyedUntil = section.getLong("destroyed-until", 0L);
+
+        if (worldName == null || orientation == null || regenSeconds <= 0)
+            return null;
+
+        List<Wall.SavedBlock> blocks = new ArrayList<>();
+
+        for (Map<?, ?> raw : section.getMapList("blocks")) {
+            Object bx = raw.get("x");
+            Object by = raw.get("y");
+            Object bz = raw.get("z");
+            Object data = raw.get("data");
+
+            if (bx instanceof Number nx && by instanceof Number ny && bz instanceof Number nz && data instanceof String s)
+                blocks.add(new Wall.SavedBlock(nx.intValue(), ny.intValue(), nz.intValue(), s));
+        }
+
+        Wall wall = new Wall(id, worldName, x, y, z, radius, orientation, axis, regenSeconds, blocks);
+        wall.setDestroyedUntil(destroyedUntil);
+        return wall;
     }
 
     public void saveAll() {
@@ -105,6 +117,37 @@ public class WallManager implements Runnable {
             writeWall(wall);
 
         save();
+    }
+
+    private void writeWall(Wall wall) {
+        String base = "walls." + wall.getId();
+        FileConfiguration cfg = config.getConfig();
+        cfg.set(base + ".world", wall.getWorldName());
+        cfg.set(base + ".x", wall.getX());
+        cfg.set(base + ".y", wall.getY());
+        cfg.set(base + ".z", wall.getZ());
+        cfg.set(base + ".radius", wall.getRadius());
+        cfg.set(base + ".orientation", wall.getOrientation().name().toLowerCase(Locale.ROOT));
+        cfg.set(base + ".axis", wall.getAxis());
+        cfg.set(base + ".regen-seconds", wall.getRegenSeconds());
+        cfg.set(base + ".destroyed-until", wall.getDestroyedUntil());
+
+        List<Map<String, Object>> rows = new ArrayList<>();
+
+        for (Wall.SavedBlock block : wall.getBlocks()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("x", block.x());
+            row.put("y", block.y());
+            row.put("z", block.z());
+            row.put("data", block.data());
+            rows.add(row);
+        }
+
+        cfg.set(base + ".blocks", rows);
+    }
+
+    private void save() {
+        config.save();
     }
 
     public Set<String> getIds() {
@@ -182,6 +225,56 @@ public class WallManager implements Runnable {
         return CreateResult.OK;
     }
 
+    private List<Wall.SavedBlock> snapshot(World world, int cx, int cy, int cz,
+                                           int radius, WallOrientation orientation, String axis) {
+        List<Wall.SavedBlock> blocks = new ArrayList<>();
+        Random random = ThreadLocalRandom.current();
+        double inner = radius * 0.7;
+
+        for (int a = -radius; a <= radius; a++) {
+            for (int b = -radius; b <= radius; b++) {
+                double distance = Math.sqrt(a * a + b * b);
+
+                if (distance > radius)
+                    continue;
+
+                if (distance > inner) {
+                    double chance = 1.0 - ((distance - inner) / (radius - inner));
+
+                    if (random.nextDouble() > chance)
+                        continue;
+                }
+
+                int x;
+                int y;
+                int z;
+
+                if (orientation == WallOrientation.HORIZONTAL) {
+                    x = cx + a;
+                    y = cy;
+                    z = cz + b;
+                } else if (axis.equals("Z")) {
+                    x = cx + a;
+                    y = cy + b;
+                    z = cz;
+                } else {
+                    x = cx;
+                    y = cy + b;
+                    z = cz + a;
+                }
+
+                Block block = world.getBlockAt(x, y, z);
+
+                if (block.getType().isAir())
+                    continue;
+
+                blocks.add(new Wall.SavedBlock(x, y, z, block.getBlockData().getAsString()));
+            }
+        }
+
+        return blocks;
+    }
+
     public boolean remove(String id) {
         String normalized = id.toLowerCase(Locale.ROOT);
         Wall removed = walls.remove(normalized);
@@ -248,6 +341,16 @@ public class WallManager implements Runnable {
         world.playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 0.9f, 1.1f);
     }
 
+    @Override
+    public void run() {
+        long now = System.currentTimeMillis();
+
+        for (Wall wall : walls.values()) {
+            if (wall.getDestroyedUntil() > 0L && wall.getDestroyedUntil() <= now)
+                restoreWall(wall);
+        }
+    }
+
     private void restoreWall(Wall wall) {
         World world = Bukkit.getWorld(wall.getWorldName());
 
@@ -260,16 +363,6 @@ public class WallManager implements Runnable {
         save();
         world.playSound(new Location(world, wall.getX(), wall.getY(), wall.getZ()),
                 Sound.BLOCK_STONE_PLACE, 1.2f, 1.0f);
-    }
-
-    @Override
-    public void run() {
-        long now = System.currentTimeMillis();
-
-        for (Wall wall : walls.values()) {
-            if (wall.getDestroyedUntil() > 0L && wall.getDestroyedUntil() <= now)
-                restoreWall(wall);
-        }
     }
 
     public void start() {
@@ -311,116 +404,10 @@ public class WallManager implements Runnable {
         return bombProjectileKey;
     }
 
-    private Wall decode(ConfigurationSection section) {
-        String id = section.getName().toLowerCase(Locale.ROOT);
-        String worldName = section.getString("world");
-        int x = section.getInt("x");
-        int y = section.getInt("y");
-        int z = section.getInt("z");
-        int radius = section.getInt("radius");
-        WallOrientation orientation = WallOrientation.parse(section.getString("orientation", "vertical"));
-        String axis = section.getString("axis", "Y");
-        int regenSeconds = section.getInt("regen-seconds");
-        long destroyedUntil = section.getLong("destroyed-until", 0L);
-
-        if (worldName == null || orientation == null || regenSeconds <= 0)
-            return null;
-
-        List<Wall.SavedBlock> blocks = new ArrayList<>();
-
-        for (Map<?, ?> raw : section.getMapList("blocks")) {
-            Object bx = raw.get("x");
-            Object by = raw.get("y");
-            Object bz = raw.get("z");
-            Object data = raw.get("data");
-
-            if (bx instanceof Number nx && by instanceof Number ny && bz instanceof Number nz && data instanceof String s)
-                blocks.add(new Wall.SavedBlock(nx.intValue(), ny.intValue(), nz.intValue(), s));
-        }
-
-        Wall wall = new Wall(id, worldName, x, y, z, radius, orientation, axis, regenSeconds, blocks);
-        wall.setDestroyedUntil(destroyedUntil);
-        return wall;
+    public enum CreateResult {
+        OK, EXISTS, NO_PENDING, NO_BLOCKS, WORLD_MISSING
     }
 
-    private void writeWall(Wall wall) {
-        String base = "walls." + wall.getId();
-        FileConfiguration cfg = config.getConfig();
-        cfg.set(base + ".world", wall.getWorldName());
-        cfg.set(base + ".x", wall.getX());
-        cfg.set(base + ".y", wall.getY());
-        cfg.set(base + ".z", wall.getZ());
-        cfg.set(base + ".radius", wall.getRadius());
-        cfg.set(base + ".orientation", wall.getOrientation().name().toLowerCase(Locale.ROOT));
-        cfg.set(base + ".axis", wall.getAxis());
-        cfg.set(base + ".regen-seconds", wall.getRegenSeconds());
-        cfg.set(base + ".destroyed-until", wall.getDestroyedUntil());
-
-        List<Map<String, Object>> rows = new ArrayList<>();
-
-        for (Wall.SavedBlock block : wall.getBlocks()) {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("x", block.x());
-            row.put("y", block.y());
-            row.put("z", block.z());
-            row.put("data", block.data());
-            rows.add(row);
-        }
-
-        cfg.set(base + ".blocks", rows);
-    }
-
-    private void save() {
-        config.save();
-    }
-
-    private List<Wall.SavedBlock> snapshot(World world, int cx, int cy, int cz,
-                                          int radius, WallOrientation orientation, String axis) {
-        List<Wall.SavedBlock> blocks = new ArrayList<>();
-        Random random = ThreadLocalRandom.current();
-        double inner = radius * 0.7;
-
-        for (int a = -radius; a <= radius; a++) {
-            for (int b = -radius; b <= radius; b++) {
-                double distance = Math.sqrt(a * a + b * b);
-
-                if (distance > radius)
-                    continue;
-
-                if (distance > inner) {
-                    double chance = 1.0 - ((distance - inner) / (radius - inner));
-
-                    if (random.nextDouble() > chance)
-                        continue;
-                }
-
-                int x;
-                int y;
-                int z;
-
-                if (orientation == WallOrientation.HORIZONTAL) {
-                    x = cx + a;
-                    y = cy;
-                    z = cz + b;
-                } else if (axis.equals("Z")) {
-                    x = cx + a;
-                    y = cy + b;
-                    z = cz;
-                } else {
-                    x = cx;
-                    y = cy + b;
-                    z = cz + a;
-                }
-
-                Block block = world.getBlockAt(x, y, z);
-
-                if (block.getType().isAir())
-                    continue;
-
-                blocks.add(new Wall.SavedBlock(x, y, z, block.getBlockData().getAsString()));
-            }
-        }
-
-        return blocks;
+    public record PendingWall(String worldName, int x, int y, int z, float yaw) {
     }
 }

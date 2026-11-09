@@ -2,12 +2,7 @@ package net.omni.extraction.mobs;
 
 import org.bukkit.inventory.EquipmentSlot;
 
-import java.util.List;
-
 public final class EquipmentSlots {
-
-    public static final List<String> NAMES = List.of(
-            "helmet", "chestplate", "leggings", "boots", "mainhand", "offhand");
 
     private EquipmentSlots() {
     }

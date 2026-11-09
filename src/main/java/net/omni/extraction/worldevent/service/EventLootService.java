@@ -31,17 +31,6 @@ public class EventLootService {
         this.ctx = ctx;
     }
 
-    public LootTable table(String name) {
-        if (name == null || name.isBlank())
-            return null;
-
-        LootTable table = ctx.plugin().getLootTableManager().get(name);
-        if (table == null)
-            ctx.plugin().getLogger().warning("Event references unknown loot table '" + name + "'.");
-
-        return table;
-    }
-
     /**
      * Rolls loot for a killed event mob: per-kill loot-table rolls (bosses get
      * the boss multiplier) plus the mob's configured drops.
@@ -81,11 +70,11 @@ public class EventLootService {
         List<MobDrop> drops = instance.dropsFor(uuid);
         if (drops != null) {
             for (MobDrop drop : drops) {
-                double chance = Math.min(1.0, Math.max(0.0, drop.getChance()));
+                double chance = Math.clamp(drop.chance(), 0.0, 1.0);
                 if (chance < 1.0 && ctx.random().nextDouble() > chance)
                     continue;
 
-                loot.addAll(ctx.plugin().getLootResolver().resolveDropItems(drop.getType(), drop.getAmount()));
+                loot.addAll(ctx.plugin().getLootResolver().resolveDropItems(drop.type(), drop.amount()));
             }
         }
 
@@ -110,14 +99,26 @@ public class EventLootService {
         return ctx.plugin().getLootResolver().mergeStacks(loot);
     }
 
+    public LootTable table(String name) {
+        if (name == null || name.isBlank())
+            return null;
+
+        LootTable table = ctx.plugin().getLootTableManager().get(name);
+        if (table == null)
+            ctx.plugin().getLogger().warning("Event references unknown loot table '" + name + "'.");
+
+        return table;
+    }
+
     public void grantCompletionLoot(EventInstance instance) {
         WorldEvent event = instance.getEvent();
         LootTable table = table(event.getLootTable());
         int completionRolls = ctx.settings().completionRolls();
         Mutator dl = instance.getMutator(MutatorType.DOUBLE_LOOT);
-        if (dl != null && dl.lootMult() != 1.0) {
+
+        if (dl != null && dl.lootMult() != 1.0)
             completionRolls = (int) Math.round(completionRolls * dl.lootMult());
-        }
+
         if (table == null || completionRolls <= 0)
             return;
 
@@ -147,10 +148,13 @@ public class EventLootService {
         }
     }
 
-    /** Drops part of the event's loot table at the goblin's feet as it flees. */
+    /**
+     * Drops part of the event's loot table at the goblin's feet as it flees.
+     */
     public void dropLootWhileFleeing(EventInstance instance, Location at) {
         WorldEvent event = instance.getEvent();
         World world = at.getWorld();
+
         if (world == null)
             return;
 

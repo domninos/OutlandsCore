@@ -75,7 +75,7 @@ public class AreaTabCompleter implements TabCompleter {
         String sub = args[0].toLowerCase(Locale.ROOT);
 
         if (sub.equals("help"))
-            return filter(List.of("setup", "mobs", "loot", "utility"), args.length >= 2 ? args[1] : "");
+            return filter(List.of("setup", "mobs", "loot", "utility"), args[1]);
 
         if (sub.equals("mob"))
             return tabMob(args);
@@ -120,7 +120,7 @@ public class AreaTabCompleter implements TabCompleter {
                     case 4 -> filter(chestTypeSuggestions(), args[3]);
                     case 5 -> {
                         if (args[3].equalsIgnoreCase("key"))
-                            yield filter(new ArrayList<>(plugin.getConfigUtil().getKeyDefinitions().keySet()), args[4]);
+                            yield filter(plugin.getConfigUtil().getKeyDefinitions().keySet(), args[4]);
 
                         yield List.of();
                     }

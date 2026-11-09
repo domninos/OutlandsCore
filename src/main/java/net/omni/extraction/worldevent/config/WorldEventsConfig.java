@@ -29,11 +29,6 @@ public class WorldEventsConfig {
         load();
     }
 
-    public void reload() {
-        eventsConfig.reload();
-        load();
-    }
-
     private void load() {
         readSettings();
 
@@ -73,6 +68,11 @@ public class WorldEventsConfig {
                 s == null || s.getBoolean("boss-bar", true));
     }
 
+    public void reload() {
+        eventsConfig.reload();
+        load();
+    }
+
     public EventSettings settings() {
         return settings;
     }
@@ -85,7 +85,9 @@ public class WorldEventsConfig {
         return events.get(id.toLowerCase(Locale.ROOT));
     }
 
-    /** Persists one convoy route anchor ({@code start}/{@code end}) to events.yml. */
+    /**
+     * Persists one convoy route anchor ({@code start}/{@code end}) to events.yml.
+     */
     public void saveConvoyPoint(String id, String point, Location location) {
         String path = "events." + id + ".convoy." + point.toLowerCase(Locale.ROOT);
         eventsConfig.set(path + ".world", location.getWorld() == null ? "" : location.getWorld().getName());
@@ -94,7 +96,9 @@ public class WorldEventsConfig {
         eventsConfig.set(path + ".z", location.getBlockZ());
     }
 
-    /** Clears one convoy route anchor from events.yml. */
+    /**
+     * Clears one convoy route anchor from events.yml.
+     */
     public void clearConvoyPoint(String id, String point) {
         String path = "events." + id + ".convoy." + point.toLowerCase(Locale.ROOT);
         eventsConfig.set(path + ".world", null);
@@ -103,7 +107,9 @@ public class WorldEventsConfig {
         eventsConfig.set(path + ".z", null);
     }
 
-    /** Persists events.<id>.display-name (admin setname); null clears the override. */
+    /**
+     * Persists events.<id>.display-name (admin setname); null clears the override.
+     */
     public void saveDisplayName(String id, String name) {
         String path = "events." + id + ".display-name";
 

@@ -5,7 +5,6 @@ import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.util.ItemUtil;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
@@ -17,12 +16,7 @@ public final class RelicGUI {
     private RelicGUI() {
     }
 
-    /** Center of the bottom row — mirrors the /pets shop button. */
-    public static int shopSlot(int inventorySize) {
-        return inventorySize - 5;
-    }
-
-    public static Inventory build(ExtractionPlugin plugin, Player player, String category, PlayerData data) {
+    public static Inventory build(ExtractionPlugin plugin, String category, PlayerData data) {
         ChatRenderer renderer = plugin.getChatRenderer();
         ConfigUtil config = plugin.getConfigUtil();
 
@@ -41,7 +35,7 @@ public final class RelicGUI {
 
         for (int i = 0; i < size; i++) {
             if (i < definitions.size() && i < contentSize)
-                inv.setItem(i, definitionItem(plugin, category, definitions.get(i), data));
+                inv.setItem(i, definitionItem(plugin, definitions.get(i), data));
             else
                 inv.setItem(i, filler(config));
         }
@@ -51,14 +45,7 @@ public final class RelicGUI {
         return inv;
     }
 
-    private static ItemStack shopButton(ExtractionPlugin plugin) {
-        ConfigUtil config = plugin.getConfigUtil();
-
-        return ItemUtil.createItem(config.getRelicGuiShopMaterial(), "GOLD_NUGGET",
-                config.getRelicGuiShopName(), config.getRelicGuiShopLore());
-    }
-
-    private static ItemStack definitionItem(ExtractionPlugin plugin, String category,
+    private static ItemStack definitionItem(ExtractionPlugin plugin,
                                             RelicDefinition def, PlayerData data) {
         boolean learned = def.isCharm()
                 ? data.ownsCharm(def.id())
@@ -83,6 +70,25 @@ public final class RelicGUI {
         return ItemUtil.createItem(def.materialName(), "PAPER", def.name(), lore);
     }
 
+    private static ItemStack filler(ConfigUtil config) {
+        return ItemUtil.createItem(config.getRelicGuiFillerMaterial(),
+                "GRAY_STAINED_GLASS_PANE", config.getRelicGuiFillerName(), List.of());
+    }
+
+    /**
+     * Center of the bottom row — mirrors the /pets shop button.
+     */
+    public static int shopSlot(int inventorySize) {
+        return inventorySize - 5;
+    }
+
+    private static ItemStack shopButton(ExtractionPlugin plugin) {
+        ConfigUtil config = plugin.getConfigUtil();
+
+        return ItemUtil.createItem(config.getRelicGuiShopMaterial(), "GOLD_NUGGET",
+                config.getRelicGuiShopName(), config.getRelicGuiShopLore());
+    }
+
     private static ItemStack placeholder(ExtractionPlugin plugin, RelicDefinition def) {
         ConfigUtil config = plugin.getConfigUtil();
 
@@ -94,10 +100,5 @@ public final class RelicGUI {
 
         return ItemUtil.createItem(config.getRelicGuiPlaceholderMaterial(),
                 "BLACK_STAINED_GLASS_PANE", name, lore);
-    }
-
-    private static ItemStack filler(ConfigUtil config) {
-        return ItemUtil.createItem(config.getRelicGuiFillerMaterial(),
-                "GRAY_STAINED_GLASS_PANE", config.getRelicGuiFillerName(), List.of());
     }
 }

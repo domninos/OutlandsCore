@@ -29,6 +29,17 @@ public class GUIManager {
         gui.open(player, data);
     }
 
+    private LoadoutGUI getOrCreateLoadout(Player player) {
+        for (LoadoutGUI gui : loadoutGuis) {
+            if (gui.getOwner().equals(player.getUniqueId()))
+                return gui;
+        }
+
+        LoadoutGUI gui = new LoadoutGUI(plugin, player);
+        loadoutGuis.add(gui);
+        return gui;
+    }
+
     public void refreshLoadout(Player player, PlayerData data) {
         LoadoutGUI gui = getOrCreateLoadout(player);
         gui.refresh(data);
@@ -44,19 +55,6 @@ public class GUIManager {
         plugin.getPlayerDataManager().savePlayer(data.getUuid());
     }
 
-    public void markLoadoutTouched(Player player, int cell) {
-        LoadoutGUI gui = findLoadout(player);
-
-        if (gui != null)
-            gui.markTouched(cell);
-    }
-
-    public boolean restoreLoadoutCursor(Player player) {
-        LoadoutGUI gui = findLoadout(player);
-        return gui != null && gui.restoreCursor(player);
-    }
-
-
     private LoadoutGUI findLoadout(Player player) {
         for (LoadoutGUI gui : loadoutGuis) {
             if (gui.getOwner().equals(player.getUniqueId()))
@@ -66,58 +64,23 @@ public class GUIManager {
         return null;
     }
 
+    public void markLoadoutTouched(Player player, int cell) {
+        LoadoutGUI gui = findLoadout(player);
+
+        if (gui != null)
+            gui.markTouched(cell);
+    }
+
+    public void restoreLoadoutCursor(Player player) {
+        LoadoutGUI gui = findLoadout(player);
+
+        if (gui != null)
+            gui.restoreCursor(player);
+    }
+
     public void openUpgrade(Player player, PlayerData data) {
         UpgradeGUI gui = getOrCreateUpgrade(player);
         gui.open(player, data);
-    }
-
-    public void refreshUpgrade(Player player, PlayerData data) {
-        UpgradeGUI gui = getOrCreateUpgrade(player);
-        gui.refresh(data);
-    }
-
-    public void openShop(Player player, ShopView view) {
-        getOrCreateShop(player).open(player, view);
-    }
-
-    public void openShop(Player player, ShopView view, String enchantKey) {
-        getOrCreateShop(player).openEnchantTargets(player, enchantKey);
-    }
-
-    public void refreshShop(Player player) {
-        ShopGUI gui = findShop(player);
-        if (gui != null) gui.refresh(player);
-    }
-
-    public ShopGUI findShop(Player player) {
-        for (ShopGUI gui : shopGuis) {
-            if (gui.getOwner().equals(player.getUniqueId()))
-                return gui;
-        }
-        return null;
-    }
-
-    public void removePlayer(UUID uuid) {
-        loadoutGuis.removeIf(gui -> gui.getOwner().equals(uuid));
-        upgradeGuis.removeIf(gui -> gui.getOwner().equals(uuid));
-        shopGuis.removeIf(gui -> gui.getOwner().equals(uuid));
-    }
-
-    public void clearAll() {
-        loadoutGuis.clear();
-        upgradeGuis.clear();
-        shopGuis.clear();
-    }
-
-    private LoadoutGUI getOrCreateLoadout(Player player) {
-        for (LoadoutGUI gui : loadoutGuis) {
-            if (gui.getOwner().equals(player.getUniqueId()))
-                return gui;
-        }
-
-        LoadoutGUI gui = new LoadoutGUI(plugin, player);
-        loadoutGuis.add(gui);
-        return gui;
     }
 
     private UpgradeGUI getOrCreateUpgrade(Player player) {
@@ -131,6 +94,15 @@ public class GUIManager {
         return gui;
     }
 
+    public void refreshUpgrade(Player player, PlayerData data) {
+        UpgradeGUI gui = getOrCreateUpgrade(player);
+        gui.refresh(data);
+    }
+
+    public void openShop(Player player, ShopView view) {
+        getOrCreateShop(player).open(player, view);
+    }
+
     private ShopGUI getOrCreateShop(Player player) {
         ShopGUI gui = findShop(player);
         if (gui != null) return gui;
@@ -138,5 +110,34 @@ public class GUIManager {
         gui = new ShopGUI(plugin, player);
         shopGuis.add(gui);
         return gui;
+    }
+
+    public ShopGUI findShop(Player player) {
+        for (ShopGUI gui : shopGuis) {
+            if (gui.getOwner().equals(player.getUniqueId()))
+                return gui;
+        }
+        return null;
+    }
+
+    public void openShop(Player player, String enchantKey) {
+        getOrCreateShop(player).openEnchantTargets(player, enchantKey);
+    }
+
+    public void refreshShop(Player player) {
+        ShopGUI gui = findShop(player);
+        if (gui != null) gui.refresh(player);
+    }
+
+    public void removePlayer(UUID uuid) {
+        loadoutGuis.removeIf(gui -> gui.getOwner().equals(uuid));
+        upgradeGuis.removeIf(gui -> gui.getOwner().equals(uuid));
+        shopGuis.removeIf(gui -> gui.getOwner().equals(uuid));
+    }
+
+    public void clearAll() {
+        loadoutGuis.clear();
+        upgradeGuis.clear();
+        shopGuis.clear();
     }
 }

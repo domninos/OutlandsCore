@@ -41,6 +41,33 @@ public class BackpackGUIListener implements Listener {
         }
     }
 
+    private boolean isBackpackButtonSlot(int rawSlot, int size) {
+        return rawSlot >= size - 9 && rawSlot < size;
+    }
+
+    private void handleBackpackClick(Player player, InventoryClickEvent event, BackpackHolder holder) {
+        int size = event.getView().getTopInventory().getSize();
+        int rawSlot = event.getRawSlot();
+
+        if (rawSlot == size + BackpackGUI.PREV) {
+            plugin.getBackpackManager().navigate(player, holder.page() - 1);
+            return;
+        }
+
+        if (rawSlot == size + BackpackGUI.NEXT) {
+            plugin.getBackpackManager().navigate(player, holder.page() + 1);
+            return;
+        }
+
+        if (rawSlot == size + BackpackGUI.CLAIM_ALL) {
+            plugin.getBackpackManager().claimAll(player);
+            return;
+        }
+
+        if (rawSlot == size + BackpackGUI.CLOSE)
+            player.closeInventory();
+    }
+
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
         if (!(event.getWhoClicked() instanceof Player))
@@ -68,32 +95,5 @@ public class BackpackGUIListener implements Listener {
             return;
 
         plugin.getBackpackManager().closeBackpack(player, holder, event.getView().getTopInventory());
-    }
-
-    private boolean isBackpackButtonSlot(int rawSlot, int size) {
-        return rawSlot >= size - 9 && rawSlot < size;
-    }
-
-    private void handleBackpackClick(Player player, InventoryClickEvent event, BackpackHolder holder) {
-        int size = event.getView().getTopInventory().getSize();
-        int rawSlot = event.getRawSlot();
-
-        if (rawSlot == size + BackpackGUI.PREV) {
-            plugin.getBackpackManager().navigate(player, holder.page() - 1);
-            return;
-        }
-
-        if (rawSlot == size + BackpackGUI.NEXT) {
-            plugin.getBackpackManager().navigate(player, holder.page() + 1);
-            return;
-        }
-
-        if (rawSlot == size + BackpackGUI.CLAIM_ALL) {
-            plugin.getBackpackManager().claimAll(player);
-            return;
-        }
-
-        if (rawSlot == size + BackpackGUI.CLOSE)
-            player.closeInventory();
     }
 }

@@ -94,7 +94,7 @@ public class AdminSubCommand implements SubCommand {
 
             if (args[1].equalsIgnoreCase("setname")) {
                 List<String> ids = plugin.getWorldEventManager().getEvents().values().stream()
-                        .map(event -> event.getId())
+                        .map(WorldEvent::getId)
                         .toList();
                 return partial(args[2], ids);
             }
@@ -112,31 +112,55 @@ public class AdminSubCommand implements SubCommand {
         return List.of();
     }
 
+    private List<String> partial(String input, List<String> options) {
+        List<String> completions = new ArrayList<>();
+        StringUtil.copyPartialMatches(input, options, completions);
+        return completions;
+    }
+
     private boolean handleSetSpawn(CommandSender sender) {
-        if (!requirePlayer(sender, player -> {
+        requirePlayer(sender, player -> {
             plugin.getConfigUtil().setSpawnLocation(player.getLocation());
             plugin.sendMessage(sender, Messages.ADMIN_SET_SPAWN.replace("world", player.getWorld().getName()));
-        })) return true;
+        });
 
         return true;
     }
 
     private boolean handleSetLobby(CommandSender sender) {
-        if (!requirePlayer(sender, player -> {
+        requirePlayer(sender, player -> {
             plugin.getConfigUtil().setLobbyLocation(player.getLocation());
             plugin.sendMessage(sender, Messages.ADMIN_SET_LOBBY.replace("world", player.getWorld().getName()));
-        })) return true;
+        });
 
         return true;
     }
 
-    private boolean requirePlayer(CommandSender sender, Consumer<Player> action) {
-        if (!(sender instanceof Player player)) {
-            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
-            return false;
+    private boolean handleMigrateDb(CommandSender sender) {
+        if (!plugin.getDatabaseManager().isMysql()) {
+            plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_NOT_MYSQL.toString());
+            return true;
         }
 
-        action.accept(player);
+        File sqlite = new File(plugin.getDataFolder(), "data/extraction.db");
+        if (!sqlite.isFile()) {
+            plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_NO_SQLITE.toString());
+            return true;
+        }
+
+        plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_STARTED.toString());
+
+        plugin.getDatabaseManager().executeAsync(() -> {
+            int imported = plugin.getPlayerDataManager().importFromSqlite(sqlite);
+
+            plugin.getDatabaseManager().executeSync(() -> {
+                if (imported < 0)
+                    plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_FAILED.toString());
+                else
+                    plugin.sendMessage(sender, Messages.ADMIN_MIGRATED.replace("count", String.valueOf(imported)));
+            });
+        });
+
         return true;
     }
 
@@ -257,37 +281,13 @@ public class AdminSubCommand implements SubCommand {
         return true;
     }
 
-    private boolean handleMigrateDb(CommandSender sender) {
-        if (!plugin.getDatabaseManager().isMysql()) {
-            plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_NOT_MYSQL.toString());
-            return true;
+    private boolean requirePlayer(CommandSender sender, Consumer<Player> action) {
+        if (!(sender instanceof Player player)) {
+            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
+            return false;
         }
 
-        File sqlite = new File(plugin.getDataFolder(), "data/extraction.db");
-        if (!sqlite.isFile()) {
-            plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_NO_SQLITE.toString());
-            return true;
-        }
-
-        plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_STARTED.toString());
-
-        plugin.getDatabaseManager().executeAsync(() -> {
-            int imported = plugin.getPlayerDataManager().importFromSqlite(sqlite);
-
-            plugin.getDatabaseManager().executeSync(() -> {
-                if (imported < 0)
-                    plugin.sendMessage(sender, Messages.ADMIN_MIGRATE_FAILED.toString());
-                else
-                    plugin.sendMessage(sender, Messages.ADMIN_MIGRATED.replace("count", String.valueOf(imported)));
-            });
-        });
-
+        action.accept(player);
         return true;
-    }
-
-    private List<String> partial(String input, List<String> options) {
-        List<String> completions = new ArrayList<>();
-        StringUtil.copyPartialMatches(input, options, completions);
-        return completions;
     }
 }

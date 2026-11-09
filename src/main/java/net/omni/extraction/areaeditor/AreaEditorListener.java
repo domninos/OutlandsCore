@@ -41,7 +41,7 @@ public class AreaEditorListener implements Listener {
                 || !event.getClickedInventory().equals(top))
             return;
 
-        AreaEditorSession session = holder.getSession();
+        AreaEditorSession session = holder.session();
 
         if (session == null)
             session = plugin.getAreaEditorManager().getSession(player);

@@ -3,6 +3,7 @@ package net.omni.extraction.boss;
 import net.omni.extraction.mobs.BossAbility;
 import org.bukkit.entity.LivingEntity;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,8 +20,7 @@ public class BossRuntime {
         this.abilities = abilities.stream().map(BossAbility::copy).toList();
         this.readyAt = new long[this.abilities.size()];
 
-        for (int index = 0; index < readyAt.length; index++)
-            readyAt[index] = startReadyAt;
+        Arrays.fill(readyAt, startReadyAt);
     }
 
     public UUID getEntityId() {

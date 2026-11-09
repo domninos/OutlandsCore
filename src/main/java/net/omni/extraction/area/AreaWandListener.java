@@ -11,8 +11,8 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Cancellable;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
@@ -75,118 +75,6 @@ public class AreaWandListener implements Listener {
             case CHEST -> handleChest(player, action, block, areaManager, item, sneaking, event);
             case WALL -> handleWall(player, action, block, event);
         }
-    }
-
-    @EventHandler
-    public void onInteractEntity(PlayerInteractEntityEvent event) {
-        handleEntityClick(event.getPlayer(), event.getRightClicked(), event.getHand(), event);
-    }
-
-    @EventHandler
-    public void onInteractAtEntity(PlayerInteractAtEntityEvent event) {
-        handleEntityClick(event.getPlayer(), event.getRightClicked(), event.getHand(), event);
-    }
-
-    /**
-     * SPAWN-wand right-click on an entity opens the spawn editor: a marker mob
-     * edits its entry, a mob tracked by the area's clear session edits the
-     * entry that spawned it, and any other entity opens a new-entry wizard
-     * anchored at the clicked entity's position.
-     */
-    private void handleEntityClick(Player player, Entity clicked, EquipmentSlot hand,
-                                   Cancellable event) {
-        if (hand != EquipmentSlot.HAND)
-            return;
-
-        if (plugin.getDroneManager() != null && plugin.getDroneManager().isInDrone(player))
-            return;
-
-        AreaManager areaManager = plugin.getAreaManager();
-        ItemStack item = player.getInventory().getItemInMainHand();
-
-        if (!areaManager.isWand(item))
-            return;
-
-        if (areaManager.getWandMode(item) != WandMode.SPAWN)
-            return;
-
-        event.setCancelled(true);
-
-        if (plugin.getAreaEditorManager().getSession(player) != null)
-            return;
-
-        SpawnMarkerManager markers = plugin.getSpawnMarkerManager();
-
-        if (markers != null) {
-            AreaSpawnEntry markerEntry = markers.getEntryOfMarker(clicked);
-
-            if (markerEntry != null) {
-                Area markerArea = markers.getAreaOfMarker(clicked);
-
-                if (markerArea == null || areaManager.isLocked(markerArea)) {
-                    plugin.sendMessage(player, Messages.AREA_EDIT_LOCKED
-                            .replace("area", markerArea == null ? "?" : markerArea.getName()));
-                    return;
-                }
-
-                plugin.getAreaEditorManager().openSpawnEditor(player, markerArea, markerEntry);
-                return;
-            }
-        }
-
-        Area area = resolveArea(areaManager, player, item);
-
-        if (area == null)
-            area = areaManager.getAreaAt(clicked.getLocation());
-
-        if (area == null) {
-            plugin.sendMessage(player, Messages.AREA_NOT_BOUND.toString());
-            return;
-        }
-
-        if (areaManager.isLocked(area)) {
-            plugin.sendMessage(player, Messages.AREA_EDIT_LOCKED.replace("area", area.getName()));
-            return;
-        }
-
-        AreaSpawnEntry entry = findEntryForMob(area, clicked);
-
-        if (entry != null) {
-            plugin.getAreaEditorManager().openSpawnEditor(player, area, entry);
-            return;
-        }
-
-        plugin.getAreaEditorManager().openSpawnEditor(player, area, clicked.getLocation());
-    }
-
-    private AreaSpawnEntry findEntryForMob(Area area, Entity mob) {
-        AreaClearManager clearManager = plugin.getAreaClearManager();
-
-        if (clearManager == null)
-            return null;
-
-        AreaClearSession session = clearManager.getMobSession(mob.getUniqueId());
-        AreaSpawnDefinition definition = session == null ? null : session.getDefinitionFor(mob.getUniqueId());
-
-        if (definition == null || definition.getBoundLocation() == null)
-            return null;
-
-        return entryAt(area, definition.getBoundLocation());
-    }
-
-    private AreaSpawnEntry entryAt(Area area, Location location) {
-        for (AreaSpawnEntry entry : area.getSpawnEntries()) {
-            Location other = entry.getLocation();
-
-            if (other == null || !other.getWorld().equals(location.getWorld()))
-                continue;
-
-            if (other.getBlockX() == location.getBlockX() && other.getBlockY() == location.getBlockY()
-                    && other.getBlockZ() == location.getBlockZ())
-                return entry;
-        }
-
-        return null;
     }
 
     private void sendPos(Player player, Messages message, Location location) {
@@ -295,6 +183,118 @@ public class AreaWandListener implements Listener {
         }
 
         return areaManager.getAreaAt(player.getLocation());
+    }
+
+    @EventHandler
+    public void onInteractEntity(PlayerInteractEntityEvent event) {
+        handleEntityClick(event.getPlayer(), event.getRightClicked(), event.getHand(), event);
+    }
+
+    /**
+     * SPAWN-wand right-click on an entity opens the spawn editor: a marker mob
+     * edits its entry, a mob tracked by the area's clear session edits the
+     * entry that spawned it, and any other entity opens a new-entry wizard
+     * anchored at the clicked entity's position.
+     */
+    private void handleEntityClick(Player player, Entity clicked, EquipmentSlot hand,
+                                   Cancellable event) {
+        if (hand != EquipmentSlot.HAND)
+            return;
+
+        if (plugin.getDroneManager() != null && plugin.getDroneManager().isInDrone(player))
+            return;
+
+        AreaManager areaManager = plugin.getAreaManager();
+        ItemStack item = player.getInventory().getItemInMainHand();
+
+        if (!areaManager.isWand(item))
+            return;
+
+        if (areaManager.getWandMode(item) != WandMode.SPAWN)
+            return;
+
+        event.setCancelled(true);
+
+        if (plugin.getAreaEditorManager().getSession(player) != null)
+            return;
+
+        SpawnMarkerManager markers = plugin.getSpawnMarkerManager();
+
+        if (markers != null) {
+            AreaSpawnEntry markerEntry = markers.getEntryOfMarker(clicked);
+
+            if (markerEntry != null) {
+                Area markerArea = markers.getAreaOfMarker(clicked);
+
+                if (markerArea == null || areaManager.isLocked(markerArea)) {
+                    plugin.sendMessage(player, Messages.AREA_EDIT_LOCKED
+                            .replace("area", markerArea == null ? "?" : markerArea.getName()));
+                    return;
+                }
+
+                plugin.getAreaEditorManager().openSpawnEditor(player, markerArea, markerEntry);
+                return;
+            }
+        }
+
+        Area area = resolveArea(areaManager, player, item);
+
+        if (area == null)
+            area = areaManager.getAreaAt(clicked.getLocation());
+
+        if (area == null) {
+            plugin.sendMessage(player, Messages.AREA_NOT_BOUND.toString());
+            return;
+        }
+
+        if (areaManager.isLocked(area)) {
+            plugin.sendMessage(player, Messages.AREA_EDIT_LOCKED.replace("area", area.getName()));
+            return;
+        }
+
+        AreaSpawnEntry entry = findEntryForMob(area, clicked);
+
+        if (entry != null) {
+            plugin.getAreaEditorManager().openSpawnEditor(player, area, entry);
+            return;
+        }
+
+        plugin.getAreaEditorManager().openSpawnEditor(player, area, clicked.getLocation());
+    }
+
+    private AreaSpawnEntry findEntryForMob(Area area, Entity mob) {
+        AreaClearManager clearManager = plugin.getAreaClearManager();
+
+        if (clearManager == null)
+            return null;
+
+        AreaClearSession session = clearManager.getMobSession(mob.getUniqueId());
+        AreaSpawnDefinition definition = session == null ? null : session.getDefinitionFor(mob.getUniqueId());
+
+        if (definition == null || definition.getBoundLocation() == null)
+            return null;
+
+        return entryAt(area, definition.getBoundLocation());
+    }
+
+    private AreaSpawnEntry entryAt(Area area, Location location) {
+        for (AreaSpawnEntry entry : area.getSpawnEntries()) {
+            Location other = entry.getLocation();
+
+            if (other == null || !other.getWorld().equals(location.getWorld()))
+                continue;
+
+            if (other.getBlockX() == location.getBlockX() && other.getBlockY() == location.getBlockY()
+                    && other.getBlockZ() == location.getBlockZ())
+                return entry;
+        }
+
+        return null;
+    }
+
+    @EventHandler
+    public void onInteractAtEntity(PlayerInteractAtEntityEvent event) {
+        handleEntityClick(event.getPlayer(), event.getRightClicked(), event.getHand(), event);
     }
 
     public void register() {

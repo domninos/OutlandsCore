@@ -284,12 +284,12 @@ public class BossCreatorManager {
 
         inventory.setItem(19, stepButton(Material.GOLD_INGOT, "<gray>Amount <red>-%step%</red>", -1));
         inventory.setItem(20, statItem(Material.GOLD_INGOT, "<yellow>Amount: %value%</yellow>",
-                String.valueOf(drop.getAmount())));
+                String.valueOf(drop.amount())));
         inventory.setItem(21, stepButton(Material.GOLD_INGOT, "<gray>Amount <green>+%step%</green>", 1));
 
         inventory.setItem(28, stepButton(Material.FEATHER, "<gray>Chance <red>-%step%</red>", -1));
         inventory.setItem(29, statItem(Material.FEATHER, "<yellow>Chance: %value%</yellow>",
-                Math.round(drop.getChance() * 100) + "%"));
+                Math.round(drop.chance() * 100) + "%"));
         inventory.setItem(30, stepButton(Material.FEATHER, "<gray>Chance <green>+%step%</green>", 1));
 
         inventory.setItem(40, item(Material.BARRIER, "<red>Remove Drop</red>",
@@ -671,17 +671,17 @@ public class BossCreatorManager {
 
         switch (slot) {
             case 19 -> template.getDrops().set(session.getDropIndex(),
-                    new MobDrop(drop.getType(), drop.getChance(), Math.max(1, drop.getAmount() - step)));
+                    new MobDrop(drop.type(), drop.chance(), Math.max(1, drop.amount() - step)));
             case 21 -> template.getDrops().set(session.getDropIndex(),
-                    new MobDrop(drop.getType(), drop.getChance(), drop.getAmount() + step));
+                    new MobDrop(drop.type(), drop.chance(), drop.amount() + step));
             case 28 -> template.getDrops().set(session.getDropIndex(),
-                    new MobDrop(drop.getType(), Math.max(0.0,
-                            Math.round((drop.getChance() - step / 100.0) * 100) / 100.0),
-                            drop.getAmount()));
+                    new MobDrop(drop.type(), Math.max(0.0,
+                            Math.round((drop.chance() - step / 100.0) * 100) / 100.0),
+                            drop.amount()));
             case 30 -> template.getDrops().set(session.getDropIndex(),
-                    new MobDrop(drop.getType(), Math.min(1.0,
-                            Math.round((drop.getChance() + step / 100.0) * 100) / 100.0),
-                            drop.getAmount()));
+                    new MobDrop(drop.type(), Math.min(1.0,
+                            Math.round((drop.chance() + step / 100.0) * 100) / 100.0),
+                            drop.amount()));
             default -> {
                 return;
             }
@@ -825,14 +825,14 @@ public class BossCreatorManager {
     }
 
     private ItemStack dropIcon(MobDrop drop, int index) {
-        List<ItemStack> resolved = plugin.getLootResolver().resolveDropItems(drop.getType(), 1);
+        List<ItemStack> resolved = plugin.getLootResolver().resolveDropItems(drop.type(), 1);
         Material material = resolved.isEmpty() ? Material.NETHER_STAR : resolved.getFirst().getType();
 
         return item(material, "<yellow>Drop #%index%</yellow>"
                         .replace("%index%", String.valueOf(index)),
-                List.of("<gray>Type: <white>" + drop.getType() + "</white>",
-                        "<gray>Chance: <white>" + Math.round(drop.getChance() * 100) + "%</white>",
-                        "<gray>Amount: <white>" + drop.getAmount() + "</white>",
+                List.of("<gray>Type: <white>" + drop.type() + "</white>",
+                        "<gray>Chance: <white>" + Math.round(drop.chance() * 100) + "%</white>",
+                        "<gray>Amount: <white>" + drop.amount() + "</white>",
                         "",
                         "<yellow>Left-click to edit</yellow>",
                         "<red>Right-click to remove</red>"));

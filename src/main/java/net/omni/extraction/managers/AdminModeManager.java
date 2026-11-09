@@ -8,13 +8,10 @@ import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Admin mode (bare {@code /extraction admin}): creative mode with a saved
@@ -24,19 +21,11 @@ import java.util.UUID;
  */
 public class AdminModeManager implements Listener {
 
-    private record SavedState(GameMode gameMode, ItemStack[] contents) {
-    }
-
     private final ExtractionPlugin plugin;
     private final Map<UUID, SavedState> admins = new HashMap<>();
     private final Set<UUID> buildMode = new HashSet<>();
-
     public AdminModeManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
-    }
-
-    public boolean isAdmin(UUID uuid) {
-        return admins.containsKey(uuid);
     }
 
     public boolean isBuildMode(UUID uuid) {
@@ -90,6 +79,10 @@ public class AdminModeManager implements Listener {
         plugin.sendMessage(player, Messages.ADMIN_MODE_ON.toString());
     }
 
+    public boolean isAdmin(UUID uuid) {
+        return admins.containsKey(uuid);
+    }
+
     private void exit(Player player, boolean announce) {
         SavedState state = admins.remove(player.getUniqueId());
 
@@ -104,7 +97,7 @@ public class AdminModeManager implements Listener {
     }
 
     @EventHandler
-    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+    public void onQuit(PlayerQuitEvent event) {
         buildMode.remove(event.getPlayer().getUniqueId());
 
         if (isAdmin(event.getPlayer().getUniqueId()))
@@ -115,7 +108,9 @@ public class AdminModeManager implements Listener {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
-    /** onDisable: restore every online admin (gamemode + inventory) before the sync-save sequence. */
+    /**
+     * onDisable: restore every online admin (gamemode + inventory) before the sync-save sequence.
+     */
     public void shutdown() {
         for (UUID uuid : new HashMap<>(admins).keySet()) {
             Player player = Bukkit.getPlayer(uuid);
@@ -126,5 +121,8 @@ public class AdminModeManager implements Listener {
 
         admins.clear();
         buildMode.clear();
+    }
+
+    private record SavedState(GameMode gameMode, ItemStack[] contents) {
     }
 }

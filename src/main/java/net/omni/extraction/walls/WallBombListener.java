@@ -12,8 +12,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -50,7 +50,7 @@ public class WallBombListener implements Listener {
 
         ItemStack item = event.getItem();
 
-        if (!plugin.getWallManager().isWallBomb(item))
+        if (item == null || !plugin.getWallManager().isWallBomb(item))
             return;
 
         event.setCancelled(true);

@@ -51,7 +51,7 @@ public class RoamBehavior {
             return false;
         }
 
-        EventSpawn spawn = pool.get(0);
+        EventSpawn spawn = pool.getFirst();
         Location origin = instance.getOrigin();
 
         AreaSpawnDefinition definition = ctx.plugin().getMobResolver().resolve(
@@ -144,12 +144,10 @@ public class RoamBehavior {
         if (!(leader instanceof Mob mob))
             return;
 
-        if (leader instanceof LivingEntity living) {
-            double delta = instance.getGoblinLastHp() - living.getHealth();
-            if (delta > 0)
-                instance.setGoblinDamageTaken(instance.getGoblinDamageTaken() + delta);
-            instance.setGoblinLastHp(living.getHealth());
-        }
+        double delta = instance.getGoblinLastHp() - mob.getHealth();
+        if (delta > 0)
+            instance.setGoblinDamageTaken(instance.getGoblinDamageTaken() + delta);
+        instance.setGoblinLastHp(mob.getHealth());
 
         if (instance.getGoblinMode() == EventInstance.GoblinMode.FLEE
                 && instance.getGoblinDamageTaken() >= cfg.fightThreshold()) {
@@ -211,16 +209,14 @@ public class RoamBehavior {
         if (!(leader instanceof Mob mob))
             return;
 
-        if (leader instanceof LivingEntity living) {
-            double max = ctx.presentation().maxHealth(living);
-            double ratio = max <= 0 ? 1.0 : living.getHealth() / max;
+        double max = ctx.presentation().maxHealth(mob);
+        double ratio = max <= 0 ? 1.0 : mob.getHealth() / max;
 
-            List<WorldEvent.RoamPhase> phases = cfg.phases();
-            while (instance.getNextMinibossPhase() < phases.size()
-                    && ratio <= phases.get(instance.getNextMinibossPhase()).at()) {
-                triggerMinibossPhase(instance, phases.get(instance.getNextMinibossPhase()));
-                instance.setNextMinibossPhase(instance.getNextMinibossPhase() + 1);
-            }
+        List<WorldEvent.RoamPhase> phases = cfg.phases();
+        while (instance.getNextMinibossPhase() < phases.size()
+                && ratio <= phases.get(instance.getNextMinibossPhase()).at()) {
+            triggerMinibossPhase(instance, phases.get(instance.getNextMinibossPhase()));
+            instance.setNextMinibossPhase(instance.getNextMinibossPhase() + 1);
         }
 
         Player target = nearestPlayer(leader.getLocation(), cfg.aggroRange());
@@ -330,7 +326,7 @@ public class RoamBehavior {
             world.playSound(center, boom, 1.2f, 1.0f);
 
         for (Player player : world.getPlayers())
-            if (player.getLocation().distanceSquared(center) <= (double) radius * radius)
+            if (player.getLocation().distanceSquared(center) <= radius * radius)
                 player.damage(damage, attacker);
     }
 

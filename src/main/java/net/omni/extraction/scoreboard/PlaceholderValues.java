@@ -102,15 +102,15 @@ public final class PlaceholderValues {
         return plugin.getConfigUtil().getScoreboardIdleText();
     }
 
-    private static String formatSeconds(long seconds) {
-        return String.format(Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
-    }
-
     private static String clockValue(ExtractionPlugin plugin) {
         ZoneId zone = safeZoneId(plugin.getConfigUtil().getScoreboardTimeZone());
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(
                 plugin.getConfigUtil().getScoreboardTimeFormat()).withLocale(Locale.ROOT);
         return ZonedDateTime.now(zone).format(formatter);
+    }
+
+    private static String formatSeconds(long seconds) {
+        return String.format(Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
     }
 
     private static ZoneId safeZoneId(String zone) {

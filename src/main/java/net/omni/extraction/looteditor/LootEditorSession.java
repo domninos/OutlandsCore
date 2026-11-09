@@ -13,14 +13,18 @@ public class LootEditorSession {
     public static final int PAGE_ENTRY = 1;
 
     public static final int SIZE = 54;
-    /** Main view: entry slots (inclusive). */
+    /**
+     * Main view: entry slots (inclusive).
+     */
     public static final int TABLE_CONTENT_START = 9;
     public static final int TABLE_CONTENT_END = 44;
     public static final int SLOT_BACK = 45;
     public static final int SLOT_RESET = 47;
     public static final int SLOT_SAVE = 49;
     public static final int SLOT_SAVE_CHEST = 51;
-    /** Entry editor: field rows (decrement, value, increment). */
+    /**
+     * Entry editor: field rows (decrement, value, increment).
+     */
     public static final int SLOT_AMOUNT_DEC = 19;
     public static final int SLOT_AMOUNT = 20;
     public static final int SLOT_AMOUNT_INC = 21;

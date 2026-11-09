@@ -6,22 +6,16 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 
 public class DatabaseManager {
 
-    /** Storage backend. {@code MYSQL} is MariaDB/MySQL; {@code SQLITE} is the bundled single-file default. */
-    public enum Dialect {SQLITE, MYSQL}
-
-    /** Canonical player_data column order, shared by the upsert SQL and the SQLite importer. */
+    /**
+     * Canonical player_data column order, shared by the upsert SQL and the SQLite importer.
+     */
     public static final String[] PLAYER_COLUMNS = {
             "uuid", "tokens", "loadout", "loadout_contents", "customized_cells", "cooldown_until",
             "last_kill_count", "last_event_count", "last_boss_count", "extra_time_seconds",
@@ -32,12 +26,14 @@ public class DatabaseManager {
 
     private final ExtractionPlugin plugin;
     private final boolean configuredMysql;
+    private final AsyncDatabase asyncDatabase;
+
     private Dialect dialect;
     private String tablePrefix;
     private boolean fellBack;
-    private final AsyncDatabase asyncDatabase;
-    private HikariDataSource dataSource;
-    private String playerUpsertSql;
+
+    private final HikariDataSource dataSource;
+    private final String playerUpsertSql;
 
     public DatabaseManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -85,12 +81,16 @@ public class DatabaseManager {
         }
     }
 
-    /** True when MySQL was configured but the plugin fell back to SQLite. */
+    /**
+     * True when MySQL was configured but the plugin fell back to SQLite.
+     */
     public boolean isFallback() {
         return fellBack;
     }
 
-    /** True when {@code storage.type} is configured as mysql (regardless of fallback). */
+    /**
+     * True when {@code storage.type} is configured as mysql (regardless of fallback).
+     */
     public boolean isConfiguredMysql() {
         return configuredMysql;
     }
@@ -101,7 +101,9 @@ public class DatabaseManager {
         return prefix.endsWith("_") || prefix.endsWith("-") ? prefix : prefix + "_";
     }
 
-    /** Resolves a logical table name to the configured (optionally prefixed) name. */
+    /**
+     * Resolves a logical table name to the configured (optionally prefixed) name.
+     */
     public String table(String name) {
         return dialect == Dialect.MYSQL ? tablePrefix + name : name;
     }
@@ -118,7 +120,9 @@ public class DatabaseManager {
         return table("player_data");
     }
 
-    /** Upsert statement for the player_data table, built for the active dialect. */
+    /**
+     * Upsert statement for the player_data table, built for the active dialect.
+     */
     public String playerUpsertSql() {
         return playerUpsertSql;
     }
@@ -267,12 +271,16 @@ public class DatabaseManager {
         }
     }
 
-    /** Wraps a MySQL identifier in backticks, escaping embedded backticks. */
+    /**
+     * Wraps a MySQL identifier in backticks, escaping embedded backticks.
+     */
     private String quoteIdentifier(String name) {
         return "`" + name.replace("`", "``") + "`";
     }
 
-    /** Charset clause appended to MySQL {@code CREATE TABLE}s; empty on SQLite. */
+    /**
+     * Charset clause appended to MySQL {@code CREATE TABLE}s; empty on SQLite.
+     */
     private String tableSuffix() {
         return dialect == Dialect.MYSQL ? " DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci" : "";
     }
@@ -440,7 +448,9 @@ public class DatabaseManager {
         return dialect == Dialect.MYSQL ? "TEXT" : "TEXT NOT NULL DEFAULT '[]'";
     }
 
-    /** Adds {@code columnName} to {@code tableName} when absent, dialect-aware; never aborts startup. */
+    /**
+     * Adds {@code columnName} to {@code tableName} when absent, dialect-aware; never aborts startup.
+     */
     private void ensureColumn(Statement stmt, String tableName, String columnName, String columnDef) {
         try {
             boolean present;
@@ -523,7 +533,9 @@ public class DatabaseManager {
         return dataSource.getConnection();
     }
 
-    /** The dedicated off-thread database worker. All SQL must run on it, never the main thread. */
+    /**
+     * The dedicated off-thread database worker. All SQL must run on it, never the main thread.
+     */
     public AsyncDatabase async() {
         return asyncDatabase;
     }
@@ -544,7 +556,9 @@ public class DatabaseManager {
         return asyncDatabase.runKeyed(key, work);
     }
 
-    /** Runs a continuation on the Bukkit main thread ({@code sync} work). */
+    /**
+     * Runs a continuation on the Bukkit main thread ({@code sync} work).
+     */
     public Executor mainExecutor() {
         return asyncDatabase.mainExecutor();
     }
@@ -579,4 +593,9 @@ public class DatabaseManager {
     public void executeSyncDirect(Runnable task) {
         task.run();
     }
+
+    /**
+     * Storage backend. {@code MYSQL} is MariaDB/MySQL; {@code SQLITE} is the bundled single-file default.
+     */
+    public enum Dialect {SQLITE, MYSQL}
 }

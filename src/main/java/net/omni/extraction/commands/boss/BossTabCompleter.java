@@ -8,11 +8,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.EntityType;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.HashSet;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class BossTabCompleter implements TabCompleter {
@@ -41,9 +37,7 @@ public class BossTabCompleter implements TabCompleter {
 
         if (args.length == 2)
             return switch (args[0].toLowerCase(Locale.ROOT)) {
-                case "edit", "delete", "rename", "settype", "spawn" ->
-                        filter(bossIds(), input);
-                case "create" -> List.of();
+                case "edit", "delete", "rename", "settype", "spawn" -> filter(bossIds(), input);
                 default -> List.of();
             };
 
@@ -65,6 +59,17 @@ public class BossTabCompleter implements TabCompleter {
         return List.of();
     }
 
+    private List<String> filter(List<String> values, String input) {
+        return values.stream()
+                .filter(value -> value.toLowerCase(Locale.ROOT).startsWith(input))
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .collect(Collectors.toList());
+    }
+
+    private List<String> bossIds() {
+        return plugin.getBossTemplateManager().getBossTemplates().stream().map(MobTemplate::getId).toList();
+    }
+
     private List<String> availableTypes() {
         Set<String> types = new HashSet<>();
 
@@ -81,16 +86,5 @@ public class BossTabCompleter implements TabCompleter {
         }
 
         return new ArrayList<>(types);
-    }
-
-    private List<String> bossIds() {
-        return plugin.getBossTemplateManager().getBossTemplates().stream().map(MobTemplate::getId).toList();
-    }
-
-    private List<String> filter(List<String> values, String input) {
-        return values.stream()
-                .filter(value -> value.toLowerCase(Locale.ROOT).startsWith(input))
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .collect(Collectors.toList());
     }
 }

@@ -254,7 +254,7 @@ public class HologramManager {
 
         if (standalone != null) {
             for (StandaloneChest chest : standalone.getAll()) {
-                String name = updateStandaloneHologram(chest.getId(), chest.getLocation(),
+                String name = updateStandaloneHologram(chest.id(), chest.location(),
                         standalone.hologramSnapshot(chest));
 
                 if (name != null)
@@ -292,7 +292,7 @@ public class HologramManager {
             Hologram hologram = DHAPI.getHologram(name);
 
             if (hologram == null) {
-                hologram = DHAPI.createHologram(name, position, false, lines);
+                DHAPI.createHologram(name, position, false, lines);
                 lastChestPositions.put(name, position.clone());
                 appliedChestLines.put(name, lines);
                 return name;
@@ -406,19 +406,17 @@ public class HologramManager {
      * on the general {@code holograms.enabled} toggle — events control their
      * own waypoint via events.yml. {@code lines} must already be in
      * DecentHolograms text format (see {@link #toDh(String)}).
-     *
-     * @return the hologram name, or null when DecentHolograms is unavailable
      */
-    public String updateWaypointHologram(String id, Location location, List<String> lines) {
+    public void updateWaypointHologram(String id, Location location, List<String> lines) {
         if (id == null || location == null || location.getWorld() == null)
-            return null;
+            return;
 
         if (!available())
-            return null;
+            return;
 
         if (lines == null || lines.isEmpty()) {
             removeWaypointHologram(id);
-            return null;
+            return;
         }
 
         String name = eventWaypointName(id);
@@ -431,7 +429,7 @@ public class HologramManager {
                 DHAPI.createHologram(name, position, false, lines);
                 lastWaypointPositions.put(name, position.clone());
                 appliedWaypointLines.put(name, lines);
-                return name;
+                return;
             }
 
             Location last = lastWaypointPositions.get(name);
@@ -446,9 +444,7 @@ public class HologramManager {
                 appliedWaypointLines.put(name, lines);
             }
 
-            return name;
         } catch (RuntimeException ignored) {
-            return name;
         }
     }
 

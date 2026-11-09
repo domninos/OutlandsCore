@@ -33,7 +33,6 @@ public class WorldEvent {
             new TerrainBlock(Material.SLIME_BLOCK, 1));
     private final String id;
     private final boolean enabled;
-    private String displayName;
     private final int weight;
     private final int cooldownSeconds;
     private final int durationSeconds;
@@ -96,7 +95,9 @@ public class WorldEvent {
     private final RoamConfig roam;
     private final List<Mutator> mutators;
     private final int mutatorsMaxSelected;
+    private String displayName;
     private ConvoyConfig convoy;
+
     public WorldEvent(String id, boolean enabled, String displayName, int weight,
                       int cooldownSeconds, int durationSeconds, int level, String lootTable,
                       List<EventSpawnLocation> spawnLocations, List<EventSpawn> mobs, List<EventSpawn> bosses,
@@ -199,7 +200,9 @@ public class WorldEvent {
         return displayName;
     }
 
-    /** Runtime rename (admin setname) — persisted via WorldEventsConfig.saveDisplayName. */
+    /**
+     * Runtime rename (admin setname) — persisted via WorldEventsConfig.saveDisplayName.
+     */
     public void setDisplayName(String displayName) {
         this.displayName = displayName == null || displayName.isBlank() ? id : displayName;
     }
@@ -272,12 +275,16 @@ public class WorldEvent {
         return maxReinforcements;
     }
 
-    /** True (default) = bosses count toward %total%/%remaining%; false = guardians excluded. */
+    /**
+     * True (default) = bosses count toward %total%/%remaining%; false = guardians excluded.
+     */
     public boolean isCountBosses() {
         return countBosses;
     }
 
-    /** True = every wave also spawns the bosses: groups "for help" (they count normally). */
+    /**
+     * True = every wave also spawns the bosses: groups "for help" (they count normally).
+     */
     public boolean isSpawnBossesInWaves() {
         return spawnBossesInWaves;
     }

@@ -36,34 +36,38 @@ public final class BackpackShopGUI {
         Inventory inv = renderer.createInventory(new BackpackShopHolder(), size,
                 plugin.getPackManager().titleWithTexture(config.getShopGuiTitle(), "backpack-shop"));
 
-        ItemStack filler = button(plugin, Material.GRAY_STAINED_GLASS_PANE, " ", null);
+        ItemStack filler = button(Material.GRAY_STAINED_GLASS_PANE, " ", null);
         for (int i = 0; i < size; i++)
             inv.setItem(i, filler);
 
         int tiers = config.getBackpackTierSlots().size();
 
         if (tiers >= 1)
-            inv.setItem(SLOT_TIER_1, tierButton(plugin, config, manager, held != null, heldTier,
+            inv.setItem(SLOT_TIER_1, tierButton(config, manager, held != null, heldTier,
                     1, Material.LEATHER_CHESTPLATE));
         if (tiers >= 2)
-            inv.setItem(SLOT_TIER_2, tierButton(plugin, config, manager, held != null, heldTier,
+            inv.setItem(SLOT_TIER_2, tierButton(config, manager, held != null, heldTier,
                     2, Material.IRON_CHESTPLATE));
         if (tiers >= 3)
-            inv.setItem(SLOT_TIER_3, tierButton(plugin, config, manager, held != null, heldTier,
+            inv.setItem(SLOT_TIER_3, tierButton(config, manager, held != null, heldTier,
                     3, Material.DIAMOND_CHESTPLATE));
         if (tiers >= 4)
-            inv.setItem(SLOT_TIER_4, tierButton(plugin, config, manager, held != null, heldTier,
+            inv.setItem(SLOT_TIER_4, tierButton(config, manager, held != null, heldTier,
                     4, Material.NETHERITE_CHESTPLATE));
 
-        inv.setItem(SLOT_PAGINATION, paginationButton(plugin, config, manager, held));
+        inv.setItem(SLOT_PAGINATION, paginationButton(config, manager, held));
 
-        inv.setItem(SLOT_CLOSE, button(plugin, Material.BARRIER,
+        inv.setItem(SLOT_CLOSE, button(Material.BARRIER,
                 "<red><bold>Close</bold></red>", List.of("<gray>Close the shop</gray>")));
 
         return inv;
     }
 
-    private static ItemStack tierButton(ExtractionPlugin plugin, ConfigUtil config, BackpackManager manager,
+    private static ItemStack button(Material material, String name, List<String> lore) {
+        return ItemUtil.createItem(material, name, lore);
+    }
+
+    private static ItemStack tierButton(ConfigUtil config, BackpackManager manager,
                                         boolean holding, int heldTier, int tier, Material material) {
         int price = config.getBackpackTierPrice(tier);
         int slots = manager.getSlotCount(tier);
@@ -81,11 +85,11 @@ public final class BackpackShopGUI {
             lore.add("<gray>Click to buy</gray>");
         }
 
-        return button(plugin, material,
+        return button(material,
                 "<yellow><bold>Tier " + tier + " Backpack</bold></yellow>", lore);
     }
 
-    private static ItemStack paginationButton(ExtractionPlugin plugin, ConfigUtil config, BackpackManager manager,
+    private static ItemStack paginationButton(ConfigUtil config, BackpackManager manager,
                                               ItemStack held) {
         int current = held != null ? manager.getPages(held) : 0;
         int max = config.getBackpackMaxPages();
@@ -109,11 +113,7 @@ public final class BackpackShopGUI {
             }
         }
 
-        return button(plugin, Material.CHEST,
+        return button(Material.CHEST,
                 "<aqua><bold>Extra Pages</bold></aqua>", lore);
-    }
-
-    private static ItemStack button(ExtractionPlugin plugin, Material material, String name, List<String> lore) {
-        return ItemUtil.createItem(material, name, lore);
     }
 }

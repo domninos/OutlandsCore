@@ -53,6 +53,24 @@ public class LootTableManager {
         }
     }
 
+    /**
+     * Caches the table definitions shipped in the plugin jar for the reset action.
+     */
+    private void loadBundledDefaults() {
+        defaults.clear();
+
+        try (InputStream stream = plugin.getResource("loot_tables.yml")) {
+            if (stream == null)
+                return;
+
+            YamlConfiguration config = YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(stream, StandardCharsets.UTF_8));
+            parseTables(config, defaults);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Failed to read bundled loot_tables.yml defaults: " + e.getMessage());
+        }
+    }
+
     private LootTable parseTable(String id, ConfigurationSection section) {
         LootTable table = new LootTable(id);
         table.setItemsPerChest(section.getInt("items-per-chest", -1));
@@ -92,28 +110,16 @@ public class LootTableManager {
         return table;
     }
 
-    /** Caches the table definitions shipped in the plugin jar for the reset action. */
-    private void loadBundledDefaults() {
-        defaults.clear();
-
-        try (InputStream stream = plugin.getResource("loot_tables.yml")) {
-            if (stream == null)
-                return;
-
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(
-                    new InputStreamReader(stream, StandardCharsets.UTF_8));
-            parseTables(config, defaults);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to read bundled loot_tables.yml defaults: " + e.getMessage());
-        }
-    }
-
-    /** True when the bundled loot_tables.yml declares a default for the table id. */
+    /**
+     * True when the bundled loot_tables.yml declares a default for the table id.
+     */
     public boolean hasDefault(String id) {
         return id != null && defaults.containsKey(id.toLowerCase(Locale.ROOT));
     }
 
-    /** The bundled default table, or null when the id has no shipped default. */
+    /**
+     * The bundled default table, or null when the id has no shipped default.
+     */
     public LootTable getDefault(String id) {
         return id == null ? null : defaults.get(id.toLowerCase(Locale.ROOT));
     }
@@ -136,7 +142,9 @@ public class LootTableManager {
         return tables.size();
     }
 
-    /** Registers (or replaces) a table in the in-memory registry; call {@link #save()} to persist. */
+    /**
+     * Registers (or replaces) a table in the in-memory registry; call {@link #save()} to persist.
+     */
     public void put(LootTable table) {
         tables.put(table.getName().toLowerCase(Locale.ROOT), table);
     }

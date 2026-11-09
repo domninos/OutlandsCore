@@ -43,20 +43,6 @@ public class ItemUtil {
         KEY_ID = new NamespacedKey(plugin, "relic_id");
     }
 
-    public static int asInt(Object obj, int def) {
-        if (obj instanceof Number num)
-            return num.intValue();
-
-        if (obj == null)
-            return def;
-
-        try {
-            return Integer.parseInt(String.valueOf(obj));
-        } catch (Exception e) {
-            return def;
-        }
-    }
-
     /**
      * Simple visible-icon builder: material with fallback chain, display name
      * and lore applied through the plugin's ChatRenderer.
@@ -67,97 +53,16 @@ public class ItemUtil {
         return build(material, 1, name, lore, null, null, null, null, 1, null);
     }
 
-    public static ItemStack createItem(Material material,
-                                       String name, List<String> lore) {
-        return build(material, 1, name, lore, null, null, null, null, 1, null);
-    }
+    private static Material resolveMaterial(String materialName, String fallback) {
+        Material material = Material.matchMaterial(materialName == null ? "" : materialName);
 
-    /**
-     * Def-driven builder (shop consumables): potion tinting, custom model data
-     * and the item-specific tags (wall bomb / smoke grenade) applied last so
-     * later meta edits can never wipe them. Display name/lore intentionally
-     * unset — GUIs overlay placeholder-templated text themselves.
-     */
-    public static ItemStack createItem(ExtractionPlugin plugin, Map<String, Object> def) {
-        Material mat = Material.matchMaterial(String.valueOf(def.getOrDefault("material", "BREAD")));
+        if (material == null || !material.isItem())
+            material = Material.matchMaterial(fallback == null ? "" : fallback);
 
-        if (mat == null)
-            mat = Material.BREAD;
+        if (material == null || !material.isItem())
+            material = Material.PAPER;
 
-        int amount = asInt(def.get("amount"), 1);
-
-        ItemStack item = new ItemStack(mat, Math.min(amount, 64));
-
-        if (def.containsKey("potion_type") && item.getItemMeta() instanceof PotionMeta pm) {
-            String ptype = String.valueOf(def.get("potion_type"));
-
-            try {
-                pm.setBasePotionType(PotionType.valueOf(ptype));
-            } catch (Exception ignored) {
-            }
-
-            int plevel = asInt(def.get("potion_level"), 1);
-            PotionEffectType pet = PotionEffectType.getByName(ptype);
-
-            if (pet != null) {
-                int duration = pet.isInstant() ? 1 : 20 * 30;
-                pm.addCustomEffect(new PotionEffect(pet, duration, plevel - 1), true);
-            }
-
-            item.setItemMeta(pm);
-        }
-
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            applyModelData(meta, def);
-            item.setItemMeta(meta);
-        }
-
-        if (Boolean.parseBoolean(String.valueOf(def.getOrDefault("wall_bomb", "false"))))
-            plugin.getWallManager().tagWallBomb(item);
-
-        if (Boolean.parseBoolean(String.valueOf(def.getOrDefault("smoke_grenade", "false"))))
-            plugin.getSmokeGrenadeManager().tagSmokeGrenade(item, def);
-
-        return item;
-    }
-
-    public static ItemStack createItem(RelicDefinition def) {
-        return createItem(def, null, (Integer) null);
-    }
-
-    public static ItemStack createItem(RelicDefinition def, String extraLore) {
-        return createItem(def, null, extraLore, null);
-    }
-
-    /**
-     * Builds the droppable/grantable relic item. {@code extraLore} is appended
-     * as a MiniMessage line when non-null and non-blank. {@code nameOverride}
-     * replaces the definition name when non-null (live cooldown display).
-     */
-    public static ItemStack createItem(RelicDefinition def, String nameOverride, String extraLore) {
-        return createItem(def, nameOverride, extraLore, null);
-    }
-
-    public static ItemStack createItem(RelicDefinition def, String extraLore, Integer customModelData) {
-        return createItem(def, null, extraLore, customModelData);
-    }
-
-    public static ItemStack createItem(RelicDefinition def, String nameOverride,
-                                       String extraLore, Integer customModelData) {
-        List<String> lore = new ArrayList<>(def.lore());
-
-        if (extraLore != null && !extraLore.isBlank())
-            lore.add(extraLore);
-
-        String name = nameOverride != null && !nameOverride.isBlank() ? nameOverride : def.name();
-
-        return build(def.getMaterial(), 1, name, lore, customModelData, 1,
-                null, null, 1, meta -> {
-                    meta.getPersistentDataContainer().set(KEY_RELIC, PersistentDataType.BYTE, (byte) 1);
-                    meta.getPersistentDataContainer().set(KEY_KIND, PersistentDataType.STRING, def.category());
-                    meta.getPersistentDataContainer().set(KEY_ID, PersistentDataType.STRING, def.id());
-                });
+        return material;
     }
 
     /**
@@ -216,22 +121,79 @@ public class ItemUtil {
         return item;
     }
 
-    private static Material resolveMaterial(String materialName, String fallback) {
-        Material material = Material.matchMaterial(materialName == null ? "" : materialName);
-
-        if (material == null || !material.isItem())
-            material = Material.matchMaterial(fallback == null ? "" : fallback);
-
-        if (material == null || !material.isItem())
-            material = Material.PAPER;
-
-        return material;
-    }
-
     public static void applyCustomModelData(ItemMeta meta, int value) {
         CustomModelDataComponent component = meta.getCustomModelDataComponent();
         component.setFloats(List.of((float) value));
         meta.setCustomModelDataComponent(component);
+    }
+
+    public static ItemStack createItem(Material material,
+                                       String name, List<String> lore) {
+        return build(material, 1, name, lore, null, null, null, null, 1, null);
+    }
+
+    /**
+     * Def-driven builder (shop consumables): potion tinting, custom model data
+     * and the item-specific tags (wall bomb / smoke grenade) applied last so
+     * later meta edits can never wipe them. Display name/lore intentionally
+     * unset — GUIs overlay placeholder-templated text themselves.
+     */
+    public static ItemStack createItem(ExtractionPlugin plugin, Map<String, Object> def) {
+        Material mat = Material.matchMaterial(String.valueOf(def.getOrDefault("material", "BREAD")));
+
+        if (mat == null)
+            mat = Material.BREAD;
+
+        int amount = asInt(def.get("amount"), 1);
+
+        ItemStack item = new ItemStack(mat, Math.min(amount, 64));
+
+        if (def.containsKey("potion_type") && item.getItemMeta() instanceof PotionMeta pm) {
+            String ptype = String.valueOf(def.get("potion_type"));
+
+            try {
+                pm.setBasePotionType(PotionType.valueOf(ptype));
+            } catch (Exception ignored) {
+            }
+
+            int plevel = asInt(def.get("potion_level"), 1);
+            PotionEffectType pet = PotionEffectType.getByName(ptype);
+
+            if (pet != null) {
+                int duration = pet.isInstant() ? 1 : 20 * 30;
+                pm.addCustomEffect(new PotionEffect(pet, duration, plevel - 1), true);
+            }
+
+            item.setItemMeta(pm);
+        }
+
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            applyModelData(meta, def);
+            item.setItemMeta(meta);
+        }
+
+        if (Boolean.parseBoolean(String.valueOf(def.getOrDefault("wall_bomb", "false"))))
+            plugin.getWallManager().tagWallBomb(item);
+
+        if (Boolean.parseBoolean(String.valueOf(def.getOrDefault("smoke_grenade", "false"))))
+            plugin.getSmokeGrenadeManager().tagSmokeGrenade(item, def);
+
+        return item;
+    }
+
+    public static int asInt(Object obj, int def) {
+        if (obj instanceof Number num)
+            return num.intValue();
+
+        if (obj == null)
+            return def;
+
+        try {
+            return Integer.parseInt(String.valueOf(obj));
+        } catch (Exception e) {
+            return def;
+        }
     }
 
     /**
@@ -263,17 +225,51 @@ public class ItemUtil {
         meta.setCustomModelDataComponent(component);
     }
 
-    public static boolean isRelic(ItemStack item) {
-        return item != null && item.hasItemMeta() && KEY_RELIC != null
-                && item.getItemMeta().getPersistentDataContainer().has(KEY_RELIC, PersistentDataType.BYTE);
+    public static ItemStack createItem(RelicDefinition def) {
+        return createItem(def, null, (Integer) null);
+    }
+
+    public static ItemStack createItem(RelicDefinition def, String extraLore, Integer customModelData) {
+        return createItem(def, null, extraLore, customModelData);
+    }
+
+    public static ItemStack createItem(RelicDefinition def, String nameOverride,
+                                       String extraLore, Integer customModelData) {
+        List<String> lore = new ArrayList<>(def.lore());
+
+        if (extraLore != null && !extraLore.isBlank())
+            lore.add(extraLore);
+
+        String name = nameOverride != null && !nameOverride.isBlank() ? nameOverride : def.name();
+
+        return build(def.getMaterial(), 1, name, lore, customModelData, 1,
+                null, null, 1, meta -> {
+                    meta.getPersistentDataContainer().set(KEY_RELIC, PersistentDataType.BYTE, (byte) 1);
+                    meta.getPersistentDataContainer().set(KEY_KIND, PersistentDataType.STRING, def.category());
+                    meta.getPersistentDataContainer().set(KEY_ID, PersistentDataType.STRING, def.id());
+                });
+    }
+
+    public static ItemStack createItem(RelicDefinition def, String extraLore) {
+        return createItem(def, null, extraLore, null);
+    }
+
+    /**
+     * Builds the droppable/grantable relic item. {@code extraLore} is appended
+     * as a MiniMessage line when non-null and non-blank. {@code nameOverride}
+     * replaces the definition name when non-null (live cooldown display).
+     */
+    public static ItemStack createItem(RelicDefinition def, String nameOverride, String extraLore) {
+        return createItem(def, nameOverride, extraLore, null);
     }
 
     public static boolean isCharm(ItemStack item) {
         return isRelic(item) && KIND_CHARM.equals(getKind(item));
     }
 
-    public static boolean isArtifact(ItemStack item) {
-        return isRelic(item) && KIND_ARTIFACT.equals(getKind(item));
+    public static boolean isRelic(ItemStack item) {
+        return item != null && item.hasItemMeta() && KEY_RELIC != null
+                && item.getItemMeta().getPersistentDataContainer().has(KEY_RELIC, PersistentDataType.BYTE);
     }
 
     public static String getKind(ItemStack item) {
@@ -281,6 +277,10 @@ public class ItemUtil {
             return null;
 
         return item.getItemMeta().getPersistentDataContainer().get(KEY_KIND, PersistentDataType.STRING);
+    }
+
+    public static boolean isArtifact(ItemStack item) {
+        return isRelic(item) && KIND_ARTIFACT.equals(getKind(item));
     }
 
     public static String getId(ItemStack item) {

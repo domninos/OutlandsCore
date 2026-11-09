@@ -43,7 +43,9 @@ public class DroneSession {
         this.active = true;
     }
 
-    /** Armor stripped for the pilot while airborne (null after restore). */
+    /**
+     * Armor stripped for the pilot while airborne (null after restore).
+     */
     public ItemStack[] getArmor() {
         return armor;
     }
@@ -104,12 +106,16 @@ public class DroneSession {
         return npcId;
     }
 
-    /** The visible drone body the pilot rides; other players and mobs can hit it. */
+    /**
+     * The visible drone body the pilot rides; other players and mobs can hit it.
+     */
     public Bee getMount() {
         return mount;
     }
 
-    /** Per-session scheduler task (movement + battery + hum); null until activate() starts it. */
+    /**
+     * Per-session scheduler task (movement + battery + hum); null until activate() starts it.
+     */
     public BukkitTask getTask() {
         return task;
     }

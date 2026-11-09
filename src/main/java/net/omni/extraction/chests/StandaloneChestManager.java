@@ -9,6 +9,7 @@ import net.omni.extraction.util.ItemUtil;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -35,7 +36,6 @@ public class StandaloneChestManager {
     private final Map<Integer, StandaloneChest> chests;
     private final Map<Integer, Boolean> lastReady;
     private final Map<Integer, List<String>> lastLines;
-    private final NamespacedKey markerKey;
     private BukkitTask refillTask;
     private int nextId;
 
@@ -47,7 +47,6 @@ public class StandaloneChestManager {
         this.lastReady = new HashMap<>();
         this.lastLines = new HashMap<>();
         this.nextId = 1;
-        this.markerKey = new NamespacedKey(plugin, "standalone_chest");
     }
 
     public void load() {
@@ -130,10 +129,10 @@ public class StandaloneChestManager {
         }
 
         for (StandaloneChest chest : chests.values()) {
-            if (chest.getLocation().getWorld() == target.getWorld()
-                    && chest.getLocation().getBlockX() == target.getX()
-                    && chest.getLocation().getBlockY() == target.getY()
-                    && chest.getLocation().getBlockZ() == target.getZ()) {
+            if (chest.location().getWorld() == target.getWorld()
+                    && chest.location().getBlockX() == target.getX()
+                    && chest.location().getBlockY() == target.getY()
+                    && chest.location().getBlockZ() == target.getZ()) {
                 plugin.sendMessage(player, Messages.CHEST_ALREADY_REGISTERED.toString());
                 return false;
             }
@@ -141,13 +140,13 @@ public class StandaloneChestManager {
 
         StandaloneChest chest = new StandaloneChest(nextId++,
                 target.getLocation(), container, lootTable, keyId);
-        chests.put(chest.getId(), chest);
+        chests.put(chest.id(), chest);
         save();
 
         fillIfEmpty(chest);
         refreshHologram(chest);
 
-        plugin.sendMessage(player, Messages.CHEST_REGISTERED.replace("id", String.valueOf(chest.getId())));
+        plugin.sendMessage(player, Messages.CHEST_REGISTERED.replace("id", String.valueOf(chest.id())));
         return true;
     }
 
@@ -155,19 +154,19 @@ public class StandaloneChestManager {
         YamlConfiguration config = new YamlConfiguration();
 
         for (StandaloneChest chest : chests.values()) {
-            String base = "chests." + chest.getId() + ".";
-            config.set(base + "world", chest.getLocation().getWorld() == null
-                    ? "" : chest.getLocation().getWorld().getName());
-            config.set(base + "x", chest.getLocation().getBlockX());
-            config.set(base + "y", chest.getLocation().getBlockY());
-            config.set(base + "z", chest.getLocation().getBlockZ());
-            config.set(base + "container", chest.getContainer().name());
+            String base = "chests." + chest.id() + ".";
+            config.set(base + "world", chest.location().getWorld() == null
+                    ? "" : chest.location().getWorld().getName());
+            config.set(base + "x", chest.location().getBlockX());
+            config.set(base + "y", chest.location().getBlockY());
+            config.set(base + "z", chest.location().getBlockZ());
+            config.set(base + "container", chest.container().name());
 
-            if (chest.getLootTable() != null)
-                config.set(base + "loot-table", chest.getLootTable());
+            if (chest.lootTable() != null)
+                config.set(base + "loot-table", chest.lootTable());
 
-            if (chest.getKeyId() != null)
-                config.set(base + "key", chest.getKeyId());
+            if (chest.keyId() != null)
+                config.set(base + "key", chest.keyId());
         }
 
         try {
@@ -184,16 +183,16 @@ public class StandaloneChestManager {
         if (chest == null)
             return false;
 
-        World world = Bukkit.getWorld(chest.getLocation().getWorld() == null
-                ? "" : chest.getLocation().getWorld().getName());
+        World world = Bukkit.getWorld(chest.location().getWorld() == null
+                ? "" : chest.location().getWorld().getName());
         if (world == null)
             return false;
 
-        Block block = chest.getLocation().getBlock();
+        Block block = chest.location().getBlock();
 
         if (block.getType() == Material.AIR) {
-            block.setType(chest.getContainer());
-        } else if (block.getType() != chest.getContainer()) {
+            block.setType(chest.container());
+        } else if (block.getType() != chest.container()) {
             return false;
         }
 
@@ -220,15 +219,15 @@ public class StandaloneChestManager {
             return;
 
         // Transition-triggered refresh: always rebuild + push the text.
-        lastReady.remove(chest.getId());
-        lastLines.remove(chest.getId());
+        lastReady.remove(chest.id());
+        lastLines.remove(chest.id());
 
-        plugin.getHologramManager().updateStandaloneHologram(chest.getId(),
-                chest.getLocation(), hologramSnapshot(chest));
+        plugin.getHologramManager().updateStandaloneHologram(chest.id(),
+                chest.location(), hologramSnapshot(chest));
     }
 
     private List<ItemStack> rollLoot(StandaloneChest chest) {
-        String tableId = chest.getLootTable();
+        String tableId = chest.lootTable();
         List<ItemStack> loot = new ArrayList<>();
 
         if (tableId == null || tableId.isBlank())
@@ -270,24 +269,24 @@ public class StandaloneChestManager {
 
         boolean ready = isReady(chest);
 
-        Boolean last = lastReady.get(chest.getId());
-        List<String> cached = lastLines.get(chest.getId());
+        Boolean last = lastReady.get(chest.id());
+        List<String> cached = lastLines.get(chest.id());
 
         if (last != null && cached != null && last.equals(ready))
             return cached;
 
         List<String> lines = buildHologramLines(ready);
-        lastReady.put(chest.getId(), ready);
-        lastLines.put(chest.getId(), lines);
+        lastReady.put(chest.id(), ready);
+        lastLines.put(chest.id(), lines);
         return lines;
     }
 
     private boolean isReady(StandaloneChest chest) {
-        World world = chest.getLocation().getWorld();
+        World world = chest.location().getWorld();
         if (world == null)
             return false;
 
-        Block block = chest.getLocation().getBlock();
+        Block block = chest.location().getBlock();
 
         if (!(block.getState() instanceof InventoryHolder holder))
             return false;
@@ -317,7 +316,7 @@ public class StandaloneChestManager {
         return lines;
     }
 
-    public int removeAll(org.bukkit.command.CommandSender sender) {
+    public void removeAll(CommandSender sender) {
         int count = chests.size();
         List<Integer> ids = new ArrayList<>(chests.keySet());
 
@@ -327,7 +326,6 @@ public class StandaloneChestManager {
         if (sender instanceof Player player)
             plugin.sendMessage(player, Messages.CHEST_REMOVED_ALL.replace("count", String.valueOf(count)));
 
-        return count;
     }
 
     public boolean remove(org.bukkit.command.CommandSender sender, int id) {
@@ -362,7 +360,7 @@ public class StandaloneChestManager {
             return false;
 
         for (StandaloneChest chest : chests.values()) {
-            if (keyId.equalsIgnoreCase(chest.getKeyId()))
+            if (keyId.equalsIgnoreCase(chest.keyId()))
                 return true;
         }
 
@@ -378,7 +376,7 @@ public class StandaloneChestManager {
             return null;
 
         for (StandaloneChest chest : chests.values()) {
-            Location anchor = chest.getLocation();
+            Location anchor = chest.location();
 
             if (anchor.getWorld() == null || !anchor.getWorld().equals(location.getWorld()))
                 continue;

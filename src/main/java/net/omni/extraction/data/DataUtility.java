@@ -90,7 +90,7 @@ public final class DataUtility {
 
             if (current < 0 || current >= out.size())
                 continue;
-            if (legacy == current || legacy < 0 || legacy >= out.size())
+            if (legacy == current || legacy >= out.size())
                 continue;
             if (out.get(current) == null && out.get(legacy) != null) {
                 out.set(current, out.get(legacy));

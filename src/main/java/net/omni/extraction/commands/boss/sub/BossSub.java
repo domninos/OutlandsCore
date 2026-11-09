@@ -74,7 +74,7 @@ abstract class BossSub implements SubCommand {
             return;
 
         plugin.getBossTemplateManager().applyMythicAttributesToBoss(id,
-                attributes.getHealth(), attributes.getDamage(), attributes.getDisplayName());
+                attributes.health(), attributes.damage(), attributes.displayName());
     }
 
     protected record MobTypeCheck(String type, boolean mythic) {

@@ -24,14 +24,6 @@ public enum BossAbilityType {
         this.fields = fields;
     }
 
-    public String getDisplayName() {
-        return displayName;
-    }
-
-    public List<BossAbilityField> getFields() {
-        return fields;
-    }
-
     public static BossAbilityType parse(String value) {
         if (value == null || value.isBlank())
             return null;
@@ -41,5 +33,13 @@ public enum BossAbilityType {
         } catch (IllegalArgumentException exception) {
             return null;
         }
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public List<BossAbilityField> getFields() {
+        return fields;
     }
 }

@@ -26,14 +26,64 @@ import java.util.Set;
 
 public class LoadoutManager {
 
+    private static NamespacedKey compassKey;
     private final ExtractionPlugin plugin;
     private final UpgradeManager upgradeManager;
-    private static NamespacedKey compassKey;
 
     public LoadoutManager(ExtractionPlugin plugin, UpgradeManager upgradeManager) {
         this.plugin = plugin;
         this.upgradeManager = upgradeManager;
         compassKey = new NamespacedKey(plugin, "is_loadout_compass");
+    }
+
+    public static boolean isLoadoutCompass(ItemStack item) {
+        return item != null && compassKey != null && item.getItemMeta() != null
+                && item.getItemMeta().getPersistentDataContainer().has(compassKey, PersistentDataType.BYTE);
+    }
+
+    /**
+     * Maps a loadout GUI cell to the exact player inventory slot it controls.
+     * Cells 0-8 are the armor/offhand row (handled by their LoadoutSlot) and
+     * return -1. Cells 9-35 mirror the main inventory slots (identity); the
+     * bottom row (36-44, the hotbar) maps back to slots 0-8.
+     */
+    public static int inventorySlotForCell(int cell) {
+        if (cell < 9)
+            return -1;
+
+        if (cell >= 36)
+            return cell - 36;
+
+        return cell;
+    }
+
+    private static ItemStack safeItem(ItemStack item) {
+        if (item == null || LoadoutGUI.isPlaceholder(item))
+            return null;
+
+        return item;
+    }
+
+    private static boolean matchesDefault(ItemStack stored, ItemStack def) {
+        if (stored.isSimilar(def))
+            return true;
+
+        ItemStack a = stored.clone();
+        ItemStack b = def.clone();
+        ItemMeta metaA = a.getItemMeta();
+        ItemMeta metaB = b.getItemMeta();
+
+        if (metaA != null) {
+            metaA.removeEnchantments();
+            a.setItemMeta(metaA);
+        }
+
+        if (metaB != null) {
+            metaB.removeEnchantments();
+            b.setItemMeta(metaB);
+        }
+
+        return a.isSimilar(b);
     }
 
     /**
@@ -69,27 +119,6 @@ public class LoadoutManager {
 
         item.setItemMeta(meta);
         return item;
-    }
-
-    public static boolean isLoadoutCompass(ItemStack item) {
-        return item != null && compassKey != null && item.getItemMeta() != null
-                && item.getItemMeta().getPersistentDataContainer().has(compassKey, PersistentDataType.BYTE);
-    }
-
-    /**
-     * Maps a loadout GUI cell to the exact player inventory slot it controls.
-     * Cells 0-8 are the armor/offhand row (handled by their LoadoutSlot) and
-     * return -1. Cells 9-35 mirror the main inventory slots (identity); the
-     * bottom row (36-44, the hotbar) maps back to slots 0-8.
-     */
-    public static int inventorySlotForCell(int cell) {
-        if (cell < 9)
-            return -1;
-
-        if (cell >= 36)
-            return cell - 36;
-
-        return cell;
     }
 
     public void applyLoadout(Player player, PlayerData data) {
@@ -209,13 +238,6 @@ public class LoadoutManager {
         return tier == null ? null : safeItem(buildTierItem(tier));
     }
 
-    private static ItemStack safeItem(ItemStack item) {
-        if (item == null || LoadoutGUI.isPlaceholder(item))
-            return null;
-
-        return item;
-    }
-
     /**
      * Default cells whose virtual item was moved into another (customized)
      * cell. Rendering/granting their default again would duplicate the moved
@@ -256,100 +278,6 @@ public class LoadoutManager {
         }
 
         return hidden;
-    }
-
-    private static boolean matchesDefault(ItemStack stored, ItemStack def) {
-        if (stored.isSimilar(def))
-            return true;
-
-        ItemStack a = stored.clone();
-        ItemStack b = def.clone();
-        ItemMeta metaA = a.getItemMeta();
-        ItemMeta metaB = b.getItemMeta();
-
-        if (metaA != null) {
-            metaA.removeEnchantments();
-            a.setItemMeta(metaA);
-        }
-
-        if (metaB != null) {
-            metaB.removeEnchantments();
-            b.setItemMeta(metaB);
-        }
-
-        return a.isSimilar(b);
-    }
-
-    public int getEffectiveTier(PlayerData data, LoadoutSlot slot) {
-        int stored = data.getLoadoutTier(slot.getConfigKey());
-        int defaultTier = plugin.getConfigUtil() == null
-                ? 0 : plugin.getConfigUtil().getDefaultLoadoutTier(slot.getConfigKey());
-
-        return Math.max(stored, defaultTier);
-    }
-
-    public ItemStack buildTierItem(UpgradeTier tier) {
-        ItemStack item;
-        if (tier.isExternal()) {
-            ExternalItemProvider provider = plugin.getExternalPluginManager().getItemProvider(tier.getExternalId());
-
-            if (provider != null)
-                item = provider.resolveItem(tier.getExternalId());
-            else
-                item = tier.createItem();
-
-        } else
-            item = tier.createItem();
-
-        if (item == null)
-            return null;
-
-        applyEnchantments(item, tier);
-
-        if (item.getItemMeta() instanceof PotionMeta)
-            applyPotionMeta(item, tier);
-        return item;
-    }
-
-    private void applyPotionMeta(ItemStack item, UpgradeTier tier) {
-        String typeStr = tier.getPotionType();
-        if (typeStr == null || typeStr.isEmpty())
-            return;
-
-        if (!(item.getItemMeta() instanceof PotionMeta potionMeta))
-            return;
-
-        try {
-            potionMeta.setBasePotionType(PotionType.valueOf(typeStr));
-        } catch (IllegalArgumentException ignored) {
-        }
-
-        PotionEffectType effectType = null;
-        try {
-            effectType = PotionEffectType.getByName(typeStr);
-        } catch (IllegalArgumentException ignored) {
-        }
-
-        if (effectType != null) {
-            int level = Math.max(1, tier.getPotionLevel());
-            int duration = effectType.isInstant() ? 1 : 20 * 30;
-            potionMeta.addCustomEffect(new PotionEffect(effectType, duration, level - 1), true);
-        }
-
-        item.setItemMeta(potionMeta);
-    }
-
-    private void applyEnchantments(ItemStack item, UpgradeTier tier) {
-        for (String enchStr : tier.getEnchantments()) {
-            try {
-                Enchantment enchantment = Enchantment.getByName(enchStr);
-
-                if (enchantment != null) {
-                    item.addUnsafeEnchantment(enchantment, 1);
-                }
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
     }
 
     public void upgradeSlot(LoadoutSlot slot, PlayerData data) {
@@ -398,6 +326,70 @@ public class LoadoutManager {
         }
     }
 
+    public ItemStack buildTierItem(UpgradeTier tier) {
+        ItemStack item;
+        if (tier.isExternal()) {
+            ExternalItemProvider provider = plugin.getExternalPluginManager().getItemProvider(tier.getExternalId());
+
+            if (provider != null)
+                item = provider.resolveItem(tier.getExternalId());
+            else
+                item = tier.createItem();
+
+        } else
+            item = tier.createItem();
+
+        if (item == null)
+            return null;
+
+        applyEnchantments(item, tier);
+
+        if (item.getItemMeta() instanceof PotionMeta)
+            applyPotionMeta(item, tier);
+        return item;
+    }
+
+    private void applyEnchantments(ItemStack item, UpgradeTier tier) {
+        for (String enchStr : tier.getEnchantments()) {
+            try {
+                Enchantment enchantment = Enchantment.getByName(enchStr);
+
+                if (enchantment != null) {
+                    item.addUnsafeEnchantment(enchantment, 1);
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+    }
+
+    private void applyPotionMeta(ItemStack item, UpgradeTier tier) {
+        String typeStr = tier.getPotionType();
+        if (typeStr == null || typeStr.isEmpty())
+            return;
+
+        if (!(item.getItemMeta() instanceof PotionMeta potionMeta))
+            return;
+
+        try {
+            potionMeta.setBasePotionType(PotionType.valueOf(typeStr));
+        } catch (IllegalArgumentException ignored) {
+        }
+
+        PotionEffectType effectType = null;
+        try {
+            effectType = PotionEffectType.getByName(typeStr);
+        } catch (IllegalArgumentException ignored) {
+        }
+
+        if (effectType != null) {
+            int level = Math.max(1, tier.getPotionLevel());
+            int duration = effectType.isInstant() ? 1 : 20 * 30;
+            potionMeta.addCustomEffect(new PotionEffect(effectType, duration, level - 1), true);
+        }
+
+        item.setItemMeta(potionMeta);
+    }
+
     public boolean applyUpgradeToken(String tokenSlot, int tokenTier, PlayerData data) {
         for (LoadoutSlot slot : LoadoutSlot.values()) {
             if (slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot)) {
@@ -415,5 +407,13 @@ public class LoadoutManager {
         }
 
         return false;
+    }
+
+    public int getEffectiveTier(PlayerData data, LoadoutSlot slot) {
+        int stored = data.getLoadoutTier(slot.getConfigKey());
+        int defaultTier = plugin.getConfigUtil() == null
+                ? 0 : plugin.getConfigUtil().getDefaultLoadoutTier(slot.getConfigKey());
+
+        return Math.max(stored, defaultTier);
     }
 }

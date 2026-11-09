@@ -16,7 +16,9 @@ import org.jspecify.annotations.NonNull;
 
 import java.util.Locale;
 
-/** /extchest — admin management of standalone loot chests (perm extraction.areas). */
+/**
+ * /extchest — admin management of standalone loot chests (perm extraction.areas).
+ */
 public class StandaloneChestCommand extends MainCommand {
 
     private static final String USAGE = "/extchest {add {loot-table} [key]|list|remove {id}}";

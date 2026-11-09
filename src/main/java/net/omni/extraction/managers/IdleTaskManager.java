@@ -33,22 +33,43 @@ public class IdleTaskManager {
             resume();
     }
 
+    private void resume() {
+        if (!gated)
+            return;
+
+        gated = false;
+
+        WorldEventManager worldEventManager = plugin.getWorldEventManager();
+        if (worldEventManager != null)
+            worldEventManager.start();
+
+        AreaManager areaManager = plugin.getAreaManager();
+        if (areaManager != null)
+            areaManager.startStateTask();
+
+        PetManager petManager = plugin.getPetManager();
+        if (petManager != null)
+            petManager.start();
+
+        ActionBarManager actionBarManager = plugin.getActionBarManager();
+        if (actionBarManager != null)
+            actionBarManager.start();
+
+        RelicEffectManager relicEffectManager = plugin.getRelicEffectManager();
+        if (relicEffectManager != null)
+            relicEffectManager.start();
+
+        BossManager bossManager = plugin.getBossManager();
+        if (bossManager != null)
+            bossManager.start();
+    }
+
     /**
      * PlayerQuitEvent hook: stop once nobody remains.
      */
     public void onQuit() {
         if (Bukkit.getOnlinePlayers().isEmpty())
             idle();
-    }
-
-    /**
-     * Re-evaluates the wanted state (startup, /extraction reload).
-     */
-    public void sync() {
-        if (Bukkit.getOnlinePlayers().isEmpty())
-            idle();
-        else
-            resume();
     }
 
     private void idle() {
@@ -84,34 +105,13 @@ public class IdleTaskManager {
             bossManager.stop();
     }
 
-    private void resume() {
-        if (!gated)
-            return;
-
-        gated = false;
-
-        WorldEventManager worldEventManager = plugin.getWorldEventManager();
-        if (worldEventManager != null)
-            worldEventManager.start();
-
-        AreaManager areaManager = plugin.getAreaManager();
-        if (areaManager != null)
-            areaManager.startStateTask();
-
-        PetManager petManager = plugin.getPetManager();
-        if (petManager != null)
-            petManager.start();
-
-        ActionBarManager actionBarManager = plugin.getActionBarManager();
-        if (actionBarManager != null)
-            actionBarManager.start();
-
-        RelicEffectManager relicEffectManager = plugin.getRelicEffectManager();
-        if (relicEffectManager != null)
-            relicEffectManager.start();
-
-        BossManager bossManager = plugin.getBossManager();
-        if (bossManager != null)
-            bossManager.start();
+    /**
+     * Re-evaluates the wanted state (startup, /extraction reload).
+     */
+    public void sync() {
+        if (Bukkit.getOnlinePlayers().isEmpty())
+            idle();
+        else
+            resume();
     }
 }

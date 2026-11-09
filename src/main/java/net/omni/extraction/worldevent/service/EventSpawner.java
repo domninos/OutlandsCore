@@ -70,19 +70,15 @@ public class EventSpawner {
             elitePrefix = eliteMut.namePrefix();
         }
 
-        if (difficultyScale > 0 || stormMutate > 0 || eliteHealth != 1.0) {
-            if (definition.getHealth() > 0) {
-                double h = definition.getHealth() * difficultyScale * stormMutate * eliteHealth;
-                if (h < 1) h = 1;
-                definition.setHealth(h);
-            }
+        if (definition.getHealth() > 0) {
+            double h = definition.getHealth() * difficultyScale * stormMutate * eliteHealth;
+            if (h < 1) h = 1;
+            definition.setHealth(h);
         }
-        if (difficultyScale > 0 || stormMutate > 0 || eliteDamage != 1.0) {
-            if (definition.getDamage() > 0) {
-                double d = definition.getDamage() * difficultyScale * stormMutate * eliteDamage;
-                if (d < 0) d = 0;
-                definition.setDamage(d);
-            }
+        if (definition.getDamage() > 0) {
+            double d = definition.getDamage() * difficultyScale * stormMutate * eliteDamage;
+            if (d < 0) d = 0;
+            definition.setDamage(d);
         }
 
         if (spawn.name() != null && !spawn.name().isBlank())
@@ -175,6 +171,30 @@ public class EventSpawner {
     }
 
     /**
+     * Snaps a location down to the first solid block below it (used to drop escorts on terrain).
+     */
+    public Location groundSnap(Location location) {
+        World world = location.getWorld();
+        if (world == null)
+            return location;
+
+        int y = findSurfaceY(world, location.getBlockX(), location.getBlockY() + 2, location.getBlockZ());
+        if (y == Integer.MIN_VALUE)
+            return location;
+
+        return new Location(world, location.getX(), y + 1, location.getZ());
+    }
+
+    public int findSurfaceY(World world, int x, int startY, int z) {
+        for (int y = startY + 2; y >= world.getMinHeight(); y--) {
+            if (!world.getBlockAt(x, y, z).getType().isAir())
+                return y;
+        }
+
+        return Integer.MIN_VALUE;
+    }
+
+    /**
      * The origin anchor for a new spawn group: a random storm zone when this
      * is a storm, else the event origin.
      */
@@ -218,30 +238,6 @@ public class EventSpawner {
         double angle = ctx.random().nextDouble() * Math.PI * 2;
 
         return chosen.getLocation().add(Math.cos(angle) * 8.0, 2.0, Math.sin(angle) * 8.0);
-    }
-
-    /**
-     * Snaps a location down to the first solid block below it (used to drop escorts on terrain).
-     */
-    public Location groundSnap(Location location) {
-        World world = location.getWorld();
-        if (world == null)
-            return location;
-
-        int y = findSurfaceY(world, location.getBlockX(), location.getBlockY() + 2, location.getBlockZ());
-        if (y == Integer.MIN_VALUE)
-            return location;
-
-        return new Location(world, location.getX(), y + 1, location.getZ());
-    }
-
-    public int findSurfaceY(World world, int x, int startY, int z) {
-        for (int y = startY + 2; y >= world.getMinHeight(); y--) {
-            if (!world.getBlockAt(x, y, z).getType().isAir())
-                return y;
-        }
-
-        return Integer.MIN_VALUE;
     }
 
     public double difficultyFor(WorldEvent event) {

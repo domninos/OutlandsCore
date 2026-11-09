@@ -27,18 +27,7 @@ public class AreaMobFactory {
     }
 
     public Entity spawn(AreaSpawnDefinition definition, Location location) {
-        Entity entity = spawn(definition, location, false, null);
-        return entity;
-    }
-
-    /**
-     * Spawn-editor marker variant: identical look (type, display name with the
-     * "(Right Click to Edit)" suffix baked into {@code displayOverride},
-     * equipment, baby) but AI-off, silent, invulnerable and non-persistent —
-     * it must never enter the clear session's mob registry.
-     */
-    public Entity spawnMarker(AreaSpawnDefinition definition, Location location, String displayOverride) {
-        return spawn(definition, location, true, displayOverride);
+        return spawn(definition, location, false, null);
     }
 
     private Entity spawn(AreaSpawnDefinition definition, Location location, boolean marker, String displayOverride) {
@@ -125,7 +114,8 @@ public class AreaMobFactory {
 
         AttributeInstance attribute = living.getAttribute(Attribute.MAX_HEALTH);
 
-        if (attribute != null) attribute.setBaseValue(health);
+        if (attribute != null)
+            attribute.setBaseValue(health);
 
         living.setHealth(Math.min(health, living.getMaxHealth()));
     }
@@ -168,5 +158,15 @@ public class AreaMobFactory {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    /**
+     * Spawn-editor marker variant: identical look (type, display name with the
+     * "(Right Click to Edit)" suffix baked into {@code displayOverride},
+     * equipment, baby) but AI-off, silent, invulnerable and non-persistent —
+     * it must never enter the clear session's mob registry.
+     */
+    public Entity spawnMarker(AreaSpawnDefinition definition, Location location, String displayOverride) {
+        return spawn(definition, location, true, displayOverride);
     }
 }

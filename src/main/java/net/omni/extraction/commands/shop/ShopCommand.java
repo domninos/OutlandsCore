@@ -1,8 +1,8 @@
 package net.omni.extraction.commands.shop;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.util.Permissions;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.Permissions;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;

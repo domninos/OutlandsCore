@@ -7,6 +7,7 @@ import net.omni.extraction.messages.Messages;
 import net.omni.extraction.worldevent.mutator.Mutator;
 import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -57,10 +58,12 @@ public class WorldEventListener implements Listener {
         // Explosive deaths
         WorldEventManager mgr = plugin.getWorldEventManager();
         EventInstance inst = mgr.getMobInstance(uuid);
+
         if (inst != null) {
             Mutator exp = inst.getMutator(MutatorType.EXPLOSIVE_DEATHS);
+
             if (exp != null) {
-                org.bukkit.Location loc = event.getEntity().getLocation();
+                Location loc = event.getEntity().getLocation();
                 loc.getWorld().createExplosion(loc, exp.expPower(), exp.expFire(), exp.expBlockDamage());
             }
         }
@@ -81,10 +84,13 @@ public class WorldEventListener implements Listener {
         if (manager.isConvoyCarrier(event.getEntity())) {
             if (manager.isConvoyCarrierProtected(event.getEntity())) {
                 event.setCancelled(true);
+
                 if (event instanceof EntityDamageByEntityEvent byEntity) {
                     Player attacker = resolveAttacker(byEntity.getDamager());
+
                     if (attacker != null) {
                         int remaining = manager.convoyGuardsRemaining(event.getEntity());
+
                         String message = Messages.EVENTS_CONVOY_PROTECTED.replace("remaining", String.valueOf(remaining));
                         plugin.sendMessage(attacker, message);
                         plugin.getActionBarManager().showMessage(attacker, message, 30);
@@ -117,7 +123,9 @@ public class WorldEventListener implements Listener {
         }
     }
 
-    /** Resolves the player behind a damager (a direct hit or a shot projectile). */
+    /**
+     * Resolves the player behind a damager (a direct hit or a shot projectile).
+     */
     private Player resolveAttacker(Entity damager) {
         if (damager instanceof Player player)
             return player;
@@ -160,8 +168,7 @@ public class WorldEventListener implements Listener {
         if (player == null || area == null)
             return;
 
-        if (player.getWorld() == null
-                || !plugin.getConfigUtil().getWorldName().equalsIgnoreCase(player.getWorld().getName()))
+        if (!plugin.getConfigUtil().getWorldName().equalsIgnoreCase(player.getWorld().getName()))
             return;
 
         // Admin mode ignores area-triggered events.
@@ -205,31 +212,32 @@ public class WorldEventListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onEntityRegainHealth(EntityRegainHealthEvent event) {
-        if (!(event.getEntity() instanceof Player player)) {
+        if (!(event.getEntity() instanceof Player player))
             return;
-        }
+
         WorldEventManager manager = plugin.getWorldEventManager();
-        if (manager == null) {
+        if (manager == null)
             return;
-        }
+
         boolean hasNoRegen = false;
         for (EventInstance inst : manager.getActiveEvents()) {
             Mutator nr = inst.getMutator(MutatorType.NO_REGENERATION);
+
             if (nr != null && nr.disableRegen()) {
                 hasNoRegen = true;
                 break;
             }
         }
-        if (!hasNoRegen) {
+
+        if (!hasNoRegen)
             return;
-        }
+
         String worldName = plugin.getConfigUtil().getWorldName();
-        if (worldName == null || player.getWorld() == null || !worldName.equalsIgnoreCase(player.getWorld().getName())) {
+        if (worldName == null || !worldName.equalsIgnoreCase(player.getWorld().getName()))
             return;
-        }
-        if (event.getRegainReason() == EntityRegainHealthEvent.RegainReason.SATIATED) {
+
+        if (event.getRegainReason() == EntityRegainHealthEvent.RegainReason.SATIATED)
             event.setCancelled(true);
-        }
     }
 
     public void register() {

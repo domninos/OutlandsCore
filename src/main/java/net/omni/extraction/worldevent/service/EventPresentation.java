@@ -88,7 +88,7 @@ public class EventPresentation {
         StringBuilder names = new StringBuilder();
 
         for (Mutator mutator : mutators) {
-            if (names.length() > 0)
+            if (!names.isEmpty())
                 names.append(", ");
 
             names.append("<green>").append(mutator.type().name().toLowerCase(java.util.Locale.ROOT)

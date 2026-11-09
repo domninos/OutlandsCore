@@ -30,6 +30,29 @@ public class AreaChestLocation {
                 CONTAINER_TYPES.add(material);
     }
 
+    private Location location;
+    private String lootType;
+    private Material containerType;
+    private String keyId;
+    public AreaChestLocation(Location location, String lootType) {
+        this(location, lootType, DEFAULT_CONTAINER, null);
+    }
+
+    public AreaChestLocation(Location location, String lootType, Material containerType, String keyId) {
+        this.location = location;
+        this.lootType = lootType;
+        this.containerType = isSupported(containerType) ? containerType : DEFAULT_CONTAINER;
+        this.keyId = keyId;
+    }
+
+    public static boolean isSupported(Material material) {
+        return material != null && CONTAINER_TYPES.contains(material);
+    }
+
+    public AreaChestLocation(Location location, String lootType, Material containerType) {
+        this(location, lootType, containerType, null);
+    }
+
     public static void refreshContainers(Collection<String> names) {
         Set<Material> refreshed = new HashSet<>();
 
@@ -56,24 +79,8 @@ public class AreaChestLocation {
         CONTAINER_TYPES = refreshed;
     }
 
-    private Location location;
-    private String lootType;
-    private Material containerType;
-    private String keyId;
-
-    public AreaChestLocation(Location location, String lootType) {
-        this(location, lootType, DEFAULT_CONTAINER, null);
-    }
-
-    public AreaChestLocation(Location location, String lootType, Material containerType) {
-        this(location, lootType, containerType, null);
-    }
-
-    public AreaChestLocation(Location location, String lootType, Material containerType, String keyId) {
-        this.location = location;
-        this.lootType = lootType;
-        this.containerType = isSupported(containerType) ? containerType : DEFAULT_CONTAINER;
-        this.keyId = keyId;
+    public static boolean isChestType(Material material) {
+        return material == Material.CHEST || material == Material.TRAPPED_CHEST;
     }
 
     public Location getLocation() {
@@ -106,13 +113,5 @@ public class AreaChestLocation {
 
     public void setKeyId(String keyId) {
         this.keyId = keyId;
-    }
-
-    public static boolean isSupported(Material material) {
-        return material != null && CONTAINER_TYPES.contains(material);
-    }
-
-    public static boolean isChestType(Material material) {
-        return material == Material.CHEST || material == Material.TRAPPED_CHEST;
     }
 }

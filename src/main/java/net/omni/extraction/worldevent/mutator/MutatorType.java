@@ -11,14 +11,15 @@ public enum MutatorType {
     NO_REGENERATION;
 
     public static MutatorType fromString(String name) {
-        if (name == null) {
+        if (name == null)
             return null;
-        }
+
         for (MutatorType type : values()) {
-            if (type.name().equalsIgnoreCase(name)) {
+            if (type.name().equalsIgnoreCase(name))
                 return type;
-            }
+
         }
+
         return null;
     }
 }

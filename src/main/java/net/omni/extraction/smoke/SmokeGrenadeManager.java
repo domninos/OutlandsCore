@@ -77,6 +77,21 @@ public class SmokeGrenadeManager implements Runnable {
         return new Settings(radius, duration, blind, particle, tickRate);
     }
 
+    /**
+     * Blank picks the default; the legacy {@code LARGE_SMOKE} value (stored on
+     * already-created grenade items and older configs) is remapped to campfire
+     * smoke so existing items visually update too.
+     */
+    private static String normalizeParticle(String name) {
+        if (name == null || name.isBlank())
+            return Settings.DEFAULT.particle();
+
+        if ("LARGE_SMOKE".equalsIgnoreCase(name))
+            return "CAMPFIRE_COSY_SMOKE";
+
+        return name;
+    }
+
     public boolean isSmokeGrenade(ItemStack item) {
         if (item == null || item.getType().isAir())
             return false;
@@ -248,21 +263,6 @@ public class SmokeGrenadeManager implements Runnable {
         } catch (IllegalArgumentException ex) {
             return Particle.CAMPFIRE_COSY_SMOKE;
         }
-    }
-
-    /**
-     * Blank picks the default; the legacy {@code LARGE_SMOKE} value (stored on
-     * already-created grenade items and older configs) is remapped to campfire
-     * smoke so existing items visually update too.
-     */
-    private static String normalizeParticle(String name) {
-        if (name == null || name.isBlank())
-            return Settings.DEFAULT.particle();
-
-        if ("LARGE_SMOKE".equalsIgnoreCase(name))
-            return "CAMPFIRE_COSY_SMOKE";
-
-        return name;
     }
 
     public boolean blocksTargeting(Location location) {

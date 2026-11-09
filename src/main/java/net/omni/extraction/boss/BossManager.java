@@ -6,27 +6,16 @@ import net.omni.extraction.area.AreaSpawnDefinition;
 import net.omni.extraction.mobs.BossAbility;
 import net.omni.extraction.mobs.BossAbilityType;
 import net.omni.extraction.mobs.MobTemplate;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.World;
-import org.bukkit.entity.AbstractArrow;
-import org.bukkit.entity.Arrow;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
+import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.*;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class BossManager {
 
@@ -34,7 +23,6 @@ public class BossManager {
     private final Map<UUID, BossRuntime> runtimes = new HashMap<>();
 
     private BukkitTask task;
-    private int updateTicks = 10;
 
     public BossManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -42,7 +30,9 @@ public class BossManager {
 
     public void start() {
         stop();
-        updateTicks = Math.max(1, plugin.getConfigUtil().getBossesUpdateTicks());
+
+        int updateTicks = Math.max(1, plugin.getConfigUtil().getBossesUpdateTicks());
+
         task = plugin.getServer().getScheduler().runTaskTimer(plugin,
                 this::tick, updateTicks, updateTicks);
     }
@@ -51,16 +41,16 @@ public class BossManager {
         start();
     }
 
+    public void shutdown() {
+        stop();
+        runtimes.clear();
+    }
+
     public void stop() {
         if (task != null) {
             task.cancel();
             task = null;
         }
-    }
-
-    public void shutdown() {
-        stop();
-        runtimes.clear();
     }
 
     public void register(Entity entity, List<BossAbility> abilities) {
@@ -99,7 +89,7 @@ public class BossManager {
 
         for (int index = 0; index < Math.max(1, count); index++) {
             Location location = player.getLocation().clone().add(
-                    (index % 5) * 0.8 - 1.6, 0, (index / 5) * 0.8);
+                    (index % 5) * 0.8 - 1.6, 0, ((double) index / 5) * 0.8);
 
             if (factory.spawn(definition, location) != null)
                 spawned++;
@@ -234,7 +224,12 @@ public class BossManager {
         if (!triggered(boss, ability.getTriggerHealth()))
             return false;
 
-        double maxHealth = boss.getMaxHealth();
+        AttributeInstance attribute = boss.getAttribute(Attribute.MAX_HEALTH);
+
+        if (attribute == null)
+            return false;
+
+        double maxHealth = attribute.getValue();
 
         if (boss.getHealth() >= maxHealth)
             return false;
@@ -290,7 +285,13 @@ public class BossManager {
         if (triggerHealth <= 0)
             return true;
 
-        double maxHealth = boss.getMaxHealth();
+        AttributeInstance attribute = boss.getAttribute(Attribute.MAX_HEALTH);
+
+        if (attribute == null)
+            return true;
+
+        double maxHealth = attribute.getValue();
+
         return maxHealth > 0 && boss.getHealth() / maxHealth * 100.0 <= triggerHealth;
     }
 

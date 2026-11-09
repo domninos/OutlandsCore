@@ -18,12 +18,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class LootEditorManager {
 
@@ -34,25 +29,6 @@ public class LootEditorManager {
 
     public LootEditorManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
-    }
-
-    public void open(Player player, String tableId) {
-        open(player, null, null, tableId);
-    }
-
-    public void open(Player player, Area area, AreaChestLocation chest, String tableId) {
-        if (tableId == null || tableId.isBlank())
-            return;
-
-        LootTable existing = plugin.getLootTableManager().get(tableId);
-        List<LootEntry> entries = existing != null
-                ? new ArrayList<>(existing.getEntries())
-                : List.of();
-
-        LootEditorSession session = new LootEditorSession(tableId, entries, area, chest);
-        sessions.put(player.getUniqueId(), session);
-        plugin.sendMessage(player, Messages.LOOT_EDITOR_OPENED.replace("table", tableId));
-        render(player, session);
     }
 
     /**
@@ -73,6 +49,25 @@ public class LootEditorManager {
             return area.getLootTable();
 
         return area.getName().toLowerCase(Locale.ROOT);
+    }
+
+    public void open(Player player, String tableId) {
+        open(player, null, null, tableId);
+    }
+
+    public void open(Player player, Area area, AreaChestLocation chest, String tableId) {
+        if (tableId == null || tableId.isBlank())
+            return;
+
+        LootTable existing = plugin.getLootTableManager().get(tableId);
+        List<LootEntry> entries = existing != null
+                ? new ArrayList<>(existing.getEntries())
+                : List.of();
+
+        LootEditorSession session = new LootEditorSession(tableId, entries, area, chest);
+        sessions.put(player.getUniqueId(), session);
+        plugin.sendMessage(player, Messages.LOOT_EDITOR_OPENED.replace("table", tableId));
+        render(player, session);
     }
 
     public LootEditorSession getSession(Player player) {
@@ -100,7 +95,7 @@ public class LootEditorManager {
             ItemStack filler = item(config.getLootEditorFillerMaterial(), config.getLootEditorFillerName(), List.of());
 
             if (session.getPage() == LootEditorSession.PAGE_TABLE)
-                renderTable(player, session, inventory, config, filler);
+                renderTable(session, inventory, config, filler);
             else
                 renderEntry(player, session, inventory, config, filler);
 
@@ -110,7 +105,7 @@ public class LootEditorManager {
         }
     }
 
-    private void renderTable(Player player, LootEditorSession session, Inventory inventory,
+    private void renderTable(LootEditorSession session, Inventory inventory,
                              ConfigUtil config, ItemStack filler) {
         ItemStack info = item(config.getLootEditorInfoMaterial(),
                 config.getLootEditorInfoName().replace("%table%", session.getTableId()),
@@ -140,7 +135,7 @@ public class LootEditorManager {
 
         for (int i = 0; i < max; i++) {
             LootEntry entry = session.getEntries().get(i);
-            inventory.setItem(LootEditorSession.TABLE_CONTENT_START + i, entryIcon(session, entry, loreTemplate));
+            inventory.setItem(LootEditorSession.TABLE_CONTENT_START + i, entryIcon(entry, loreTemplate));
         }
     }
 
@@ -179,7 +174,7 @@ public class LootEditorManager {
                 LootEditorSession.SLOT_MAX_LEVEL_INC, entry.getMaxLevel(),
                 config.getLootEditorMaxLevelMaterial(), config.getLootEditorMaxLevelName(), increments);
 
-        ItemStack preview = entryIcon(session, entry, List.of());
+        ItemStack preview = entryIcon(entry, List.of());
         ItemMeta meta = preview.getItemMeta();
         plugin.getChatRenderer().setLore(meta, List.of(
                 "<gray>Left-click the panes to raise a value,</gray>",
@@ -209,7 +204,7 @@ public class LootEditorManager {
         return increments.stream().mapToInt(Integer::intValue).min().orElse(1);
     }
 
-    private ItemStack entryIcon(LootEditorSession session, LootEntry entry, List<String> loreTemplate) {
+    private ItemStack entryIcon(LootEntry entry, List<String> loreTemplate) {
         ItemStack base;
         try {
             List<ItemStack> resolved = plugin.getLootResolver().resolveDropItems(entry.getType(), entry.getAmount());
@@ -219,7 +214,7 @@ public class LootEditorManager {
         }
 
         ItemStack icon = base.clone();
-        icon.setAmount(Math.max(1, Math.min(99, entry.getAmount())));
+        icon.setAmount(Math.clamp(entry.getAmount(), 1, 99));
 
         ItemMeta meta = icon.getItemMeta();
         if (meta != null) {
@@ -246,13 +241,15 @@ public class LootEditorManager {
         return material != null ? StringUtils.capitalize(material.name()) : type;
     }
 
-    /** Handles a cancelled top-inventory click. Returns true when the cursor item was consumed. */
+    /**
+     * Handles a cancelled top-inventory click. Returns true when the cursor item was consumed.
+     */
     public boolean handleClick(Player player, LootEditorSession session, int rawSlot, ItemStack cursor,
                                boolean rightClick, boolean shiftClick) {
         if (session.getPage() == LootEditorSession.PAGE_TABLE)
             return handleTableClick(player, session, rawSlot, cursor, rightClick, shiftClick);
 
-        handleEntryClick(player, session, rawSlot, rightClick, shiftClick);
+        handleEntryClick(player, session, rawSlot, shiftClick);
         return false;
     }
 
@@ -313,7 +310,9 @@ public class LootEditorManager {
         return true;
     }
 
-    /** Restores the working entries from the bundled loot_tables.yml default. */
+    /**
+     * Restores the working entries from the bundled loot_tables.yml default.
+     */
     private void resetToDefaults(Player player, LootEditorSession session) {
         LootTable defaults = plugin.getLootTableManager().getDefault(session.getTableId());
 
@@ -339,7 +338,9 @@ public class LootEditorManager {
         render(player, session);
     }
 
-    /** Shift-click from the player inventory dumps the whole stack as an entry. */
+    /**
+     * Shift-click from the player inventory dumps the whole stack as an entry.
+     */
     public void handleShiftInsert(Player player, LootEditorSession session, ItemStack item, int slot) {
         if (session.getPage() != LootEditorSession.PAGE_TABLE)
             return;
@@ -360,7 +361,7 @@ public class LootEditorManager {
     }
 
     private void handleEntryClick(Player player, LootEditorSession session, int rawSlot,
-                                  boolean rightClick, boolean shiftClick) {
+                                  boolean shiftClick) {
         LootEntry entry = session.getEditingEntry();
 
         if (entry == null) {
@@ -453,21 +454,9 @@ public class LootEditorManager {
         return entry;
     }
 
-    /** Saves the working entries into the manager + loot_tables.yml. */
-    public void save(LootEditorSession session) {
-        LootTable table = plugin.getLootTableManager().get(session.getTableId());
-
-        if (table == null) {
-            table = new LootTable(session.getTableId());
-            plugin.getLootTableManager().put(table);
-        }
-
-        table.getEntries().clear();
-        table.getEntries().addAll(session.getEntries());
-        plugin.getLootTableManager().save();
-    }
-
-    /** Saves the entries into a chest-specific table and binds the chest to it. */
+    /**
+     * Saves the entries into a chest-specific table and binds the chest to it.
+     */
     public void saveToChest(Player player, LootEditorSession session) {
         AreaChestLocation chest = session.getChest();
 
@@ -506,7 +495,9 @@ public class LootEditorManager {
                 + "_" + loc.getBlockZ()).toLowerCase(Locale.ROOT);
     }
 
-    /** Drag support: items dragged from the player inventory into free content slots become entries. */
+    /**
+     * Drag support: items dragged from the player inventory into free content slots become entries.
+     */
     public void handleDrag(Player player, LootEditorSession session, InventoryDragEvent event) {
         if (session.getPage() != LootEditorSession.PAGE_TABLE) {
             event.setCancelled(true);
@@ -557,7 +548,9 @@ public class LootEditorManager {
         render(player, session);
     }
 
-    /** Called from the close listener; ignores the synthetic close fired by re-renders. */
+    /**
+     * Called from the close listener; ignores the synthetic close fired by re-renders.
+     */
     public void handleClose(Player player, LootEditorSession session) {
         if (session.isRendering())
             return;
@@ -574,6 +567,22 @@ public class LootEditorManager {
                 "table", session.getTableId(),
                 "entries", String.valueOf(count),
                 "s", count == 1 ? "y" : "ies"));
+    }
+
+    /**
+     * Saves the working entries into the manager + loot_tables.yml.
+     */
+    public void save(LootEditorSession session) {
+        LootTable table = plugin.getLootTableManager().get(session.getTableId());
+
+        if (table == null) {
+            table = new LootTable(session.getTableId());
+            plugin.getLootTableManager().put(table);
+        }
+
+        table.getEntries().clear();
+        table.getEntries().addAll(session.getEntries());
+        plugin.getLootTableManager().save();
     }
 
     private ItemStack item(String materialName, String name, List<String> lore) {

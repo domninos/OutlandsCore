@@ -5,29 +5,14 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.worldevent.EventSpawn;
 import net.omni.extraction.worldevent.WorldEvent;
-import net.omni.extraction.worldevent.WorldEvent.CarPart;
-import net.omni.extraction.worldevent.WorldEvent.ConvoyConfig;
-import net.omni.extraction.worldevent.WorldEvent.EventSpawnLocation;
-import net.omni.extraction.worldevent.WorldEvent.GoblinConfig;
-import net.omni.extraction.worldevent.WorldEvent.MinibossConfig;
-import net.omni.extraction.worldevent.WorldEvent.RoamConfig;
-import net.omni.extraction.worldevent.WorldEvent.RoamPhase;
-import net.omni.extraction.worldevent.WorldEvent.RoamType;
-import net.omni.extraction.worldevent.WorldEvent.StormConfig;
-import net.omni.extraction.worldevent.WorldEvent.TerrainBlock;
-import net.omni.extraction.worldevent.WorldEvent.TriggerMode;
-import net.omni.extraction.worldevent.WorldEvent.WaveType;
+import net.omni.extraction.worldevent.WorldEvent.*;
 import net.omni.extraction.worldevent.mutator.Mutator;
 import net.omni.extraction.worldevent.mutator.MutatorCondition;
 import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Turns one {@code events.&lt;id&gt;} configuration section into a pure
@@ -91,8 +76,8 @@ public final class WorldEventParser {
         int waveCountGain = waves == null ? 0 : waves.getInt("count-gain", 0);
         int bossWave = waves == null ? Integer.MAX_VALUE : waves.getInt("boss-wave", Integer.MAX_VALUE);
         int maxReinforcements = waves == null ? 0 : waves.getInt("max", 0);
-        boolean countBosses = waves == null ? true : waves.getBoolean("count-bosses", true);
-        boolean spawnBossesInWaves = waves == null ? false : waves.getBoolean("spawn-bosses", false);
+        boolean countBosses = waves == null || waves.getBoolean("count-bosses", true);
+        boolean spawnBossesInWaves = waves != null && waves.getBoolean("spawn-bosses", false);
         int harvestChests = section.getInt("harvest-chests", 0);
 
         ConfigurationSection broadcast = section.getConfigurationSection("broadcast");
@@ -229,6 +214,125 @@ public final class WorldEventParser {
                 mutators, mutatorsMaxSelected);
     }
 
+    private static EventSpawn parseSpawn(ExtractionPlugin plugin, Map<?, ?> map) {
+        String mobId = String.valueOf(map.get("mob"));
+
+        int count = map.get("count") instanceof Number c ? Math.max(1, c.intValue()) : 1;
+        int level = map.get("level") instanceof Number l ? l.intValue() : 0;
+        String name = map.get("name") != null ? String.valueOf(map.get("name")) : null;
+        boolean baby = Boolean.parseBoolean(String.valueOf(map.get("baby")));
+
+        List<MobDrop> drops = new ArrayList<>();
+
+        Object dropsObj = map.get("drops");
+        if (dropsObj instanceof List<?> dropsList) {
+            for (Object dropObj : dropsList) {
+                if (!(dropObj instanceof Map<?, ?> drop))
+                    continue;
+
+                Object type = drop.get("type");
+                if (type == null)
+                    continue;
+
+                double chance = drop.get("chance") instanceof Number c ? c.doubleValue() : 1.0;
+                int amount = drop.get("amount") instanceof Number a ? Math.max(1, a.intValue()) : 1;
+
+                drops.add(new MobDrop(String.valueOf(type), chance, amount));
+            }
+        }
+
+        if (!plugin.getMobResolver().isKnownMobId(mobId))
+            plugin.getLogger().warning("Event references unknown mob '" + mobId + "'.");
+
+        return new EventSpawn(mobId, count, Math.max(0, level), name, baby, drops);
+    }
+
+    private static WaveType parseWaveType(String name) {
+        if (name == null)
+            return WaveType.FINITE;
+
+        for (WaveType type : WaveType.values())
+            if (type.name().equalsIgnoreCase(name))
+                return type;
+
+        return WaveType.FINITE;
+    }
+
+    private static BossBar.Color parseColor(String name, BossBar.Color fallback) {
+        if (name == null)
+            return fallback;
+
+        for (BossBar.Color color : BossBar.Color.values())
+            if (color.name().equalsIgnoreCase(name))
+                return color;
+
+        return fallback;
+    }
+
+    private static BossBar.Overlay parseOverlay(String name, BossBar.Overlay fallback) {
+        if (name == null)
+            return fallback;
+
+        for (BossBar.Overlay overlay : BossBar.Overlay.values())
+            if (overlay.name().equalsIgnoreCase(name))
+                return overlay;
+
+        return fallback;
+    }
+
+    private static TriggerMode parseTrigger(String name) {
+        if (name == null)
+            return TriggerMode.SCHEDULE;
+
+        for (TriggerMode mode : TriggerMode.values())
+            if (mode.name().equalsIgnoreCase(name))
+                return mode;
+
+        return TriggerMode.SCHEDULE;
+    }
+
+    /**
+     * Parses a floor/edge block list; each entry is a Material name or a {type, weight} map.
+     */
+    private static List<TerrainBlock> parseTerrainBlocks(Object raw, List<TerrainBlock> defaults) {
+        if (!(raw instanceof List<?> list) || list.isEmpty())
+            return defaults;
+
+        List<TerrainBlock> result = new ArrayList<>();
+
+        for (Object entry : list) {
+            if (entry instanceof String name) {
+                Material material = Material.matchMaterial(name);
+                if (material != null)
+                    result.add(new TerrainBlock(material, 1));
+            } else if (entry instanceof Map<?, ?> map) {
+                Object type = map.get("type");
+                Material material = type == null ? null : Material.matchMaterial(String.valueOf(type));
+                if (material == null)
+                    continue;
+
+                int weight = map.get("weight") instanceof Number n ? Math.max(1, n.intValue()) : 1;
+                result.add(new TerrainBlock(material, weight));
+            }
+        }
+
+        return result.isEmpty() ? defaults : result;
+    }
+
+    /**
+     * Parses a {world, x, y, z} convoy route anchor, or null when missing/incomplete.
+     */
+    private static EventSpawnLocation parseLocationSection(ConfigurationSection loc) {
+        if (loc == null)
+            return null;
+
+        String world = loc.getString("world", "");
+        if (world.isBlank())
+            return null;
+
+        return new EventSpawnLocation(world, loc.getInt("x", 0), loc.getInt("y", 64), loc.getInt("z", 0));
+    }
+
     /**
      * Parses the {@code roam:} section. Requires an explicit {@code type}
      * (miniboss/goblin) AND its matching sub-section — otherwise the event is a
@@ -308,132 +412,6 @@ public final class WorldEventParser {
         return new RoamConfig(type, null, goblin);
     }
 
-    private static RoamType parseRoamType(String name) {
-        if (name == null)
-            return null;
-
-        for (RoamType type : RoamType.values())
-            if (type.name().equalsIgnoreCase(name))
-                return type;
-
-        return null;
-    }
-
-    private static TriggerMode parseTrigger(String name) {
-        if (name == null)
-            return TriggerMode.SCHEDULE;
-
-        for (TriggerMode mode : TriggerMode.values())
-            if (mode.name().equalsIgnoreCase(name))
-                return mode;
-
-        return TriggerMode.SCHEDULE;
-    }
-
-    /** Parses a {world, x, y, z} convoy route anchor, or null when missing/incomplete. */
-    private static EventSpawnLocation parseLocationSection(ConfigurationSection loc) {
-        if (loc == null)
-            return null;
-
-        String world = loc.getString("world", "");
-        if (world.isBlank())
-            return null;
-
-        return new EventSpawnLocation(world, loc.getInt("x", 0), loc.getInt("y", 64), loc.getInt("z", 0));
-    }
-
-    /** Parses a floor/edge block list; each entry is a Material name or a {type, weight} map. */
-    private static List<TerrainBlock> parseTerrainBlocks(Object raw, List<TerrainBlock> defaults) {
-        if (!(raw instanceof List<?> list) || list.isEmpty())
-            return defaults;
-
-        List<TerrainBlock> result = new ArrayList<>();
-
-        for (Object entry : list) {
-            if (entry instanceof String name) {
-                Material material = Material.matchMaterial(name);
-                if (material != null)
-                    result.add(new TerrainBlock(material, 1));
-            } else if (entry instanceof Map<?, ?> map) {
-                Object type = map.get("type");
-                Material material = type == null ? null : Material.matchMaterial(String.valueOf(type));
-                if (material == null)
-                    continue;
-
-                int weight = map.get("weight") instanceof Number n ? Math.max(1, n.intValue()) : 1;
-                result.add(new TerrainBlock(material, weight));
-            }
-        }
-
-        return result.isEmpty() ? defaults : result;
-    }
-
-    private static WaveType parseWaveType(String name) {
-        if (name == null)
-            return WaveType.FINITE;
-
-        for (WaveType type : WaveType.values())
-            if (type.name().equalsIgnoreCase(name))
-                return type;
-
-        return WaveType.FINITE;
-    }
-
-    private static EventSpawn parseSpawn(ExtractionPlugin plugin, Map<?, ?> map) {
-        String mobId = String.valueOf(map.get("mob"));
-
-        int count = map.get("count") instanceof Number c ? Math.max(1, c.intValue()) : 1;
-        int level = map.get("level") instanceof Number l ? l.intValue() : 0;
-        String name = map.get("name") != null ? String.valueOf(map.get("name")) : null;
-        boolean baby = Boolean.parseBoolean(String.valueOf(map.get("baby")));
-
-        List<MobDrop> drops = new ArrayList<>();
-
-        Object dropsObj = map.get("drops");
-        if (dropsObj instanceof List<?> dropsList) {
-            for (Object dropObj : dropsList) {
-                if (!(dropObj instanceof Map<?, ?> drop))
-                    continue;
-
-                Object type = drop.get("type");
-                if (type == null)
-                    continue;
-
-                double chance = drop.get("chance") instanceof Number c ? c.doubleValue() : 1.0;
-                int amount = drop.get("amount") instanceof Number a ? Math.max(1, a.intValue()) : 1;
-
-                drops.add(new MobDrop(String.valueOf(type), chance, amount));
-            }
-        }
-
-        if (!plugin.getMobResolver().isKnownMobId(mobId))
-            plugin.getLogger().warning("Event references unknown mob '" + mobId + "'.");
-
-        return new EventSpawn(mobId, count, Math.max(0, level), name, baby, drops);
-    }
-
-    private static BossBar.Color parseColor(String name, BossBar.Color fallback) {
-        if (name == null)
-            return fallback;
-
-        for (BossBar.Color color : BossBar.Color.values())
-            if (color.name().equalsIgnoreCase(name))
-                return color;
-
-        return fallback;
-    }
-
-    private static BossBar.Overlay parseOverlay(String name, BossBar.Overlay fallback) {
-        if (name == null)
-            return fallback;
-
-        for (BossBar.Overlay overlay : BossBar.Overlay.values())
-            if (overlay.name().equalsIgnoreCase(name))
-                return overlay;
-
-        return fallback;
-    }
-
     private static List<Mutator> parseMutators(ConfigurationSection section) {
         List<Mutator> mutators = new ArrayList<>();
         if (section == null) {
@@ -457,11 +435,6 @@ public final class WorldEventParser {
             int weight = map.get("weight") instanceof Number n ? n.intValue() : 1;
 
             MutatorCondition condition = parseMutatorCondition(map.get("conditions"));
-
-            ConfigurationSection params = null;
-            if (map.get("params") instanceof Map<?, ?> pm) {
-                // can't convert easily, skip - but we'll parse from map
-            }
 
             Mutator.Builder builder = new Mutator.Builder()
                     .type(type)
@@ -508,6 +481,17 @@ public final class WorldEventParser {
         return mutators;
     }
 
+    private static RoamType parseRoamType(String name) {
+        if (name == null)
+            return null;
+
+        for (RoamType type : RoamType.values())
+            if (type.name().equalsIgnoreCase(name))
+                return type;
+
+        return null;
+    }
+
     private static MutatorCondition parseMutatorCondition(Object raw) {
         if (!(raw instanceof Map<?, ?> map)) {
             return MutatorCondition.EMPTY;
@@ -538,14 +522,14 @@ public final class WorldEventParser {
         return new MutatorCondition(pcMin, pcMax, partMin, partMax, alMin, alMax, todMin, todMax);
     }
 
-    private static int getInt(Map<?, ?> map, String key, int def) {
-        Object v = map.get(key);
-        return v instanceof Number n ? n.intValue() : def;
-    }
-
     private static double getDouble(Map<?, ?> map, String key, double def) {
         Object v = map.get(key);
         return v instanceof Number n ? n.doubleValue() : def;
+    }
+
+    private static boolean getBoolean(Map<?, ?> map, String key, boolean def) {
+        Object v = map.get(key);
+        return v == null ? def : Boolean.parseBoolean(String.valueOf(v));
     }
 
     private static long getLong(Map<?, ?> map, String key, long def) {
@@ -553,8 +537,8 @@ public final class WorldEventParser {
         return v instanceof Number n ? n.longValue() : def;
     }
 
-    private static boolean getBoolean(Map<?, ?> map, String key, boolean def) {
+    private static int getInt(Map<?, ?> map, String key, int def) {
         Object v = map.get(key);
-        return v == null ? def : Boolean.parseBoolean(String.valueOf(v));
+        return v instanceof Number n ? n.intValue() : def;
     }
 }

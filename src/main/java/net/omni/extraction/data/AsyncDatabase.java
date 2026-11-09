@@ -4,13 +4,7 @@ import net.omni.extraction.ExtractionPlugin;
 import org.jspecify.annotations.NonNull;
 
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -63,7 +57,19 @@ public final class AsyncDatabase {
         return shuttingDown;
     }
 
-    /** Runs {@code work} on the DB pool and completes the future with its result. */
+    /**
+     * Runs {@code work} on the DB pool.
+     */
+    public CompletableFuture<Void> runAsync(Runnable work) {
+        return supplyAsync(() -> {
+            work.run();
+            return null;
+        });
+    }
+
+    /**
+     * Runs {@code work} on the DB pool and completes the future with its result.
+     */
     public <T> CompletableFuture<T> supplyAsync(Supplier<T> work) {
         CompletableFuture<T> future = new CompletableFuture<>();
         try {
@@ -81,9 +87,8 @@ public final class AsyncDatabase {
         return future;
     }
 
-    /** Runs {@code work} on the DB pool. */
-    public CompletableFuture<Void> runAsync(Runnable work) {
-        return supplyAsync(() -> {
+    public CompletableFuture<Void> runKeyed(Object key, Runnable work) {
+        return supplyKeyed(key, () -> {
             work.run();
             return null;
         });
@@ -125,13 +130,6 @@ public final class AsyncDatabase {
         });
 
         return result;
-    }
-
-    public CompletableFuture<Void> runKeyed(Object key, Runnable work) {
-        return supplyKeyed(key, () -> {
-            work.run();
-            return null;
-        });
     }
 
     /**

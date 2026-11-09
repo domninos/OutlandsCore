@@ -41,45 +41,44 @@ public class EnchantGUIListener implements Listener {
 
         if (event.getView().getTopInventory().getHolder() instanceof EnchantShopHolder) {
             event.setCancelled(true);
-            if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER) {
+
+            if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER)
                 handleEnchantShopClick(player, event);
-            }
+
             return;
         }
 
         if (event.getView().getTopInventory().getHolder() instanceof EnchantTargetHolder holder) {
             event.setCancelled(true);
-            if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER) {
+
+            if (event.getClickedInventory() != null && event.getClickedInventory().getType() != InventoryType.PLAYER)
                 handleEnchantTargetClick(player, event, holder);
-            }
-        }
-    }
-
-    @EventHandler
-    public void onInventoryDrag(InventoryDragEvent event) {
-        if (!(event.getWhoClicked() instanceof Player))
-            return;
-
-        Object holder = event.getView().getTopInventory().getHolder();
-
-        if (holder instanceof EnchantShopHolder || holder instanceof EnchantTargetHolder) {
-            event.setCancelled(true);
         }
     }
 
     private void handleEnchantShopClick(Player player, InventoryClickEvent event) {
         ItemStack item = event.getCurrentItem();
-        if (item == null) return;
+
+        if (item == null)
+            return;
+
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) return;
+
+        if (meta == null)
+            return;
+
         String name = PlainTextComponentSerializer.plainText().serialize(
                 meta.displayName() == null ? Component.empty() : meta.displayName());
+
         name = name.toLowerCase(Locale.ROOT).replace(" ", "_");
+
         Map<String, Map<String, Object>> defs = plugin.getConfigUtil().getEnchantmentDefinitions();
+
         String key = null;
         for (String k : defs.keySet()) {
             Map<String, Object> d = defs.get(k);
             String dn = String.valueOf(d.getOrDefault("name", k)).toLowerCase(Locale.ROOT).replaceAll("<[^>]+>", "");
+
             if (name.contains(k) || dn.contains(name) || name.contains(dn.replace(" ", "_"))) {
                 key = k;
                 break;
@@ -91,17 +90,32 @@ public class EnchantGUIListener implements Listener {
                 break;
             }
         }
-        if (key != null) plugin.getShopManager().openEnchantTargets(player, key);
+        if (key != null)
+            plugin.getShopManager().openEnchantTargets(player, key);
     }
 
     private void handleEnchantTargetClick(Player player, InventoryClickEvent event, EnchantTargetHolder holder) {
         ItemStack item = event.getCurrentItem();
-        if (item == null) return;
+        if (item == null)
+            return;
 
         ShopGUI shop = plugin.getGuiManager().findShop(player);
+
         int cell = shop == null ? -1 : shop.getTargetCellForSlot(event.getRawSlot());
-        if (cell < 0) return;
+        if (cell < 0)
+            return;
 
         plugin.getShopManager().applyEnchant(player, holder.enchantKey(), cell);
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player))
+            return;
+
+        Object holder = event.getView().getTopInventory().getHolder();
+
+        if (holder instanceof EnchantShopHolder || holder instanceof EnchantTargetHolder)
+            event.setCancelled(true);
     }
 }

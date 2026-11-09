@@ -2,16 +2,6 @@ package net.omni.extraction.boss.creator;
 
 public class BossCreatorSession {
 
-    public enum Page {
-        LIST,
-        STATS,
-        ABILITIES,
-        ABILITY,
-        LOOT,
-        LOOT_ENTRY,
-        TABLE
-    }
-
     private final String bossId;
     private Page page;
     private int listPage;
@@ -20,7 +10,6 @@ public class BossCreatorSession {
     private int tablePage;
     private int size;
     private boolean deletePending;
-
     public BossCreatorSession(String bossId, int size) {
         this.bossId = bossId;
         this.page = bossId == null ? Page.LIST : Page.STATS;
@@ -85,5 +74,15 @@ public class BossCreatorSession {
 
     public void setDeletePending(boolean deletePending) {
         this.deletePending = deletePending;
+    }
+
+    public enum Page {
+        LIST,
+        STATS,
+        ABILITIES,
+        ABILITY,
+        LOOT,
+        LOOT_ENTRY,
+        TABLE
     }
 }

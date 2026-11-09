@@ -1,17 +1,13 @@
 package net.omni.extraction.commands.relics;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.util.Permissions;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.relics.RelicDefinition;
+import net.omni.extraction.util.Permissions;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.command.TabCompleter;
+import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 import org.jspecify.annotations.NonNull;
@@ -37,8 +33,6 @@ public abstract class RelicCommand implements CommandExecutor, TabCompleter {
         this.opened = opened;
     }
 
-    protected abstract String category();
-
     @Override
     public boolean onCommand(@NonNull CommandSender sender, @NonNull Command command, @NonNull String label, @NonNull String[] args) {
         String sub = args.length == 0 ? "" : args[0].toLowerCase();
@@ -47,22 +41,6 @@ public abstract class RelicCommand implements CommandExecutor, TabCompleter {
             return handleRelicAdmin(sender, args, sub);
 
         return handleOpen(sender);
-    }
-
-    private boolean handleOpen(CommandSender sender) {
-        if (!(sender instanceof Player player)) {
-            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
-            return true;
-        }
-
-        if (!player.hasPermission(Permissions.PLAY)) {
-            plugin.sendMessage(player, noPermission.toString());
-            return true;
-        }
-
-        plugin.getRelicManager().open(player, category());
-        plugin.sendMessage(player, opened.toString());
-        return true;
     }
 
     private boolean handleRelicAdmin(CommandSender sender, String[] args, String action) {
@@ -124,6 +102,24 @@ public abstract class RelicCommand implements CommandExecutor, TabCompleter {
 
         return true;
     }
+
+    private boolean handleOpen(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            plugin.sendMessage(sender, Messages.ONLY_PLAYERS.toString());
+            return true;
+        }
+
+        if (!player.hasPermission(Permissions.PLAY)) {
+            plugin.sendMessage(player, noPermission.toString());
+            return true;
+        }
+
+        plugin.getRelicManager().open(player, category());
+        plugin.sendMessage(player, opened.toString());
+        return true;
+    }
+
+    protected abstract String category();
 
     @Override
     public List<String> onTabComplete(@NonNull CommandSender sender, @NonNull Command command, @NonNull String alias, @NonNull String[] args) {

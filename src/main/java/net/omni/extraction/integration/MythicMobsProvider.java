@@ -71,32 +71,11 @@ public class MythicMobsProvider {
         return MythicBukkit.inst().getMobManager().isMythicMob(entity);
     }
 
-    public static final class MythicAttributes {
-        private final double health;
-        private final double damage;
-        private final String displayName;
-
-        public MythicAttributes(double health, double damage, String displayName) {
-            this.health = health;
-            this.damage = damage;
-            this.displayName = displayName;
-        }
-
-        public double getHealth() {
-            return health;
-        }
-
-        public double getDamage() {
-            return damage;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-    }
-
     public int getLevel(Entity entity) {
         var optional = MythicBukkit.inst().getMobManager().getActiveMob(entity.getUniqueId());
         return optional.map(activeMob -> (int) activeMob.getLevel()).orElse(0);
+    }
+
+    public record MythicAttributes(double health, double damage, String displayName) {
     }
 }

@@ -86,13 +86,6 @@ public class PlayerData {
         this.dirtyListener = dirtyListener;
     }
 
-    public void markDirty() {
-        this.dirty = true;
-
-        if (dirtyListener != null)
-            dirtyListener.run();
-    }
-
     public void clearDirty() {
         this.dirty = false;
     }
@@ -153,6 +146,13 @@ public class PlayerData {
     public void setTokens(int tokens) {
         this.tokens = tokens;
         markDirty();
+    }
+
+    public void markDirty() {
+        this.dirty = true;
+
+        if (dirtyListener != null)
+            dirtyListener.run();
     }
 
     public void addTokens(int amount) {
@@ -433,7 +433,9 @@ public class PlayerData {
         return id != null && discoveredAreas.contains(id.toLowerCase(java.util.Locale.ROOT));
     }
 
-    /** Returns true when the area was newly added (and therefore needs a save). */
+    /**
+     * Returns true when the area was newly added (and therefore needs a save).
+     */
     public boolean markAreaDiscovered(String id) {
         if (id == null)
             return false;
@@ -515,15 +517,6 @@ public class PlayerData {
         }
     }
 
-    public void clearRunSnapshot() {
-        this.returnLocation = null;
-        this.preRunInventory = new ArrayList<>();
-        this.preRunArmor = new ArrayList<>();
-        this.pendingReturn = false;
-        this.pendingDeathRestore = false;
-        markDirty();
-    }
-
     public void flush() {
         loadoutTiers.clear();
         loadoutItems = new ArrayList<>();
@@ -534,5 +527,14 @@ public class PlayerData {
         activeCharm = "";
         activeArtifact = "";
         clearRunSnapshot();
+    }
+
+    public void clearRunSnapshot() {
+        this.returnLocation = null;
+        this.preRunInventory = new ArrayList<>();
+        this.preRunArmor = new ArrayList<>();
+        this.pendingReturn = false;
+        this.pendingDeathRestore = false;
+        markDirty();
     }
 }

@@ -63,8 +63,7 @@ public class WallsCommand {
         if (args.length == 2) {
             List<String> suggestions = new ArrayList<>(subNames());
 
-            for (String id : plugin.getWallManager().getIds())
-                suggestions.add(id);
+            suggestions.addAll(plugin.getWallManager().getIds());
 
             List<String> completions = new ArrayList<>();
             StringUtil.copyPartialMatches(args[1], suggestions, completions);

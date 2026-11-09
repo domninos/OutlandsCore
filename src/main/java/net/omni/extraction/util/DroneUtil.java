@@ -5,17 +5,19 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
-import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Bee;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
-/** Stateless drone helpers shared by the drone system. */
+/**
+ * Stateless drone helpers shared by the drone system.
+ */
 public final class DroneUtil {
+
+    public static final PotionEffect INVISIBILITY = new PotionEffect(
+            PotionEffectType.INVISIBILITY,
+            PotionEffect.INFINITE_DURATION, 0, false, false, false);
 
     private DroneUtil() {
     }
@@ -52,7 +54,9 @@ public final class DroneUtil {
         }
     }
 
-    /** Invisible-but-equipped marker standing in for the pilot's body (FancyNpcs fallback). */
+    /**
+     * Invisible-but-equipped marker standing in for the pilot's body (FancyNpcs fallback).
+     */
     public static ArmorStand spawnBodyMarker(Location bodyLoc, ItemStack[] armor,
                                              ItemStack mainhand, ItemStack offhand) {
         ArmorStand marker = (ArmorStand) bodyLoc.getWorld().spawnEntity(bodyLoc, EntityType.ARMOR_STAND);
@@ -64,10 +68,10 @@ public final class DroneUtil {
 
         try {
             if (armor != null && armor.length == 4) {
-                if (armor[0] != null) marker.setBoots(armor[0]);
-                if (armor[1] != null) marker.setLeggings(armor[1]);
-                if (armor[2] != null) marker.setChestplate(armor[2]);
-                if (armor[3] != null) marker.setHelmet(armor[3]);
+                if (armor[0] != null) marker.getEquipment().setBoots(armor[0]);
+                if (armor[1] != null) marker.getEquipment().setLeggings(armor[1]);
+                if (armor[2] != null) marker.getEquipment().setChestplate(armor[2]);
+                if (armor[3] != null) marker.getEquipment().setHelmet(armor[3]);
             }
 
             if (mainhand != null && !mainhand.getType().isAir())
@@ -87,13 +91,11 @@ public final class DroneUtil {
      * their armor. Restored in {@link #restoreVisibility(ExtractionPlugin, Player)}.
      */
     public static void applyPilotInvisibility(ExtractionPlugin plugin, Player player) {
-        player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY,
-                PotionEffect.INFINITE_DURATION, 0, false, false, false));
+        player.addPotionEffect(INVISIBILITY);
 
         for (Player other : Bukkit.getOnlinePlayers()) {
-            if (!other.equals(player)) {
+            if (!other.equals(player))
                 other.hidePlayer(plugin, player);
-            }
         }
     }
 
@@ -110,7 +112,9 @@ public final class DroneUtil {
         }
     }
 
-    /** Best-effort entity removal that never throws. */
+    /**
+     * Best-effort entity removal that never throws.
+     */
     public static void removeEntitySafe(Entity entity) {
         try {
             if (entity != null && entity.isValid()) {

@@ -45,10 +45,6 @@ public class MobSubCommand implements SubCommand {
         };
     }
 
-    private String formatNumber(double value) {
-        return AreaCommandUtil.formatNumber(value);
-    }
-
     private boolean handleMobCreate(CommandSender sender, String[] args) {
         if (args.length < 4) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob create {id} {type} [mythic]"));
@@ -208,5 +204,9 @@ public class MobSubCommand implements SubCommand {
             plugin.sendMessage(sender, "<gray>Equipment: <white>" + template.getEquipment() + "</white></gray>");
 
         return true;
+    }
+
+    private String formatNumber(double value) {
+        return AreaCommandUtil.formatNumber(value);
     }
 }

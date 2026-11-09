@@ -240,7 +240,7 @@ public class RelicEffectManager {
             return;
 
         Inventory top = player.getOpenInventory().getTopInventory();
-        boolean loadoutOpen = top != null && top.getHolder() instanceof LoadoutGuiHolder;
+        boolean loadoutOpen = top.getHolder() instanceof LoadoutGuiHolder;
 
         Map<String, String> cached = lastLabels.computeIfAbsent(uuid, k -> new HashMap<>());
         boolean changed = false;

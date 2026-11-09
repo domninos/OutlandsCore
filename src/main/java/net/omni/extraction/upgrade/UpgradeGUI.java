@@ -30,6 +30,16 @@ public class UpgradeGUI {
         this.owner = player.getUniqueId();
     }
 
+    public static LoadoutSlot getSlotFromClick(ExtractionPlugin plugin, int guiSlot) {
+        ConfigUtil config = plugin.getConfigUtil();
+
+        for (LoadoutSlot slot : UPGRADEABLE_SLOTS) {
+            if (config.getUpgradeGuiSlot(slot.name().toLowerCase()) == guiSlot) return slot;
+        }
+
+        return null;
+    }
+
     public UUID getOwner() {
         return owner;
     }
@@ -38,11 +48,6 @@ public class UpgradeGUI {
         ensureInventory();
         populate(inventory, data);
         player.openInventory(inventory);
-    }
-
-    public void refresh(PlayerData data) {
-        ensureInventory();
-        populate(inventory, data);
     }
 
     private void ensureInventory() {
@@ -148,13 +153,8 @@ public class UpgradeGUI {
         }
     }
 
-    public static LoadoutSlot getSlotFromClick(ExtractionPlugin plugin, int guiSlot) {
-        ConfigUtil config = plugin.getConfigUtil();
-
-        for (LoadoutSlot slot : UPGRADEABLE_SLOTS) {
-            if (config.getUpgradeGuiSlot(slot.name().toLowerCase()) == guiSlot) return slot;
-        }
-
-        return null;
+    public void refresh(PlayerData data) {
+        ensureInventory();
+        populate(inventory, data);
     }
 }

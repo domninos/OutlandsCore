@@ -64,11 +64,11 @@ public class AreaEditorManager {
 
         List<MobDrop> preserved = new ArrayList<>();
         for (MobDrop drop : existing.getDrops()) {
-            if (drop.getType() != null && (drop.getType().startsWith("CHARM:")
-                    || drop.getType().startsWith("ARTIFACT:"))) {
-                session.addRelic(drop.getType());
-                session.setRelicChance(drop.getType(), Math.clamp(drop.getChance() * 100.0, 0.0, 100.0));
-            } else if (drop != null && !drop.getType().isBlank()) {
+            if (drop.type() != null && (drop.type().startsWith("CHARM:")
+                    || drop.type().startsWith("ARTIFACT:"))) {
+                session.addRelic(drop.type());
+                session.setRelicChance(drop.type(), Math.clamp(drop.chance() * 100.0, 0.0, 100.0));
+            } else if (!drop.type().isBlank()) {
                 preserved.add(drop);
             }
         }
@@ -76,15 +76,15 @@ public class AreaEditorManager {
 
         session.setPage(AreaEditorSession.PAGE_COUNT);
         session.setListPage(0);
-        hideMarker(player, existing);
+        hideMarker(existing);
         render(player, session);
     }
 
-    private void hideMarker(Player player, AreaSpawnEntry entry) {
+    private void hideMarker(AreaSpawnEntry entry) {
         if (plugin.getSpawnMarkerManager() == null || entry == null)
             return;
 
-        plugin.getSpawnMarkerManager().removeMarkerFor(player, entry);
+        plugin.getSpawnMarkerManager().removeMarkerFor(entry);
     }
 
     public void openChestEditor(Player player, Area area, Location location) {
@@ -139,21 +139,21 @@ public class AreaEditorManager {
         return session.getMode() == Mode.SPAWN && session.getPage() == AreaEditorSession.PAGE_BOSS;
     }
 
-    private int sizeFor(AreaEditorSession session) {
+    private int sizeFor() {
         return plugin.getConfigUtil().getAreaEditorSize();
     }
 
-    private int contentStart(AreaEditorSession session) {
+    private int contentStart() {
         return 9;
     }
 
-    private int contentSize(AreaEditorSession session) {
-        return sizeFor(session) - 18;
+    private int contentSize() {
+        return sizeFor() - 18;
     }
 
     public void render(Player player, AreaEditorSession session) {
         ConfigUtil config = plugin.getConfigUtil();
-        int size = sizeFor(session);
+        int size = sizeFor();
 
         Inventory inventory = plugin.getChatRenderer().createInventory(
                 new AreaEditorHolder(session), size,
@@ -180,7 +180,7 @@ public class AreaEditorManager {
             return;
 
         ConfigUtil config = plugin.getConfigUtil();
-        int size = sizeFor(session);
+        int size = sizeFor();
 
         if (rawSlot < 0 || rawSlot >= size)
             return;
@@ -208,7 +208,7 @@ public class AreaEditorManager {
         }
 
         List<String> keys = contentKeys(session, config);
-        int contentSize = contentSize(session);
+        int contentSize = contentSize();
         int pageCount = Math.max(1, (keys.size() + contentSize - 1) / contentSize);
 
         if (rawSlot == listPrevSlot) {
@@ -245,7 +245,7 @@ public class AreaEditorManager {
             return;
         }
 
-        int contentStart = contentStart(session);
+        int contentStart = contentStart();
 
         if (rawSlot < contentStart || rawSlot >= contentStart + contentSize)
             return;
@@ -402,8 +402,7 @@ public class AreaEditorManager {
                 String relic = session.getCurrentRelic();
                 if (relic != null) {
                     double smallest = config.getAreaEditorDropChanceSmallest();
-                    double chance = Math.min(AreaEditorSession.MAX_DROP_CHANCE,
-                            Math.max(smallest, session.getRelicChance(relic) + delta));
+                    double chance = Math.clamp(smallest, session.getRelicChance(relic) + delta, AreaEditorSession.MAX_DROP_CHANCE);
                     session.setRelicChance(relic, chance);
                 }
             }
@@ -434,7 +433,7 @@ public class AreaEditorManager {
                 return;
             }
 
-            target = area.getChestLocations().get(area.getChestLocations().size() - 1);
+            target = area.getChestLocations().getLast();
         }
 
         plugin.getAreaManager().markDirty(area);
@@ -475,7 +474,7 @@ public class AreaEditorManager {
         for (String dropType : session.getAssignedRelics())
             drops.add(new MobDrop(dropType, session.getRelicChance(dropType) / 100.0, 1));
         for (MobDrop preserved : session.getPreservedDrops())
-            if (preserved != null && !preserved.getType().isBlank())
+            if (preserved != null && !preserved.type().isBlank())
                 drops.add(preserved);
 
         AreaSpawnEntry entry = new AreaSpawnEntry(session.getMobId(),
@@ -485,11 +484,10 @@ public class AreaEditorManager {
 
         AreaSpawnEntry existing = session.getExisting();
 
-        if (existing != null && area.getSpawnEntries().remove(existing)) {
-            area.addSpawnEntry(entry);
-        } else {
-            area.addSpawnEntry(entry);
-        }
+        if (existing != null)
+            area.getSpawnEntries().remove(existing);
+
+        area.addSpawnEntry(entry);
 
         plugin.getAreaManager().markDirty(area);
 
@@ -521,7 +519,7 @@ public class AreaEditorManager {
         inventory.setItem(size - 8, filler);
         inventory.setItem(size - 7, filler);
 
-        int contentSize = contentSize(session);
+        int contentSize = contentSize();
         int pageCount = Math.max(1, (contentKeys(session, config).size() + contentSize - 1) / contentSize);
 
         inventory.setItem(size - 6, session.getListPage() > 0
@@ -594,7 +592,7 @@ public class AreaEditorManager {
 
     private void renderBossContent(Inventory inventory, AreaEditorSession session, ConfigUtil config) {
         List<String> keys = contentKeys(session, config);
-        int[] slots = bossButtonSlots(sizeFor(session));
+        int[] slots = bossButtonSlots(sizeFor());
 
         for (int i = 0; i < slots.length && i < keys.size(); i++) {
             ItemStack item = contentItem(session, keys.get(i), config);
@@ -606,13 +604,13 @@ public class AreaEditorManager {
 
     private void renderContent(Inventory inventory, AreaEditorSession session, ConfigUtil config) {
         List<String> keys = contentKeys(session, config);
-        int contentSize = contentSize(session);
+        int contentSize = contentSize();
         int pageCount = Math.max(1, (keys.size() + contentSize - 1) / contentSize);
 
         session.setListPage(Math.clamp(session.getListPage(), 0, pageCount - 1));
 
         int start = session.getListPage() * contentSize;
-        int slot = contentStart(session);
+        int slot = contentStart();
 
         for (int i = start; i < Math.min(keys.size(), start + contentSize); i++) {
             ItemStack item = contentItem(session, keys.get(i), config);
@@ -642,7 +640,8 @@ public class AreaEditorManager {
             case AreaEditorSession.PAGE_COUNT -> addNumericKeys(keys, config.getAreaEditorCountIncrements());
             case AreaEditorSession.PAGE_LEVEL -> addNumericKeys(keys, config.getAreaEditorLevelIncrements());
             case AreaEditorSession.PAGE_RESPAWN -> addNumericKeys(keys, config.getAreaEditorRespawnIncrements());
-            case AreaEditorSession.PAGE_RESPAWN_COUNT -> addNumericKeys(keys, config.getAreaEditorRespawnCountIncrements());
+            case AreaEditorSession.PAGE_RESPAWN_COUNT ->
+                    addNumericKeys(keys, config.getAreaEditorRespawnCountIncrements());
             case AreaEditorSession.PAGE_BOSS -> {
                 keys.add("YES");
                 keys.add("NO");
@@ -687,7 +686,7 @@ public class AreaEditorManager {
                     config.getAreaEditorBossYesName(), "<gray>Bosses pay out bonus tokens.</gray>");
             case "NO" -> valueItem(config.getAreaEditorBossNoMaterial(),
                     config.getAreaEditorBossNoName(), "<gray>Normal mob spawn.</gray>");
-            case "RELIC" -> relicItem(session, parts[1], parts[2], config);
+            case "RELIC" -> relicItem(session, parts[1], parts[2]);
             case "REMOVEDROP" -> valueItem(config.getAreaEditorDropRemoveMaterial(),
                     config.getAreaEditorDropRemoveName(), "<gray>Click to remove this relic assignment.</gray>");
             default -> null;
@@ -798,7 +797,7 @@ public class AreaEditorManager {
         return new ArrayList<>(mobs);
     }
 
-    private ItemStack relicItem(AreaEditorSession session, String category, String id, ConfigUtil config) {
+    private ItemStack relicItem(AreaEditorSession session, String category, String id) {
         RelicDefinition def = plugin.getRelicManager().getDefinition(category, id);
         if (def == null)
             return null;

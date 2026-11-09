@@ -17,6 +17,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
@@ -37,7 +38,6 @@ public class WorldEventManager {
     private final Map<String, EventInstance> active;
     private final Map<String, Long> cooldowns;
     private final Map<UUID, EventInstance> mobInstances;
-    private final Set<UUID> compassPlayers;
     private boolean enabled;
     private int maxConcurrent;
     private long checkSeconds;
@@ -53,7 +53,7 @@ public class WorldEventManager {
         this.active = new HashMap<>();
         this.cooldowns = new HashMap<>();
         this.mobInstances = new HashMap<>();
-        this.compassPlayers = new HashSet<>();
+        Set<UUID> compassPlayers = new HashSet<>();
         this.ctx = new EventContext(plugin, config, this, active, cooldowns,
                 mobInstances, compassPlayers);
         readSettings();
@@ -539,69 +539,78 @@ public class WorldEventManager {
 
     private boolean passesConditions(Mutator m, EventInstance instance, Location origin) {
         MutatorCondition c = m.condition();
-        if (c == MutatorCondition.EMPTY) {
+
+        if (c == MutatorCondition.EMPTY)
             return true;
-        }
+
         World world = origin != null ? origin.getWorld() : null;
         String worldName = plugin.getConfigUtil().getWorldName();
-        if (world == null && worldName != null && !worldName.isEmpty()) {
+
+        if (world == null && worldName != null && !worldName.isEmpty())
             world = Bukkit.getWorld(worldName);
-        }
+
         if (world != null) {
             if (c.playerCountMin() >= 0 || c.playerCountMax() >= 0) {
                 int count = world.getPlayers().size();
-                if (c.playerCountMin() >= 0 && count < c.playerCountMin()) {
+
+                if (c.playerCountMin() >= 0 && count < c.playerCountMin())
                     return false;
-                }
-                if (c.playerCountMax() >= 0 && count > c.playerCountMax()) {
+
+                if (c.playerCountMax() >= 0 && count > c.playerCountMax())
                     return false;
-                }
             }
+
             if (c.timeOfDayMin() >= 0 || c.timeOfDayMax() >= 0) {
                 long time = world.getTime();
+
                 if (c.timeOfDayMin() >= 0 && c.timeOfDayMax() >= 0 && c.timeOfDayMin() <= c.timeOfDayMax()) {
-                    if (time < c.timeOfDayMin() || time > c.timeOfDayMax()) {
+                    if (time < c.timeOfDayMin() || time > c.timeOfDayMax())
                         return false;
-                    }
-                } else if (c.timeOfDayMin() >= 0 && time < c.timeOfDayMin()) {
+                } else if (c.timeOfDayMin() >= 0 && time < c.timeOfDayMin())
                     return false;
-                } else if (c.timeOfDayMax() >= 0 && time > c.timeOfDayMax()) {
+                else if (c.timeOfDayMax() >= 0 && time > c.timeOfDayMax())
                     return false;
-                }
             }
         }
+
         if (c.participationMin() >= 0 || c.participationMax() >= 0) {
             double total = instance.getTotalDamage();
-            if (c.participationMin() >= 0 && total < c.participationMin()) {
+
+            if (c.participationMin() >= 0 && total < c.participationMin())
                 return false;
-            }
-            if (c.participationMax() >= 0 && total > c.participationMax()) {
+
+            if (c.participationMax() >= 0 && total > c.participationMax())
                 return false;
-            }
         }
         if (c.areaLevelMin() >= 0 || c.areaLevelMax() >= 0 && origin != null) {
             try {
-                int level = 0;
+                int level;
+
                 try {
                     Area a = plugin.getAreaManager().getAreaAt(origin);
+
                     if (a != null) {
                         int max = 1;
+
                         for (AreaSpawnEntry e : a.getSpawnEntries()) {
-                            if (e.getLevel() > max) max = e.getLevel();
+                            if (e.getLevel() > max)
+                                max = e.getLevel();
                         }
+
                         level = max;
                     } else {
                         level = 0;
                     }
+
                 } catch (Exception e) {
                     level = 0;
                 }
-                if (c.areaLevelMin() >= 0 && level < c.areaLevelMin()) {
+
+                if (c.areaLevelMin() >= 0 && level < c.areaLevelMin())
                     return false;
-                }
-                if (c.areaLevelMax() >= 0 && level > c.areaLevelMax()) {
+
+                if (c.areaLevelMax() >= 0 && level > c.areaLevelMax())
                     return false;
-                }
             } catch (Exception ignored) {
             }
         }
@@ -749,26 +758,25 @@ public class WorldEventManager {
      * Used by the random-area trigger; admin force starts still route through
      * {@link #startEvent}.
      */
-    private EventStartResult startAtArea(String id, Area area) {
+    private void startAtArea(String id, Area area) {
         WorldEvent event = config.getEvent(id);
         if (event == null)
-            return EventStartResult.NOT_FOUND;
+            return;
 
         if (active.containsKey(event.getId()))
-            return EventStartResult.ALREADY_ACTIVE;
+            return;
 
         if (!event.isEnabled() || !event.isAreaTriggered())
-            return EventStartResult.DISABLED;
+            return;
 
         Location origin = area == null ? null : area.getCenter();
         EventInstance instance = spawnEvent(event, origin);
         if (instance == null)
-            return EventStartResult.NO_SPAWNS;
+            return;
 
         active.put(event.getId(), instance);
         ctx.presentation().announceStart(instance);
         ctx.presentation().updateCompass();
-        return EventStartResult.STARTED;
     }
 
     private EventInstance spawnEvent(WorldEvent event, Location origin) {
@@ -885,7 +893,7 @@ public class WorldEventManager {
             if (world == null || !active.containsKey(eventId))
                 return;
 
-            for (org.bukkit.entity.Entity entity : world.getNearbyEntities(origin, 1.5, 1.5, 1.5)) {
+            for (Entity entity : world.getNearbyEntities(origin, 1.5, 1.5, 1.5)) {
                 if (!entity.getType().name().equalsIgnoreCase(typeName)) continue;
                 // Only the actual split children: the dying corpse is still in
                 // the world for its death animation and must never re-enter.
@@ -898,7 +906,7 @@ public class WorldEventManager {
                 instance.addTotal(1);
                 entity.setPersistent(true);
 
-                if (entity instanceof org.bukkit.entity.Mob mob)
+                if (entity instanceof Mob mob)
                     mob.setRemoveWhenFarAway(false);
             }
         }, 5L);

@@ -99,7 +99,7 @@ public class ShopGUI {
         ChatRenderer renderer = plugin.getChatRenderer();
 
         switch (view) {
-            case HUB -> populateHub(renderer);
+            case HUB -> populateHub();
             case CONSUMABLES -> populateConsumables(renderer);
             case ENCHANTS -> populateEnchants(renderer);
             case ENCHANT_TARGETS -> populateTargets(player, renderer);
@@ -107,24 +107,23 @@ public class ShopGUI {
         }
     }
 
-    private void populateHub(ChatRenderer renderer) {
+    private void populateHub() {
         ConfigUtil config = plugin.getConfigUtil();
         fillFiller(config.getShopHubFillerMaterial(), config.getShopHubFillerName());
 
         Map<String, Map<String, Object>> buttons = config.getShopHubButtons();
-        placeButton(renderer, buttons, "consumables");
-        placeButton(renderer, buttons, "enchantments");
-        placeButton(renderer, buttons, "upgrades");
-        placeButton(renderer, buttons, "backpack");
-        placeButton(renderer, buttons, "pets");
-        placeButton(renderer, buttons, "close");
+        placeButton(buttons, "consumables");
+        placeButton(buttons, "enchantments");
+        placeButton(buttons, "upgrades");
+        placeButton(buttons, "backpack");
+        placeButton(buttons, "pets");
+        placeButton(buttons, "close");
     }
 
     private void populateConsumables(ChatRenderer renderer) {
         ConfigUtil config = plugin.getConfigUtil();
         fillFiller(config.getShopConsumablesFillerMaterial(), config.getShopConsumablesFillerName());
 
-        ShopManager shop = plugin.getShopManager();
         int size = inventory.getSize();
 
         for (Map.Entry<String, Map<String, Object>> entry : config.getShopConsumables().entrySet()) {
@@ -141,8 +140,6 @@ public class ShopGUI {
             int cost = ItemUtil.asInt(def.get("cost"), 0);
 
             ItemStack item = ItemUtil.createItem(plugin, def);
-            if (item == null)
-                continue;
 
             String name = String.valueOf(def.getOrDefault("name", entry.getKey()))
                     .replace("%amount%", String.valueOf(amount))
@@ -170,7 +167,6 @@ public class ShopGUI {
         ConfigUtil config = plugin.getConfigUtil();
         fillFiller(config.getEnchantmentsFillerMaterial(), config.getEnchantmentsFillerName());
 
-        ShopManager shop = plugin.getShopManager();
         int size = inventory.getSize();
         for (Map.Entry<String, Map<String, Object>> entry : config.getEnchantmentDefinitions().entrySet()) {
             Map<String, Object> def = entry.getValue();
@@ -181,9 +177,9 @@ public class ShopGUI {
             int cost = ItemUtil.asInt(def.get("cost"), 0);
             String name = String.valueOf(def.getOrDefault("name", entry.getKey())).replace("%cost%", String.valueOf(cost));
             List<String> lore = new ArrayList<>();
-            for (String line : parseLore(def.get("lore"))) {
+
+            for (String line : parseLore(def.get("lore")))
                 lore.add(line.replace("%cost%", String.valueOf(cost)));
-            }
 
             ItemStack item = ItemUtil.createItem(plugin, def);
 
@@ -268,15 +264,17 @@ public class ShopGUI {
 
         ItemStack filler = ItemUtil.createItem(material, name, List.of());
 
-        for (int i = 0; i < inventory.getSize(); i++) {
+        for (int i = 0; i < inventory.getSize(); i++)
             inventory.setItem(i, filler.clone());
-        }
     }
 
-    private void placeButton(ChatRenderer renderer, Map<String, Map<String, Object>> buttons, String key) {
+    private void placeButton(Map<String, Map<String, Object>> buttons, String key) {
         Map<String, Object> def = buttons.get(key);
-        if (def == null) return;
-        if (!(def.get("slot") instanceof Number num)) return;
+        if (def == null)
+            return;
+
+        if (!(def.get("slot") instanceof Number num))
+            return;
 
         String name = String.valueOf(def.getOrDefault("name", key));
         List<String> lore = parseLore(def.get("lore"));
@@ -296,9 +294,14 @@ public class ShopGUI {
     private List<String> parseLore(Object obj) {
         if (obj instanceof List<?> list) {
             List<String> out = new ArrayList<>();
-            for (Object o : list) if (o != null) out.add(String.valueOf(o));
+
+            for (Object o : list)
+                if (o != null)
+                    out.add(String.valueOf(o));
+
             return out;
         }
+
         return new ArrayList<>();
     }
 
@@ -315,6 +318,7 @@ public class ShopGUI {
             build(player);
             return;
         }
+
         populate(player);
     }
 }

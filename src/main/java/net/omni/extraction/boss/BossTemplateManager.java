@@ -7,6 +7,7 @@ import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.mobs.MobTemplate;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.jspecify.annotations.NonNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -186,20 +187,7 @@ public class BossTemplateManager {
                 config.set(base + "equipment." + entry.getKey(), entry.getValue());
 
             if (!template.getDrops().isEmpty()) {
-                List<Map<String, Object>> dropList = new ArrayList<>();
-
-                for (MobDrop drop : template.getDrops()) {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("type", drop.getType());
-
-                    if (drop.getChance() != 1.0)
-                        map.put("chance", drop.getChance());
-
-                    if (drop.getAmount() != 1)
-                        map.put("amount", drop.getAmount());
-
-                    dropList.add(map);
-                }
+                List<Map<String, Object>> dropList = getDropList(template);
 
                 config.set(base + "drops", dropList);
             }
@@ -225,6 +213,24 @@ public class BossTemplateManager {
         } catch (IOException e) {
             plugin.getLogger().warning("Failed to save bosses.yml: " + e.getMessage());
         }
+    }
+
+    private @NonNull List<Map<String, Object>> getDropList(MobTemplate template) {
+        List<Map<String, Object>> dropList = new ArrayList<>();
+
+        for (MobDrop drop : template.getDrops()) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("type", drop.type());
+
+            if (drop.chance() != 1.0)
+                map.put("chance", drop.chance());
+
+            if (drop.amount() != 1)
+                map.put("amount", drop.amount());
+
+            dropList.add(map);
+        }
+        return dropList;
     }
 
     public boolean delete(String id) {

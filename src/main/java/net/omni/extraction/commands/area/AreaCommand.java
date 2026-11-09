@@ -3,24 +3,7 @@ package net.omni.extraction.commands.area;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.commands.MainCommand;
 import net.omni.extraction.commands.SubCommand;
-import net.omni.extraction.commands.area.sub.CreateSubCommand;
-import net.omni.extraction.commands.area.sub.DeleteSubCommand;
-import net.omni.extraction.commands.area.sub.DelMobSubCommand;
-import net.omni.extraction.commands.area.sub.AddMobSubCommand;
-import net.omni.extraction.commands.area.sub.HelpSubCommand;
-import net.omni.extraction.commands.area.sub.InfoSubCommand;
-import net.omni.extraction.commands.area.sub.ListSubCommand;
-import net.omni.extraction.commands.area.sub.MobSubCommand;
-import net.omni.extraction.commands.area.sub.ReloadSubCommand;
-import net.omni.extraction.commands.area.sub.RenameSubCommand;
-import net.omni.extraction.commands.area.sub.ResetSubCommand;
-import net.omni.extraction.commands.area.sub.ResizeSubCommand;
-import net.omni.extraction.commands.area.sub.SetChestSubCommand;
-import net.omni.extraction.commands.area.sub.SetLevelSubCommand;
-import net.omni.extraction.commands.area.sub.SetMobSubCommand;
-import net.omni.extraction.commands.area.sub.TpSubCommand;
-import net.omni.extraction.commands.area.sub.UpdateSubCommand;
-import net.omni.extraction.commands.area.sub.WandSubCommand;
+import net.omni.extraction.commands.area.sub.*;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.Permissions;
 import org.bukkit.command.Command;
@@ -36,7 +19,7 @@ public class AreaCommand extends MainCommand {
 
     public AreaCommand(ExtractionPlugin plugin) {
         super(plugin);
-        this.helpSub = new HelpSubCommand(plugin);
+        this.helpSub = new HelpSubCommand();
         registerSubCommands(
                 helpSub,
                 new WandSubCommand(plugin),

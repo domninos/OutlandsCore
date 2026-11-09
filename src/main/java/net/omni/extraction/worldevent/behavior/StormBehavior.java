@@ -58,7 +58,7 @@ public class StormBehavior {
             return null;
 
         if (candidates.size() == 1)
-            return candidates.get(0);
+            return candidates.getFirst();
 
         if (origin != null && origin.getWorld() != null) {
             Area containing = ctx.plugin().getAreaManager().getAreaAt(origin);

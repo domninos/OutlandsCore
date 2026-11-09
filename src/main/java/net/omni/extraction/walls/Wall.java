@@ -1,19 +1,16 @@
 package net.omni.extraction.walls;
 
+import net.omni.extraction.util.TimeUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
-import net.omni.extraction.util.TimeUtil;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Wall {
-
-    public record SavedBlock(int x, int y, int z, String data) {
-    }
 
     private final String id;
     private final String worldName;
@@ -26,6 +23,49 @@ public class Wall {
     private final int regenSeconds;
     private final List<SavedBlock> blocks;
     private long destroyedUntil;
+    public Wall(String id, String worldName, int x, int y, int z, int radius,
+                WallOrientation orientation, String axis, int regenSeconds, List<SavedBlock> blocks) {
+        this.id = id;
+        this.worldName = worldName;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.radius = radius;
+        this.orientation = orientation;
+        this.axis = axis;
+        this.regenSeconds = regenSeconds;
+        this.blocks = new ArrayList<>(blocks);
+    }
+
+    public String getStateLabel(long now) {
+        long remaining = remainingSeconds(now);
+
+        if (remaining > 0L)
+            return "BREACHED " + TimeUtil.formatSeconds(remaining);
+
+        return "INTACT";
+    }
+
+    public long remainingSeconds(long now) {
+        long remaining = destroyedUntil - now;
+
+        if (remaining <= 0L)
+            return 0L;
+
+        return (long) Math.ceil(remaining / 1000.0);
+    }
+
+    public String getWorldName() {
+        return worldName;
+    }
+
+    public boolean matchesImpact(Location impact) {
+        if (impact == null || impact.getWorld() == null)
+            return false;
+
+        int reach = radius + 2;
+        return matches(impact, axis, 2, (double) reach * reach);
+    }
 
     private boolean matches(Location impact, String axis, int planeDelta, double spreadSquared) {
         if (!impact.getWorld().getName().equals(worldName))
@@ -43,50 +83,6 @@ public class Wall {
         };
     }
 
-    public long remainingSeconds(long now) {
-        long remaining = destroyedUntil - now;
-
-        if (remaining <= 0L)
-            return 0L;
-
-        return (long) Math.ceil(remaining / 1000.0);
-    }
-
-    public String getStateLabel(long now) {
-        long remaining = remainingSeconds(now);
-
-        if (remaining > 0L)
-            return "BREACHED " + TimeUtil.formatSeconds(remaining);
-
-        return "INTACT";
-    }
-
-    public String getWorldName() {
-        return worldName;
-    }
-
-    public Wall(String id, String worldName, int x, int y, int z, int radius,
-                WallOrientation orientation, String axis, int regenSeconds, List<SavedBlock> blocks) {
-        this.id = id;
-        this.worldName = worldName;
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.radius = radius;
-        this.orientation = orientation;
-        this.axis = axis;
-        this.regenSeconds = regenSeconds;
-        this.blocks = new ArrayList<>(blocks);
-    }
-
-    public boolean matchesImpact(Location impact) {
-        if (impact == null || impact.getWorld() == null)
-            return false;
-
-        int reach = radius + 2;
-        return matches(impact, axis, 2, (double) reach * reach);
-    }
-
     public double impactScore(Location impact) {
         return (impact.getBlockX() - x) * (impact.getBlockX() - x)
                 + (impact.getBlockY() - y) * (impact.getBlockY() - y)
@@ -94,9 +90,8 @@ public class Wall {
     }
 
     public void destroy(World world) {
-        for (SavedBlock block : blocks) {
+        for (SavedBlock block : blocks)
             world.getBlockAt(block.x(), block.y(), block.z()).setType(Material.AIR, false);
-        }
     }
 
     public boolean restore(World world) {
@@ -119,12 +114,12 @@ public class Wall {
         return destroyedUntil > now;
     }
 
-    public void setDestroyedUntil(long value) {
-        destroyedUntil = Math.max(0L, value);
-    }
-
     public long getDestroyedUntil() {
         return destroyedUntil;
+    }
+
+    public void setDestroyedUntil(long value) {
+        destroyedUntil = Math.max(0L, value);
     }
 
     public String getId() {
@@ -161,5 +156,8 @@ public class Wall {
 
     public List<SavedBlock> getBlocks() {
         return blocks;
+    }
+
+    public record SavedBlock(int x, int y, int z, String data) {
     }
 }

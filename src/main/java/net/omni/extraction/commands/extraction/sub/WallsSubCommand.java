@@ -3,7 +3,6 @@ package net.omni.extraction.commands.extraction.sub;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.commands.walls.WallsCommand;
-import net.omni.extraction.util.Permissions;
 import org.bukkit.command.CommandSender;
 
 import java.util.List;

@@ -55,7 +55,7 @@ public final class AreaCommandUtil {
             if (attributes == null) return;
 
             plugin.getMobTemplateManager().applyMythicAttributes(id,
-                    attributes.getHealth(), attributes.getDamage(), attributes.getDisplayName());
+                    attributes.health(), attributes.damage(), attributes.displayName());
         } catch (Throwable e) {
             plugin.getLogger().warning("Failed to copy MythicMob attributes for '" + type + "': " + e.getMessage());
         }

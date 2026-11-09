@@ -11,10 +11,6 @@ public class CompassHolder implements InventoryHolder {
     private final Map<Integer, String> slotToArea = new HashMap<>();
     private Inventory inventory;
 
-    public void setInventory(Inventory inventory) {
-        this.inventory = inventory;
-    }
-
     public void map(int slot, String areaName) {
         slotToArea.put(slot, areaName);
     }
@@ -26,5 +22,9 @@ public class CompassHolder implements InventoryHolder {
     @Override
     public Inventory getInventory() {
         return inventory;
+    }
+
+    public void setInventory(Inventory inventory) {
+        this.inventory = inventory;
     }
 }

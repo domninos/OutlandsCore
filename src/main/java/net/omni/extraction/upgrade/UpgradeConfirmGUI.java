@@ -19,14 +19,6 @@ public final class UpgradeConfirmGUI {
     private UpgradeConfirmGUI() {
     }
 
-    public static int getYesSlot(int size) {
-        return size / 2 - 1;
-    }
-
-    public static int getNoSlot(int size) {
-        return size / 2 + 1;
-    }
-
     public static void open(ExtractionPlugin plugin, Player player, LoadoutSlot slot, UpgradeTier nextTier) {
         ConfigUtil config = plugin.getConfigUtil();
 
@@ -55,34 +47,15 @@ public final class UpgradeConfirmGUI {
                 .replace("%next%", nextTier.getTierName())
                 .replace("%cost%", String.valueOf(nextTier.getCost()));
 
-        inventory.setItem(promptSlot, createItem(plugin, config.getUpgradeConfirmPromptMaterial(),
-                "GOLD_INGOT", question, applyPlaceholders(plugin, config.getUpgradeConfirmPromptLore(),
+        inventory.setItem(promptSlot, createItem(config.getUpgradeConfirmPromptMaterial(),
+                "GOLD_INGOT", question, applyPlaceholders(config.getUpgradeConfirmPromptLore(),
                         slot.getDisplayName(), currentName, nextTier.getTierName(), nextTier.getCost())));
-        inventory.setItem(getYesSlot(size), createItem(plugin, config.getUpgradeConfirmYesMaterial(),
+        inventory.setItem(getYesSlot(size), createItem(config.getUpgradeConfirmYesMaterial(),
                 "LIME_DYE", config.getUpgradeConfirmYesName(), List.of()));
-        inventory.setItem(getNoSlot(size), createItem(plugin, config.getUpgradeConfirmNoMaterial(),
+        inventory.setItem(getNoSlot(size), createItem(config.getUpgradeConfirmNoMaterial(),
                 "RED_DYE", config.getUpgradeConfirmNoName(), List.of()));
 
         player.openInventory(inventory);
-    }
-
-    private static List<String> applyPlaceholders(ExtractionPlugin plugin, List<String> lines,
-                                                  String slot, String current, String next, int cost) {
-        List<String> out = new ArrayList<>();
-
-        for (String line : lines) {
-            out.add(line.replace("%slot%", slot)
-                    .replace("%current%", current)
-                    .replace("%next%", next)
-                    .replace("%cost%", String.valueOf(cost)));
-        }
-
-        return out;
-    }
-
-    private static ItemStack createItem(ExtractionPlugin plugin, String materialName, String fallback,
-                                        String name, List<String> lore) {
-        return ItemUtil.createItem(materialName, fallback, name, lore);
     }
 
     private static void fillFiller(ExtractionPlugin plugin, Inventory inventory) {
@@ -97,5 +70,32 @@ public final class UpgradeConfirmGUI {
             if (inventory.getItem(i) == null)
                 inventory.setItem(i, filler);
         }
+    }
+
+    private static ItemStack createItem(String materialName, String fallback,
+                                        String name, List<String> lore) {
+        return ItemUtil.createItem(materialName, fallback, name, lore);
+    }
+
+    private static List<String> applyPlaceholders(List<String> lines,
+                                                  String slot, String current, String next, int cost) {
+        List<String> out = new ArrayList<>();
+
+        for (String line : lines) {
+            out.add(line.replace("%slot%", slot)
+                    .replace("%current%", current)
+                    .replace("%next%", next)
+                    .replace("%cost%", String.valueOf(cost)));
+        }
+
+        return out;
+    }
+
+    public static int getYesSlot(int size) {
+        return size / 2 - 1;
+    }
+
+    public static int getNoSlot(int size) {
+        return size / 2 + 1;
     }
 }

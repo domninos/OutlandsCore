@@ -13,12 +13,7 @@ import net.omni.extraction.worldevent.config.WorldEventsConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * The shared runtime state + service locator for the world-event system.
@@ -162,9 +157,6 @@ public class EventContext {
         List<Player> result = new ArrayList<>();
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.getWorld() == null)
-                continue;
-
             if (!worldName.equalsIgnoreCase(player.getWorld().getName()))
                 continue;
 

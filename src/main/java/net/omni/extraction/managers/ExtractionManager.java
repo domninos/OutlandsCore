@@ -1,6 +1,5 @@
 package net.omni.extraction.managers;
 
-import net.omni.extraction.ExtractionPlugin;
 import org.bukkit.entity.Player;
 
 import java.util.HashSet;
@@ -9,13 +8,7 @@ import java.util.UUID;
 
 public class ExtractionManager {
 
-    private final ExtractionPlugin plugin;
-
     private final Set<UUID> extractionPlayers = new HashSet<>();
-
-    public ExtractionManager(ExtractionPlugin plugin) {
-        this.plugin = plugin;
-    }
 
     public void addExtractionPlayer(Player player) {
         if (player == null)

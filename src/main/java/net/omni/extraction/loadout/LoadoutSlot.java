@@ -33,16 +33,16 @@ public enum LoadoutSlot {
         return displayName;
     }
 
-    public boolean isArmor() {
-        return this == HELMET || this == CHESTPLATE || this == LEGGINGS || this == BOOTS;
-    }
-
     public boolean isTemporary() {
         return this == FOOD || this == POTION;
     }
 
     public boolean isCustomizableCell() {
         return !isArmor() && this != OFFHAND;
+    }
+
+    public boolean isArmor() {
+        return this == HELMET || this == CHESTPLATE || this == LEGGINGS || this == BOOTS;
     }
 
     public boolean isPlaceholderSlot() {

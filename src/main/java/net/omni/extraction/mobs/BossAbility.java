@@ -18,17 +18,6 @@ public class BossAbility {
         applyDefaults();
     }
 
-    public BossAbility(BossAbilityType type, int cooldown, double power, double radius,
-                       int amount, int duration, int triggerHealth) {
-        this.type = type;
-        this.cooldown = cooldown;
-        this.power = power;
-        this.radius = radius;
-        this.amount = amount;
-        this.duration = duration;
-        this.triggerHealth = triggerHealth;
-    }
-
     public void applyDefaults() {
         cooldown = 10;
         power = 5;
@@ -50,10 +39,8 @@ public class BossAbility {
                 cooldown = 8;
                 power = 4;
                 radius = 20;
-                amount = 5;
             }
             case TELEPORT_STRIKE -> {
-                cooldown = 10;
                 power = 10;
                 radius = 12;
             }
@@ -67,7 +54,6 @@ public class BossAbility {
                 cooldown = 30;
                 power = 2;
                 radius = 0;
-                duration = 8;
                 triggerHealth = 35;
             }
             case TOXIC_AURA -> {
@@ -77,6 +63,17 @@ public class BossAbility {
                 duration = 6;
             }
         }
+    }
+
+    public BossAbility(BossAbilityType type, int cooldown, double power, double radius,
+                       int amount, int duration, int triggerHealth) {
+        this.type = type;
+        this.cooldown = cooldown;
+        this.power = power;
+        this.radius = radius;
+        this.amount = amount;
+        this.duration = duration;
+        this.triggerHealth = triggerHealth;
     }
 
     public BossAbility copy() {
@@ -148,6 +145,6 @@ public class BossAbility {
     }
 
     public void setTriggerHealth(int triggerHealth) {
-        this.triggerHealth = Math.max(0, Math.min(100, triggerHealth));
+        this.triggerHealth = Math.clamp(triggerHealth, 0, 100);
     }
 }

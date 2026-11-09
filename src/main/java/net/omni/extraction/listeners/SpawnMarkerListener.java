@@ -34,11 +34,6 @@ public class SpawnMarkerListener implements Listener {
         handleClick(event.getPlayer(), event.getRightClicked(), event);
     }
 
-    @EventHandler
-    public void onInteractAt(PlayerInteractAtEntityEvent event) {
-        handleClick(event.getPlayer(), event.getRightClicked(), event);
-    }
-
     private void handleClick(Player player, Entity clicked, org.bukkit.event.Cancellable event) {
         if (plugin.getSpawnMarkerManager() == null)
             return;
@@ -74,5 +69,10 @@ public class SpawnMarkerListener implements Listener {
             return;
 
         plugin.getAreaEditorManager().openSpawnEditor(player, area, entry);
+    }
+
+    @EventHandler
+    public void onInteractAt(PlayerInteractAtEntityEvent event) {
+        handleClick(event.getPlayer(), event.getRightClicked(), event);
     }
 }

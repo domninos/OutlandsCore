@@ -5,11 +5,7 @@ import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.loadout.LoadoutSlot;
 import net.omni.extraction.messages.Messages;
-import net.omni.extraction.upgrade.UpgradeConfirmGUI;
-import net.omni.extraction.upgrade.UpgradeConfirmHolder;
-import net.omni.extraction.upgrade.UpgradeGUI;
-import net.omni.extraction.upgrade.UpgradeGuiHolder;
-import net.omni.extraction.upgrade.UpgradeTier;
+import net.omni.extraction.upgrade.*;
 import net.omni.extraction.util.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -57,44 +53,6 @@ public class UpgradeGUIListener implements Listener {
         if (event.getView().getTopInventory().getHolder() instanceof UpgradeConfirmHolder confirm) {
             handleUpgradeConfirmClick(player, event, confirm);
         }
-    }
-
-    @EventHandler
-    public void onInventoryDrag(InventoryDragEvent event) {
-        if (!(event.getWhoClicked() instanceof Player player))
-            return;
-
-        if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder) {
-            event.setCancelled(true);
-            handleUpgradeDrag(player, event);
-            return;
-        }
-
-        if (event.getView().getTopInventory().getHolder() instanceof UpgradeConfirmHolder) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler
-    public void onInventoryClose(InventoryCloseEvent event) {
-        if (!(event.getPlayer() instanceof Player player))
-            return;
-
-        PlayerDataManager dataManager = plugin.getPlayerDataManager();
-        PlayerData data = dataManager.getLoaded(player.getUniqueId());
-
-        if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder) {
-            plugin.getGuiManager().refreshUpgrade(player, data);
-            dataManager.savePlayer(data.getUuid());
-        } else if (event.getView().getTopInventory().getHolder() instanceof UpgradeConfirmHolder confirm) {
-            if (!confirm.isResolved())
-                Bukkit.getScheduler().runTask(plugin, () -> reopenUpgrade(player));
-        }
-    }
-
-    private void reopenUpgrade(Player player) {
-        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
-        plugin.getGuiManager().openUpgrade(player, data);
     }
 
     private void handleUpgradeClick(Player player, InventoryClickEvent event) {
@@ -230,6 +188,40 @@ public class UpgradeGUIListener implements Listener {
         reopenUpgrade(player);
     }
 
+    private void reopenUpgrade(Player player) {
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
+        plugin.getGuiManager().openUpgrade(player, data);
+    }
+
+    private boolean tokenMatches(LoadoutSlot slot, String tokenSlot) {
+        return slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot);
+    }
+
+    private void sendWrongTier(Player player, LoadoutSlot slot, PlayerData data) {
+        UpgradeTier next = plugin.getUpgradeManager().getNextTier(slot,
+                plugin.getLoadoutManager().getEffectiveTier(data, slot));
+
+        plugin.sendMessage(player, Messages.LOADOUT_TOKEN_WRONG_TIER.replace(
+                "slot", slot.getDisplayName(),
+                "tier", next != null ? next.getTierName() : "None"));
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player))
+            return;
+
+        if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder) {
+            event.setCancelled(true);
+            handleUpgradeDrag(player, event);
+            return;
+        }
+
+        if (event.getView().getTopInventory().getHolder() instanceof UpgradeConfirmHolder) {
+            event.setCancelled(true);
+        }
+    }
+
     private void handleUpgradeDrag(Player player, InventoryDragEvent event) {
         PlayerDataManager dataManager = plugin.getPlayerDataManager();
         if (!dataManager.isLoaded(player.getUniqueId()))
@@ -322,7 +314,7 @@ public class UpgradeGUIListener implements Listener {
         for (int i = 0; i < player.getInventory().getSize(); i++) {
             ItemStack item = player.getInventory().getItem(i);
 
-            if (matchesToken(item, token)) {
+            if (item != null && matchesToken(item, token)) {
                 item.setAmount(item.getAmount() - 1);
 
                 if (item.getAmount() <= 0)
@@ -347,16 +339,20 @@ public class UpgradeGUIListener implements Listener {
         return UpgradeTokenUtil.getUpgradeTier(item) == UpgradeTokenUtil.getUpgradeTier(token);
     }
 
-    private boolean tokenMatches(LoadoutSlot slot, String tokenSlot) {
-        return slot.getConfigKey().equalsIgnoreCase(tokenSlot) || slot.name().equalsIgnoreCase(tokenSlot);
-    }
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player))
+            return;
 
-    private void sendWrongTier(Player player, LoadoutSlot slot, PlayerData data) {
-        UpgradeTier next = plugin.getUpgradeManager().getNextTier(slot,
-                plugin.getLoadoutManager().getEffectiveTier(data, slot));
+        PlayerDataManager dataManager = plugin.getPlayerDataManager();
+        PlayerData data = dataManager.getLoaded(player.getUniqueId());
 
-        plugin.sendMessage(player, Messages.LOADOUT_TOKEN_WRONG_TIER.replace(
-                "slot", slot.getDisplayName(),
-                "tier", next != null ? next.getTierName() : "None"));
+        if (event.getView().getTopInventory().getHolder() instanceof UpgradeGuiHolder) {
+            plugin.getGuiManager().refreshUpgrade(player, data);
+            dataManager.savePlayer(data.getUuid());
+        } else if (event.getView().getTopInventory().getHolder() instanceof UpgradeConfirmHolder confirm) {
+            if (!confirm.isResolved())
+                Bukkit.getScheduler().runTask(plugin, () -> reopenUpgrade(player));
+        }
     }
 }

@@ -45,6 +45,7 @@ public class Area {
     private AreaState state;
     private long unavailableUntil;
     private Location hologramLocation;
+
     public Area(String name, String world) {
         this.name = name;
         this.world = world;
@@ -88,8 +89,8 @@ public class Area {
 
         area.setBossBarEnabled(config.getBoolean("boss-bar.enabled", true));
         area.setBossBarTitle(config.getString("boss-bar.title", "<red>%area%</red> <dark_gray>»</dark_gray> <white>%remaining%/%total% mobs</white>"));
-        area.setBossBarColor(parseColor(config.getString("boss-bar.color"), BossBar.Color.RED));
-        area.setBossBarOverlay(parseOverlay(config.getString("boss-bar.style"), BossBar.Overlay.PROGRESS));
+        area.setBossBarColor(parseColor(config.getString("boss-bar.color")));
+        area.setBossBarOverlay(parseOverlay(config.getString("boss-bar.style")));
 
         World bukkitWorld = world == null ? null : Bukkit.getWorld(world);
 
@@ -238,24 +239,24 @@ public class Area {
         return area;
     }
 
-    private static BossBar.Color parseColor(String name, BossBar.Color fallback) {
-        if (name == null) return fallback;
+    private static BossBar.Color parseColor(String name) {
+        if (name == null) return BossBar.Color.RED;
 
         for (BossBar.Color color : BossBar.Color.values()) {
             if (color.name().equalsIgnoreCase(name)) return color;
         }
 
-        return fallback;
+        return BossBar.Color.RED;
     }
 
-    private static BossBar.Overlay parseOverlay(String name, BossBar.Overlay fallback) {
-        if (name == null) return fallback;
+    private static BossBar.Overlay parseOverlay(String name) {
+        if (name == null) return BossBar.Overlay.PROGRESS;
 
         for (BossBar.Overlay overlay : BossBar.Overlay.values()) {
             if (overlay.name().equalsIgnoreCase(name)) return overlay;
         }
 
-        return fallback;
+        return BossBar.Overlay.PROGRESS;
     }
 
     public List<AreaMobReference> getMobReferences() {
@@ -863,13 +864,13 @@ public class Area {
 
                 for (MobDrop drop : entry.getDrops()) {
                     Map<String, Object> dropMap = new HashMap<>();
-                    dropMap.put("type", drop.getType());
+                    dropMap.put("type", drop.type());
 
-                    if (drop.getChance() != 1.0)
-                        dropMap.put("chance", drop.getChance());
+                    if (drop.chance() != 1.0)
+                        dropMap.put("chance", drop.chance());
 
-                    if (drop.getAmount() != 1)
-                        dropMap.put("amount", drop.getAmount());
+                    if (drop.amount() != 1)
+                        dropMap.put("amount", drop.amount());
 
                     dropList.add(dropMap);
                 }

@@ -24,18 +24,16 @@ public class PetManager {
     private final Map<String, PetDefinition> pets = new LinkedHashMap<>();
     private final Map<UUID, PetSession> activeEntities = new HashMap<>();
     private final Set<UUID> petEntityIds = new HashSet<>();
+    // Scratch buffers for the follow loop (main-thread only; teleport consumes
+    // them synchronously) — replaces per-pet Location/Vector allocations.
+    private final Location scratchTarget = new Location(null, 0, 0, 0);
+    private final Location scratchNext = new Location(null, 0, 0, 0);
     private BukkitTask followTask;
-
     // Follow-loop config, cached at start()/reload() — no getters per tick.
     private double petStep = 1.2;
     private double petStepSq;
     private double petFollowSq;
     private double petTeleportSq;
-
-    // Scratch buffers for the follow loop (main-thread only; teleport consumes
-    // them synchronously) — replaces per-pet Location/Vector allocations.
-    private final Location scratchTarget = new Location(null, 0, 0, 0);
-    private final Location scratchNext = new Location(null, 0, 0, 0);
 
     public PetManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -189,7 +187,9 @@ public class PetManager {
         disposePet(session);
     }
 
-    /** Entity-side cleanup shared by removePet and the tick iterator. */
+    /**
+     * Entity-side cleanup shared by removePet and the tick iterator.
+     */
     private void disposePet(PetSession session) {
         Entity entity = session.pet();
 

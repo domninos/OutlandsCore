@@ -40,10 +40,6 @@ public class RunManager {
         return activeRuns.get(uuid);
     }
 
-    private void announceEnter(String playerName) {
-        broadcastRunMessage(Messages.RUN_BROADCAST_ENTERED, playerName);
-    }
-
     public void announceQuit(UUID uuid, String playerName) {
         if (activeRuns.containsKey(uuid))
             announceLeave(uuid, playerName);
@@ -154,6 +150,10 @@ public class RunManager {
         return activeRuns.containsKey(uuid);
     }
 
+    private void announceEnter(String playerName) {
+        broadcastRunMessage(Messages.RUN_BROADCAST_ENTERED, playerName);
+    }
+
     public boolean extractPlayer(UUID uuid) {
         // The player is gone (quit after the run outlived them — e.g.
         // return-on-disconnect off): the extract path touches live state that
@@ -213,43 +213,6 @@ public class RunManager {
         plugin.getExtractionManager().removeExtraction(uuid);
         playerDataManager.savePlayerNow(uuid);
         return true;
-    }
-
-    private int calculateTokens(ActiveRun run, PlayerData data) {
-        int base = plugin.getConfigUtil().getBaseTokens()
-                + (run.getEventCount() * plugin.getConfigUtil().getPerEventTokens());
-        return plugin.getPetManager().applyBoost(data, base);
-    }
-
-    private void restorePlayerInventory(Player player, PlayerData data) {
-        player.getInventory().clear();
-        player.getInventory().setArmorContents(null);
-
-        List<ItemStack> inventory = data.getPreRunInventory();
-        ItemStack[] contents = player.getInventory().getContents();
-
-        if (inventory != null) {
-            for (int i = 0; i < contents.length && i < inventory.size(); i++) {
-                ItemStack item = inventory.get(i);
-                if (item != null)
-                    contents[i] = item;
-            }
-        }
-
-        player.getInventory().setContents(contents);
-
-        List<ItemStack> armor = data.getPreRunArmor();
-        ItemStack[] armorContents = new ItemStack[4];
-
-        if (armor != null) {
-            for (int i = 0; i < armorContents.length && i < armor.size(); i++) {
-                ItemStack item = armor.get(i);
-                if (item != null)
-                    armorContents[i] = item;
-            }
-        }
-
-        player.getInventory().setArmorContents(armorContents);
     }
 
     private String extractBoostNote(PlayerData data) {
@@ -333,6 +296,37 @@ public class RunManager {
         data.setPreRunArmor(new ArrayList<>());
         data.setPendingDeathRestore(false);
         playerDataManager.savePlayerNow(player.getUniqueId());
+    }
+
+    private void restorePlayerInventory(Player player, PlayerData data) {
+        player.getInventory().clear();
+        player.getInventory().setArmorContents(null);
+
+        List<ItemStack> inventory = data.getPreRunInventory();
+        ItemStack[] contents = player.getInventory().getContents();
+
+        if (inventory != null) {
+            for (int i = 0; i < contents.length && i < inventory.size(); i++) {
+                ItemStack item = inventory.get(i);
+                if (item != null)
+                    contents[i] = item;
+            }
+        }
+
+        player.getInventory().setContents(contents);
+
+        List<ItemStack> armor = data.getPreRunArmor();
+        ItemStack[] armorContents = new ItemStack[4];
+
+        if (armor != null) {
+            for (int i = 0; i < armorContents.length && i < armor.size(); i++) {
+                ItemStack item = armor.get(i);
+                if (item != null)
+                    armorContents[i] = item;
+            }
+        }
+
+        player.getInventory().setArmorContents(armorContents);
     }
 
     public void handleDisconnect(UUID uuid) {
@@ -433,6 +427,12 @@ public class RunManager {
         activeRuns.clear();
         leaveAnnounced.clear();
         plugin.getPetManager().shutdown();
+    }
+
+    private int calculateTokens(ActiveRun run, PlayerData data) {
+        int base = plugin.getConfigUtil().getBaseTokens()
+                + (run.getEventCount() * plugin.getConfigUtil().getPerEventTokens());
+        return plugin.getPetManager().applyBoost(data, base);
     }
 
     public void addKill(UUID uuid) {

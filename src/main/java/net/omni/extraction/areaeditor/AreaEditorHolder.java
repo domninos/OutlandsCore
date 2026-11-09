@@ -3,17 +3,7 @@ package net.omni.extraction.areaeditor;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 
-public class AreaEditorHolder implements InventoryHolder {
-
-    private final AreaEditorSession session;
-
-    public AreaEditorHolder(AreaEditorSession session) {
-        this.session = session;
-    }
-
-    public AreaEditorSession getSession() {
-        return session;
-    }
+public record AreaEditorHolder(AreaEditorSession session) implements InventoryHolder {
 
     @Override
     public Inventory getInventory() {

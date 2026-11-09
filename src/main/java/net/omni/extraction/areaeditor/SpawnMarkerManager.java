@@ -10,15 +10,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Static "Right Click to Edit" mob markers for area spawn entries. Runtime-only
@@ -37,9 +31,6 @@ public class SpawnMarkerManager {
     private final Set<String> wanted = new HashSet<>();
     private final Set<UUID> lastHolders = new HashSet<>();
     private BukkitTask task;
-
-    private record MarkerRef(String areaName, AreaSpawnEntry entry) {
-    }
 
     public SpawnMarkerManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -60,16 +51,6 @@ public class SpawnMarkerManager {
         attempted.clear();
         lastHolders.clear();
         removeAll();
-    }
-
-    /**
-     * Explicit refresh: re-arms the one-shot marker spawn and reconciles now.
-     * Called after a spawn entry is confirmed or an editor session closes so the
-     * marker reappears immediately instead of only on the next wand equip.
-     */
-    public void refresh() {
-        attempted.clear();
-        reconcile();
     }
 
     public void reconcile() {
@@ -144,7 +125,7 @@ public class SpawnMarkerManager {
                 if (!attempted.add(key))
                     continue;
 
-                Entity marker = spawnMarker(area, entry);
+                Entity marker = spawnMarker(entry);
                 if (marker != null) {
                     markers.put(marker.getUniqueId(), new MarkerRef(area.getName(), entry));
                     byLocation.put(key, marker.getUniqueId());
@@ -171,8 +152,67 @@ public class SpawnMarkerManager {
         }
     }
 
-    /** Removes the marker for an entry immediately (wizard opened on it). */
-    public void removeMarkerFor(Player player, AreaSpawnEntry entry) {
+    private void removeAll() {
+        for (UUID id : markers.keySet()) {
+            Entity entity = Bukkit.getEntity(id);
+            if (entity != null)
+                entity.remove();
+        }
+
+        markers.clear();
+        byLocation.clear();
+    }
+
+    private String locationKey(AreaSpawnEntry entry) {
+        Location at = entry.getLocation();
+        return entry.getMobId() + ":"
+                + at.getWorld().getName().toLowerCase() + ":"
+                + at.getBlockX() + ":" + at.getBlockY() + ":" + at.getBlockZ();
+    }
+
+    private Entity spawnMarker(AreaSpawnEntry entry) {
+        AreaMobFactory factory = plugin.getAreaClearManager() == null
+                ? null : plugin.getAreaClearManager().getMobFactory();
+
+        if (factory == null)
+            return null;
+
+        AreaSpawnDefinition definition = plugin.getMobResolver().resolve(
+                entry.getMobId(), 1, entry.isBoss(), entry.getLevel(), 0);
+
+        if (definition == null)
+            return null;
+
+        Location at = entry.getLocation();
+        String name = mobNameFor(definition);
+
+        return factory.spawnMarker(definition, at, name);
+    }
+
+    private String mobNameFor(AreaSpawnDefinition definition) {
+        String base = definition.getDisplayName();
+
+        if (base == null || base.isBlank())
+            base = definition.getType();
+
+        // Raw MiniMessage — AreaMobFactory.deserialize's the whole name line.
+        return base + Messages.AREA_MARKER_EDIT_HINT;
+    }
+
+    /**
+     * Explicit refresh: re-arms the one-shot marker spawn and reconciles now.
+     * Called after a spawn entry is confirmed or an editor session closes so the
+     * marker reappears immediately instead of only on the next wand equip.
+     */
+    public void refresh() {
+        attempted.clear();
+        reconcile();
+    }
+
+    /**
+     * Removes the marker for an entry immediately (wizard opened on it).
+     */
+    public void removeMarkerFor(AreaSpawnEntry entry) {
         String key = locationKey(entry);
 
         // Suppress the immediate re-spawn while the editor is open; an explicit
@@ -190,14 +230,16 @@ public class SpawnMarkerManager {
             entity.remove();
     }
 
-    /** The MarkerRef for a marker entity, or null when it's not one of ours. */
-    public MarkerRef refFor(Entity entity) {
-        return entity == null ? null : markers.get(entity.getUniqueId());
-    }
-
     public Area getAreaOfMarker(Entity entity) {
         MarkerRef ref = refFor(entity);
         return ref == null ? null : plugin.getAreaManager().getArea(ref.areaName());
+    }
+
+    /**
+     * The MarkerRef for a marker entity, or null when it's not one of ours.
+     */
+    public MarkerRef refFor(Entity entity) {
+        return entity == null ? null : markers.get(entity.getUniqueId());
     }
 
     public AreaSpawnEntry getEntryOfMarker(Entity entity) {
@@ -205,50 +247,6 @@ public class SpawnMarkerManager {
         return ref == null ? null : ref.entry();
     }
 
-    private Entity spawnMarker(Area area, AreaSpawnEntry entry) {
-        AreaMobFactory factory = plugin.getAreaClearManager() == null
-                ? null : plugin.getAreaClearManager().getMobFactory();
-
-        if (factory == null)
-            return null;
-
-        AreaSpawnDefinition definition = plugin.getMobResolver().resolve(
-                entry.getMobId(), 1, entry.isBoss(), entry.getLevel(), 0);
-
-        if (definition == null)
-            return null;
-
-        Location at = entry.getLocation();
-        String name = mobNameFor(definition, area);
-
-        return factory.spawnMarker(definition, at, name);
-    }
-
-    private String mobNameFor(AreaSpawnDefinition definition, Area area) {
-        String base = definition.getDisplayName();
-
-        if (base == null || base.isBlank())
-            base = definition.getType();
-
-        // Raw MiniMessage — AreaMobFactory.deserialize's the whole name line.
-        return base + Messages.AREA_MARKER_EDIT_HINT.toString();
-    }
-
-    private String locationKey(AreaSpawnEntry entry) {
-        Location at = entry.getLocation();
-        return entry.getMobId() + ":"
-                + at.getWorld().getName().toLowerCase() + ":"
-                + at.getBlockX() + ":" + at.getBlockY() + ":" + at.getBlockZ();
-    }
-
-    private void removeAll() {
-        for (UUID id : markers.keySet()) {
-            Entity entity = Bukkit.getEntity(id);
-            if (entity != null)
-                entity.remove();
-        }
-
-        markers.clear();
-        byLocation.clear();
+    public record MarkerRef(String areaName, AreaSpawnEntry entry) {
     }
 }

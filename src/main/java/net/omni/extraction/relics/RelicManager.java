@@ -1,21 +1,16 @@
 package net.omni.extraction.relics;
 
-import net.omni.extraction.util.ItemUtil;
-
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Loads charm + artifact definitions from {@code relics/charms.yml} / {@code relics/artifacts.yml}
@@ -212,6 +207,23 @@ public class RelicManager {
         plugin.sendMessage(player, Messages.RELIC_LEARNED.replace("relic", def.name()));
     }
 
+    public RelicDefinition getDefinition(String id) {
+        if (id == null)
+            return null;
+
+        String key = id.toLowerCase(Locale.ROOT);
+
+        for (RelicDefinition def : charms)
+            if (def.id().equals(key))
+                return def;
+
+        for (RelicDefinition def : artifacts)
+            if (def.id().equals(key))
+                return def;
+
+        return null;
+    }
+
     /**
      * Right-clicking an already-owned relic equips it to its loadout slot
      * (mirrors the selection-GUI equip click; the item is not consumed).
@@ -233,23 +245,6 @@ public class RelicManager {
         plugin.getPlayerDataManager().savePlayerShared(player.getUniqueId());
         plugin.getRelicEffectManager().applyPassive(player);
         plugin.sendMessage(player, Messages.RELIC_EQUIPPED.replace("relic", def.name()));
-    }
-
-    public RelicDefinition getDefinition(String id) {
-        if (id == null)
-            return null;
-
-        String key = id.toLowerCase(Locale.ROOT);
-
-        for (RelicDefinition def : charms)
-            if (def.id().equals(key))
-                return def;
-
-        for (RelicDefinition def : artifacts)
-            if (def.id().equals(key))
-                return def;
-
-        return null;
     }
 
     /**
@@ -309,6 +304,6 @@ public class RelicManager {
      */
     public void open(Player player, String category) {
         PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
-        player.openInventory(RelicGUI.build(plugin, player, category, data));
+        player.openInventory(RelicGUI.build(plugin, category, data));
     }
 }

@@ -21,13 +21,9 @@ import java.util.UUID;
  */
 public class CorpseManager {
 
-    private record Corpse(Npc npc, ArmorStand fallback, BukkitTask despawnTask) {
-    }
-
     private final ExtractionPlugin plugin;
     private final FancyNpcHook hook;
     private final Map<UUID, Corpse> corpses = new HashMap<>();
-
     public CorpseManager(ExtractionPlugin plugin, FancyNpcHook hook) {
         this.plugin = plugin;
         this.hook = hook;
@@ -70,13 +66,6 @@ public class CorpseManager {
             removeEntitySafe(corpse.fallback());
     }
 
-    public void shutdown() {
-        for (UUID uuid : new HashMap<>(corpses).keySet())
-            remove(uuid);
-
-        corpses.clear();
-    }
-
     private ArmorStand spawnFallback(Location loc, String displayName) {
         try {
             ArmorStand stand = loc.getWorld().spawn(loc, ArmorStand.class, armorStand -> {
@@ -106,5 +95,15 @@ public class CorpseManager {
         } catch (Exception e) {
             plugin.getLogger().warning("Could not remove corpse fallback: " + e.getMessage());
         }
+    }
+
+    public void shutdown() {
+        for (UUID uuid : new HashMap<>(corpses).keySet())
+            remove(uuid);
+
+        corpses.clear();
+    }
+
+    private record Corpse(Npc npc, ArmorStand fallback, BukkitTask despawnTask) {
     }
 }

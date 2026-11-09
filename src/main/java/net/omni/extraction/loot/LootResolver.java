@@ -1,19 +1,13 @@
 package net.omni.extraction.loot;
 
-import net.omni.extraction.util.LootItemUtil;
-
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.integration.ExternalItemProvider;
 import net.omni.extraction.relics.RelicDefinition;
+import net.omni.extraction.util.LootItemUtil;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.function.Supplier;
 
 /**
@@ -218,6 +212,32 @@ public class LootResolver {
         return result;
     }
 
+    private ItemStack buildKeyItem(String keyId) {
+        Map<String, Object> def = plugin.getConfigUtil().getKeyDefinitions().get(keyId);
+
+        if (def == null) {
+            plugin.getLogger().warning("Unknown loot key '" + keyId + "' — define it under 'keys:' in tokens.yml.");
+            return null;
+        }
+
+        return cached("key|" + keyId.toLowerCase(Locale.ROOT), () -> LootItemUtil.createKeyItem(keyId, def));
+    }
+
+    /**
+     * Returns a clone of the cached template for {@code signature}, rebuilding
+     * it once on first use. Callers may freely amount-mutate the result.
+     */
+    private ItemStack cached(String signature, Supplier<ItemStack> builder) {
+        ItemStack template = templateCache.get(signature);
+
+        if (template == null) {
+            template = builder.get();
+            templateCache.put(signature, template);
+        }
+
+        return template.clone();
+    }
+
     public List<ItemStack> mergeStacks(List<ItemStack> loot) {
         List<ItemStack> merged = new ArrayList<>();
 
@@ -244,31 +264,5 @@ public class LootResolver {
         }
 
         return merged;
-    }
-
-    private ItemStack buildKeyItem(String keyId) {
-        Map<String, Object> def = plugin.getConfigUtil().getKeyDefinitions().get(keyId);
-
-        if (def == null) {
-            plugin.getLogger().warning("Unknown loot key '" + keyId + "' — define it under 'keys:' in tokens.yml.");
-            return null;
-        }
-
-        return cached("key|" + keyId.toLowerCase(Locale.ROOT), () -> LootItemUtil.createKeyItem(keyId, def));
-    }
-
-    /**
-     * Returns a clone of the cached template for {@code signature}, rebuilding
-     * it once on first use. Callers may freely amount-mutate the result.
-     */
-    private ItemStack cached(String signature, Supplier<ItemStack> builder) {
-        ItemStack template = templateCache.get(signature);
-
-        if (template == null) {
-            template = builder.get();
-            templateCache.put(signature, template);
-        }
-
-        return template.clone();
     }
 }

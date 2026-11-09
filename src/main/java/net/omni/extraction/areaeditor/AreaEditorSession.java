@@ -5,24 +5,13 @@ import net.omni.extraction.area.AreaSpawnEntry;
 import net.omni.extraction.mobs.MobDrop;
 import org.bukkit.Location;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class AreaEditorSession {
-
-    public enum Mode {
-        CHEST,
-        SPAWN
-    }
 
     public static final String CATEGORY_EXTRACTION = "extraction";
     public static final String CATEGORY_VANILLA = "vanilla";
     public static final String CATEGORY_MYTHIC = "mythic";
-
     public static final int PAGE_MOB = 0;
     public static final int PAGE_COUNT = 1;
     public static final int PAGE_LEVEL = 2;
@@ -31,13 +20,16 @@ public class AreaEditorSession {
     public static final int PAGE_BOSS = 5;
     public static final int PAGE_DROPS = 6;
     public static final int PAGE_DROP_CHANCE = 7;
-
-    /** Max drop chance for an assigned relic (percent). */
+    /**
+     * Max drop chance for an assigned relic (percent).
+     */
     public static final double MAX_DROP_CHANCE = 100.0;
-
     private final Area area;
     private final Mode mode;
     private final Location targetLocation;
+    private final Set<String> assignedRelics = new LinkedHashSet<>();
+    private final Map<String, Double> relicChances = new HashMap<>();
+    private final List<MobDrop> preservedDrops = new ArrayList<>();
     private int page;
     private int listPage;
     private String mobId;
@@ -48,12 +40,8 @@ public class AreaEditorSession {
     private int respawnCount = 1;
     private boolean boss;
     private String lootType;
-    private final Set<String> assignedRelics = new LinkedHashSet<>();
-    private final Map<String, Double> relicChances = new HashMap<>();
     private String currentRelic;
     private AreaSpawnEntry existing;
-    private final List<MobDrop> preservedDrops = new ArrayList<>();
-
     public AreaEditorSession(Area area, Mode mode, Location targetLocation) {
         this.area = area;
         this.mode = mode;
@@ -128,7 +116,9 @@ public class AreaEditorSession {
         this.respawnSeconds = respawnSeconds;
     }
 
-    /** How many times the mob may revive itself after death (0 = never). */
+    /**
+     * How many times the mob may revive itself after death (0 = never).
+     */
     public int getRespawnCount() {
         return respawnCount;
     }
@@ -165,7 +155,9 @@ public class AreaEditorSession {
         this.currentRelic = currentRelic;
     }
 
-    /** Assigns a relic drop (e.g. {@code CHARM:iron}) at 100% if new, and makes it the current one. */
+    /**
+     * Assigns a relic drop (e.g. {@code CHARM:iron}) at 100% if new, and makes it the current one.
+     */
     public void addRelic(String dropType) {
         assignedRelics.add(dropType);
         relicChances.putIfAbsent(dropType, MAX_DROP_CHANCE);
@@ -193,7 +185,9 @@ public class AreaEditorSession {
         currentRelic = null;
     }
 
-    /** The spawn entry being edited in place (null when creating a new one). */
+    /**
+     * The spawn entry being edited in place (null when creating a new one).
+     */
     public AreaSpawnEntry getExisting() {
         return existing;
     }
@@ -202,7 +196,9 @@ public class AreaEditorSession {
         this.existing = existing;
     }
 
-    /** Non-relic drops kept verbatim through an edit (materials/keys/mythic refs). */
+    /**
+     * Non-relic drops kept verbatim through an edit (materials/keys/mythic refs).
+     */
     public List<MobDrop> getPreservedDrops() {
         return preservedDrops;
     }
@@ -211,5 +207,10 @@ public class AreaEditorSession {
         preservedDrops.clear();
         if (drops != null)
             preservedDrops.addAll(drops);
+    }
+
+    public enum Mode {
+        CHEST,
+        SPAWN
     }
 }

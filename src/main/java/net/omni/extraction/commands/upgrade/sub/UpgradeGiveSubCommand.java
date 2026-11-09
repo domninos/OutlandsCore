@@ -14,6 +14,7 @@ import org.bukkit.util.StringUtil;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class UpgradeGiveSubCommand implements SubCommand {
 
@@ -58,10 +59,7 @@ public class UpgradeGiveSubCommand implements SubCommand {
         if (args.length >= 4) {
             Integer parsed = TimeUtil.parseInt(args[3]);
 
-            if (parsed == null)
-                amount = -1;
-            else
-                amount = parsed;
+            amount = Objects.requireNonNullElse(parsed, -1);
 
             if (amount <= 0) {
                 plugin.sendMessage(sender, Messages.USAGE.replace(

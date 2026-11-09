@@ -12,11 +12,7 @@ import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.util.PacketGlow;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
@@ -43,8 +39,8 @@ public class AreaClearManager {
     private final Map<UUID, AreaClearSession> mobSessions;
     private final Map<String, AreaClearSession> chestSessions;
     private final Map<String, String> chestKeys;
+    private final NamespacedKey spillKey;
     private BukkitTask containmentTask;
-    private NamespacedKey spillKey;
 
     public AreaClearManager(ExtractionPlugin plugin, AreaManager areaManager, LootResolver lootResolver) {
         this.plugin = plugin;
@@ -94,23 +90,15 @@ public class AreaClearManager {
         String worldName = config == null ? null : config.getWorldName();
 
         if (worldName == null || worldName.isBlank())
-            return Bukkit.getOnlinePlayers().size() > 0;
+            return !Bukkit.getOnlinePlayers().isEmpty();
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (player.getWorld() == null) continue;
             if (!worldName.equalsIgnoreCase(player.getWorld().getName())) continue;
             if (plugin.getExtractionManager().isExtractionPlayer(player.getUniqueId()))
                 return true;
         }
 
         return false;
-    }
-
-    public void stop() {
-        if (containmentTask != null) {
-            containmentTask.cancel();
-            containmentTask = null;
-        }
     }
 
     private void containMobs() {
@@ -173,50 +161,6 @@ public class AreaClearManager {
             cancelSession(session, true);
     }
 
-    /**
-     * Removes an active clear, cleans up its mobs/boss bar/loot chests and returns
-     * the area to READY so players can start a fresh clear. When {@code notifyOwner}
-     * is true the session owner is told the clear was cancelled (used for stale
-     * despawned sessions; admin resets pass false).
-     */
-    private void cancelSession(AreaClearSession session, boolean notifyOwner) {
-        Area area = session.getArea();
-
-        sessions.remove(area.getName().toLowerCase(Locale.ROOT));
-        mobSessions.entrySet().removeIf(entry -> entry.getValue() == session);
-
-        for (UUID mobId : new HashSet<>(session.getMobs())) {
-            Entity entity = Bukkit.getEntity(mobId);
-
-            if (entity != null)
-                entity.remove();
-
-            mobSessions.remove(mobId);
-        }
-
-        session.cancelRespawns();
-
-        if (session.getBossBar() != null) {
-            for (Player player : Bukkit.getOnlinePlayers())
-                player.hideBossBar(session.getBossBar());
-        }
-
-        removeAllSpawnedSpills(session);
-
-        removeSessionChests(session);
-
-        area.setState(AreaState.READY);
-        area.setUnavailableUntil(0);
-        areaManager.save(area);
-
-        if (notifyOwner) {
-            Player owner = Bukkit.getPlayer(session.getOwner());
-
-            if (owner != null)
-                plugin.sendMessage(owner, Messages.AREA_CLEAR_CANCELLED.replace("area", area.getName()));
-        }
-    }
-
     public AreaMobFactory getMobFactory() {
         return mobFactory;
     }
@@ -244,7 +188,6 @@ public class AreaClearManager {
         UUID deadId = dead.getUniqueId();
         Location origin = dead.getLocation().clone();
         AreaSpawnDefinition definition = session.getDefinitionFor(dead.getUniqueId());
-        boolean wasBoss = session.isBossMob(dead.getUniqueId());
         List<MobDrop> drops = session.getDropsFor(dead.getUniqueId());
         String lootTable = session.getLootTableFor(dead.getUniqueId());
         int lootRolls = session.getLootRollsFor(dead.getUniqueId());
@@ -262,18 +205,20 @@ public class AreaClearManager {
                 if (entity.getUniqueId().equals(deadId)) continue;
                 if (mobSessions.containsKey(entity.getUniqueId())) continue;
 
-                adoptSplitMob(session, entity, origin, definition, wasBoss, drops, lootTable, lootRolls);
+                adoptSplitMob(session, entity, definition, drops, lootTable, lootRolls);
             }
         }, 5L);
     }
 
-    /** True for entity types that split into smaller copies on death. */
+    /**
+     * True for entity types that split into smaller copies on death.
+     */
     private boolean isSplittingType(String typeName) {
         return "SLIME".equalsIgnoreCase(typeName) || "MAGMA_CUBE".equalsIgnoreCase(typeName);
     }
 
-    private void adoptSplitMob(AreaClearSession session, Entity entity, Location origin,
-                               AreaSpawnDefinition definition, boolean wasBoss,
+    private void adoptSplitMob(AreaClearSession session, Entity entity,
+                               AreaSpawnDefinition definition,
                                List<MobDrop> drops, String lootTable, int lootRolls) {
         UUID id = entity.getUniqueId();
 
@@ -296,29 +241,26 @@ public class AreaClearManager {
         updateBossBar(session);
     }
 
-    /**
-     * Splits that could not be registered live (parent already untracked at split
-     * time) are tagged instead and swept here, so they never linger in the world
-     * after a clear is cancelled or finished.
-     */
-    private void removeAllSpawnedSpills(AreaClearSession session) {
-        Area area = session.getArea();
-        World world = Bukkit.getWorld(area.getWorld());
-        if (world == null || spillKey == null)
-            return;
-
-        String target = area.getName();
-
-        for (LivingEntity entity : world.getLivingEntities()) {
-            String tagged = entity.getPersistentDataContainer().get(spillKey, PersistentDataType.STRING);
-            if (target.equalsIgnoreCase(tagged))
-                entity.remove();
-        }
+    private void markSpillTag(Entity entity, String areaName) {
+        if (entity == null) return;
+        entity.getPersistentDataContainer().set(spillKey, PersistentDataType.STRING, areaName);
     }
 
-    private void markSpillTag(Entity entity, String areaName) {
-        if (entity == null || spillKey == null) return;
-        entity.getPersistentDataContainer().set(spillKey, PersistentDataType.STRING, areaName);
+    private void updateBossBar(AreaClearSession session) {
+        BossBar bossBar = session.getBossBar();
+        if (bossBar == null) return;
+
+        Area area = session.getArea();
+        int total = session.getTotalMobs();
+        int remaining = session.getMobs().size();
+
+        float progress = total <= 0 ? 0f : (float) remaining / total;
+        bossBar.progress(Math.clamp(progress, 0f, 1f));
+        bossBar.name(MiniMessage.miniMessage().deserialize(
+                area.getBossBarTitle()
+                        .replace("%area%", area.getName())
+                        .replace("%remaining%", String.valueOf(remaining))
+                        .replace("%total%", String.valueOf(total))));
     }
 
     private boolean inside(Area area, Location location, double margin) {
@@ -435,23 +377,6 @@ public class AreaClearManager {
         session.scheduleRespawn(deadId, task);
     }
 
-    private void updateBossBar(AreaClearSession session) {
-        BossBar bossBar = session.getBossBar();
-        if (bossBar == null) return;
-
-        Area area = session.getArea();
-        int total = session.getTotalMobs();
-        int remaining = session.getMobs().size();
-
-        float progress = total <= 0 ? 0f : (float) remaining / total;
-        bossBar.progress(Math.clamp(progress, 0f, 1f));
-        bossBar.name(MiniMessage.miniMessage().deserialize(
-                area.getBossBarTitle()
-                        .replace("%area%", area.getName())
-                        .replace("%remaining%", String.valueOf(remaining))
-                        .replace("%total%", String.valueOf(total))));
-    }
-
     private void completeClear(AreaClearSession session, Player killer) {
         Area area = session.getArea();
 
@@ -536,6 +461,24 @@ public class AreaClearManager {
         }
     }
 
+    private List<Block> containerBlocks(Location anchor, Material containerType) {
+        List<Block> blocks = new ArrayList<>();
+        Block block = anchor.getBlock();
+        blocks.add(block);
+
+        if (!AreaChestLocation.isChestType(containerType))
+            return blocks;
+
+        for (int[] offset : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            Block neighbor = block.getRelative(offset[0], 0, offset[1]);
+
+            if (AreaChestLocation.isChestType(neighbor.getType()) && canMergeWith(block, offset[0] != 0, neighbor))
+                blocks.add(neighbor);
+        }
+
+        return blocks;
+    }
+
     private List<ItemStack> buildLoot(Area area, String lootType, Player killer) {
         String tableId = lootType != null && !lootType.isBlank() ? lootType : area.getLootTable();
 
@@ -551,7 +494,7 @@ public class AreaClearManager {
 
         int bonusRolls = killer != null
                 ? plugin.getRelicEffectManager().chestRollBonus(
-                        plugin.getPlayerDataManager().getLoaded(killer.getUniqueId())) : 0;
+                plugin.getPlayerDataManager().getLoaded(killer.getUniqueId())) : 0;
 
         int rolls = area.getItemsPerChest() > 0 ? area.getItemsPerChest()
                 : table.getItemsPerChest() > 0 ? table.getItemsPerChest()
@@ -581,24 +524,6 @@ public class AreaClearManager {
                 + ":" + location.getBlockZ();
     }
 
-    private List<Block> containerBlocks(Location anchor, Material containerType) {
-        List<Block> blocks = new ArrayList<>();
-        Block block = anchor.getBlock();
-        blocks.add(block);
-
-        if (!AreaChestLocation.isChestType(containerType))
-            return blocks;
-
-        for (int[] offset : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-            Block neighbor = block.getRelative(offset[0], 0, offset[1]);
-
-            if (AreaChestLocation.isChestType(neighbor.getType()) && canMergeWith(block, offset[0] != 0, neighbor))
-                blocks.add(neighbor);
-        }
-
-        return blocks;
-    }
-
     private boolean canMergeWith(Block chest, boolean alongX, Block neighbor) {
         BlockFace first = chestFacing(chest);
         BlockFace second = chestFacing(neighbor);
@@ -611,52 +536,12 @@ public class AreaClearManager {
                 : isEastWest(first) && isEastWest(second);
     }
 
-    private BlockFace chestFacing(Block block) {
-        if (block.getBlockData() instanceof org.bukkit.block.data.type.Chest chest)
-            return chest.getFacing();
-
-        return null;
-    }
-
-    private boolean isNorthSouth(BlockFace facing) {
-        return facing == BlockFace.NORTH || facing == BlockFace.SOUTH;
-    }
-
-    private boolean isEastWest(BlockFace facing) {
-        return facing == BlockFace.EAST || facing == BlockFace.WEST;
-    }
-
-    public void removeChest(AreaClearSession session, Location location) {
-        if (location == null || location.getWorld() == null)
-            return;
-
-        Location blockLoc = location.getBlock().getLocation();
-
-        for (Block b : containerBlocks(blockLoc, blockLoc.getBlock().getType()))
-            unregisterChestBlock(session, b.getLocation());
-
-        if (blockLoc.getBlock().getState() instanceof InventoryHolder holder)
-            holder.getInventory().clear();
-    }
-
-    private void unregisterChestBlock(AreaClearSession session, Location location) {
-        Location blockLoc = location.getBlock().getLocation();
-        chestSessions.remove(locationKey(blockLoc));
-        chestKeys.remove(locationKey(blockLoc));
-        session.removeChestLocation(blockLoc);
-    }
-
-    private void removeSessionChests(AreaClearSession session) {
-        for (Location location : new HashSet<>(session.getChestLocations()))
-            removeChest(session, location);
-    }
-
     private List<ItemStack> buildLegacyLoot(Area area, Player killer) {
         List<ItemStack> loot = new ArrayList<>();
 
         int bonusRolls = killer != null
                 ? plugin.getRelicEffectManager().chestRollBonus(
-                        plugin.getPlayerDataManager().getLoaded(killer.getUniqueId())) : 0;
+                plugin.getPlayerDataManager().getLoaded(killer.getUniqueId())) : 0;
 
         for (int i = 0; i < Math.max(1, bonusRolls); i++) {
             for (AreaLootEntry entry : area.getLootEntries()) {
@@ -677,6 +562,21 @@ public class AreaClearManager {
 
     private List<ItemStack> resolveTableEntry(LootEntry entry) {
         return lootResolver.resolveDropItems(entry.getType(), entry.getAmount());
+    }
+
+    private BlockFace chestFacing(Block block) {
+        if (block.getBlockData() instanceof org.bukkit.block.data.type.Chest chest)
+            return chest.getFacing();
+
+        return null;
+    }
+
+    private boolean isNorthSouth(BlockFace facing) {
+        return facing == BlockFace.NORTH || facing == BlockFace.SOUTH;
+    }
+
+    private boolean isEastWest(BlockFace facing) {
+        return facing == BlockFace.EAST || facing == BlockFace.WEST;
     }
 
     private ItemStack resolveEntry(AreaLootEntry entry) {
@@ -701,10 +601,6 @@ public class AreaClearManager {
         return chestSessions.get(locationKey(location));
     }
 
-    public String getChestKeyId(Location location) {
-        return chestKeys.get(locationKey(location));
-    }
-
     public String getChestKeyName(Location location) {
         String keyId = getChestKeyId(location);
         if (keyId == null)
@@ -716,6 +612,10 @@ public class AreaClearManager {
 
         Object name = def.get("display-name");
         return name != null ? String.valueOf(name) : keyId;
+    }
+
+    public String getChestKeyId(Location location) {
+        return chestKeys.get(locationKey(location));
     }
 
     public void onPlayerEnter(Player player, Area area) {
@@ -736,25 +636,25 @@ public class AreaClearManager {
         applyGlow(player, session);
     }
 
-    public boolean startClear(Area area, Player owner) {
+    public void startClear(Area area, Player owner) {
         if (area == null || owner == null)
-            return false;
+            return;
 
         String key = area.getName().toLowerCase(Locale.ROOT);
 
         if (sessions.containsKey(key)) {
             plugin.sendMessage(owner, Messages.AREA_ALREADY_ACTIVE.toString());
-            return false;
+            return;
         }
 
         if (!area.isReady()) {
             plugin.sendMessage(owner, Messages.AREA_NOT_READY.replace("time", formatSeconds(area.getRemainingSeconds())));
-            return false;
+            return;
         }
 
         if (!areaManager.hasMobs(area)) {
             plugin.sendMessage(owner, Messages.AREA_NO_SPAWNS.toString());
-            return false;
+            return;
         }
 
         AreaClearSession session = new AreaClearSession(area, owner.getUniqueId());
@@ -774,7 +674,6 @@ public class AreaClearManager {
         applyGlow(owner, session);
 
         plugin.sendMessage(owner, Messages.AREA_ENTERED.replace("area", area.getName()));
-        return true;
     }
 
     private void notifyNotReady(Player player, Area area) {
@@ -850,10 +749,10 @@ public class AreaClearManager {
         List<ItemStack> drops = new ArrayList<>();
 
         for (MobDrop drop : session.getDropsFor(uuid)) {
-            double chance = Math.clamp(drop.getChance(), 0.0, 1.0);
+            double chance = Math.clamp(drop.chance(), 0.0, 1.0);
 
             if (chance >= 1.0 || chance > random.nextDouble())
-                drops.addAll(lootResolver.resolveDropItems(drop.getType(), drop.getAmount()));
+                drops.addAll(lootResolver.resolveDropItems(drop.type(), drop.amount()));
         }
 
         String lootTableId = session.getLootTableFor(uuid);
@@ -909,10 +808,10 @@ public class AreaClearManager {
         List<ItemStack> bonus = new ArrayList<>();
 
         for (MobDrop drop : drops) {
-            double dropChance = Math.max(0.0, Math.min(1.0, drop.getChance()));
+            double dropChance = Math.clamp(drop.chance(), 0.0, 1.0);
 
             if (dropChance >= 1.0 || dropChance > random.nextDouble())
-                bonus.addAll(lootResolver.resolveDropItems(drop.getType(), drop.getAmount()));
+                bonus.addAll(lootResolver.resolveDropItems(drop.type(), drop.amount()));
         }
 
         return bonus;
@@ -958,14 +857,102 @@ public class AreaClearManager {
         return session == null ? new ArrayList<>() : session.getDropsFor(uuid);
     }
 
-    public boolean cancelClear(Area area) {
+    public void cancelClear(Area area) {
         AreaClearSession session = sessions.get(area.getName().toLowerCase(Locale.ROOT));
 
         if (session == null)
-            return false;
+            return;
 
         cancelSession(session, false);
-        return true;
+    }
+
+    /**
+     * Removes an active clear, cleans up its mobs/boss bar/loot chests and returns
+     * the area to READY so players can start a fresh clear. When {@code notifyOwner}
+     * is true the session owner is told the clear was cancelled (used for stale
+     * despawned sessions; admin resets pass false).
+     */
+    private void cancelSession(AreaClearSession session, boolean notifyOwner) {
+        Area area = session.getArea();
+
+        sessions.remove(area.getName().toLowerCase(Locale.ROOT));
+        mobSessions.entrySet().removeIf(entry -> entry.getValue() == session);
+
+        for (UUID mobId : new HashSet<>(session.getMobs())) {
+            Entity entity = Bukkit.getEntity(mobId);
+
+            if (entity != null)
+                entity.remove();
+
+            mobSessions.remove(mobId);
+        }
+
+        session.cancelRespawns();
+
+        if (session.getBossBar() != null) {
+            for (Player player : Bukkit.getOnlinePlayers())
+                player.hideBossBar(session.getBossBar());
+        }
+
+        removeAllSpawnedSpills(session);
+
+        removeSessionChests(session);
+
+        area.setState(AreaState.READY);
+        area.setUnavailableUntil(0);
+        areaManager.save(area);
+
+        if (notifyOwner) {
+            Player owner = Bukkit.getPlayer(session.getOwner());
+
+            if (owner != null)
+                plugin.sendMessage(owner, Messages.AREA_CLEAR_CANCELLED.replace("area", area.getName()));
+        }
+    }
+
+    /**
+     * Splits that could not be registered live (parent already untracked at split
+     * time) are tagged instead and swept here, so they never linger in the world
+     * after a clear is cancelled or finished.
+     */
+    private void removeAllSpawnedSpills(AreaClearSession session) {
+        Area area = session.getArea();
+        World world = Bukkit.getWorld(area.getWorld());
+        if (world == null)
+            return;
+
+        String target = area.getName();
+
+        for (LivingEntity entity : world.getLivingEntities()) {
+            String tagged = entity.getPersistentDataContainer().get(spillKey, PersistentDataType.STRING);
+            if (target.equalsIgnoreCase(tagged))
+                entity.remove();
+        }
+    }
+
+    private void removeSessionChests(AreaClearSession session) {
+        for (Location location : new HashSet<>(session.getChestLocations()))
+            removeChest(session, location);
+    }
+
+    public void removeChest(AreaClearSession session, Location location) {
+        if (location == null || location.getWorld() == null)
+            return;
+
+        Location blockLoc = location.getBlock().getLocation();
+
+        for (Block b : containerBlocks(blockLoc, blockLoc.getBlock().getType()))
+            unregisterChestBlock(session, b.getLocation());
+
+        if (blockLoc.getBlock().getState() instanceof InventoryHolder holder)
+            holder.getInventory().clear();
+    }
+
+    private void unregisterChestBlock(AreaClearSession session, Location location) {
+        Location blockLoc = location.getBlock().getLocation();
+        chestSessions.remove(locationKey(blockLoc));
+        chestKeys.remove(locationKey(blockLoc));
+        session.removeChestLocation(blockLoc);
     }
 
     public void shutdown() {
@@ -994,5 +981,12 @@ public class AreaClearManager {
         sessions.clear();
         mobSessions.clear();
         chestSessions.clear();
+    }
+
+    public void stop() {
+        if (containmentTask != null) {
+            containmentTask.cancel();
+            containmentTask = null;
+        }
     }
 }

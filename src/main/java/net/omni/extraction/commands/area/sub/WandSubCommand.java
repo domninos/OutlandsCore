@@ -53,7 +53,7 @@ public class WandSubCommand implements SubCommand {
             }
         }
 
-        if (args.length >= 3) {
+        if (args.length == 3) {
             mode = WandMode.parse(args[2], null);
 
             if (mode == null) {

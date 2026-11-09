@@ -3,7 +3,9 @@ package net.omni.extraction.util;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 
-/** Drone flight sounds. The mount mob is silent, so every cue is played here. */
+/**
+ * Drone flight sounds. The mount mob is silent, so every cue is played here.
+ */
 public final class DroneSounds {
 
     private DroneSounds() {
@@ -11,6 +13,13 @@ public final class DroneSounds {
 
     public static void move(Location location) {
         play(location, Sound.ENTITY_BREEZE_SLIDE, 0.5f, 1.1f);
+    }
+
+    private static void play(Location location, Sound sound, float volume, float pitch) {
+        if (location == null || location.getWorld() == null)
+            return;
+
+        location.getWorld().playSound(location, sound, volume, pitch);
     }
 
     public static void ascend(Location location) {
@@ -30,16 +39,10 @@ public final class DroneSounds {
         play(location, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.0f);
     }
 
-    /** Idle "motor" hum, quiet and higher-pitched so it reads as a machine. */
+    /**
+     * Idle "motor" hum, quiet and higher-pitched so it reads as a machine.
+     */
     public static void hum(Location location) {
         play(location, Sound.BLOCK_BEACON_AMBIENT, 0.25f, 1.6f);
-    }
-
-    private static void play(Location location, Sound sound, float volume, float pitch) {
-        if (location == null || location.getWorld() == null) {
-            return;
-        }
-
-        location.getWorld().playSound(location, sound, volume, pitch);
     }
 }

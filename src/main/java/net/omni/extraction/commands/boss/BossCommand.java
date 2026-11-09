@@ -1,18 +1,10 @@
 package net.omni.extraction.commands.boss;
 
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.commands.MainCommand;
 import net.omni.extraction.commands.SubCommand;
+import net.omni.extraction.commands.boss.sub.*;
 import net.omni.extraction.messages.Messages;
-
-import net.omni.extraction.commands.boss.sub.BossCreateSubCommand;
-import net.omni.extraction.commands.boss.sub.BossDeleteSubCommand;
-import net.omni.extraction.commands.boss.sub.BossEditSubCommand;
-import net.omni.extraction.commands.boss.sub.BossListSubCommand;
-import net.omni.extraction.commands.boss.sub.BossRenameSubCommand;
-import net.omni.extraction.commands.boss.sub.BossSetTypeSubCommand;
-import net.omni.extraction.commands.boss.sub.BossSpawnSubCommand;
 import net.omni.extraction.util.MessageUtil;
 import net.omni.extraction.util.Permissions;
 import org.bukkit.command.Command;
@@ -110,18 +102,8 @@ public class BossCommand extends MainCommand {
                 .replace("category", capitalize(category))).append("\n\n");
 
         switch (category) {
-            case BOSS_CATEGORY_SETUP ->
-                    appendSetupEntries(help);
-            case BOSS_CATEGORY_MOBS -> {
-                MessageUtil.append("boss list", "List boss templates", help);
-                MessageUtil.append("boss create {id} {entityType} [mythic]", "Create a boss template", help);
-                MessageUtil.append("boss edit {boss}", "Edit a boss template", help);
-                MessageUtil.append("boss rename {boss} {name...}", "Rename a boss", help);
-                MessageUtil.append("boss settype {boss} {type} [mythic]", "Set boss entity type", help);
-                MessageUtil.append("boss spawn {boss} [count]", "Spawn a boss", help);
-                MessageUtil.append("boss delete {boss}", "Delete a boss", help);
-            }
-            case BOSS_CATEGORY_LOOT -> {
+            case BOSS_CATEGORY_SETUP -> appendSetupEntries(help);
+            case BOSS_CATEGORY_MOBS, BOSS_CATEGORY_LOOT -> {
                 MessageUtil.append("boss list", "List boss templates", help);
                 MessageUtil.append("boss create {id} {entityType} [mythic]", "Create a boss template", help);
                 MessageUtil.append("boss edit {boss}", "Edit a boss template", help);

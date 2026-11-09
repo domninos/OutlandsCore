@@ -6,27 +6,5 @@ package net.omni.extraction.mobs;
  * (mmoitems/nexo/itemedit), {@code TOKENS}, {@code TIME}, {@code UPGRADE} or
  * {@code KEY:<keyId>}.
  */
-public class MobDrop {
-
-    private final String type;
-    private final double chance;
-    private final int amount;
-
-    public MobDrop(String type, double chance, int amount) {
-        this.type = type;
-        this.chance = chance;
-        this.amount = amount;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public double getChance() {
-        return chance;
-    }
-
-    public int getAmount() {
-        return amount;
-    }
+public record MobDrop(String type, double chance, int amount) {
 }

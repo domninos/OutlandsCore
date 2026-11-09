@@ -16,16 +16,16 @@ public class CooldownManager {
         this.playerDataManager = playerDataManager;
     }
 
-    public boolean isEnabled() {
-        return plugin.getConfigUtil() != null && plugin.getConfigUtil().getCooldownHours() > 0;
-    }
-
     public boolean isOnCooldown(UUID uuid) {
         if (!isEnabled())
             return false;
 
         PlayerData data = playerDataManager.getOrCreate(uuid);
         return data.isOnCooldown();
+    }
+
+    public boolean isEnabled() {
+        return plugin.getConfigUtil() != null && plugin.getConfigUtil().getCooldownHours() > 0;
     }
 
     public long getCooldownRemainingMs(UUID uuid) {

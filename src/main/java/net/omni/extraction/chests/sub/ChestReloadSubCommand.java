@@ -5,8 +5,6 @@ import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.command.CommandSender;
 
-import java.util.List;
-
 public class ChestReloadSubCommand implements SubCommand {
 
     private final ExtractionPlugin plugin;

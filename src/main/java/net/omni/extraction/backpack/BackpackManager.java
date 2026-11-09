@@ -425,7 +425,6 @@ public class BackpackManager {
         if (session == null)
             return;
 
-        int merged = 0;
         int overflow = 0;
 
         for (ItemStack item : session.getContents()) {
@@ -440,7 +439,6 @@ public class BackpackManager {
                 if (rest != null)
                     given -= rest.getAmount();
 
-            merged += given;
             overflow += amount - given;
 
             for (ItemStack drop : leftover.values())
@@ -600,21 +598,21 @@ public class BackpackManager {
         return false;
     }
 
-    public boolean consumeKeyItem(Player player, String keyId) {
+    public void consumeKeyItem(Player player, String keyId) {
         if (player == null || keyId == null)
-            return false;
+            return;
 
         ItemStack[] contents = player.getInventory().getContents();
         for (int i = 0; i < contents.length; i++)
             if (LootItemUtil.isKeyItem(contents[i]) && keyId.equals(LootItemUtil.getKeyId(contents[i]))) {
                 player.getInventory().setItem(i, LootItemUtil.decrementOrNull(contents[i]));
-                return true;
+                return;
             }
 
         ItemStack offHand = player.getInventory().getItemInOffHand();
         if (LootItemUtil.isKeyItem(offHand) && keyId.equals(LootItemUtil.getKeyId(offHand))) {
             player.getInventory().setItemInOffHand(LootItemUtil.decrementOrNull(offHand));
-            return true;
+            return;
         }
 
         for (int i = 0; i < contents.length; i++) {
@@ -628,7 +626,7 @@ public class BackpackManager {
                     bag.set(b, LootItemUtil.decrementOrNull(bag.get(b)));
                     player.getInventory().setItem(i, withData(contents[i], getUid(contents[i]),
                             getTier(contents[i]), getPages(contents[i]), bag));
-                    return true;
+                    return;
                 }
             }
         }
@@ -641,12 +639,11 @@ public class BackpackManager {
                     bag.set(b, LootItemUtil.decrementOrNull(bag.get(b)));
                     player.getInventory().setItemInOffHand(withData(offHand, getUid(offHand),
                             getTier(offHand), getPages(offHand), bag));
-                    return true;
+                    return;
                 }
             }
         }
 
-        return false;
     }
 
     public static class BackpackSession {

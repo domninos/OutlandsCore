@@ -50,6 +50,7 @@ public class AreaManager {
         this.wandModeKey = new NamespacedKey(plugin, "area_wand_mode");
     }
 
+
     public void load() {
         areas.clear();
         dirty.clear();
@@ -482,11 +483,11 @@ public class AreaManager {
         return true;
     }
 
-    public boolean resize(String name, Location first, Location second) {
+    public void resize(String name, Location first, Location second) {
         Area area = getArea(name);
 
         if (area == null)
-            return false;
+            return;
 
         if (first.getWorld() != null)
             area.setWorld(first.getWorld().getName());
@@ -495,7 +496,6 @@ public class AreaManager {
         area.setMax(second.clone());
         markDirty(area);
 
-        return true;
     }
 
     public boolean update(String name) {

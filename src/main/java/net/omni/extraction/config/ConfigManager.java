@@ -41,13 +41,23 @@ public class ConfigManager {
             bySection.put(section, config);
     }
 
-    /** The config file that owns the given path, or the main config.yml. */
+    /**
+     * The config file that owns the given path, or the main config.yml.
+     */
     public FileConfiguration forPath(String path) {
         ExtractionConfig config = ownerOf(path);
         return config == null ? plugin.getConfig() : config.getConfig();
     }
 
-    /** Sets a value on the owning file and marks it for saving. */
+    private ExtractionConfig ownerOf(String path) {
+        int dot = path.indexOf('.');
+        String section = dot < 0 ? path : path.substring(0, dot);
+        return bySection.get(section);
+    }
+
+    /**
+     * Sets a value on the owning file and marks it for saving.
+     */
     public void write(String path, Object value) {
         ExtractionConfig config = ownerOf(path);
 
@@ -60,13 +70,17 @@ public class ConfigManager {
         }
     }
 
-    /** Reloads every split config file from disk. */
+    /**
+     * Reloads every split config file from disk.
+     */
     public void reloadAll() {
         for (ExtractionConfig config : files.values())
             config.reload();
     }
 
-    /** Saves only the files that were written to since the last save. */
+    /**
+     * Saves only the files that were written to since the last save.
+     */
     public void saveDirty() {
         if (mainDirty) {
             plugin.saveConfig();
@@ -77,11 +91,5 @@ public class ConfigManager {
             config.save();
 
         dirty.clear();
-    }
-
-    private ExtractionConfig ownerOf(String path) {
-        int dot = path.indexOf('.');
-        String section = dot < 0 ? path : path.substring(0, dot);
-        return bySection.get(section);
     }
 }

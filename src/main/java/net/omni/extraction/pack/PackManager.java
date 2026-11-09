@@ -298,7 +298,7 @@ public class PackManager {
                 for (int i = 0; i < found.length; i++)
                     if (!found[i])
                         missing.append(keys[i]).append(" ");
-                if (missing.length() > 0)
+                if (!missing.isEmpty())
                     sb.append("; missing glyphs: <red>").append(missing).append("</red>");
                 else
                     sb.append("; missing glyphs: none");
@@ -342,9 +342,9 @@ public class PackManager {
             sb.append("<red>Failed to open the zip: ").append(e.getMessage()).append("</red>\n");
         }
 
-        if (missing.length() > 0)
+        if (!missing.isEmpty())
             sb.append("<red>Glyphs with no provider in default.json: ").append(missing).append("</red>\n");
-        if (oversized.length() > 0)
+        if (!oversized.isEmpty())
             sb.append("<red>Oversized textures (cap 256px): ").append(oversized).append("</red>\n");
         sb.append("<gray>Client checklist: pack applied (Resource Packs screen, no error) | Options > "
                 + "Language > Force Unicode Font must be OFF.</gray>");

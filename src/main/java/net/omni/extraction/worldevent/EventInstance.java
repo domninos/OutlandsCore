@@ -36,10 +36,10 @@ public class EventInstance {
     private final List<SavedBlock> contaminationBlocks;
     private final List<Mutator> activeMutators = new ArrayList<>();
     private final Map<UUID, Double> damageDealt = new HashMap<>();
+    private final int wavesTotal;
     private int totalMobs;
     private BossBar bossBar;
     private int currentWave;
-    private final int wavesTotal;
     private long lastWaveTime;
     private int reinforcementsSpawned;
     private boolean reachedFinalWave;
@@ -74,6 +74,7 @@ public class EventInstance {
     private long nextGoblinTeleport;
     private long nextGoblinDrop;
     private long originalWorldTime = -1;
+
     public EventInstance(WorldEvent event, Location origin, long durationMillis) {
         this.event = event;
         this.origin = origin;
@@ -163,7 +164,9 @@ public class EventInstance {
         uncountedMobs.remove(uuid);
     }
 
-    /** Mob excluded from %total%/%remaining%/boss-bar counting (e.g. initial guardians). */
+    /**
+     * Mob excluded from %total%/%remaining%/boss-bar counting (e.g. initial guardians).
+     */
     public void markUncounted(UUID uuid) {
         if (uuid != null)
             uncountedMobs.add(uuid);
@@ -173,14 +176,18 @@ public class EventInstance {
         return uncountedMobs;
     }
 
-    /** Remaining mobs that COUNT toward wave/loot totals (lags per count-bosses). */
-    public int countedRemaining() {
-        return Math.max(0, mobs.size() - uncountedMobs.size());
-    }
-
-    /** Total that matches {@link #countedRemaining()}. */
+    /**
+     * Total that matches {@link #countedRemaining()}.
+     */
     public int countedTotal() {
         return Math.max(countedRemaining(), totalMobs - uncountedMobs.size());
+    }
+
+    /**
+     * Remaining mobs that COUNT toward wave/loot totals (lags per count-bosses).
+     */
+    public int countedRemaining() {
+        return Math.max(0, mobs.size() - uncountedMobs.size());
     }
 
     public String lootTableFor(UUID uuid) {
@@ -420,7 +427,9 @@ public class EventInstance {
         this.convoyStuckSince = convoyStuckSince;
     }
 
-    /** The per-instance straight-line mover task (null when not driving). */
+    /**
+     * The per-instance straight-line mover task (null when not driving).
+     */
     public org.bukkit.scheduler.BukkitTask getConvoyMover() {
         return convoyMover;
     }
@@ -429,7 +438,9 @@ public class EventInstance {
         this.convoyMover = convoyMover;
     }
 
-    /** Damage accumulated on the carrier (raw hits are cancelled, applied on the mover step). */
+    /**
+     * Damage accumulated on the carrier (raw hits are cancelled, applied on the mover step).
+     */
     public double getConvoyDamageTaken() {
         return convoyDamageTaken;
     }
@@ -450,7 +461,9 @@ public class EventInstance {
         this.convoyDamageAttacker = convoyDamageAttacker;
     }
 
-    /** While true our own mob.damage() echo reenters the damage handler — let it pass. */
+    /**
+     * While true our own mob.damage() echo reenters the damage handler — let it pass.
+     */
     public boolean isApplyingConvoyDamage() {
         return applyingConvoyDamage;
     }

@@ -116,21 +116,6 @@ public class ConvoyBehavior {
         return new ResolvedRoute(RouteStatus.OK, start, end);
     }
 
-    /**
-     * The first solid block on the configured route, or null when it is clear.
-     */
-    public Location findBlocked(WorldEvent event) {
-        ResolvedRoute route = resolveConfiguredRoute(event);
-        if (!route.ok())
-            return null;
-
-        double dist = route.start().toVector().distance(route.end().toVector());
-        if (dist < 1.0)
-            return route.start();
-
-        return firstBlocked(buildRoutePoints(event, route.start(), route.end(), dist));
-    }
-
     public void logUnusableRoute(WorldEvent event, RouteStatus status) {
         switch (status) {
             case MISSING_ANCHORS -> ctx.plugin().getLogger().warning("Convoy '" + event.getId()
@@ -141,14 +126,6 @@ public class ConvoyBehavior {
             default -> {
             }
         }
-    }
-
-    private Location anchorLocation(EventSpawnLocation anchor) {
-        World world = Bukkit.getWorld(anchor.world());
-        if (world == null)
-            return null;
-
-        return new Location(world, anchor.x() + 0.5, anchor.y(), anchor.z() + 0.5);
     }
 
     private List<Location> buildRoutePoints(WorldEvent event, Location origin, Location dest, double dist) {
@@ -188,60 +165,9 @@ public class ConvoyBehavior {
         return null;
     }
 
-    private Location firstBlocked(Location from, Location to) {
-        World world = from.getWorld();
-        if (world == null || !world.equals(to.getWorld()))
-            return null;
-
-        Vector delta = to.toVector().subtract(from.toVector());
-        double distance = delta.length();
-        if (distance == 0)
-            return null;
-
-        double step = 0.25;
-        int samples = (int) Math.ceil(distance / step);
-        double increment = distance / samples;
-        Vector unit = delta.clone().normalize();
-
-        for (int i = 1; i <= samples; i++) {
-            Vector sample = from.toVector().add(unit.clone().multiply(increment * i));
-            int x = sample.getBlockX();
-            int y = sample.getBlockY();
-            int z = sample.getBlockZ();
-
-            if (isSolid(world.getBlockAt(x, y, z)) || isSolid(world.getBlockAt(x, y + 1, z)))
-                return new Location(world, x, y, z);
-        }
-
-        return null;
-    }
-
-    private boolean isSolid(Block block) {
-        Material material = block.getType();
-        return !material.isAir() && !material.isTransparent() && material.isSolid();
-    }
-
     private String locationString(Location location) {
         return location.getWorld().getName() + " " + location.getBlockX()
                 + " " + location.getBlockY() + " " + location.getBlockZ();
-    }
-
-    /**
-     * Snaps a convoy waypoint to the topmost non-air block in its column so
-     * waypoints under overhangs/half-blocks stay walkable for the pathfinder;
-     * the column-scan variant used elsewhere can latch onto a ceiling Y and
-     * embed the waypoint inside terrain (the carrier then never reaches it and
-     * falls back to stuck-timeout teleports, looking like it "isn't moving").
-     */
-    private Location groundSnapPoint(Location point) {
-        World world = point.getWorld();
-        if (world == null)
-            return point;
-
-        org.bukkit.block.Block top = world.getHighestBlockAt(point.getBlockX(), point.getBlockZ());
-
-        return new Location(world, point.getX(),
-                Math.max(top.getY() + 1, world.getMinHeight()), point.getZ());
     }
 
     /**
@@ -319,6 +245,60 @@ public class ConvoyBehavior {
         org.bukkit.scheduler.BukkitTask task = Bukkit.getScheduler()
                 .runTaskTimer(ctx.plugin(), () -> moveConvoy(instance), 2L, 2L);
         instance.setConvoyMover(task);
+    }
+
+    private Location anchorLocation(EventSpawnLocation anchor) {
+        World world = Bukkit.getWorld(anchor.world());
+        if (world == null)
+            return null;
+
+        return new Location(world, anchor.x() + 0.5, anchor.y(), anchor.z() + 0.5);
+    }
+
+    /**
+     * Snaps a convoy waypoint to the topmost non-air block in its column so
+     * waypoints under overhangs/half-blocks stay walkable for the pathfinder;
+     * the column-scan variant used elsewhere can latch onto a ceiling Y and
+     * embed the waypoint inside terrain (the carrier then never reaches it and
+     * falls back to stuck-timeout teleports, looking like it "isn't moving").
+     */
+    private Location groundSnapPoint(Location point) {
+        World world = point.getWorld();
+        if (world == null)
+            return point;
+
+        org.bukkit.block.Block top = world.getHighestBlockAt(point.getBlockX(), point.getBlockZ());
+
+        return new Location(world, point.getX(),
+                Math.max(top.getY() + 1, world.getMinHeight()), point.getZ());
+    }
+
+    private Location firstBlocked(Location from, Location to) {
+        World world = from.getWorld();
+        if (world == null || !world.equals(to.getWorld()))
+            return null;
+
+        Vector delta = to.toVector().subtract(from.toVector());
+        double distance = delta.length();
+        if (distance == 0)
+            return null;
+
+        double step = 0.25;
+        int samples = (int) Math.ceil(distance / step);
+        double increment = distance / samples;
+        Vector unit = delta.clone().normalize();
+
+        for (int i = 1; i <= samples; i++) {
+            Vector sample = from.toVector().add(unit.clone().multiply(increment * i));
+            int x = sample.getBlockX();
+            int y = sample.getBlockY();
+            int z = sample.getBlockZ();
+
+            if (isSolid(world.getBlockAt(x, y, z)) || isSolid(world.getBlockAt(x, y + 1, z)))
+                return new Location(world, x, y, z);
+        }
+
+        return null;
     }
 
     private Display spawnCarPart(Location base, WorldEvent.CarPart part) {
@@ -411,6 +391,11 @@ public class ConvoyBehavior {
         instance.setTrackLocation(next);
     }
 
+    private boolean isSolid(Block block) {
+        Material material = block.getType();
+        return !material.isAir() && !material.isTransparent() && material.isSolid();
+    }
+
     private float yawFor(double dx, double dz) {
         return (float) Math.toDegrees(Math.atan2(-dx, dz));
     }
@@ -464,6 +449,21 @@ public class ConvoyBehavior {
 
             display.teleport(at);
         }
+    }
+
+    /**
+     * The first solid block on the configured route, or null when it is clear.
+     */
+    public Location findBlocked(WorldEvent event) {
+        ResolvedRoute route = resolveConfiguredRoute(event);
+        if (!route.ok())
+            return null;
+
+        double dist = route.start().toVector().distance(route.end().toVector());
+        if (dist < 1.0)
+            return route.start();
+
+        return firstBlocked(buildRoutePoints(event, route.start(), route.end(), dist));
     }
 
     /**
@@ -783,14 +783,14 @@ public class ConvoyBehavior {
         OK, NOT_CONVOY, MISSING_ANCHORS, WORLD_UNAVAILABLE
     }
 
+    public enum RoutePointStatus {
+        SET, NOT_CONVOY, INVALID_POINT, BLOCKED
+    }
+
     public record ResolvedRoute(RouteStatus status, Location start, Location end) {
         public boolean ok() {
             return status == RouteStatus.OK;
         }
-    }
-
-    public enum RoutePointStatus {
-        SET, NOT_CONVOY, INVALID_POINT, BLOCKED
     }
 
     public record RoutePointResult(RoutePointStatus status, Location blockedAt) {

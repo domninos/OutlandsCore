@@ -194,13 +194,13 @@ public class MobTemplateManager {
 
                 for (MobDrop drop : template.getDrops()) {
                     Map<String, Object> map = new HashMap<>();
-                    map.put("type", drop.getType());
+                    map.put("type", drop.type());
 
-                    if (drop.getChance() != 1.0)
-                        map.put("chance", drop.getChance());
+                    if (drop.chance() != 1.0)
+                        map.put("chance", drop.chance());
 
-                    if (drop.getAmount() != 1)
-                        map.put("amount", drop.getAmount());
+                    if (drop.amount() != 1)
+                        map.put("amount", drop.amount());
 
                     dropList.add(map);
                 }
@@ -280,18 +280,17 @@ public class MobTemplateManager {
         return bossTemplateManager != null && bossTemplateManager.delete(id);
     }
 
-    public boolean applyMythicAttributes(String id, double health, double damage,
-                                         String displayName) {
+    public void applyMythicAttributes(String id, double health, double damage,
+                                      String displayName) {
         MobTemplate template = get(id);
 
-        if (template == null) return false;
+        if (template == null) return;
 
         if (health > 0) template.setHealth(health);
         if (damage > 0) template.setDamage(damage);
         if (displayName != null && !displayName.isBlank()) template.setDisplayName(displayName);
 
         saveOwned(id);
-        return true;
     }
 
     private void saveOwned(String id) {

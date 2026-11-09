@@ -31,7 +31,7 @@ public class PartyInfoSubCommand extends PartySub {
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
         if (args.length == 3)
-            return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
+            return null;
 
         return List.of();
     }

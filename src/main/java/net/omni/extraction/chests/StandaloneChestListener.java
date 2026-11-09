@@ -53,20 +53,26 @@ public class StandaloneChestListener implements Listener {
             return;
         }
 
-        if (chest.getKeyId() == null)
+        if (chest.keyId() == null)
             return;
 
         event.setCancelled(true);
 
-        if (!plugin.getBackpackManager().hasKeyItem(player, chest.getKeyId())) {
+        if (!plugin.getBackpackManager().hasKeyItem(player, chest.keyId())) {
             plugin.sendMessage(player, Messages.AREA_CHEST_KEY_NEEDED
-                    .replace("key", keyDisplayName(chest.getKeyId())));
+                    .replace("key", keyDisplayName(chest.keyId())));
             return;
         }
 
-        plugin.getBackpackManager().consumeKeyItem(player, chest.getKeyId());
+        plugin.getBackpackManager().consumeKeyItem(player, chest.keyId());
 
         event.setCancelled(false);
+    }
+
+    private String keyDisplayName(String keyId) {
+        Object name = plugin.getConfigUtil().getKeyDefinitions().get(keyId) instanceof Map<?, ?> def
+                ? def.get("display-name") : null;
+        return name != null ? String.valueOf(name) : keyId;
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -78,11 +84,5 @@ public class StandaloneChestListener implements Listener {
 
         event.setCancelled(true);
         plugin.sendMessage(event.getPlayer(), Messages.CHEST_PROTECTED.toString());
-    }
-
-    private String keyDisplayName(String keyId) {
-        Object name = plugin.getConfigUtil().getKeyDefinitions().get(keyId) instanceof Map<?, ?> def
-                ? def.get("display-name") : null;
-        return name != null ? String.valueOf(name) : keyId;
     }
 }

@@ -163,7 +163,7 @@ public class ShopManager {
             return;
         }
 
-        plugin.getGuiManager().openShop(player, ShopView.ENCHANT_TARGETS, enchantKey.toLowerCase(Locale.ROOT));
+        plugin.getGuiManager().openShop(player, enchantKey.toLowerCase(Locale.ROOT));
     }
 
     public List<Eligible> findEligible(PlayerData data, List<String> targets) {

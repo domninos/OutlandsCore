@@ -3,7 +3,6 @@ package net.omni.extraction.listeners;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.relics.RelicGUI;
 import net.omni.extraction.relics.RelicHolder;
-import net.omni.extraction.shop.ShopManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -44,16 +43,6 @@ public class RelicGUIListener implements Listener {
         handleRelicClick(player, event, holder);
     }
 
-    @EventHandler
-    public void onInventoryDrag(InventoryDragEvent event) {
-        if (!(event.getWhoClicked() instanceof Player))
-            return;
-
-        if (event.getView().getTopInventory().getHolder() instanceof RelicHolder) {
-            event.setCancelled(true);
-        }
-    }
-
     private void handleRelicClick(Player player, InventoryClickEvent event, RelicHolder holder) {
         int rawSlot = event.getRawSlot();
         int size = event.getView().getTopInventory().getSize();
@@ -67,5 +56,15 @@ public class RelicGUIListener implements Listener {
         }
 
         plugin.getRelicManager().click(player, holder.category(), rawSlot);
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player))
+            return;
+
+        if (event.getView().getTopInventory().getHolder() instanceof RelicHolder) {
+            event.setCancelled(true);
+        }
     }
 }

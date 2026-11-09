@@ -40,41 +40,8 @@ public class LoadoutGUIListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player))
             return;
 
-        if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
+        if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder)
             handleLoadoutClick(player, event);
-        }
-    }
-
-    @EventHandler
-    public void onInventoryDrag(InventoryDragEvent event) {
-        if (!(event.getWhoClicked() instanceof Player player))
-            return;
-
-        if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder) {
-            handleLoadoutDrag(player, event);
-        }
-    }
-
-    @EventHandler
-    public void onInventoryClose(InventoryCloseEvent event) {
-        if (!(event.getPlayer() instanceof Player player))
-            return;
-
-        if (!(event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder))
-            return;
-
-        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
-
-        ItemStack cursor = player.getItemOnCursor();
-        if (LoadoutGUI.isPlaceholder(cursor)) {
-            player.setItemOnCursor(null);
-            player.updateInventory();
-        } else {
-            plugin.getGuiManager().restoreLoadoutCursor(player);
-        }
-
-        plugin.getGuiManager().syncLoadout(player, data);
-        plugin.getGuiManager().refreshLoadout(player, data);
     }
 
     private void handleLoadoutClick(Player player, InventoryClickEvent event) {
@@ -112,13 +79,13 @@ public class LoadoutGUIListener implements Listener {
         }
 
         // Right-clicking an empty charm/artifact cell opens its relic GUI as well.
-        if (clicked != null && event.getClick().isRightClick()
-                && (event.getCursor() == null || event.getCursor().getType().isAir())
-                && (clicked == LoadoutSlot.CHARM || clicked == LoadoutSlot.ARTIFACT)) {
-            event.setCancelled(true);
-            plugin.getRelicManager().open(player,
-                    clicked == LoadoutSlot.CHARM ? RelicManager.KIND_CHARM : RelicManager.KIND_ARTIFACT);
-            return;
+        if (clicked != null && event.getClick().isRightClick()) {
+            if (event.getCursor().getType().isAir() && (clicked == LoadoutSlot.CHARM || clicked == LoadoutSlot.ARTIFACT)) {
+                event.setCancelled(true);
+                plugin.getRelicManager().open(player,
+                        clicked == LoadoutSlot.CHARM ? RelicManager.KIND_CHARM : RelicManager.KIND_ARTIFACT);
+                return;
+            }
         }
 
         if (event.isShiftClick()) {
@@ -136,7 +103,7 @@ public class LoadoutGUIListener implements Listener {
         if (LoadoutGUI.isPlaceholder(current)) {
             ItemStack cursor = event.getCursor();
 
-            if (cursor != null && cursor.getType() != Material.AIR) {
+            if (cursor.getType() != Material.AIR) {
                 event.setCancelled(true);
                 event.getClickedInventory().setItem(event.getRawSlot(), cursor.clone());
                 event.setCursor(null);
@@ -164,8 +131,7 @@ public class LoadoutGUIListener implements Listener {
         if (slot != null && (slot.isArmor() || slot == LoadoutSlot.OFFHAND)) {
             ItemStack cursor = event.getCursor();
 
-            if (cursor != null && cursor.getType() != Material.AIR
-                    && slot.isArmor() && !isMatchingArmor(cursor, slot)) {
+            if (cursor.getType() != Material.AIR && slot.isArmor() && !isMatchingArmor(cursor, slot)) {
                 event.setCancelled(true);
                 return;
             }
@@ -180,6 +146,35 @@ public class LoadoutGUIListener implements Listener {
         }
 
         plugin.getGuiManager().markLoadoutTouched(player, event.getRawSlot());
+    }
+
+    private boolean isMatchingArmor(ItemStack item, LoadoutSlot slot) {
+        EquipmentSlot equipmentSlot = slot.getEquipmentSlot();
+        if (equipmentSlot == null)
+            return false;
+
+        String name = item.getType().name();
+        return switch (equipmentSlot) {
+            case HEAD -> name.endsWith("_HELMET")
+                    || name.equals("CARVED_PUMPKIN") || name.equals("JACK_O_LANTERN")
+                    || name.equals("SKELETON_SKULL") || name.equals("WITHER_SKELETON_SKULL")
+                    || name.equals("ZOMBIE_HEAD") || name.equals("CREEPER_HEAD")
+                    || name.equals("PLAYER_HEAD") || name.equals("DRAGON_HEAD")
+                    || name.equals("PIGLIN_HEAD");
+            case CHEST -> name.endsWith("_CHESTPLATE") || name.equals("ELYTRA");
+            case LEGS -> name.endsWith("_LEGGINGS");
+            case FEET -> name.endsWith("_BOOTS");
+            default -> false;
+        };
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player))
+            return;
+
+        if (event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder)
+            handleLoadoutDrag(player, event);
     }
 
     private void handleLoadoutDrag(Player player, InventoryDragEvent event) {
@@ -224,23 +219,24 @@ public class LoadoutGUIListener implements Listener {
         player.updateInventory();
     }
 
-    private boolean isMatchingArmor(ItemStack item, LoadoutSlot slot) {
-        EquipmentSlot equipmentSlot = slot.getEquipmentSlot();
-        if (equipmentSlot == null)
-            return false;
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player))
+            return;
 
-        String name = item.getType().name();
-        return switch (equipmentSlot) {
-            case HEAD -> name.endsWith("_HELMET")
-                    || name.equals("CARVED_PUMPKIN") || name.equals("JACK_O_LANTERN")
-                    || name.equals("SKELETON_SKULL") || name.equals("WITHER_SKELETON_SKULL")
-                    || name.equals("ZOMBIE_HEAD") || name.equals("CREEPER_HEAD")
-                    || name.equals("PLAYER_HEAD") || name.equals("DRAGON_HEAD")
-                    || name.equals("PIGLIN_HEAD");
-            case CHEST -> name.endsWith("_CHESTPLATE") || name.equals("ELYTRA");
-            case LEGS -> name.endsWith("_LEGGINGS");
-            case FEET -> name.endsWith("_BOOTS");
-            default -> false;
-        };
+        if (!(event.getView().getTopInventory().getHolder() instanceof LoadoutGuiHolder))
+            return;
+
+        PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
+
+        ItemStack cursor = player.getItemOnCursor();
+        if (LoadoutGUI.isPlaceholder(cursor)) {
+            player.setItemOnCursor(null);
+            player.updateInventory();
+        } else
+            plugin.getGuiManager().restoreLoadoutCursor(player);
+
+        plugin.getGuiManager().syncLoadout(player, data);
+        plugin.getGuiManager().refreshLoadout(player, data);
     }
 }

@@ -210,6 +210,11 @@ public class VaultEconomy implements Economy {
     }
 
     @Override
+    public EconomyResponse deleteBank(String name) {
+        return notImplemented();
+    }
+
+    @Override
     public EconomyResponse bankBalance(String name) {
         return notImplemented();
     }
@@ -246,11 +251,6 @@ public class VaultEconomy implements Economy {
 
     @Override
     public EconomyResponse isBankMember(String name, OfflinePlayer player) {
-        return notImplemented();
-    }
-
-    @Override
-    public EconomyResponse deleteBank(String name) {
         return notImplemented();
     }
 

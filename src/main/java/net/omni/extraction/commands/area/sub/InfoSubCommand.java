@@ -9,7 +9,6 @@ import net.omni.extraction.commands.area.AreaCommandUtil;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.command.CommandSender;
 
-import java.util.Collection;
 import java.util.List;
 
 public class InfoSubCommand implements SubCommand {
