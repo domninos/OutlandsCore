@@ -103,13 +103,13 @@ public class ShopGUI {
             case CONSUMABLES -> populateConsumables(renderer);
             case ENCHANTS -> populateEnchants(renderer);
             case ENCHANT_TARGETS -> populateTargets(player, renderer);
-            case PETS -> populatePets(player, renderer);
+            case PETS -> populatePets(player);
         }
     }
 
     private void populateHub(ChatRenderer renderer) {
         ConfigUtil config = plugin.getConfigUtil();
-        fillFiller(renderer, config.getShopHubFillerMaterial(), config.getShopHubFillerName());
+        fillFiller(config.getShopHubFillerMaterial(), config.getShopHubFillerName());
 
         Map<String, Map<String, Object>> buttons = config.getShopHubButtons();
         placeButton(renderer, buttons, "consumables");
@@ -122,7 +122,7 @@ public class ShopGUI {
 
     private void populateConsumables(ChatRenderer renderer) {
         ConfigUtil config = plugin.getConfigUtil();
-        fillFiller(renderer, config.getShopConsumablesFillerMaterial(), config.getShopConsumablesFillerName());
+        fillFiller(config.getShopConsumablesFillerMaterial(), config.getShopConsumablesFillerName());
 
         ShopManager shop = plugin.getShopManager();
         int size = inventory.getSize();
@@ -168,7 +168,7 @@ public class ShopGUI {
 
     private void populateEnchants(ChatRenderer renderer) {
         ConfigUtil config = plugin.getConfigUtil();
-        fillFiller(renderer, config.getEnchantmentsFillerMaterial(), config.getEnchantmentsFillerName());
+        fillFiller(config.getEnchantmentsFillerMaterial(), config.getEnchantmentsFillerName());
 
         ShopManager shop = plugin.getShopManager();
         int size = inventory.getSize();
@@ -198,7 +198,7 @@ public class ShopGUI {
     }
 
     private void populateTargets(Player player, ChatRenderer renderer) {
-        fillFiller(renderer, "GRAY_STAINED_GLASS_PANE", " ");
+        fillFiller("GRAY_STAINED_GLASS_PANE", " ");
 
         ConfigUtil config = plugin.getConfigUtil();
         ShopManager shop = plugin.getShopManager();
@@ -232,9 +232,9 @@ public class ShopGUI {
     /**
      * Pet shop: one icon per pet definition, in definition order.
      */
-    private void populatePets(Player player, ChatRenderer renderer) {
+    private void populatePets(Player player) {
         ConfigUtil config = plugin.getConfigUtil();
-        fillFiller(renderer, config.getPetsShopFillerMaterial(), config.getPetsShopFillerName());
+        fillFiller(config.getPetsShopFillerMaterial(), config.getPetsShopFillerName());
 
         PlayerData data =
                 plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
@@ -250,12 +250,6 @@ public class ShopGUI {
             Material mat = Material.matchMaterial(def.icon());
             if (mat == null || !mat.isItem()) mat = Material.PAPER;
 
-            ItemStack item = new ItemStack(mat);
-            ItemMeta meta = item.getItemMeta();
-            if (meta == null) continue;
-
-            renderer.setDisplayName(meta, def.name());
-
             List<String> lore = new ArrayList<>(def.lore());
 
             for (String line : config.getPetsGuiBoostLore())
@@ -264,22 +258,15 @@ public class ShopGUI {
             for (String line : owned ? config.getPetsShopOwnedLore() : config.getPetsShopBuyLore())
                 lore.add(line.replace("%cost%", String.valueOf(def.cost())));
 
-            renderer.setLore(meta, lore);
-            item.setItemMeta(meta);
-            inventory.setItem(i, item);
+            inventory.setItem(i, ItemUtil.createItem(mat, def.name(), lore));
         }
     }
 
-    private void fillFiller(ChatRenderer renderer, String materialName, String name) {
+    private void fillFiller(String materialName, String name) {
         Material material = Material.matchMaterial(materialName == null ? "" : materialName);
         if (material == null || material.isAir()) material = Material.GRAY_STAINED_GLASS_PANE;
 
-        ItemStack filler = new ItemStack(material);
-        ItemMeta meta = filler.getItemMeta();
-        if (meta != null) {
-            if (name != null && !name.isEmpty()) renderer.setDisplayName(meta, name);
-            filler.setItemMeta(meta);
-        }
+        ItemStack filler = ItemUtil.createItem(material, name, List.of());
 
         for (int i = 0; i < inventory.getSize(); i++) {
             inventory.setItem(i, filler.clone());

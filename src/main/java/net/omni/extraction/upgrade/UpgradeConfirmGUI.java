@@ -10,7 +10,6 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -91,17 +90,8 @@ public final class UpgradeConfirmGUI {
 
         if (material == null || material.isAir()) return;
 
-        ItemStack filler = new ItemStack(material);
-        String name = plugin.getConfigUtil().getUpgradeGuiFillerName();
-
-        if (name != null && !name.isEmpty()) {
-            ItemMeta meta = filler.getItemMeta();
-
-            if (meta != null) {
-                plugin.getChatRenderer().setDisplayName(meta, name);
-                filler.setItemMeta(meta);
-            }
-        }
+        ItemStack filler = ItemUtil.createItem(material,
+                plugin.getConfigUtil().getUpgradeGuiFillerName(), List.of());
 
         for (int i = 0; i < inventory.getSize(); i++) {
             if (inventory.getItem(i) == null)

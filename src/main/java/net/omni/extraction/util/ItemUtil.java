@@ -203,11 +203,8 @@ public class ItemUtil {
             }
         }
 
-        if (customModelData != null) {
-            CustomModelDataComponent component = meta.getCustomModelDataComponent();
-            component.setFloats(List.of(customModelData.floatValue()));
-            meta.setCustomModelDataComponent(component);
-        }
+        if (customModelData != null)
+            applyCustomModelData(meta, customModelData);
 
         if (maxStackSize != null)
             meta.setMaxStackSize(maxStackSize);
@@ -229,6 +226,12 @@ public class ItemUtil {
             material = Material.PAPER;
 
         return material;
+    }
+
+    public static void applyCustomModelData(ItemMeta meta, int value) {
+        CustomModelDataComponent component = meta.getCustomModelDataComponent();
+        component.setFloats(List.of((float) value));
+        meta.setCustomModelDataComponent(component);
     }
 
     /**

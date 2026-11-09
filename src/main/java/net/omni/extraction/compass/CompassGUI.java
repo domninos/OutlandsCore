@@ -4,13 +4,13 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.ItemUtil;
 import net.omni.extraction.util.StringUtils;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.*;
 
@@ -148,30 +148,24 @@ public final class CompassGUI {
         String distance = distance(player, area);
 
         Material material = matchMaterial(icon.material(), Material.COMPASS);
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta == null)
-            return item;
-
-        plugin.getChatRenderer().setDisplayName(meta,
-                fill(icon.name(), area, state, status, level, distance));
-
+        String name = fill(icon.name(), area, state, status, level, distance);
         List<String> lore = fillAll(icon.lore(), area, state, status, level, distance);
 
         if (revealed)
             lore.addAll(fillAll(plugin.getConfigUtil().getCompassRevealedLore(),
                     area, state, status, level, distance));
 
-        plugin.getChatRenderer().setLore(meta, lore);
+        ItemStack item = ItemUtil.createItem(material, name, lore);
+        int customModelData = icon.customModelData();
 
-        if (icon.customModelData() > 0)
-            meta.setCustomModelData(icon.customModelData());
+        item.editMeta(meta -> {
+            if (customModelData > 0)
+                ItemUtil.applyCustomModelData(meta, customModelData);
 
-        if (revealed)
-            meta.setEnchantmentGlintOverride(true);
+            if (revealed)
+                meta.setEnchantmentGlintOverride(true);
+        });
 
-        item.setItemMeta(meta);
         return item;
     }
 
@@ -182,15 +176,7 @@ public final class CompassGUI {
         if (material.isAir())
             return null;
 
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta == null)
-            return item;
-
-        plugin.getChatRenderer().setDisplayName(meta, plugin.getConfigUtil().getCompassFillerName());
-        item.setItemMeta(meta);
-        return item;
+        return ItemUtil.createItem(material, plugin.getConfigUtil().getCompassFillerName(), List.of());
     }
 
     private static int firstFree(boolean[] used) {

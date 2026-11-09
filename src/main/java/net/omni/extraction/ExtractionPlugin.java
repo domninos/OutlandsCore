@@ -138,11 +138,7 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     TODO:
      -
-     - remove pets placeholder on loadout gui. keep charms and artifacts.
-     - have CompassGUI and search for GUIs to use ItemUtil
-     -
      - drone custom entity model for texture
-     -
      -
      -
 
@@ -163,9 +159,8 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (droneManager != null) {
+        if (droneManager != null)
             droneManager.stop();
-        }
 
         playerDataManager.onDisable();
 

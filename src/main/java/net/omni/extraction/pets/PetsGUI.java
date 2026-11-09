@@ -4,10 +4,9 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
-import org.bukkit.Material;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,12 +37,12 @@ public final class PetsGUI {
             if (i < definitions.size())
                 inv.setItem(i, petItem(plugin, definitions.get(i), data));
             else
-                inv.setItem(i, filler(renderer, config.getPetsGuiFillerMaterial(), config.getPetsGuiFillerName()));
+                inv.setItem(i, filler(config.getPetsGuiFillerMaterial(), config.getPetsGuiFillerName()));
         }
 
         // Bottom row filler + shop button.
         for (int slot = contentSize; slot < size; slot++)
-            inv.setItem(slot, filler(renderer, config.getPetsGuiFillerMaterial(), config.getPetsGuiFillerName()));
+            inv.setItem(slot, filler(config.getPetsGuiFillerMaterial(), config.getPetsGuiFillerName()));
 
         inv.setItem(shopSlot(size), shopButton(plugin));
 
@@ -51,7 +50,6 @@ public final class PetsGUI {
     }
 
     private static ItemStack petItem(ExtractionPlugin plugin, PetDefinition def, PlayerData data) {
-        ChatRenderer renderer = plugin.getChatRenderer();
         ConfigUtil config = plugin.getConfigUtil();
 
         boolean owned = data.ownsPet(def.id());
@@ -60,17 +58,6 @@ public final class PetsGUI {
         if (!owned)
             return mysteryItem(plugin, def);
 
-        Material material = Material.matchMaterial(def.icon());
-        if (material == null || !material.isItem())
-            material = Material.PAPER;
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null)
-            return item;
-
-        renderer.setDisplayName(meta, def.name());
-
         List<String> lore = new ArrayList<>(def.lore());
 
         for (String line : config.getPetsGuiBoostLore())
@@ -78,23 +65,11 @@ public final class PetsGUI {
 
         lore.addAll(equipped ? config.getPetsGuiEquippedLore() : config.getPetsGuiUnequippedLore());
 
-        renderer.setLore(meta, lore);
-        item.setItemMeta(meta);
-        return item;
+        return ItemUtil.createItem(def.icon(), "PAPER", def.name(), lore);
     }
 
-    private static ItemStack filler(ChatRenderer renderer, String materialName, String name) {
-        Material material = Material.matchMaterial(materialName == null ? "" : materialName);
-        if (material == null || material.isAir())
-            material = Material.GRAY_STAINED_GLASS_PANE;
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            if (name != null && !name.isEmpty()) renderer.setDisplayName(meta, name);
-            item.setItemMeta(meta);
-        }
-        return item;
+    private static ItemStack filler(String materialName, String name) {
+        return ItemUtil.createItem(materialName, "GRAY_STAINED_GLASS_PANE", name, List.of());
     }
 
     /**
@@ -105,44 +80,21 @@ public final class PetsGUI {
     }
 
     private static ItemStack shopButton(ExtractionPlugin plugin) {
-        ChatRenderer renderer = plugin.getChatRenderer();
         ConfigUtil config = plugin.getConfigUtil();
 
-        Material material = Material.matchMaterial(config.getPetsGuiShopMaterial());
-        if (material == null || !material.isItem())
-            material = Material.GOLD_NUGGET;
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            renderer.setDisplayName(meta, config.getPetsGuiShopName());
-            renderer.setLore(meta, config.getPetsGuiShopLore());
-            item.setItemMeta(meta);
-        }
-        return item;
+        return ItemUtil.createItem(config.getPetsGuiShopMaterial(), "GOLD_NUGGET",
+                config.getPetsGuiShopName(), config.getPetsGuiShopLore());
     }
 
     private static ItemStack mysteryItem(ExtractionPlugin plugin, PetDefinition def) {
-        ChatRenderer renderer = plugin.getChatRenderer();
         ConfigUtil config = plugin.getConfigUtil();
 
-        Material material = Material.matchMaterial(config.getPetsGuiMysteryMaterial());
-        if (material == null || !material.isItem())
-            material = Material.BLACK_STAINED_GLASS_PANE;
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null)
-            return item;
-
-        renderer.setDisplayName(meta, config.getPetsGuiMysteryName().replace("%pet%", def.name()));
+        String name = config.getPetsGuiMysteryName().replace("%pet%", def.name());
 
         List<String> lore = new ArrayList<>();
         for (String line : config.getPetsGuiMysteryLore())
             lore.add(line.replace("%pet%", def.name()));
 
-        renderer.setLore(meta, lore);
-        item.setItemMeta(meta);
-        return item;
+        return ItemUtil.createItem(config.getPetsGuiMysteryMaterial(), "BLACK_STAINED_GLASS_PANE", name, lore);
     }
 }

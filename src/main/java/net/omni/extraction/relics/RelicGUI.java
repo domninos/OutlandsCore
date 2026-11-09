@@ -4,11 +4,10 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
-import org.bukkit.Material;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +43,7 @@ public final class RelicGUI {
             if (i < definitions.size() && i < contentSize)
                 inv.setItem(i, definitionItem(plugin, category, definitions.get(i), data));
             else
-                inv.setItem(i, filler(renderer, config));
+                inv.setItem(i, filler(config));
         }
 
         inv.setItem(shopSlot(size), shopButton(plugin));
@@ -53,27 +52,14 @@ public final class RelicGUI {
     }
 
     private static ItemStack shopButton(ExtractionPlugin plugin) {
-        ChatRenderer renderer = plugin.getChatRenderer();
         ConfigUtil config = plugin.getConfigUtil();
 
-        Material material = Material.matchMaterial(config.getRelicGuiShopMaterial());
-        if (material == null || !material.isItem())
-            material = Material.GOLD_NUGGET;
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            renderer.setDisplayName(meta, config.getRelicGuiShopName());
-            renderer.setLore(meta, config.getRelicGuiShopLore());
-            item.setItemMeta(meta);
-        }
-        return item;
+        return ItemUtil.createItem(config.getRelicGuiShopMaterial(), "GOLD_NUGGET",
+                config.getRelicGuiShopName(), config.getRelicGuiShopLore());
     }
 
     private static ItemStack definitionItem(ExtractionPlugin plugin, String category,
                                             RelicDefinition def, PlayerData data) {
-        ChatRenderer renderer = plugin.getChatRenderer();
-
         boolean learned = def.isCharm()
                 ? data.ownsCharm(def.id())
                 : data.ownsArtifact(def.id());
@@ -85,17 +71,6 @@ public final class RelicGUI {
         if (!learned)
             return placeholder(plugin, def);
 
-        Material material = Material.matchMaterial(def.materialName());
-        if (material == null)
-            material = Material.PAPER;
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null)
-            return item;
-
-        renderer.setDisplayName(meta, def.name());
-
         List<String> lore = new ArrayList<>(def.lore());
 
         if (equipped) {
@@ -105,46 +80,24 @@ public final class RelicGUI {
             lore.add("<yellow>Click to equip</yellow>");
         }
 
-        renderer.setLore(meta, lore);
-        item.setItemMeta(meta);
-        return item;
+        return ItemUtil.createItem(def.materialName(), "PAPER", def.name(), lore);
     }
 
     private static ItemStack placeholder(ExtractionPlugin plugin, RelicDefinition def) {
-        ChatRenderer renderer = plugin.getChatRenderer();
         ConfigUtil config = plugin.getConfigUtil();
 
-        Material material = Material.matchMaterial(config.getRelicGuiPlaceholderMaterial());
-        if (material == null)
-            material = Material.BLACK_STAINED_GLASS_PANE;
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null)
-            return item;
-
-        renderer.setDisplayName(meta, config.getRelicGuiPlaceholderName().replace("%relic%", def.name()));
+        String name = config.getRelicGuiPlaceholderName().replace("%relic%", def.name());
 
         List<String> lore = new ArrayList<>();
         for (String line : config.getRelicGuiPlaceholderLore())
             lore.add(line.replace("%relic%", def.name()));
 
-        renderer.setLore(meta, lore);
-        item.setItemMeta(meta);
-        return item;
+        return ItemUtil.createItem(config.getRelicGuiPlaceholderMaterial(),
+                "BLACK_STAINED_GLASS_PANE", name, lore);
     }
 
-    private static ItemStack filler(ChatRenderer renderer, ConfigUtil config) {
-        Material material = Material.matchMaterial(config.getRelicGuiFillerMaterial());
-        if (material == null)
-            material = Material.GRAY_STAINED_GLASS_PANE;
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            renderer.setDisplayName(meta, config.getRelicGuiFillerName());
-            item.setItemMeta(meta);
-        }
-        return item;
+    private static ItemStack filler(ConfigUtil config) {
+        return ItemUtil.createItem(config.getRelicGuiFillerMaterial(),
+                "GRAY_STAINED_GLASS_PANE", config.getRelicGuiFillerName(), List.of());
     }
 }

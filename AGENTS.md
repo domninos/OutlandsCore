@@ -1027,9 +1027,13 @@ via `Math.sqrt` of the squared value only when needed.
   `BossCreatorManager.item/nav/filler`, `AreaEditorManager.button/valueItem/categoryTab/filler`,
   `UpgradeConfirmGUI.createItem`, `BackpackShopGUI.button`) and the `UpgradeManager`/`StandaloneChestManager`
   int coercions all call `ItemUtil`. Relic custom model data uses the component API now (legacy
-  `setCustomModelData(int)` retired). Bespoke placeholder-heavy builders stay local:
+  `setCustomModelData(int)` retired). All simple GUI icon builders route through `ItemUtil`
+  (`CompassGUI`, `PetsGUI`, `RelicGUI`, `BackpackGUI`, `ShopGUI` pets view + every filler,
+  `UpgradeConfirmGUI` filler, `AreaEditorManager` mob/loot/relic icons) - `ItemUtil.applyCustomModelData`
+  is the shared component-API helper (CompassGUI's icon custom model data). Bespoke placeholder-heavy builders stay local:
   `LootItemUtil.*` (time/token/key/event), `UpgradeTokenUtil`, `LoadoutManager.buildTierItem`,
-  `BackpackManager.createBackpackItem`, wands/PDC panes.
+  `BackpackManager.createBackpackItem`, `LootEditorManager.entryIcon` (real loot preview clone),
+  `UpgradeGUI` slot item/filler (tier base + empty-name `Component.empty()` clear), wands/PDC panes.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

@@ -2,10 +2,10 @@ package net.omni.extraction.backpack;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.chat.ChatRenderer;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.Material;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.List;
 
@@ -42,66 +42,45 @@ public final class BackpackGUI {
                 inv.setItem(i, items.get(index));
         }
 
-        inv.setItem(size + PREV, navButton(renderer, "Previous", page > 0));
-        inv.setItem(size + NEXT, navButton(renderer, "Next", page < totalPages - 1));
+        inv.setItem(size + PREV, navButton("Previous", page > 0));
+        inv.setItem(size + NEXT, navButton("Next", page < totalPages - 1));
 
-        ItemStack pageIndicator = button(renderer, Material.PAPER,
+        ItemStack pageIndicator = button(Material.PAPER,
                 "<white>Page " + (page + 1) + "/" + totalPages + "</white>",
                 "<gray>You have " + session.getPages() + " page(s)</gray>");
 
         inv.setItem(size + PAGE, pageIndicator);
 
-        ItemStack claimAll = button(renderer, Material.EMERALD_BLOCK,
+        ItemStack claimAll = button(Material.EMERALD_BLOCK,
                 "<green><bold>Claim All</bold></green>",
                 "<gray>Take everything from your backpack</gray>");
 
         inv.setItem(size + CLAIM_ALL, claimAll);
 
-        ItemStack close = button(renderer, Material.BARRIER,
+        ItemStack close = button(Material.BARRIER,
                 "<red><bold>Close</bold></red>",
                 "<gray>Close the backpack</gray>");
 
         inv.setItem(size + CLOSE, close);
 
         for (int slot : new int[]{size - 8, size - 6, size - 3, size - 1}) {
-            inv.setItem(slot, button(renderer, Material.GRAY_STAINED_GLASS_PANE, " ", null));
+            inv.setItem(slot, button(Material.GRAY_STAINED_GLASS_PANE, " ", null));
         }
 
         return inv;
     }
 
-    private static ItemStack navButton(ChatRenderer renderer, String name, boolean enabled) {
-        ItemStack item = new ItemStack(enabled ? Material.ARROW : Material.GRAY_DYE);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta != null) {
-            renderer.setDisplayName(meta, enabled
-                    ? "<yellow><bold>" + name + "</bold></yellow>"
-                    : "<gray><bold>" + name + "</bold></gray>");
-
-            renderer.setLore(meta, List.of(enabled
-                    ? "<gray>Go to the " + name.toLowerCase() + " page</gray>"
-                    : "<gray>Unavailable</gray>"));
-
-            item.setItemMeta(meta);
-        }
-
-        return item;
+    private static ItemStack navButton(String name, boolean enabled) {
+        return ItemUtil.createItem(enabled ? Material.ARROW : Material.GRAY_DYE,
+                enabled
+                        ? "<yellow><bold>" + name + "</bold></yellow>"
+                        : "<gray><bold>" + name + "</bold></gray>",
+                List.of(enabled
+                        ? "<gray>Go to the " + name.toLowerCase() + " page</gray>"
+                        : "<gray>Unavailable</gray>"));
     }
 
-    private static ItemStack button(ChatRenderer renderer, Material material, String name, String lore) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta != null) {
-            renderer.setDisplayName(meta, name);
-
-            if (lore != null)
-                renderer.setLore(meta, List.of(lore));
-
-            item.setItemMeta(meta);
-        }
-
-        return item;
+    private static ItemStack button(Material material, String name, String lore) {
+        return ItemUtil.createItem(material, name, lore == null ? List.of() : List.of(lore));
     }
 }

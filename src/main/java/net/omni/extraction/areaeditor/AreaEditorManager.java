@@ -698,32 +698,23 @@ public class AreaEditorManager {
         MobTemplate template = plugin.getMobTemplateManager().get(mobId);
 
         String name = mobDisplayName(mobId);
-        ItemStack item = new ItemStack(mobIcon(mobId, config));
 
         List<String> lore = new ArrayList<>();
         if (template != null) {
-            lore.add(plugin.getChatRenderer().parse("<gray>Template: <white>" + template.getId() + "</white></gray>"));
+            lore.add("<gray>Template: <white>" + template.getId() + "</white></gray>");
             if (template.isMythic())
-                lore.add(plugin.getChatRenderer().parse("<light_purple>MythicMob</light_purple>"));
+                lore.add("<light_purple>MythicMob</light_purple>");
         }
-        lore.add(plugin.getChatRenderer().parse("<gray>Click to use this mob</gray>"));
+        lore.add("<gray>Click to use this mob</gray>");
 
-        item.editMeta(meta -> {
-            plugin.getChatRenderer().setDisplayName(meta,
-                    config.getAreaEditorMobIconName().replace("%name%", name));
-            plugin.getChatRenderer().setLore(meta, lore);
-        });
-        return item;
+        return ItemUtil.createItem(mobIcon(mobId, config),
+                config.getAreaEditorMobIconName().replace("%name%", name), lore);
     }
 
     private ItemStack lootItem(String id, ConfigUtil config) {
         if (id.isEmpty()) {
-            ItemStack item = new ItemStack(resolveMaterial(config.getAreaEditorChestIconMaterial()));
-            item.editMeta(meta -> {
-                plugin.getChatRenderer().setDisplayName(meta, config.getAreaEditorDefaultLootName());
-                plugin.getChatRenderer().setLore(meta, config.getAreaEditorChestIconLore());
-            });
-            return item;
+            return ItemUtil.createItem(resolveMaterial(config.getAreaEditorChestIconMaterial()),
+                    config.getAreaEditorDefaultLootName(), config.getAreaEditorChestIconLore());
         }
 
         LootTable table = plugin.getLootTableManager().get(id);
@@ -735,13 +726,8 @@ public class AreaEditorManager {
         List<String> lore = table.getLore() != null && !table.getLore().isEmpty()
                 ? table.getLore() : config.getAreaEditorChestIconLore();
 
-        ItemStack item = new ItemStack(resolveMaterial(icon != null ? icon : config.getAreaEditorChestIconMaterial()));
-        item.editMeta(meta -> {
-            plugin.getChatRenderer().setDisplayName(meta,
-                    config.getAreaEditorChestIconName().replace("%name%", display));
-            plugin.getChatRenderer().setLore(meta, lore);
-        });
-        return item;
+        return ItemUtil.createItem(resolveMaterial(icon != null ? icon : config.getAreaEditorChestIconMaterial()),
+                config.getAreaEditorChestIconName().replace("%name%", display), lore);
     }
 
     private String mobDisplayName(String mobId) {
@@ -820,21 +806,16 @@ public class AreaEditorManager {
         String dropType = (RelicManager.KIND_ARTIFACT.equals(category) ? "ARTIFACT:" : "CHARM:") + def.id();
         boolean assigned = session.getAssignedRelics().contains(dropType);
 
-        ItemStack item = new ItemStack(def.getMaterial());
         List<String> lore = new ArrayList<>(def.lore());
-        lore.add(plugin.getChatRenderer().parse(assigned
+        lore.add(assigned
                 ? "<green>Assigned — " + (int) session.getRelicChance(dropType) + "%</green>"
-                : "<gray>Not assigned</gray>"));
-        lore.add(plugin.getChatRenderer().parse(assigned
+                : "<gray>Not assigned</gray>");
+        lore.add(assigned
                 ? "<gray>Click to remove</gray>"
-                : "<gray>Click to assign (100%)</gray>"));
+                : "<gray>Click to assign (100%)</gray>");
 
-        item.editMeta(meta -> {
-            plugin.getChatRenderer().setDisplayName(meta,
-                    (assigned ? "<green>✔ </green>" : "") + def.name());
-            plugin.getChatRenderer().setLore(meta, lore);
-        });
-        return item;
+        return ItemUtil.createItem(def.getMaterial(),
+                (assigned ? "<green>✔ </green>" : "") + def.name(), lore);
     }
 
     private void renderMobTabs(Inventory inventory, AreaEditorSession session, ConfigUtil config) {
