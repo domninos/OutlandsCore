@@ -138,13 +138,11 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     TODO:
      -
-     - smoke grenade -> replace smoke with campfire smoke
-     - fix mob spawn right click mob editor, it spawns the mob every second i'm holding the wand. shouldn't be.
-     -
      - when upgrading tokens in /upgrades, the old customized slots on the weapon/tools are back
      - this happens when moving other cells as well. it resets to the default slots for them.
-     - have 5 -> charms, 6 -> artifacts, 7 -> pets slots in loadout gui. dont make them movable
      -
+     - remove pets placeholder on loadout gui. keep charms and artifacts.
+     - have CompassGUI and search for GUIs to use ItemUtil
      -
      - drone custom entity model for texture
      -

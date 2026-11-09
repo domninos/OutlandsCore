@@ -48,6 +48,10 @@ public class AreaWandListener implements Listener {
             event.setCancelled(true);
             WandMode mode = areaManager.cycleWandMode(item);
             player.getInventory().setItemInMainHand(item);
+
+            if (mode == WandMode.SPAWN && plugin.getSpawnMarkerManager() != null)
+                plugin.getSpawnMarkerManager().refresh();
+
             plugin.sendMessage(player, Messages.AREA_WAND_MODE.replace("mode", mode.getDisplay()));
             return;
         }

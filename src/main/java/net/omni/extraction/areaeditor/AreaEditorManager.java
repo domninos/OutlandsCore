@@ -494,7 +494,7 @@ public class AreaEditorManager {
         plugin.getAreaManager().markDirty(area);
 
         if (plugin.getSpawnMarkerManager() != null)
-            plugin.getSpawnMarkerManager().reconcile();
+            plugin.getSpawnMarkerManager().refresh();
 
         Location location = session.getTargetLocation();
         Messages message = session.isBoss() ? Messages.AREA_BOSS_ADDED : Messages.AREA_SPAWN_ADDED;

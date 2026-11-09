@@ -916,7 +916,14 @@ via `Math.sqrt` of the squared value only when needed.
   definition `boundLocation` matched to the area's `AreaSpawnEntry` (block-coordinate + world compare) and
   edits it in place; any other entity (session-untracked lingering mobs, etc.) opens a NEW-entry wizard
   anchored at the clicked entity's position. Areas with an active clear send the existing `AREA_EDIT_LOCKED`
-  message (same as marker clicks) per user choice.
+  message (same as marker clicks) per user choice. `areaeditor/SpawnMarkerManager` spawns markers **once per
+  wand equip**: its 1s `reconcile` never re-spawns a marker it already attempted (an `attempted` key set is
+  cleared only when the wand-holder set changes or on an explicit `refresh()`), right-clicking a marker
+  (`removeMarkerFor`) suppresses its re-spawn while the editor is open, valid markers refresh their cached
+  `MarkerRef` to the current `AreaSpawnEntry` (confirm replaces the object - a stale ref appended duplicate
+  entries), and `refresh()` runs on confirm, on editor close, and on a SPAWN mode switch. `AreaEditorListener`
+  handles `InventoryCloseEvent` with a one-tick re-check (page changes re-open a fresh inventory) so ESC drops
+  the session (right-click can reopen the editor) and hidden markers return.
 - Loot item templates are cached (no per-roll MiniMessage rebuild): `LootResolver` keeps
   `templateCache` keyed `token|<defKey>|<amount>` / `time|<timeKey>|<minutes>` / `key|<keyId>` /
   `event|<itemId>|<amount>` (legacy empty-section fallbacks use `<legacy>`); every hit returns
@@ -979,8 +986,9 @@ via `Math.sqrt` of the squared value only when needed.
   `WallManager.reload()` recomputes from `walls.yml` on `/extraction reload`. The one-second tick iterates walls
   continuously from `start()` to `stop()`, so it is always running once the plugin is enabled.
 - **Smoke grenades** (`smoke/`): shop consumables with `smoke_grenade: true` (defaults in shop.yml `smoke_grenade`,
-  key `radius` 1-24, `duration-seconds` 1-300, `blind-seconds` 0-30, `particle` (default `LARGE_SMOKE`),
-  `tick-rate` 1-40). The item is tagged (PDC `smoke_grenade` + per-item settings `smoke_grenade_radius/...`) so it
+  key `radius` 1-24, `duration-seconds` 1-300, `blind-seconds` 0-30, `particle` (default `CAMPFIRE_COSY_SMOKE`;
+  the legacy `LARGE_SMOKE` value is remapped to campfire smoke on read, so old tagged items + unedited configs
+  convert), `tick-rate` 1-40). The item is tagged (PDC `smoke_grenade` + per-item settings `smoke_grenade_radius/...`) so it
   survives inventory/reload; right-click cancels the click, consumes one stack slot, throttles per tick and launches a
   tagged `Snowball` (`smoke_grenade_projectile`) with the settings PDC-encoded. Impact (`SmokeGrenadeManager.detonate`)
   spawns a ticking task (`tick-rate`) that
