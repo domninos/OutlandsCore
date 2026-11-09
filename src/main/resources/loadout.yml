@@ -130,13 +130,15 @@ loadout:
 # and the last row is the 9-slot hotbar (cells 36-44 -> hotbar slots 0-8).
 # Whatever an item is placed in a cell, it lands in exactly that inventory
 # slot on /extraction.
-# The charm/artifact/pet cells and the off-hand cell (top row end) show a
-# placeholder pane as their default. Charm/artifact/pet panes are MOVABLE
+# The charm/artifact cells and the off-hand cell (top row end) show a
+# placeholder pane as their default. Charm/artifact panes are MOVABLE
 # markers: pick them up and place them on any other cell — the marker stays
 # there (it persists) and the old cell stays blank. The off-hand pane is a
 # fixed drop-target that can never be picked up. Dropping a real item onto any
 # pane replaces it. Panes are display-only and never enter the run inventory.
 # Shift-left/right-clicking a charm or artifact pane opens that relic GUI.
+# The pet cell (if configured) is a plain empty inventory-mirror cell: no pane
+# and no shortcut; use /pets to open the pet menu.
 loadout-gui:
   title: "<gradient:#00AAFF:#55FFFF>Extraction Loadout</gradient>"
   rows: 5

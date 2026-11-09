@@ -101,6 +101,9 @@ public class LoadoutGUI {
 
             if (data.isCellCustomized(i)) {
                 item = data.getItemAt(i);
+
+                if (isPetPlaceholder(item))
+                    item = null;
             } else if (slot != null && !hiddenDefaults.contains(i)) {
                 // Managed charm/artifact slots at their DEFAULT state auto-show
                 // the equipped relic; a dragged arrangement wins once customized.
@@ -119,9 +122,8 @@ public class LoadoutGUI {
 
                         if (tier != null)
                             item = plugin.getLoadoutManager().buildTierItem(tier);
-                    } else if (slot.isPlaceholderSlot()) {
-                        ItemStack compass = slot == LoadoutSlot.OFFHAND
-                                ? plugin.getLoadoutManager().buildCompassItem() : null;
+                    } else if (slot == LoadoutSlot.OFFHAND) {
+                        ItemStack compass = plugin.getLoadoutManager().buildCompassItem();
 
                         if (compass != null) {
                             item = compass;
@@ -340,9 +342,8 @@ public class LoadoutGUI {
 
         if (slot == LoadoutSlot.OFFHAND) {
             plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
-        } else if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT || slot == LoadoutSlot.PET) {
-            String sub = slot == LoadoutSlot.CHARM ? "charms"
-                    : slot == LoadoutSlot.ARTIFACT ? "artifacts" : "pets";
+        } else if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT) {
+            String sub = slot == LoadoutSlot.CHARM ? "charms" : "artifacts";
             plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
             plugin.getChatRenderer().setLore(meta, List.of(
                     "", "<gray>Shift-click to open your " + sub + "</gray>"));
@@ -381,6 +382,10 @@ public class LoadoutGUI {
             return null;
 
         return item.getItemMeta().getPersistentDataContainer().get(placeholderSlotKey, PersistentDataType.STRING);
+    }
+
+    private static boolean isPetPlaceholder(ItemStack item) {
+        return isPlaceholder(item) && LoadoutSlot.PET.getConfigKey().equals(getPlaceholderSlot(item));
     }
 
     public static ItemStack untagPlaceholder(ItemStack item) {

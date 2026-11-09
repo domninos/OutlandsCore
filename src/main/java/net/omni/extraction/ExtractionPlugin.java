@@ -138,9 +138,6 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     TODO:
      -
-     - when upgrading tokens in /upgrades, the old customized slots on the weapon/tools are back
-     - this happens when moving other cells as well. it resets to the default slots for them.
-     -
      - remove pets placeholder on loadout gui. keep charms and artifacts.
      - have CompassGUI and search for GUIs to use ItemUtil
      -

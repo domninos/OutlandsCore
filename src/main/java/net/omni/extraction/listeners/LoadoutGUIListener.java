@@ -100,13 +100,12 @@ public class LoadoutGUIListener implements Listener {
         boolean topClick = event.getClickedInventory().getType() != InventoryType.PLAYER;
         LoadoutSlot clicked = topClick ? LoadoutGUI.getSlotFromClick(plugin, event.getRawSlot()) : null;
 
-        // Charm/artifact/pet cells are draggable like any other cell; SHIFT-click
-        // additionally opens the matching selection GUI.
+        // Charm/artifact cells are draggable like any other cell; SHIFT-click
+        // additionally opens the matching relic GUI.
         if (clicked != null && event.isShiftClick()) {
             switch (clicked) {
                 case CHARM -> plugin.getRelicManager().open(player, RelicManager.KIND_CHARM);
                 case ARTIFACT -> plugin.getRelicManager().open(player, RelicManager.KIND_ARTIFACT);
-                case PET -> plugin.getPetManager().open(player);
                 default -> {
                 }
             }

@@ -539,18 +539,21 @@ via `Math.sqrt` of the squared value only when needed.
   `LoadoutGUI`/`PlayerListener`/`LoadoutManager` use `LoadoutManager.inventorySlotForCell(cell)`
   (8 - -1, 36 - cell-36, else cell). `populate` shows the stored item for
   customized cells and the live tier default (`buildTierItem`, same item as `/upgrade`) for uncustomized
-  category cells; charm/artifact/pet + offhand cells show a tagged placeholder pane while empty
-  (`LoadoutSlot.isPlaceholderSlot()`, `LoadoutGUI.createDropPlaceholder`: slot-name titled panes only, no
-  "Drop item here" wording; charm/artifact/pet panes keep a "Shift-click to open your charms/artifacts/pets"
-  lore hint). Default charm/artifact cells fall back to the pane when no active relic is equipped (previously
+  category cells; charm/artifact + offhand cells show a tagged placeholder pane while empty
+  (`LoadoutGUI.createDropPlaceholder`: slot-name titled panes only, no
+  "Drop item here" wording; charm/artifact panes keep a "Shift-click to open your charms/artifacts"
+  lore hint). The pet cell (if configured) renders blank and has no shortcut - use `/pets` for the pet menu.
+  Default charm/artifact cells fall back to the pane when no active relic is equipped (previously
   they rendered blank).
-  Charm/artifact/pet panes are MOVABLE markers:
+  Charm/artifact panes are MOVABLE markers:
   `handleLoadoutClick` lets an empty cursor pick them up (no cancel; the vacated cell is marked touched so it
   goes blank) and placing them elsewhere stores the pane verbatim (`syncToData` no longer clears placeholders),
   so the moved marker persists in `loadout_items` and the old cell never regenerates it. The offhand pane is the
   only fixed drop-here target - empty cursor is always cancelled on it. Item on cursor replaces any pane.
-  SHIFT+left/right-clicking a charm/artifact/pet cell (pane or real item) opens the matching GUI â€”
-  `RelicManager.open` for charm/artifact, `PetManager.open` for pet â€” fired before the generic shift-click cancel.
+  SHIFT+left/right-clicking a charm/artifact cell (pane or real item) opens the matching GUI
+  (`RelicManager.open`) before the generic shift-click cancel.
+  Stale pet-tagged panes left in saved loadout data render blank (`LoadoutGUI.isPetPlaceholder`) and are
+  never granted; the data itself is kept (no purge).
   `onInventoryClose` nulls a placeholder left on the cursor so panes never leak out.
   Legacy
   `isPlaceholder`/`untagPlaceholder` kept as an inert safety so tagged panes never show as stored or grant
