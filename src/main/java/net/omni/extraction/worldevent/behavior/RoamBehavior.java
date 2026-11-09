@@ -6,6 +6,7 @@ import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.EventSpawn;
 import net.omni.extraction.worldevent.WorldEvent;
 import net.omni.extraction.worldevent.service.EventContext;
+import net.omni.extraction.util.WorldUtil;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -245,18 +246,7 @@ public class RoamBehavior {
         if (world == null)
             return null;
 
-        Player best = null;
-        double bestDistanceSq = Math.pow(Math.max(0, range), 2);
-
-        for (Player player : world.getPlayers()) {
-            double distanceSq = player.getLocation().distanceSquared(from);
-            if (distanceSq <= bestDistanceSq) {
-                bestDistanceSq = distanceSq;
-                best = player;
-            }
-        }
-
-        return best;
+        return WorldUtil.nearestPlayer(world.getPlayers(), from, range * range);
     }
 
     private float moveSpeed(double base, EventInstance instance) {

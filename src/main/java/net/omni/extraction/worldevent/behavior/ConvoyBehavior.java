@@ -1,15 +1,14 @@
 package net.omni.extraction.worldevent.behavior;
 
 import net.omni.extraction.area.AreaSpawnDefinition;
+import net.omni.extraction.util.WorldUtil;
 import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
 import net.omni.extraction.worldevent.WorldEvent.EventSpawnLocation;
 import net.omni.extraction.worldevent.service.EventContext;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.block.Block;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
@@ -130,44 +129,18 @@ public class ConvoyBehavior {
 
     private List<Location> buildRoutePoints(WorldEvent event, Location origin, Location dest, double dist) {
         WorldEvent.ConvoyConfig cfg = event.getConvoy();
-        World world = origin.getWorld();
-        List<Location> points = new ArrayList<>();
-        Vector dir = dest.toVector().subtract(origin.toVector()).normalize();
-        double step = Math.max(1, cfg.stepBlocks());
-
-        points.add(origin.clone());
-
-        if (world.getEnvironment() == World.Environment.NETHER) {
-            // Nether ceiling/caves make surface snapping unreliable — use a straight line.
-            for (double d = step; d < dist; d += step)
-                points.add(origin.clone().add(dir.clone().multiply(d)));
-        } else {
-            for (double d = step; d < dist; d += step)
-                points.add(groundSnapPoint(origin.clone().add(dir.clone().multiply(d))));
-        }
-
-        points.add(world.equals(dest.getWorld())
-                ? groundSnapPoint(dest.clone())
-                : origin.clone().add(dir.clone().multiply(dist)));
-        return points;
+        return WorldUtil.buildRoutePoints(origin, dest, dist, cfg.stepBlocks());
     }
 
     /**
      * Returns the first solid block along the sampled route, or null when it is clear.
      */
     private Location firstBlocked(List<Location> points) {
-        for (int i = 1; i < points.size(); i++) {
-            Location blocked = firstBlocked(points.get(i - 1), points.get(i));
-            if (blocked != null)
-                return blocked;
-        }
-
-        return null;
+        return WorldUtil.firstBlocked(points, 0.25);
     }
 
     private String locationString(Location location) {
-        return location.getWorld().getName() + " " + location.getBlockX()
-                + " " + location.getBlockY() + " " + location.getBlockZ();
+        return WorldUtil.locationString(location);
     }
 
     /**
@@ -253,52 +226,6 @@ public class ConvoyBehavior {
             return null;
 
         return new Location(world, anchor.x() + 0.5, anchor.y(), anchor.z() + 0.5);
-    }
-
-    /**
-     * Snaps a convoy waypoint to the topmost non-air block in its column so
-     * waypoints under overhangs/half-blocks stay walkable for the pathfinder;
-     * the column-scan variant used elsewhere can latch onto a ceiling Y and
-     * embed the waypoint inside terrain (the carrier then never reaches it and
-     * falls back to stuck-timeout teleports, looking like it "isn't moving").
-     */
-    private Location groundSnapPoint(Location point) {
-        World world = point.getWorld();
-        if (world == null)
-            return point;
-
-        org.bukkit.block.Block top = world.getHighestBlockAt(point.getBlockX(), point.getBlockZ());
-
-        return new Location(world, point.getX(),
-                Math.max(top.getY() + 1, world.getMinHeight()), point.getZ());
-    }
-
-    private Location firstBlocked(Location from, Location to) {
-        World world = from.getWorld();
-        if (world == null || !world.equals(to.getWorld()))
-            return null;
-
-        Vector delta = to.toVector().subtract(from.toVector());
-        double distance = delta.length();
-        if (distance == 0)
-            return null;
-
-        double step = 0.25;
-        int samples = (int) Math.ceil(distance / step);
-        double increment = distance / samples;
-        Vector unit = delta.clone().normalize();
-
-        for (int i = 1; i <= samples; i++) {
-            Vector sample = from.toVector().add(unit.clone().multiply(increment * i));
-            int x = sample.getBlockX();
-            int y = sample.getBlockY();
-            int z = sample.getBlockZ();
-
-            if (isSolid(world.getBlockAt(x, y, z)) || isSolid(world.getBlockAt(x, y + 1, z)))
-                return new Location(world, x, y, z);
-        }
-
-        return null;
     }
 
     private Display spawnCarPart(Location base, WorldEvent.CarPart part) {
@@ -389,11 +316,6 @@ public class ConvoyBehavior {
         leader.teleport(snapTo(next, target));
         updateConvoyVisual(instance, leader);
         instance.setTrackLocation(next);
-    }
-
-    private boolean isSolid(Block block) {
-        Material material = block.getType();
-        return !material.isAir() && !material.isTransparent() && material.isSolid();
     }
 
     private float yawFor(double dx, double dz) {
@@ -499,7 +421,7 @@ public class ConvoyBehavior {
     public void respawnConvoyLeader(EventInstance instance) {
         List<Location> points = instance.getConvoyPoints();
         Location spot = points.isEmpty() ? instance.getOrigin()
-                : points.get(Math.min(Math.max(instance.getConvoyStep(), 0), points.size() - 1));
+                : points.get(Math.clamp(instance.getConvoyStep(), 0, points.size() - 1));
 
         Entity carrier = spawnCarrier(instance.getEvent(), spot);
         if (carrier == null) {
@@ -538,7 +460,7 @@ public class ConvoyBehavior {
         // distanceSquared everywhere: Location#distance throws across worlds
         // and pays a sqrt per call.
         Location leaderLoc = leader.getLocation();
-        boolean sameWorld = leaderLoc.getWorld() != null && leaderLoc.getWorld().equals(target.getWorld());
+        boolean sameWorld = WorldUtil.sameWorld(leaderLoc, target);
         double distSq = sameWorld ? leaderLoc.distanceSquared(target) : Double.MAX_VALUE;
 
         boolean finalPoint = step >= points.size() - 1;
@@ -557,7 +479,7 @@ public class ConvoyBehavior {
         }
 
         Location last = points.getLast();
-        double remaining = leaderLoc.getWorld() != null && leaderLoc.getWorld().equals(last.getWorld())
+        double remaining = WorldUtil.sameWorld(leaderLoc, last)
                 ? Math.sqrt(leaderLoc.distanceSquared(last))
                 : leaderLoc.toVector().distance(last.toVector());
         instance.setConvoyProgress(Math.clamp(
@@ -570,7 +492,7 @@ public class ConvoyBehavior {
                 if (escort == null || !escort.isValid())
                     continue;
 
-                if (escort.getWorld().equals(leaderLoc.getWorld())
+                if (WorldUtil.sameWorld(escort.getLocation(), leaderLoc)
                         && escort.getLocation().distanceSquared(leaderLoc) > (double) followRange * followRange) {
                     Location spot = leaderLoc.clone().add(
                             ctx.random().nextInt(followRange + 1) - followRange / 2.0, 0,

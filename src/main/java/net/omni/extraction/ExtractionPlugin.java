@@ -154,13 +154,11 @@ public final class ExtractionPlugin extends JavaPlugin {
      - move MobTemplateManager's parseBoolean on StringUtils
      - have all Enchantment.getByKey and Particle.valueOf/Sound.valueOf should have a Util of their own (ref: ShopManager, EventPresentation#decodeSound)
      - have UpgradeGUI utilize ItemUtil as well as UpgradeTokenUtil import relevant methods to ItemUtil
-     - move all geometric checks (like loot beam raytrace, NaturalSpawnManager#pickLocation) to a GeomUtil)
-     - have Wall#matches and relevant ones to GeomUtil
-     - have ConvoyBehavior#moveConvoy utilize GeomUtil
-     - have StormBehavior#pickStormPoint and clampToArea utilize GeomUtil
-     - have EventSpawner#offsetOrigin utilize GeomUtil
+     -
+     -
      - have all methods that check for nearestPlayer utilize GeomUtil#nearestPlayer (ref: RoamBehavior#nearestPlayer)
      - have TerrainService#applyCrater utilize GeomUtil
+     -
      - similarly, add an EntityUtil
      - make a BossBarManager, move all related to boss bars on that (ref: EventPresentation#setupBossBar)
      -

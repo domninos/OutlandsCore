@@ -3,6 +3,7 @@ package net.omni.extraction.lootdrop;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.messages.Messages;
+import net.omni.extraction.util.WorldUtil;
 import net.omni.extraction.util.PacketGlow;
 import org.bukkit.*;
 import org.bukkit.entity.Item;
@@ -11,7 +12,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 import java.util.*;
@@ -286,11 +286,7 @@ public class LootDropManager {
         Location eye = player.getEyeLocation();
         Vector eyeVector = eye.toVector();
         Vector direction = eye.getDirection().normalize();
-        RayTraceResult blockHit = player.getWorld().rayTraceBlocks(
-                eye, direction, pickupRange, FluidCollisionMode.NEVER, true);
-        double blockDistanceSq = blockHit == null
-                ? Double.MAX_VALUE
-                : blockHit.getHitPosition().distanceSquared(eyeVector);
+        double blockDistanceSq = WorldUtil.blockRayDistanceSq(eye, direction, pickupRange);
 
         Item best = null;
         double bestDistanceSq = Double.MAX_VALUE;

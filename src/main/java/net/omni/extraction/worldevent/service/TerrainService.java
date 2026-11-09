@@ -1,5 +1,6 @@
 package net.omni.extraction.worldevent.service;
 
+import net.omni.extraction.util.WorldUtil;
 import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
 import org.bukkit.*;
@@ -47,7 +48,7 @@ public class TerrainService {
                 if (dist > radius + 0.5)
                     continue;
 
-                int surfaceY = ctx.spawner().findSurfaceY(world, cx + dx, origin.getBlockY(), cz + dz);
+                int surfaceY = WorldUtil.findSurfaceY(world, cx + dx, origin.getBlockY(), cz + dz);
                 if (surfaceY == Integer.MIN_VALUE)
                     continue;
 
@@ -212,7 +213,7 @@ public class TerrainService {
                     if (dist > radius + 0.5)
                         continue;
 
-                    int surfaceY = ctx.spawner().findSurfaceY(world, cx + dx, world.getMaxHeight(), cz + dz);
+                    int surfaceY = WorldUtil.findSurfaceY(world, cx + dx, world.getMaxHeight(), cz + dz);
                     if (surfaceY == Integer.MIN_VALUE)
                         continue;
 
