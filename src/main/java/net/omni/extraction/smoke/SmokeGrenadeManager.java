@@ -64,8 +64,9 @@ public class SmokeGrenadeManager implements Runnable {
         int radius = def.get("radius") instanceof Number value ? value.intValue() : DEFAULT_RADIUS;
         int duration = def.get("duration-seconds") instanceof Number value ? value.intValue() : DEFAULT_DURATION;
         int blind = def.get("blind-seconds") instanceof Number value ? value.intValue() : DEFAULT_BLIND;
-        String particle = def.containsKey("particle") && !String.valueOf(def.get("particle")).isBlank()
-                ? String.valueOf(def.get("particle")) : Settings.DEFAULT.particle();
+        Object rawParticle = def.get("particle");
+        String particle = rawParticle == null
+                ? Settings.DEFAULT.particle() : normalizeParticle(String.valueOf(rawParticle));
         int tickRate = def.get("tick-rate") instanceof Number value ? value.intValue() : DEFAULT_TICK_RATE;
 
         radius = Math.clamp(radius, 1, 24);
@@ -107,7 +108,7 @@ public class SmokeGrenadeManager implements Runnable {
         if (radius == null || duration == null || tickRate == null)
             return Settings.DEFAULT;
 
-        particle = particle == null || particle.isBlank() ? Settings.DEFAULT.particle() : particle;
+        particle = normalizeParticle(particle);
 
         return new Settings(radius, duration, blind, particle, tickRate);
     }
@@ -142,7 +143,7 @@ public class SmokeGrenadeManager implements Runnable {
         if (radius == null || duration == null || tickRate == null)
             return Settings.DEFAULT;
 
-        particle = particle == null || particle.isBlank() ? Settings.DEFAULT.particle() : particle;
+        particle = normalizeParticle(particle);
 
         return new Settings(radius, duration, blind, particle, tickRate);
     }
@@ -245,8 +246,23 @@ public class SmokeGrenadeManager implements Runnable {
         try {
             return Particle.valueOf(name.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            return Particle.LARGE_SMOKE;
+            return Particle.CAMPFIRE_COSY_SMOKE;
         }
+    }
+
+    /**
+     * Blank picks the default; the legacy {@code LARGE_SMOKE} value (stored on
+     * already-created grenade items and older configs) is remapped to campfire
+     * smoke so existing items visually update too.
+     */
+    private static String normalizeParticle(String name) {
+        if (name == null || name.isBlank())
+            return Settings.DEFAULT.particle();
+
+        if ("LARGE_SMOKE".equalsIgnoreCase(name))
+            return "CAMPFIRE_COSY_SMOKE";
+
+        return name;
     }
 
     public boolean blocksTargeting(Location location) {
@@ -287,7 +303,7 @@ public class SmokeGrenadeManager implements Runnable {
     public record Settings(int radius, int durationSeconds, int blindSeconds,
                            String particle, int tickRate) {
 
-        public static final Settings DEFAULT = new Settings(6, 15, 6, "LARGE_SMOKE", 5);
+        public static final Settings DEFAULT = new Settings(6, 15, 6, "CAMPFIRE_COSY_SMOKE", 5);
 
         public void writeTo(PersistentDataContainer container,
                             NamespacedKey radiusKey, NamespacedKey durationKey,

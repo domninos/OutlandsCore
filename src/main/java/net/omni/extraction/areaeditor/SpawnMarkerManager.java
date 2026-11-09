@@ -32,6 +32,8 @@ public class SpawnMarkerManager {
     private final ExtractionPlugin plugin;
     private final Map<UUID, MarkerRef> markers = new HashMap<>();
     private final Map<String, UUID> byLocation = new HashMap<>();
+    private final Set<String> attempted = new HashSet<>();
+    private Set<UUID> lastHolders = Set.of();
     private BukkitTask task;
 
     private record MarkerRef(String areaName, AreaSpawnEntry entry) {
@@ -53,16 +55,38 @@ public class SpawnMarkerManager {
             task = null;
         }
 
+        attempted.clear();
+        lastHolders = Set.of();
         removeAll();
+    }
+
+    /**
+     * Explicit refresh: re-arms the one-shot marker spawn and reconciles now.
+     * Called after a spawn entry is confirmed or an editor session closes so the
+     * marker reappears immediately instead of only on the next wand equip.
+     */
+    public void refresh() {
+        attempted.clear();
+        reconcile();
     }
 
     public void reconcile() {
         Set<UUID> holders = plugin.getAreaSelectionVisualizer() == null
-                ? Set.of() : plugin.getAreaSelectionVisualizer().getWandHolders();
+                ? Set.of() : new HashSet<>(plugin.getAreaSelectionVisualizer().getWandHolders());
 
         if (holders.isEmpty()) {
+            attempted.clear();
+            lastHolders = Set.of();
             removeAll();
             return;
+        }
+
+        // A changed holder set (wand equipped / slot switch) re-arms the
+        // one-shot spawn. The repeating timer itself must never keep spawning
+        // markers that already despawned/vanished.
+        if (!holders.equals(lastHolders)) {
+            lastHolders = holders;
+            attempted.clear();
         }
 
         Set<String> wanted = new HashSet<>();
@@ -97,17 +121,28 @@ public class SpawnMarkerManager {
                 UUID existing = byLocation.get(key);
                 Entity entity = existing == null ? null : Bukkit.getEntity(existing);
 
-                if (entity == null || !entity.isValid()) {
-                    if (existing != null) {
-                        markers.remove(existing);
-                        byLocation.remove(key);
-                    }
+                if (entity != null && entity.isValid()) {
+                    // Keep the cached entry current: confirming an edit replaces
+                    // the AreaSpawnEntry object, and a stale ref would append a
+                    // duplicate entry on the next edit.
+                    markers.put(existing, new MarkerRef(area.getName(), entry));
+                    continue;
+                }
 
-                    Entity marker = spawnMarker(area, entry);
-                    if (marker != null) {
-                        markers.put(marker.getUniqueId(), new MarkerRef(area.getName(), entry));
-                        byLocation.put(key, marker.getUniqueId());
-                    }
+                if (existing != null) {
+                    markers.remove(existing);
+                    byLocation.remove(key);
+                }
+
+                // One attempt per key per wand-equip: a marker that vanished is
+                // NOT re-spawned every second while the wand is held.
+                if (!attempted.add(key))
+                    continue;
+
+                Entity marker = spawnMarker(area, entry);
+                if (marker != null) {
+                    markers.put(marker.getUniqueId(), new MarkerRef(area.getName(), entry));
+                    byLocation.put(key, marker.getUniqueId());
                 }
             }
         }
@@ -126,13 +161,20 @@ public class SpawnMarkerManager {
                 entity.remove();
 
             markers.remove(id);
+            attempted.remove(item.getKey());
             iterator.remove();
         }
     }
 
     /** Removes the marker for an entry immediately (wizard opened on it). */
     public void removeMarkerFor(Player player, AreaSpawnEntry entry) {
-        UUID id = byLocation.remove(locationKey(entry));
+        String key = locationKey(entry);
+
+        // Suppress the immediate re-spawn while the editor is open; an explicit
+        // refresh on editor close re-arms it.
+        attempted.add(key);
+
+        UUID id = byLocation.remove(key);
 
         if (id == null)
             return;

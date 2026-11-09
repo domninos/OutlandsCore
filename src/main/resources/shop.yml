@@ -166,7 +166,7 @@ shop:
         radius: 6
         duration-seconds: 15
         blind-seconds: 6
-        particle: LARGE_SMOKE
+        particle: CAMPFIRE_COSY_SMOKE
         tick-rate: 5
         name: "<gray><bold>Smoke Grenade</bold></gray>"
         lore:
