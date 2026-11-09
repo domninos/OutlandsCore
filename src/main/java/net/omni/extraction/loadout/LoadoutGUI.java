@@ -86,6 +86,8 @@ public class LoadoutGUI {
     private void populate(Inventory inv, PlayerData data) {
         inv.clear();
 
+        Set<Integer> hiddenDefaults = plugin.getLoadoutManager().hiddenDefaultCells(data);
+
         for (int i = 0; i < inv.getSize(); i++) {
             if (isFirstRowFillerCell(plugin, i)) {
                 inv.setItem(i, firstRowFiller(plugin));
@@ -99,7 +101,7 @@ public class LoadoutGUI {
 
             if (data.isCellCustomized(i)) {
                 item = data.getItemAt(i);
-            } else if (slot != null) {
+            } else if (slot != null && !hiddenDefaults.contains(i)) {
                 // Managed charm/artifact slots at their DEFAULT state auto-show
                 // the equipped relic; a dragged arrangement wins once customized.
                 if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT) {
@@ -170,6 +172,15 @@ public class LoadoutGUI {
             return;
 
         Set<Integer> cells = new HashSet<>(touchedCells);
+        Map<Integer, ItemStack> currentView = new HashMap<>();
+
+        for (int i : cells) {
+            if (isFirstRowFillerCell(plugin, i))
+                continue;
+
+            currentView.put(i, inventory.getItem(i));
+        }
+
         int written = 0;
         int removed = 0;
         int skipped = 0;
@@ -178,7 +189,7 @@ public class LoadoutGUI {
             if (isFirstRowFillerCell(plugin, i))
                 continue;
 
-            ItemStack current = inventory.getItem(i);
+            ItemStack current = currentView.get(i);
             ItemStack expected = renderedSnapshot.get(i);
             boolean hadStored = customizedAtOpen.contains(i);
 
@@ -194,14 +205,26 @@ public class LoadoutGUI {
                 // Removing is only meaningful for something that was actually
                 // stored; tier defaults regenerate, so an abandoned/repainted
                 // empty view must never wipe data.
-                if (!hadStored || data.getItemAt(i) == null) {
-                    skipped++;
+                if (hadStored && data.getItemAt(i) != null) {
+                    data.setCellCustomized(i, true);
+                    data.setItemAt(i, null);
+                    removed++;
                     continue;
                 }
 
-                data.setCellCustomized(i, true);
-                data.setItemAt(i, null);
-                removed++;
+                // A default cell whose rendered item now sits in another touched
+                // cell was moved on purpose - persist the empty source so the
+                // default does not regenerate in its old slot. An item merely
+                // abandoned on the cursor (closed while held) is not found
+                // anywhere else and still regenerates (armor-wipe guard).
+                if (expected != null && movedElsewhere(expected, i, currentView)) {
+                    data.setCellCustomized(i, true);
+                    data.setItemAt(i, null);
+                    removed++;
+                    continue;
+                }
+
+                skipped++;
                 continue;
             }
 
@@ -217,6 +240,65 @@ public class LoadoutGUI {
                     + ", removed " + removed + ", skipped " + skipped + "; stored " + count + " item(s), "
                     + data.getCustomizedCells().size() + " customized cell(s)");
         }
+    }
+
+    private static boolean movedElsewhere(ItemStack expected, int source, Map<Integer, ItemStack> view) {
+        for (Map.Entry<Integer, ItemStack> entry : view.entrySet()) {
+            if (entry.getKey() == source)
+                continue;
+
+            ItemStack other = entry.getValue();
+
+            if (other != null && other.isSimilar(expected))
+                return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns a non-placeholder cursor item to the touched, empty cell it was
+     * picked from, unless that cell held a stored (customized) item - those
+     * removals intentionally hand the item to the player. Prevents virtual
+     * default gear from leaking into the real inventory when the GUI closes.
+     */
+    public boolean restoreCursor(Player player) {
+        if (inventory == null)
+            return false;
+
+        ItemStack cursor = player.getItemOnCursor();
+
+        if (cursor == null || cursor.getType().isAir() || isPlaceholder(cursor))
+            return false;
+
+        int restoreCell = -1;
+
+        for (int i : touchedCells) {
+            if (isFirstRowFillerCell(plugin, i))
+                continue;
+
+            if (inventory.getItem(i) != null)
+                continue;
+
+            ItemStack expected = renderedSnapshot.get(i);
+
+            if (expected == null || !expected.isSimilar(cursor))
+                continue;
+
+            if (customizedAtOpen.contains(i))
+                continue;
+
+            restoreCell = i;
+            break;
+        }
+
+        if (restoreCell < 0)
+            return false;
+
+        inventory.setItem(restoreCell, cursor);
+        player.setItemOnCursor(null);
+        player.updateInventory();
+        return true;
     }
 
     private static boolean sameStack(ItemStack a, ItemStack b) {

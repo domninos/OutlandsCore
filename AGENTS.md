@@ -908,6 +908,19 @@ via `Math.sqrt` of the squared value only when needed.
   removal of stored (customized) items still works; the sync INFO log gained a `skipped` count. Also
   `UpgradeGUIListener.applyUpgrade` now uses the cache-only `getLoaded` instead of `getOrCreate` so a tier
   grant can never land on an unloaded blank instance.
+- Loadout default-slot dedupe (move persistence): uncustomized cells are virtual tier defaults, so moving one
+  used to leave the source empty at close and the default regenerated on the next open/run (and an upgrade
+  token then surfaced a duplicate, since `materializeTier` upgraded only the moved stored copy).
+  `syncToData` now persists the vacated source as customized-null when the snapshot item sits similar in
+  another touched cell (`movedElsewhere`); an item merely abandoned on the cursor is still not found and
+  regenerates (armor-wipe guard preserved). `LoadoutManager.hiddenDefaultCells(data)` returns default-slot
+  cells whose effective default item is stored/moved in some customized cell (enchantment-only differences
+  count as equal via `matchesDefault`), and `LoadoutGUI.populate` + `LoadoutManager.applyLoadout` skip those
+  cells; `ShopManager.findEligible`/`applyEnchant` skip/reject them too so an enchant cannot repaint a copy
+  back into the source slot. `LoadoutGUI.restoreCursor` (called from `LoadoutGUIListener.onInventoryClose`
+  via `GUIManager.restoreLoadoutCursor`) returns a non-placeholder cursor item to its touched, empty,
+  non-stored source cell before sync, so virtual default gear can never leak into the real inventory.
+  `LoadoutGUIListener` also cancels `CLONE_STACK` (offhand swap already maps to `HOTBAR_SWAP`).
 - SPAWN-wand right-click on an entity now opens the spawn editor (`AreaWandListener` new
   `PlayerInteractEntityEvent`/`PlayerInteractAtEntityEvent` handlers, cancel + `EquipmentSlot.HAND` + drone
   guard + open-session guard; block-click behavior unchanged): spawn-marker clicks mirror the existing

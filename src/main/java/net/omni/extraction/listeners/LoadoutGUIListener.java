@@ -69,6 +69,8 @@ public class LoadoutGUIListener implements Listener {
         if (LoadoutGUI.isPlaceholder(cursor)) {
             player.setItemOnCursor(null);
             player.updateInventory();
+        } else {
+            plugin.getGuiManager().restoreLoadoutCursor(player);
         }
 
         plugin.getGuiManager().syncLoadout(player, data);
@@ -86,7 +88,8 @@ public class LoadoutGUIListener implements Listener {
             dataManager.getLoaded(player.getUniqueId());
 
         switch (event.getAction()) {
-            case DROP_ALL_SLOT, DROP_ONE_SLOT, DROP_ALL_CURSOR, DROP_ONE_CURSOR, HOTBAR_SWAP -> {
+            case DROP_ALL_SLOT, DROP_ONE_SLOT, DROP_ALL_CURSOR, DROP_ONE_CURSOR,
+                 HOTBAR_SWAP, CLONE_STACK -> {
                 event.setCancelled(true);
                 return;
             }

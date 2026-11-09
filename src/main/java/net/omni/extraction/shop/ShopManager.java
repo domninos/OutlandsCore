@@ -170,9 +170,13 @@ public class ShopManager {
         List<Eligible> list = new ArrayList<>();
         ConfigUtil config = plugin.getConfigUtil();
         int guiSize = config.getLoadoutGuiSize();
+        Set<Integer> hiddenDefaults = plugin.getLoadoutManager().hiddenDefaultCells(data);
 
         for (int cell = 0; cell < guiSize; cell++) {
             if (LoadoutGUI.isFirstRowFillerCell(plugin, cell))
+                continue;
+
+            if (!data.isCellCustomized(cell) && hiddenDefaults.contains(cell))
                 continue;
 
             ItemStack item = resolveCellItem(data, cell);
@@ -278,6 +282,12 @@ public class ShopManager {
         PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
         TokenManager tokens = plugin.getTokenManager();
         UUID uuid = player.getUniqueId();
+
+        if (!data.isCellCustomized(targetCell)
+                && plugin.getLoadoutManager().hiddenDefaultCells(data).contains(targetCell)) {
+            plugin.sendMessage(player, Messages.SHOP_NO_ELIGIBLE_TARGET.toString());
+            return;
+        }
 
         Map<String, Object> def = config.getEnchantmentDefinitions().get(enchantKey.toLowerCase(Locale.ROOT));
         if (def == null) return;

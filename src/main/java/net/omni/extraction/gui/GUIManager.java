@@ -51,6 +51,12 @@ public class GUIManager {
             gui.markTouched(cell);
     }
 
+    public boolean restoreLoadoutCursor(Player player) {
+        LoadoutGUI gui = findLoadout(player);
+        return gui != null && gui.restoreCursor(player);
+    }
+
+
     private LoadoutGUI findLoadout(Player player) {
         for (LoadoutGUI gui : loadoutGuis) {
             if (gui.getOwner().equals(player.getUniqueId()))

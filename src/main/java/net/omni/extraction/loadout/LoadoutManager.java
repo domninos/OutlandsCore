@@ -20,7 +20,9 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class LoadoutManager {
 
@@ -93,12 +95,14 @@ public class LoadoutManager {
     public void applyLoadout(Player player, PlayerData data) {
         ConfigUtil config = plugin.getConfigUtil();
         int guiSize = config.getLoadoutGuiSize();
+        Set<Integer> hiddenDefaults = hiddenDefaultCells(data);
 
         for (int cell = 0; cell < guiSize; cell++) {
             if (LoadoutGUI.isFirstRowFillerCell(plugin, cell))
                 continue;
 
-            ItemStack item = resolveCellItem(data, cell);
+            ItemStack item = !data.isCellCustomized(cell) && hiddenDefaults.contains(cell)
+                    ? null : resolveCellItem(data, cell);
 
             LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, cell);
 
@@ -210,6 +214,70 @@ public class LoadoutManager {
             return null;
 
         return item;
+    }
+
+    /**
+     * Default cells whose virtual item was moved into another (customized)
+     * cell. Rendering/granting their default again would duplicate the moved
+     * item back into its old slot, so these cells stay empty while the moved
+     * copy exists. Enchantment-only differences count as the same item so a
+     * shop-enchanted moved copy still hides its default.
+     */
+    public Set<Integer> hiddenDefaultCells(PlayerData data) {
+        Set<Integer> hidden = new HashSet<>();
+
+        if (plugin.getConfigUtil() == null)
+            return hidden;
+
+        int guiSize = plugin.getConfigUtil().getLoadoutGuiSize();
+
+        for (LoadoutSlot slot : LoadoutSlot.values()) {
+            int cell = plugin.getConfigUtil().getLoadoutGuiSlot(slot.getConfigKey());
+
+            if (cell < 0 || cell >= guiSize || data.isCellCustomized(cell))
+                continue;
+
+            ItemStack def = resolveCellItem(data, cell);
+
+            if (def == null)
+                continue;
+
+            for (int other = 0; other < guiSize; other++) {
+                if (other == cell || !data.isCellCustomized(other))
+                    continue;
+
+                ItemStack stored = data.getItemAt(other);
+
+                if (stored != null && matchesDefault(stored, def)) {
+                    hidden.add(cell);
+                    break;
+                }
+            }
+        }
+
+        return hidden;
+    }
+
+    private static boolean matchesDefault(ItemStack stored, ItemStack def) {
+        if (stored.isSimilar(def))
+            return true;
+
+        ItemStack a = stored.clone();
+        ItemStack b = def.clone();
+        ItemMeta metaA = a.getItemMeta();
+        ItemMeta metaB = b.getItemMeta();
+
+        if (metaA != null) {
+            metaA.removeEnchantments();
+            a.setItemMeta(metaA);
+        }
+
+        if (metaB != null) {
+            metaB.removeEnchantments();
+            b.setItemMeta(metaB);
+        }
+
+        return a.isSimilar(b);
     }
 
     public int getEffectiveTier(PlayerData data, LoadoutSlot slot) {
