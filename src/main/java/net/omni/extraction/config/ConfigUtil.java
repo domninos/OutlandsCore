@@ -321,6 +321,15 @@ public class ConfigUtil {
     private int loadoutGuiOffhandSlot;
     private String loadoutGuiFillerMaterial;
     private String loadoutGuiFillerName;
+    private String loadoutPaneCharmMaterial;
+    private String loadoutPaneCharmName;
+    private List<String> loadoutPaneCharmLore;
+    private String loadoutPaneArtifactMaterial;
+    private String loadoutPaneArtifactName;
+    private List<String> loadoutPaneArtifactLore;
+    private String loadoutPanePetMaterial;
+    private String loadoutPanePetName;
+    private List<String> loadoutPanePetLore;
     private boolean loadoutCompassEnabled;
     private String loadoutCompassMaterial;
     private String loadoutCompassName;
@@ -971,6 +980,24 @@ public class ConfigUtil {
         this.loadoutGuiFillerMaterial = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_MATERIAL,
                 "GRAY_STAINED_GLASS_PANE", savedDefaults);
         this.loadoutGuiFillerName = getAndDefaultString(ConfigKeys.LOADOUT_GUI_FILLER_NAME, " ", savedDefaults);
+        this.loadoutPaneCharmMaterial = getAndDefaultString(ConfigKeys.LOADOUT_PANE_CHARM_MATERIAL,
+                "LIME_STAINED_GLASS_PANE", savedDefaults);
+        this.loadoutPaneCharmName = getAndDefaultString(ConfigKeys.LOADOUT_PANE_CHARM_NAME,
+                "<green>Charm</green>", savedDefaults);
+        this.loadoutPaneCharmLore = getAndDefaultStringList(ConfigKeys.LOADOUT_PANE_CHARM_LORE,
+                List.of("<gray>Shift-click or right-click to open your charms.</gray>"), savedDefaults);
+        this.loadoutPaneArtifactMaterial = getAndDefaultString(ConfigKeys.LOADOUT_PANE_ARTIFACT_MATERIAL,
+                "CYAN_STAINED_GLASS_PANE", savedDefaults);
+        this.loadoutPaneArtifactName = getAndDefaultString(ConfigKeys.LOADOUT_PANE_ARTIFACT_NAME,
+                "<aqua>Artifact</aqua>", savedDefaults);
+        this.loadoutPaneArtifactLore = getAndDefaultStringList(ConfigKeys.LOADOUT_PANE_ARTIFACT_LORE,
+                List.of("<gray>Shift-click or right-click to open your artifacts.</gray>"), savedDefaults);
+        this.loadoutPanePetMaterial = getAndDefaultString(ConfigKeys.LOADOUT_PANE_PET_MATERIAL,
+                "ORANGE_STAINED_GLASS_PANE", savedDefaults);
+        this.loadoutPanePetName = getAndDefaultString(ConfigKeys.LOADOUT_PANE_PET_NAME,
+                "<gold>Pet</gold>", savedDefaults);
+        this.loadoutPanePetLore = getAndDefaultStringList(ConfigKeys.LOADOUT_PANE_PET_LORE,
+                List.of("<gray>Use <white>/pets</white> to open the pet menu.</gray>"), savedDefaults);
         loadLoadoutCompass(savedDefaults);
     }
 
@@ -2796,6 +2823,42 @@ public class ConfigUtil {
 
     public String getLoadoutGuiFillerName() {
         return loadoutGuiFillerName;
+    }
+
+    public String getLoadoutPaneCharmMaterial() {
+        return loadoutPaneCharmMaterial;
+    }
+
+    public String getLoadoutPaneCharmName() {
+        return loadoutPaneCharmName;
+    }
+
+    public List<String> getLoadoutPaneCharmLore() {
+        return loadoutPaneCharmLore;
+    }
+
+    public String getLoadoutPaneArtifactMaterial() {
+        return loadoutPaneArtifactMaterial;
+    }
+
+    public String getLoadoutPaneArtifactName() {
+        return loadoutPaneArtifactName;
+    }
+
+    public List<String> getLoadoutPaneArtifactLore() {
+        return loadoutPaneArtifactLore;
+    }
+
+    public String getLoadoutPanePetMaterial() {
+        return loadoutPanePetMaterial;
+    }
+
+    public String getLoadoutPanePetName() {
+        return loadoutPanePetName;
+    }
+
+    public List<String> getLoadoutPanePetLore() {
+        return loadoutPanePetLore;
     }
 
     public boolean isLoadoutCompassEnabled() {

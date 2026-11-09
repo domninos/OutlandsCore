@@ -33,7 +33,9 @@ public class SpawnMarkerManager {
     private final Map<UUID, MarkerRef> markers = new HashMap<>();
     private final Map<String, UUID> byLocation = new HashMap<>();
     private final Set<String> attempted = new HashSet<>();
-    private Set<UUID> lastHolders = Set.of();
+    private final Set<UUID> holders = new HashSet<>();
+    private final Set<String> wanted = new HashSet<>();
+    private final Set<UUID> lastHolders = new HashSet<>();
     private BukkitTask task;
 
     private record MarkerRef(String areaName, AreaSpawnEntry entry) {
@@ -56,7 +58,7 @@ public class SpawnMarkerManager {
         }
 
         attempted.clear();
-        lastHolders = Set.of();
+        lastHolders.clear();
         removeAll();
     }
 
@@ -71,12 +73,14 @@ public class SpawnMarkerManager {
     }
 
     public void reconcile() {
-        Set<UUID> holders = plugin.getAreaSelectionVisualizer() == null
-                ? Set.of() : new HashSet<>(plugin.getAreaSelectionVisualizer().getWandHolders());
+        holders.clear();
+
+        if (plugin.getAreaSelectionVisualizer() != null)
+            holders.addAll(plugin.getAreaSelectionVisualizer().getWandHolders());
 
         if (holders.isEmpty()) {
             attempted.clear();
-            lastHolders = Set.of();
+            lastHolders.clear();
             removeAll();
             return;
         }
@@ -85,11 +89,12 @@ public class SpawnMarkerManager {
         // one-shot spawn. The repeating timer itself must never keep spawning
         // markers that already despawned/vanished.
         if (!holders.equals(lastHolders)) {
-            lastHolders = holders;
+            lastHolders.clear();
+            lastHolders.addAll(holders);
             attempted.clear();
         }
 
-        Set<String> wanted = new HashSet<>();
+        wanted.clear();
 
         for (Area area : plugin.getAreaManager().getAreas()) {
             if (area == null)

@@ -111,6 +111,16 @@ public class LoadoutGUIListener implements Listener {
             }
         }
 
+        // Right-clicking an empty charm/artifact cell opens its relic GUI as well.
+        if (clicked != null && event.getClick().isRightClick()
+                && (event.getCursor() == null || event.getCursor().getType().isAir())
+                && (clicked == LoadoutSlot.CHARM || clicked == LoadoutSlot.ARTIFACT)) {
+            event.setCancelled(true);
+            plugin.getRelicManager().open(player,
+                    clicked == LoadoutSlot.CHARM ? RelicManager.KIND_CHARM : RelicManager.KIND_ARTIFACT);
+            return;
+        }
+
         if (event.isShiftClick()) {
             event.setCancelled(true);
             return;

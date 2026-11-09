@@ -325,14 +325,39 @@ public class LoadoutGUI {
     }
 
     private static ItemStack createDropPlaceholder(ExtractionPlugin plugin, LoadoutSlot slot) {
-        Material material = Material.GRAY_STAINED_GLASS_PANE;
-        String matName = plugin.getConfigUtil().getLoadoutGuiFillerMaterial();
+        ConfigUtil config = plugin.getConfigUtil();
+        Material material;
+        String name;
+        List<String> lore;
 
-        if (matName != null && !matName.isEmpty()) {
-            Material configured = Material.matchMaterial(matName);
-            if (configured != null)
-                material = configured;
+        switch (slot) {
+            case CHARM -> {
+                material = Material.matchMaterial(config.getLoadoutPaneCharmMaterial());
+                name = config.getLoadoutPaneCharmName();
+                lore = config.getLoadoutPaneCharmLore();
+            }
+            case ARTIFACT -> {
+                material = Material.matchMaterial(config.getLoadoutPaneArtifactMaterial());
+                name = config.getLoadoutPaneArtifactName();
+                lore = config.getLoadoutPaneArtifactLore();
+            }
+            case PET -> {
+                material = Material.matchMaterial(config.getLoadoutPanePetMaterial());
+                name = config.getLoadoutPanePetName();
+                lore = config.getLoadoutPanePetLore();
+            }
+            default -> {
+                String matName = config.getLoadoutGuiFillerMaterial();
+                material = matName == null || matName.isEmpty()
+                        ? null
+                        : Material.matchMaterial(matName);
+                name = "<yellow>" + slot.getDisplayName() + "</yellow>";
+                lore = null;
+            }
         }
+
+        if (material == null)
+            material = Material.GRAY_STAINED_GLASS_PANE;
 
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
@@ -340,16 +365,14 @@ public class LoadoutGUI {
         if (meta == null)
             return item;
 
-        if (slot == LoadoutSlot.OFFHAND) {
-            plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
-        } else if (slot == LoadoutSlot.CHARM || slot == LoadoutSlot.ARTIFACT) {
-            String sub = slot == LoadoutSlot.CHARM ? "charms" : "artifacts";
-            plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
-            plugin.getChatRenderer().setLore(meta, List.of(
-                    "", "<gray>Shift-click to open your " + sub + "</gray>"));
-        } else {
-            plugin.getChatRenderer().setDisplayName(meta, "<yellow>" + slot.getDisplayName() + "</yellow>");
-        }
+        if (name != null && !name.isEmpty())
+            plugin.getChatRenderer().setDisplayName(meta, name);
+        else
+            plugin.getChatRenderer().setDisplayName(meta,
+                    "<yellow>" + slot.getDisplayName() + "</yellow>");
+
+        if (lore != null && !lore.isEmpty())
+            plugin.getChatRenderer().setLore(meta, lore);
 
         item.setItemMeta(meta);
         return tagAsPlaceholder(item, slot);

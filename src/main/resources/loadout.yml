@@ -159,3 +159,22 @@ loadout-gui:
   filler:
     material: GRAY_STAINED_GLASS_PANE
     name: " "
+  # Distinct placeholder panes for the charm/artifact/pet cells. Each entry
+  # supports material, name and lore. These are cosmetic only; one pane still
+  # marks the slot as a customizable loadout cell.
+  placeholders:
+    charm:
+      material: LIME_STAINED_GLASS_PANE
+      name: "<green>Charm</green>"
+      lore:
+        - "<gray>Shift-click or right-click to open your charms.</gray>"
+    artifact:
+      material: CYAN_STAINED_GLASS_PANE
+      name: "<aqua>Artifact</aqua>"
+      lore:
+        - "<gray>Shift-click or right-click to open your artifacts.</gray>"
+    pet:
+      material: ORANGE_STAINED_GLASS_PANE
+      name: "<gold>Pet</gold>"
+      lore:
+        - "<gray>Use <white>/pets</white> to open the pet menu.</gray>"

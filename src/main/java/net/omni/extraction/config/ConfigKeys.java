@@ -188,6 +188,15 @@ public final class ConfigKeys {
     public static final String LOADOUT_GUI_SLOTS = "loadout-gui.slots";
     public static final String LOADOUT_GUI_FILLER_MATERIAL = "loadout-gui.filler.material";
     public static final String LOADOUT_GUI_FILLER_NAME = "loadout-gui.filler.name";
+    public static final String LOADOUT_PANE_CHARM_MATERIAL = "loadout-gui.placeholders.charm.material";
+    public static final String LOADOUT_PANE_CHARM_NAME = "loadout-gui.placeholders.charm.name";
+    public static final String LOADOUT_PANE_CHARM_LORE = "loadout-gui.placeholders.charm.lore";
+    public static final String LOADOUT_PANE_ARTIFACT_MATERIAL = "loadout-gui.placeholders.artifact.material";
+    public static final String LOADOUT_PANE_ARTIFACT_NAME = "loadout-gui.placeholders.artifact.name";
+    public static final String LOADOUT_PANE_ARTIFACT_LORE = "loadout-gui.placeholders.artifact.lore";
+    public static final String LOADOUT_PANE_PET_MATERIAL = "loadout-gui.placeholders.pet.material";
+    public static final String LOADOUT_PANE_PET_NAME = "loadout-gui.placeholders.pet.name";
+    public static final String LOADOUT_PANE_PET_LORE = "loadout-gui.placeholders.pet.lore";
 
     public static final String STORAGE_AUTO_SAVE_SECONDS = "storage.auto-save-seconds";
     public static final String STORAGE_SAVE_QUEUE_SIZE = "storage.save-queue-size";
