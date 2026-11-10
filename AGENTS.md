@@ -1079,15 +1079,20 @@ via `Math.sqrt` of the squared value only when needed.
   `WallManager.reload()` recomputes from `walls.yml` on `/extraction reload`. The one-second tick iterates walls
   continuously from `start()` to `stop()`, so it is always running once the plugin is enabled.
 - **Smoke grenades** (`smoke/`): shop consumables with `smoke_grenade: true` (defaults in shop.yml `smoke_grenade`,
-  key `radius` 1-24, `duration-seconds` 1-300, `blind-seconds` 0-30, `particle` (default `CAMPFIRE_COSY_SMOKE`;
+  key `radius` 1-24 = **full horizontal patch footprint** (default 6 = a 6x6 patch; the plume rises to
+  half of it), `duration-seconds` 1-300, `blind-seconds` 0-30, `particle` (default `CAMPFIRE_COSY_SMOKE`;
   the legacy `LARGE_SMOKE` value is remapped to campfire smoke on read, so old tagged items + unedited configs
   convert), `tick-rate` 1-40). The item is tagged (PDC `smoke_grenade` + per-item settings `smoke_grenade_radius/...`) so it
   survives inventory/reload; right-click cancels the click, consumes one stack slot, throttles per tick and launches a
   tagged `Snowball` (`smoke_grenade_projectile`) with the settings PDC-encoded. Impact (`SmokeGrenadeManager.detonate`)
   spawns a ticking task (`tick-rate`) that
-  emits a particle cloud (`radius` × 2 per tick), applies `BLINDNESS` to living entities inside every tick-rate cycle,
+  emits ONE dense puff filling the patch (`radius` x 2 single particles per tick at explicit random
+  positions inside the footprint, each position validated with `WorldUtil.isPassable` - particles never
+  render inside blocks), applies `BLINDNESS` to living entities inside the patch every tick-rate cycle,
   cancels `EntityTargetEvent` for mobs whose target location is inside the cloud, and clears existing mob targets
-  (`Mob#setTarget(null)`) while the cloud is active. Clouds are in-memory (`clouds` set), cleaned on reload/stop;
+  (`Mob#setTarget(null)`) while the cloud is active. Cloud effects use a box test (`WorldUtil.withinBox`
+  - full width = the footprint, vertical span `[origin - 1, origin + height]`); world-math helpers live in
+  `util/WorldUtil`. Clouds are in-memory (`clouds` set), cleaned on reload/stop;
   `SmokeGrenadeListener` also blocks mob targeting during the cloud (`EventPriority.LOW`).
 - **Item creation single source (`util/ItemUtil`)**: the class is a rename+merge of the old `RelicItemUtil`
   (init at `ExtractionPlugin` still provides the `is_relic`/`relic_kind`/`relic_id` keys - relics, shop,

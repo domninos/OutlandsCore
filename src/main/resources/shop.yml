@@ -163,15 +163,17 @@ shop:
         smoke_grenade: true
         custom-model-data: 1002
         model: "extraction/smoke_grenade"
+        # Full horizontal patch footprint (radius 6 = a 6x6 area); the plume
+        # rises to half of it. Particles only render in air blocks.
         radius: 6
         duration-seconds: 15
-        blind-seconds: 6
+        blind-seconds: 1
         particle: CAMPFIRE_COSY_SMOKE
         tick-rate: 5
         name: "<gray><bold>Smoke Grenade</bold></gray>"
         lore:
-          - "<gray>Clouds a 6-block radius with</gray>"
-          - "<gray>blinding smoke on impact.</gray>"
+          - "<gray>Dense smoke patch - blinds</gray>"
+          - "<gray>anyone caught inside it.</gray>"
           - "<gold>Cost: %cost% tokens</gold>"
           - "<gray>Click to buy</gray>"
 

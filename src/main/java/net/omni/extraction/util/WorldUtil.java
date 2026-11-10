@@ -76,6 +76,33 @@ public final class WorldUtil {
         return !material.isAir() && !material.isTransparent() && material.isSolid();
     }
 
+    public static boolean isPassable(World world, int x, int y, int z) {
+        if (world == null)
+            return false;
+
+        return world.getBlockAt(x, y, z).isPassable();
+    }
+
+    /**
+     * Axis-aligned box containment around {@code origin} (full width
+     * {@code 2 * halfExtentXZ}, vertical span {@code [yBase, yTop]} relative to
+     * the origin), with the same cross-world guard as {@link #withinRadius}.
+     */
+    public static boolean withinBox(Location origin, Location point,
+                                    double halfExtentXZ, double yBase, double yTop) {
+        if (origin == null || point == null)
+            return false;
+
+        if (!sameWorld(origin, point))
+            return false;
+
+        double dx = Math.abs(point.getX() - origin.getX());
+        double dz = Math.abs(point.getZ() - origin.getZ());
+        double dy = point.getY() - origin.getY();
+
+        return dx <= halfExtentXZ && dz <= halfExtentXZ && dy >= yBase && dy <= yTop;
+    }
+
     public static Location firstSolidBetween(Location from, Location to) {
         World world = from.getWorld();
         World targetWorld = to.getWorld();

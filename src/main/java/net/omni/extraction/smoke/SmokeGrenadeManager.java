@@ -2,6 +2,7 @@ package net.omni.extraction.smoke;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.util.ParticleUtil;
+import net.omni.extraction.util.WorldUtil;
 import org.bukkit.*;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
@@ -15,6 +16,14 @@ import org.bukkit.scheduler.BukkitTask;
 import java.util.*;
 
 public class SmokeGrenadeManager implements Runnable {
+
+    /**
+     * Vertical margin below the impact point so entities standing at ground
+     * level where the grenade landed are covered by the patch.
+     */
+    private static final double Y_BASE_MARGIN = 1.0;
+
+    private final Random random = new Random();
 
     public static final int DEFAULT_RADIUS = Settings.DEFAULT.radius();
     public static final int DEFAULT_DURATION = Settings.DEFAULT.durationSeconds();
@@ -218,9 +227,26 @@ public class SmokeGrenadeManager implements Runnable {
 
     private void spawnParticles(Cloud cloud) {
         World world = cloud.origin.getWorld();
-        int amount = Math.max(cloud.settings.radius() * 2, 6);
-        world.spawnParticle(resolveParticle(cloud.settings.particle()), cloud.origin,
-                amount, cloud.settings.radius(), cloud.settings.radius(), cloud.settings.radius(), 0.05);
+
+        if (world == null)
+            return;
+
+        Particle particle = resolveParticle(cloud.settings.particle());
+        int count = Math.max(cloud.settings.radius() * 2, 6);
+
+        // One dense puff filling the patch: every particle is placed at an
+        // explicit random position inside the footprint and only spawns when
+        // that position is in air - nothing renders inside blocks.
+        for (int i = 0; i < count; i++) {
+            double x = cloud.origin.getX() + (random.nextDouble() * 2 - 1) * cloud.halfExtent;
+            double y = cloud.origin.getY() + random.nextDouble() * cloud.height;
+            double z = cloud.origin.getZ() + (random.nextDouble() * 2 - 1) * cloud.halfExtent;
+
+            if (!WorldUtil.isPassable(world, (int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z)))
+                continue;
+
+            world.spawnParticle(particle, x, y, z, 1, 0.0, 0.0, 0.0, 0.0);
+        }
     }
 
     private void applyBlindness(Cloud cloud) {
@@ -233,8 +259,9 @@ public class SmokeGrenadeManager implements Runnable {
             return;
 
         for (LivingEntity entity : world.getNearbyLivingEntities(cloud.origin, cloud.settings.radius())) {
-            entity.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS,
-                    cloud.settings.blindSeconds() * 20, 0, false, false, false));
+            if (inCloud(cloud, entity.getLocation()))
+                entity.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS,
+                        cloud.settings.blindSeconds() * 20, 0, false, false, false));
         }
     }
 
@@ -253,9 +280,14 @@ public class SmokeGrenadeManager implements Runnable {
             if (target == null)
                 continue;
 
-            if (blocksTargeting(target.getLocation()))
+            if (inCloud(cloud, target.getLocation()))
                 mob.setTarget(null);
         }
+    }
+
+    private boolean inCloud(Cloud cloud, Location location) {
+        return WorldUtil.withinBox(cloud.origin, location,
+                cloud.halfExtent, -Y_BASE_MARGIN, cloud.height);
     }
 
     private Particle resolveParticle(String name) {
@@ -270,15 +302,7 @@ public class SmokeGrenadeManager implements Runnable {
             if (cloud.expiresAt < now)
                 continue;
 
-            if (cloud.origin.getWorld() != location.getWorld())
-                continue;
-
-            int radius = cloud.settings.radius();
-            double dx = location.getX() - cloud.origin.getX();
-            double dy = location.getY() - cloud.origin.getY();
-            double dz = location.getZ() - cloud.origin.getZ();
-
-            if (dx * dx + dy * dy + dz * dz <= radius * radius)
+            if (inCloud(cloud, location))
                 return true;
         }
 
@@ -301,7 +325,7 @@ public class SmokeGrenadeManager implements Runnable {
     public record Settings(int radius, int durationSeconds, int blindSeconds,
                            String particle, int tickRate) {
 
-        public static final Settings DEFAULT = new Settings(6, 15, 6, "CAMPFIRE_COSY_SMOKE", 5);
+        public static final Settings DEFAULT = new Settings(6, 15, 1, "CAMPFIRE_COSY_SMOKE", 5);
 
         public void writeTo(PersistentDataContainer container,
                             NamespacedKey radiusKey, NamespacedKey durationKey,
@@ -319,12 +343,17 @@ public class SmokeGrenadeManager implements Runnable {
         private final Settings settings;
         private final Location origin;
         private final long expiresAt;
+        private final double halfExtent;
+        private final double height;
         private int tick;
 
         private Cloud(Settings settings, Location origin, long expiresAt) {
             this.settings = settings;
             this.origin = origin.clone();
             this.expiresAt = expiresAt;
+            // radius = full patch footprint; the plume rises to half of it.
+            this.halfExtent = settings.radius() / 2.0;
+            this.height = settings.radius() / 2.0;
         }
     }
 }
