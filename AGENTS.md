@@ -3,7 +3,7 @@
 ## Project
 Extraction - a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 - Package: `net.omni.extraction`
-- Artifact: `net.omni:Extraction:1.2.4`
+- Artifact: `net.omni:Extraction:1.2.5`
 - Main class: `net.omni.extraction.ExtractionPlugin`
 - Data file: `extraction.db` under `plugins/Extraction/data/` by default; or MariaDB/MySQL when `storage.type: mysql` (see Storage below)
 - Permissions: `extraction.*` with children `extraction.admin`, `extraction.play`, `extraction.areas`, `extraction.party`, `extraction.bypass.cooldown`
@@ -12,10 +12,10 @@ Extraction - a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 
 ## Build & verify
 - Compile: `mvn clean compile`
-- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) - `target/Extraction-1.2.4.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.2.4.jar` into the server's `plugins/Extraction/` and restart - an IDE build does not deploy to the server folder.
-- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.2.4.jar` to confirm the server runs the current build.
+- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) - `target/Extraction-1.2.5.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.2.5.jar` into the server's `plugins/Extraction/` and restart - an IDE build does not deploy to the server folder.
+- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.2.5.jar` to confirm the server runs the current build.
 - There is no test suite; compiling `mvn clean compile` is the verification step for syntax; `mvn clean package` is required before claiming a fix is deployed.
-- **Version-bump prompt (MAJOR releases only):** before declaring a major release/update finished, ask the user whether to bump the plugin version (`pom.xml` `<version>`); bump only on confirmation â€” do NOT prompt for small bugfix-only sessions. When a bump is confirmed, also update the version references inside this file (this section) so the docs stay in sync. Current version: `1.2.4` (bumped from `1.0.0` on 2026-11-03; → 1.1.1 mid-day; → 1.1.3 with the convoy-route rework; → 1.1.4 with the loadout-wipe + wand-spawn-editor fixes; → 1.2.0, re-bumped on 2026-11-08, with walls + natural mob loot/spawning + always-night; → 1.2.3 on 2026-11-09 with loot beams + per-player glow + loadout pane variety; → 1.2.4 on 2026-11-10 with the BossBarManager centralization, live extraction-player set, beam view-radius, boss-style numeric wizard, and mojibake fixes).
+- **Version-bump prompt (MAJOR releases only):** before declaring a major release/update finished, ask the user whether to bump the plugin version (`pom.xml` `<version>`); bump only on confirmation â€” do NOT prompt for small bugfix-only sessions. When a bump is confirmed, also update the version references inside this file (this section) so the docs stay in sync. Current version: `1.2.5` (bumped from `1.0.0` on 2026-11-03; → 1.1.1 mid-day; → 1.1.3 with the convoy-route rework; → 1.1.4 with the loadout-wipe + wand-spawn-editor fixes; → 1.2.0, re-bumped on 2026-11-08, with walls + natural mob loot/spawning + always-night; → 1.2.3 on 2026-11-09 with loot beams + per-player glow + loadout pane variety; → 1.2.4 on 2026-11-10 with the BossBarManager centralization, live extraction-player set, beam view-radius, boss-style numeric wizard, and mojibake fixes; → 1.2.5 on 2026-11-10 with the ProtocolLib chest animations, harvest-chest loot-in-chest flow, and the chunk-unload loot-drop fix).
 
 ## Conventions
 
@@ -303,6 +303,11 @@ via `Math.sqrt` of the squared value only when needed.
   Wand CHEST mode left-clicks to open the loot-table picker (sneak removes the nearest; the picker applies the type);
   `/areas setchest {area} {index} {type|remove}`.
   Per-area hologram position: `Area.hologramLocation` - `hologram.x/y/z` in the area file, omitted when unset.
+  Chest OPEN animation: `util/PacketChest` broadcasts the vanilla chest BLOCK_ACTION (action 1, param 1/0,
+  both double-chest halves) via ProtocolLib; `createLootChests` closes-then-reopens every filled container on
+  each clear, and `AreaListener.onInventoryClose` -> `AreaClearManager.handleChestClose` keeps registered
+  chests open while loot remains and closes them once emptied (opened state is visual-only and can reset on
+  restart/chunk reset).
 - `chat/ActionBarManager.java`: the default HUD (replaces the scoreboard). Repeating task (`actionbar.update-ticks`)
   sends the run/cooldown timer (`%extraction_timer%`) while a player is in a run or on cooldown; `showTokens(UUID,int)`
   overlays `+{n} tokens` for `actionbar.kill-feedback-ticks`. Reads `actionbar.enabled`.
@@ -739,9 +744,13 @@ via `Math.sqrt` of the squared value only when needed.
     `EventInstance` tracks `currentWave`/`wavesTotal`/`lastWaveTime`/`reinforcementsSpawned`/`reachedFinalWave`;
     `spawnGroup` takes level/count gains and `addTotal` keeps `%total%` cumulative. On success a timed/chest event
     may **spawn harvest chests**: `spawnHarvestChests` places `harvest-chests` CHESTs near the origin filled from the
-    event loot table (`items-per-chest` rolls each), tracked in `harvestChests` (Location - holder) and claimed via
-    `WorldEventListener.onInteract` - `claimHarvestChest` (grants loot, breaks the block; not coupled to area-clear
-    chests; `clearHarvestChests()` runs on disable). New per-event `broadcast.wave`/`title.wave`/`sounds.wave` and
+    event loot table (`items-per-chest` rolls each), tracked in `harvestChests` (Location - holder). There is NO
+    claim interaction: the chest spawns with the `PacketChest` open animation, right-click opens it like any
+    container (players take loot by hand; `WorldEventListener.onBlockBreak` still blocks breaking), and
+    `WorldEventListener.onInventoryClose` -> `handleChestClose` re-opens it while loot remains or closes it +
+    schedules removal 60s after it is emptied (inventory cleared first; per-location task cancelled by
+    `clearFor`/`clearAll`). Removing an instance's LAST chest restores its terrain (`ctx.terrain().restoreTerrain` -
+    the meteor crater trigger). `clearHarvestChests()`/`clearAll()` runs on disable. New per-event `broadcast.wave`/`title.wave`/`sounds.wave` and
     `%wave%`/`%waves%` placeholders (broadcast + boss-bar + waypoint). `EVENT:<id>` is a loot/mob-drop type
     resolving through the new config.yml `event-items:` section (like `keys:`; `ConfigKeys.EVENT_ITEMS`,
     `ConfigUtil.loadEventItemDefinitions`/`getEventItemDefinitions`, `LootItemUtil.createEventItem`).
@@ -1100,7 +1109,9 @@ via `Math.sqrt` of the squared value only when needed.
   `ItemSpawnEvent` then strips the marker and `LootDropManager.handleSpawn` registers the item UUID
   (`drops`) into the **chunk-bucketed registry** (`drops` + `byChunk` key = chunk-coord long) - later
   merge/vanilla pickup can't re-tag. Registry is memory-only; `EntityPickupItemEvent` (MONITOR),
-  `EntityRemoveEvent` (MONITOR), `ItemDespawnEvent` (MONITOR) untrack; `ItemMergeEvent` registers both
+  `EntityRemoveEvent` (MONITOR, but **skips `Cause.UNLOAD`** - death/extract chunk unloads are transient
+  and the drops must stay tracked for the player's return), `ItemDespawnEvent` (MONITOR) untrack;
+  `ItemMergeEvent` registers both
   sides (EntityRemove cleans the removed half). **Tracking caps**: `tracking.max-per-chunk` (24) refuses
   to track drops into an already-full chunk bucket (they stay vanilla), and `tracking.max-tracked` (256)
   is the global cap - both make a single hot spot physically unable to flood the task/particles.
@@ -1122,6 +1133,10 @@ via `Math.sqrt` of the squared value only when needed.
   hold, so the repeated use-item events approximate it). `LootDropManager.findTarget` walks the 3x3 chunk
   buckets around the player and does one `rayTraceBlocks` per interaction, then tangent/projection
   tolerance `ray-size + item bbox halfwidth` (min distance wins, no hits before the item).
+  Perf guards: the block ray is LAZY (only traced once a candidate passes the cheap aim/distance checks -
+  no trace at all when nothing is nearby), `TrackedDrop` caches primitive x/y/z center + halfwidth
+  (refreshed in `sweep()` every 40 ticks; `findTarget` runs allocation-free), and `tickGlow` bails out
+  entirely when `drops` AND `viewerGlow` are both empty.
   `tryPickup` throttles per player (`cooldown-ms`), `addItem`s the stack - full inventory keeps the item +
   `loot-drop.inventory-full`, a partial fit leaves the remainder on the entity (`Item#setItemStack`),
   full removal plays `ENTITY_ITEM_PICKUP`. Drone pilots are excluded; cooldowns cleared on quit.
