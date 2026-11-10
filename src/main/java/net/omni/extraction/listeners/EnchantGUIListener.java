@@ -6,6 +6,7 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.shop.EnchantShopHolder;
 import net.omni.extraction.shop.EnchantTargetHolder;
 import net.omni.extraction.shop.ShopGUI;
+import net.omni.extraction.util.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -77,7 +78,8 @@ public class EnchantGUIListener implements Listener {
         String key = null;
         for (String k : defs.keySet()) {
             Map<String, Object> d = defs.get(k);
-            String dn = String.valueOf(d.getOrDefault("name", k)).toLowerCase(Locale.ROOT).replaceAll("<[^>]+>", "");
+            String dn = StringUtils.stripTags(String.valueOf(d.getOrDefault("name", k)))
+                    .toLowerCase(Locale.ROOT);
 
             if (name.contains(k) || dn.contains(name) || name.contains(dn.replace(" ", "_"))) {
                 key = k;

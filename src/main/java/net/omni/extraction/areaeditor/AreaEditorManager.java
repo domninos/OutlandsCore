@@ -23,10 +23,13 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 public class AreaEditorManager {
 
     private static final String DEFAULT_LOOT = "LOOT:";
+    private static final Pattern COLON_SPLIT_PATTERN = Pattern.compile(":");
+    private static final Pattern UNDERSCORE_SPLIT_PATTERN = Pattern.compile("_");
 
     private final ExtractionPlugin plugin;
     private final Map<UUID, AreaEditorSession> sessions = new HashMap<>();
@@ -299,7 +302,7 @@ public class AreaEditorManager {
     }
 
     private void handleContent(Player player, AreaEditorSession session, String key) {
-        String[] parts = key.split(":", 3);
+        String[] parts = COLON_SPLIT_PATTERN.split(key, 3);
 
         switch (parts[0]) {
             case "MOB" -> selectMob(player, session, parts[1]);
@@ -672,7 +675,7 @@ public class AreaEditorManager {
     }
 
     private ItemStack contentItem(AreaEditorSession session, String key, ConfigUtil config) {
-        String[] parts = key.split(":", 3);
+        String[] parts = COLON_SPLIT_PATTERN.split(key, 3);
         String type = parts[0];
 
         return switch (type) {
@@ -735,7 +738,7 @@ public class AreaEditorManager {
         if (template != null && template.getDisplayName() != null && !template.getDisplayName().isBlank())
             return template.getDisplayName();
 
-        String[] parts = mobId.toLowerCase(Locale.ROOT).split("_");
+        String[] parts = UNDERSCORE_SPLIT_PATTERN.split(mobId.toLowerCase(Locale.ROOT));
         StringBuilder builder = new StringBuilder();
 
         for (String part : parts) {

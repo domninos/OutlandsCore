@@ -9,8 +9,18 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class SpigotChatRenderer implements ChatRenderer {
+
+    private static final Pattern HEX_OPEN_PATTERN = Pattern.compile("<#[0-9A-Fa-f]{6}>");
+    private static final Pattern HEX_CLOSE_PATTERN = Pattern.compile("</#[0-9A-Fa-f]{6}>");
+    private static final Pattern GRADIENT_OPEN_PATTERN = Pattern.compile("<gradient:[^>]+>");
+    private static final Pattern GRADIENT_CLOSE_PATTERN = Pattern.compile("</gradient>");
+    private static final Pattern HOVER_OPEN_PATTERN = Pattern.compile("<hover:[^>]+>");
+    private static final Pattern HOVER_CLOSE_PATTERN = Pattern.compile("</hover>");
+    private static final Pattern CLICK_OPEN_PATTERN = Pattern.compile("<click:[^>]+>");
+    private static final Pattern CLICK_CLOSE_PATTERN = Pattern.compile("</click>");
 
     private String prefix = "&8[&bExtraction&8]&r ";
 
@@ -64,14 +74,14 @@ public class SpigotChatRenderer implements ChatRenderer {
         for (Map.Entry<String, String> entry : TAG_TO_LEGACY.entrySet())
             result = result.replace(entry.getKey(), entry.getValue());
 
-        result = result.replaceAll("<#[0-9A-Fa-f]{6}>", "");
-        result = result.replaceAll("</#[0-9A-Fa-f]{6}>", "&r");
-        result = result.replaceAll("<gradient:[^>]+>", "");
-        result = result.replaceAll("</gradient>", "&r");
-        result = result.replaceAll("<hover:[^>]+>", "");
-        result = result.replaceAll("</hover>", "");
-        result = result.replaceAll("<click:[^>]+>", "");
-        result = result.replaceAll("</click>", "");
+        result = HEX_OPEN_PATTERN.matcher(result).replaceAll("");
+        result = HEX_CLOSE_PATTERN.matcher(result).replaceAll("&r");
+        result = GRADIENT_OPEN_PATTERN.matcher(result).replaceAll("");
+        result = GRADIENT_CLOSE_PATTERN.matcher(result).replaceAll("&r");
+        result = HOVER_OPEN_PATTERN.matcher(result).replaceAll("");
+        result = HOVER_CLOSE_PATTERN.matcher(result).replaceAll("");
+        result = CLICK_OPEN_PATTERN.matcher(result).replaceAll("");
+        result = CLICK_CLOSE_PATTERN.matcher(result).replaceAll("");
 
         return result;
     }

@@ -1,8 +1,13 @@
 package net.omni.extraction.util;
 
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public final class StringUtils {
+
+    private static final Pattern SPACE_SPLIT_PATTERN = Pattern.compile(" ");
+    private static final Pattern TAG_PATTERN = Pattern.compile("<[^>]+>");
+
     private StringUtils() {
     }
 
@@ -10,7 +15,7 @@ public final class StringUtils {
         if (s == null || s.isEmpty()) {
             return s;
         }
-        String[] parts = s.split(" ");
+        String[] parts = SPACE_SPLIT_PATTERN.split(s);
         StringBuilder sb = new StringBuilder();
 
         for (String p : parts) {
@@ -46,7 +51,7 @@ public final class StringUtils {
         if (s == null)
             return "";
 
-        return s.replaceAll("<[^>]+>", "");
+        return TAG_PATTERN.matcher(s).replaceAll("");
     }
 
     public static Boolean parseBoolean(String value) {

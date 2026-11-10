@@ -6,8 +6,11 @@ import org.bukkit.inventory.ItemStack;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class UpgradeTier {
+
+    private static final Pattern SPACE_SPLIT_PATTERN = Pattern.compile(" ");
 
     private final int tierLevel;
     private final Material material;
@@ -88,7 +91,7 @@ public class UpgradeTier {
     public String getTierName() {
         if (material != null) {
             String name = material.name().replace("_", " ");
-            String[] words = name.split(" ");
+            String[] words = SPACE_SPLIT_PATTERN.split(name);
             StringBuilder sb = new StringBuilder();
 
             for (String word : words) {

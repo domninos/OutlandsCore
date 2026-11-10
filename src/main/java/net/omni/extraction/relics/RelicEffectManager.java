@@ -22,6 +22,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * Relic effects are per-run TIMED: equipping a relic is inert until the player
@@ -44,6 +45,7 @@ public class RelicEffectManager {
     private static final String MAX_HEALTH_NAME = "extraction_relic_health";
     private static final String EXPLORER_ID = "explorer";
     private static final double DEFAULT_EXPLORER_RADIUS = 150.0;
+    private static final Pattern COLON_SPLIT_PATTERN = Pattern.compile(":");
     private final ExtractionPlugin plugin;
     /**
      * player uuid -> (equipped relic id -> expiry epoch millis).
@@ -302,7 +304,7 @@ public class RelicEffectManager {
         if (cached != null)
             return cached;
 
-        String[] parts = spec.split(":", 2);
+        String[] parts = COLON_SPLIT_PATTERN.split(spec, 2);
         Particle particle = ParticleUtil.get(parts[0]);
 
         if (particle == null) {

@@ -5,7 +5,11 @@ import net.Indyuce.mmoitems.api.Type;
 import net.omni.extraction.ExtractionPlugin;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.regex.Pattern;
+
 public class MMOItemsProvider implements ExternalItemProvider {
+
+    private static final Pattern COLON_SPLIT_PATTERN = Pattern.compile(":");
 
     private final ExtractionPlugin plugin;
 
@@ -15,7 +19,7 @@ public class MMOItemsProvider implements ExternalItemProvider {
 
     @Override
     public ItemStack resolveItem(String id) {
-        String[] parts = id.split(":");
+        String[] parts = COLON_SPLIT_PATTERN.split(id);
         if (parts.length < 3) return null;
 
         String typeName = parts[1].toUpperCase();

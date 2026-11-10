@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 /**
  * Single source for ItemStack creation. Relic PDC helpers (renamed in from
@@ -31,6 +32,7 @@ public class ItemUtil {
 
     private static final String KIND_CHARM = "charm";
     private static final String KIND_ARTIFACT = "artifact";
+    private static final Pattern NEWLINE_SPLIT_PATTERN = Pattern.compile("\n");
 
     private static NamespacedKey KEY_RELIC;
     private static NamespacedKey KEY_KIND;
@@ -78,7 +80,7 @@ public class ItemUtil {
             if (lore != null && !lore.isEmpty()) {
                 List<Component> loreLines = new ArrayList<>();
 
-                for (String line : lore.split("\n"))
+                for (String line : NEWLINE_SPLIT_PATTERN.split(lore))
                     loreLines.add(MiniMessage.miniMessage()
                             .deserialize(line.replace("%amount%", String.valueOf(amount))));
 
@@ -132,7 +134,7 @@ public class ItemUtil {
             if (lore != null && !lore.isEmpty()) {
                 List<Component> loreLines = new ArrayList<>();
 
-                for (String line : lore.split("\n"))
+                for (String line : NEWLINE_SPLIT_PATTERN.split(lore))
                     loreLines.add(MiniMessage.miniMessage()
                             .deserialize(line.replace("%time%", String.valueOf(minutes))));
 
@@ -199,7 +201,7 @@ public class ItemUtil {
             } else if (loreObj != null) {
                 List<Component> loreLines = new ArrayList<>();
 
-                for (String line : String.valueOf(loreObj).split("\n"))
+                for (String line : NEWLINE_SPLIT_PATTERN.split(String.valueOf(loreObj)))
                     loreLines.add(MiniMessage.miniMessage().deserialize(line.replace("%key%", keyId)));
 
                 meta.lore(loreLines);
@@ -245,7 +247,7 @@ public class ItemUtil {
             } else if (loreObj != null) {
                 List<Component> loreLines = new ArrayList<>();
 
-                for (String line : String.valueOf(loreObj).split("\n"))
+                for (String line : NEWLINE_SPLIT_PATTERN.split(String.valueOf(loreObj)))
                     loreLines.add(MiniMessage.miniMessage().deserialize(line.replace("%item%", eventItemId)));
 
                 meta.lore(loreLines);
@@ -286,7 +288,7 @@ public class ItemUtil {
 
         if (lore != null && !lore.isEmpty()) {
             List<Component> loreLines = new ArrayList<>();
-            for (String line : lore.split("\n"))
+            for (String line : NEWLINE_SPLIT_PATTERN.split(lore))
                 loreLines.add(MiniMessage.miniMessage().deserialize(line));
 
             meta.lore(loreLines);

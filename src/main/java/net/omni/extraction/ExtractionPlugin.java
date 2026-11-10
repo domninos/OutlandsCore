@@ -140,7 +140,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     /*
 
     TODO:
-     - party join,kick should just say that the target player does not have a party instead of force loading db.
+     - party join,kick should only look for cached parties. if no party found, try loading on db. and once a party is loaded, always cache it. then have the other servers update their cache via a notice or could be through the bungeecord plugin messaging
      - rework party database architecture. cache all players who joined that has a party. if player is in a party, load the entire party so if other party members joins again, no need to re-load the party off db.
      - party/Invites should use DatabaseManager's supply (if async or sync)
      -

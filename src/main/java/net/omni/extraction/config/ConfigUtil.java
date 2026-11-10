@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 
 public class ConfigUtil {
 
@@ -24,6 +25,7 @@ public class ConfigUtil {
             "armor_helmet", "armor_chestplate", "armor_leggings", "armor_boots",
             "weapon", "tool", "food", "potions", "charm", "artifact", "pet"
     };
+    private static final Pattern COMMA_SPLIT_PATTERN = Pattern.compile(",");
 
     private final ExtractionPlugin plugin;
     private final ConfigManager configManager;
@@ -595,7 +597,7 @@ public class ConfigUtil {
 
     private int[] parseColor(String value, int defaultRed, int defaultGreen, int defaultBlue) {
         if (value != null) {
-            String[] parts = value.split(",");
+            String[] parts = COMMA_SPLIT_PATTERN.split(value);
 
             if (parts.length >= 3) {
                 try {

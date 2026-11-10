@@ -8,8 +8,11 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public class BossCreateSubCommand extends BossSub {
+
+    private static final Pattern ID_SANITIZE_PATTERN = Pattern.compile("[^a-z0-9_-]");
 
     public BossCreateSubCommand(ExtractionPlugin plugin) {
         super(plugin);
@@ -35,7 +38,7 @@ public class BossCreateSubCommand extends BossSub {
             return true;
         }
 
-        String id = args[1].toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_-]", "");
+        String id = ID_SANITIZE_PATTERN.matcher(args[1].toLowerCase(Locale.ROOT)).replaceAll("");
         String type = args[2];
         boolean mythic = args.length > 3
                 && Boolean.parseBoolean(args[3].toLowerCase(Locale.ROOT));

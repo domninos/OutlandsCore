@@ -4,7 +4,11 @@ import emanondev.itemedit.ItemEdit;
 import net.omni.extraction.ExtractionPlugin;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.regex.Pattern;
+
 public class ItemEditProvider implements ExternalItemProvider {
+
+    private static final Pattern COLON_SPLIT_PATTERN = Pattern.compile(":");
 
     private final ExtractionPlugin plugin;
 
@@ -14,7 +18,7 @@ public class ItemEditProvider implements ExternalItemProvider {
 
     @Override
     public ItemStack resolveItem(String id) {
-        String[] parts = id.split(":");
+        String[] parts = COLON_SPLIT_PATTERN.split(id);
         if (parts.length < 2) return null;
 
         String itemName = parts[1];

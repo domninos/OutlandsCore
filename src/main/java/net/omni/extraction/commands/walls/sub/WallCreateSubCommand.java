@@ -11,8 +11,11 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public class WallCreateSubCommand extends WallSub {
+
+    private static final Pattern ID_PATTERN = Pattern.compile("[a-z0-9_-]{1,32}");
 
     public WallCreateSubCommand(ExtractionPlugin plugin) {
         super(plugin);
@@ -46,7 +49,7 @@ public class WallCreateSubCommand extends WallSub {
 
         String id = args[1].toLowerCase(Locale.ROOT);
 
-        if (!id.matches("[a-z0-9_-]{1,32}")) {
+        if (!ID_PATTERN.matcher(id).matches()) {
             plugin.sendMessage(sender, Messages.WALL_INVALID_ID.replace("id", args[1]));
             return true;
         }

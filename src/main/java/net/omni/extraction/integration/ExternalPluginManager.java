@@ -3,7 +3,11 @@ package net.omni.extraction.integration;
 import net.omni.extraction.ExtractionPlugin;
 import org.bukkit.Bukkit;
 
+import java.util.regex.Pattern;
+
 public class ExternalPluginManager {
+
+    private static final Pattern COLON_SPLIT_PATTERN = Pattern.compile(":");
 
     private final ExtractionPlugin plugin;
     private boolean placeholderAPI;
@@ -114,7 +118,7 @@ public class ExternalPluginManager {
     public ExternalItemProvider getItemProvider(String externalId) {
         if (externalId == null) return null;
 
-        String prefix = externalId.contains(":") ? externalId.split(":")[0].toLowerCase() : "";
+        String prefix = externalId.contains(":") ? COLON_SPLIT_PATTERN.split(externalId)[0].toLowerCase() : "";
 
         try {
             return switch (prefix) {

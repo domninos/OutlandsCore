@@ -12,11 +12,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public final class DataUtility {
 
     private static final int LEGACY_SLOT_COUNT = 11;
     private static final int[] LEGACY_ARMOR_SLOTS = {10, 19, 28, 37};
+    private static final Pattern PIPE_SPLIT_PATTERN = Pattern.compile("\\|");
 
     private DataUtility() {
     }
@@ -115,7 +117,7 @@ public final class DataUtility {
         if (value == null || value.isBlank())
             return null;
 
-        String[] parts = value.split("\\|");
+        String[] parts = PIPE_SPLIT_PATTERN.split(value);
         if (parts.length < 6)
             return null;
 
