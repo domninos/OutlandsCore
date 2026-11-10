@@ -1,12 +1,9 @@
 package net.omni.extraction.commands.party.sub;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.party.Party;
-import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class PartyJoinSubCommand extends PartySub {
@@ -32,19 +29,9 @@ public class PartyJoinSubCommand extends PartySub {
 
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        if (args.length != 2)
-            return List.of();
+        if (args.length == 2)
+            return null;
 
-        List<String> names = new ArrayList<>();
-
-        if (sender instanceof Player player) {
-            Party party = plugin.getPartyManager().loadPartyOfPlayer(player.getUniqueId());
-
-            if (party != null)
-                names.addAll(party.getMembers().values());
-        }
-
-        names.addAll(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
-        return names;
+        return List.of();
     }
 }
