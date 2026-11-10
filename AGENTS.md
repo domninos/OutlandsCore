@@ -662,6 +662,12 @@ via `Math.sqrt` of the squared value only when needed.
   `saveToFile=false`, named `extraction_area_<lowercase>`. Guarded by `DecentHologramsAPI.isRunning()` +
   `isPluginEnabled("DecentHolograms")` (missing plugin = silent no-op). pom gained the `codemc` repo
   (`repo.codemc.io/repository/maven-public`) to resolve DH's runtime `de.tr7zw:item-nbt-api`.
+  Perf guards (spark: refreshChestHolograms was the top plugin frame): `refreshChestHolograms` reuses a
+  persistent `expectedChestNames` set (cleared per pass; the pruning `new ArrayList<>(appliedChestLines.keySet())`
+  stays - required, the map mutates during removal), and `updateChestHologram`/`updateStandaloneHologram`
+  fast-path settled holograms through the cached `ChestSpot` record (position primitives + active/loot +
+  area/table identity) - no `chestStateKey`/`Location` builds while unchanged; any spot change falls through
+  to the full rebuild path, so holograms stay timely within one `update-ticks` pass.
 - Container config + loot-chest holograms: config.yml `containers` is now the single source of truth for accepted
   container materials (`AreaChestLocation.refreshContainers` re-seeds `CONTAINER_TYPES` on load/reload; a
   `SHULKER_BOX` entry matches every `*_SHULKER_BOX`). The CHEST-mode wand rejects left-clicked blocks not in the

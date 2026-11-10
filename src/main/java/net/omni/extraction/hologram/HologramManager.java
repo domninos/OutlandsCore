@@ -17,6 +17,7 @@ import org.bukkit.Location;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class HologramManager {
 
@@ -30,6 +31,8 @@ public class HologramManager {
     private final Map<String, String> lastAppliedSignature;
     private final Map<String, String> lastChestState;
     private final Map<String, List<String>> chestLineCache;
+    private final Map<String, ChestSpot> chestSpots;
+    private final Set<String> expectedChestNames;
     private boolean enabled = false;
     private BukkitTask task;
 
@@ -44,6 +47,8 @@ public class HologramManager {
         this.lastAppliedSignature = new HashMap<>();
         this.lastChestState = new HashMap<>();
         this.chestLineCache = new HashMap<>();
+        this.chestSpots = new HashMap<>();
+        this.expectedChestNames = new HashSet<>();
     }
 
     public static String chestHologramName(Location anchor) {
@@ -71,6 +76,7 @@ public class HologramManager {
         lastChestState.clear();
         chestLineCache.clear();
         appliedChestLines.clear();
+        chestSpots.clear();
 
         int ticks = plugin.getConfigUtil().getHologramsUpdateTicks();
         task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -123,6 +129,8 @@ public class HologramManager {
         lastAppliedSignature.clear();
         lastChestState.clear();
         chestLineCache.clear();
+        chestSpots.clear();
+        expectedChestNames.clear();
     }
 
     /**
@@ -144,14 +152,39 @@ public class HologramManager {
             return null;
 
         Location anchor = chest.getLocation();
+        if (anchor == null || anchor.getWorld() == null)
+            return null;
+
         String name = chestHologramName(anchor);
         if (name == null)
             return null;
 
-        // Cheap state key first: lines (and their MiniMessage->DH toDh conversion)
+        // Fast path: a settled hologram is detected via a primitive spot record
+        // (position + clear/loot state + area/table identity) - no Location or
+        // state-key string builds while nothing changed. The full pass cadence
+        // is unchanged, so state changes are picked up within one pass.
+        AreaClearManager clearManager = plugin.getAreaClearManager();
+        boolean active = clearManager != null && clearManager.isActive(area);
+        boolean loot = clearManager != null && clearManager.isLootChest(anchor);
+
+        String tableId = chest.getLootType() != null && !chest.getLootType().isBlank()
+                ? chest.getLootType() : area.getLootTable();
+
+        ChestSpot spot = new ChestSpot(anchor.getBlockX(), anchor.getBlockY(), anchor.getBlockZ(),
+                active, loot, area.getName(), tableId == null ? "" : tableId);
+
+        if (spot.equals(chestSpots.get(name)) && lastChestPositions.containsKey(name)) {
+            List<String> cached = chestLineCache.get(name);
+            if (cached != null && !cached.isEmpty())
+                return name;
+        }
+
+        chestSpots.put(name, spot);
+
+        // Cheap state key: lines (and their MiniMessage->DH toDh conversion)
         // are a pure function of this key (state + area name + loot-table id), so
         // an unchanged key reuses the cached lines and skips ALL deserialization.
-        String stateKey = chestStateKey(area, chest);
+        String stateKey = chestStateKey(spot);
         String lastStateKey = lastChestState.get(name);
 
         boolean hologramKnown = lastChestPositions.containsKey(name);
@@ -214,16 +247,9 @@ public class HologramManager {
      * claimable-loot state, owning area, and the effective loot table. Changes in
      * any of these (and only these) require a line rebuild.
      */
-    private String chestStateKey(Area area, AreaChestLocation chest) {
-        AreaClearManager clearManager = plugin.getAreaClearManager();
-        boolean active = clearManager != null && clearManager.isActive(area);
-        boolean loot = clearManager != null && clearManager.isLootChest(chest.getLocation());
-
-        String tableId = chest.getLootType() != null && !chest.getLootType().isBlank()
-                ? chest.getLootType() : area.getLootTable();
-
-        return (active ? "A" : "I") + "_" + (loot ? "R" : "E") + "_"
-                + area.getName() + "_" + (tableId == null ? "" : tableId);
+    private String chestStateKey(ChestSpot spot) {
+        return (spot.active() ? "A" : "I") + "_" + (spot.loot() ? "R" : "E") + "_"
+                + spot.area() + "_" + spot.tableId();
     }
 
     private String cachedLinesKey(String stateKey) {
@@ -239,14 +265,14 @@ public class HologramManager {
         if (!available())
             return;
 
-        Set<String> expected = new HashSet<>();
+        expectedChestNames.clear();
 
         for (Area area : plugin.getAreaManager().getAreas()) {
             for (AreaChestLocation chest : area.getChestLocations()) {
                 String name = updateChestHologram(area, chest);
 
                 if (name != null)
-                    expected.add(name);
+                    expectedChestNames.add(name);
             }
         }
 
@@ -258,11 +284,11 @@ public class HologramManager {
                         standalone.hologramSnapshot(chest));
 
                 if (name != null)
-                    expected.add(name);
+                    expectedChestNames.add(name);
             }
         }
         for (String name : new ArrayList<>(appliedChestLines.keySet()))
-            if (!expected.contains(name))
+            if (!expectedChestNames.contains(name))
                 removeChestHologram(name);
     }
 
@@ -285,6 +311,17 @@ public class HologramManager {
             removeChestHologram(name);
             return null;
         }
+
+        ChestSpot spot = new ChestSpot(anchor.getBlockX(), anchor.getBlockY(), anchor.getBlockZ(),
+                false, false, "", "");
+
+        if (spot.equals(chestSpots.get(name)) && lastChestPositions.containsKey(name)) {
+            List<String> applied = appliedChestLines.get(name);
+            if (applied != null && applied.equals(lines))
+                return name;
+        }
+
+        chestSpots.put(name, spot);
 
         Location position = anchor.getBlock().getLocation().add(0.5, 2.5, 0.5);
 
@@ -327,6 +364,7 @@ public class HologramManager {
         lastChestPositions.remove(name);
         appliedChestLines.remove(name);
         lastChestState.remove(name);
+        chestSpots.remove(name);
 
         if (!available())
             return;
@@ -360,27 +398,19 @@ public class HologramManager {
         boolean active = stateKey.startsWith("A_");
         boolean loot = stateKey.contains("_R_");
 
-        if (active) {
+        if (active)
             raw = plugin.getConfigUtil().getLootChestHologramOngoing();
-        } else if (loot) {
+        else if (loot)
             raw = readyChestHologramLines(area, chest);
-        } else {
+        else
             raw = plugin.getConfigUtil().getLootChestHologramEmpty();
-        }
 
         if (raw == null || raw.isEmpty())
             return List.of();
 
-        List<String> lines = new ArrayList<>(raw.size());
-
-        for (String line : raw) {
-            if (line == null)
-                continue;
-
-            lines.add(toDh(line.replace("%area%", area.getName())));
-        }
-
-        return lines;
+        return raw.stream().map(line ->
+                toDh(line.replace("%area%", area.getName())))
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private List<String> readyChestHologramLines(Area area, AreaChestLocation chest) {
@@ -611,5 +641,15 @@ public class HologramManager {
      */
     public String toDh(String raw) {
         return HologramUtils.toDh(raw);
+    }
+
+    /**
+     * Cheap per-hologram snapshot of everything the chest hologram depends on
+     * (position primitives + clear/loot state + area/table identity). A settled
+     * chest compares this record instead of rebuilding state strings and
+     * Location objects every pass.
+     */
+    private record ChestSpot(int x, int y, int z, boolean active, boolean loot,
+                             String area, String tableId) {
     }
 }
