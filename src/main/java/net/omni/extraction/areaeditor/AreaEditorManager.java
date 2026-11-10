@@ -19,6 +19,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
@@ -142,6 +143,15 @@ public class AreaEditorManager {
         return session.getMode() == Mode.SPAWN && session.getPage() == AreaEditorSession.PAGE_BOSS;
     }
 
+    private boolean isNumericLayout(AreaEditorSession session) {
+        return session.getMode() == Mode.SPAWN && sizeFor() >= 32 && switch (session.getPage()) {
+            case AreaEditorSession.PAGE_COUNT, AreaEditorSession.PAGE_LEVEL,
+                    AreaEditorSession.PAGE_RESPAWN, AreaEditorSession.PAGE_RESPAWN_COUNT,
+                    AreaEditorSession.PAGE_DROP_CHANCE -> true;
+            default -> false;
+        };
+    }
+
     private int sizeFor() {
         return plugin.getConfigUtil().getAreaEditorSize();
     }
@@ -169,16 +179,22 @@ public class AreaEditorManager {
 
         if (isBossPage(session))
             renderBossContent(inventory, session, config);
+        else if (isNumericLayout(session))
+            renderNumericContent(inventory, session, config);
         else
             renderContent(inventory, session, config);
 
-        renderInfo(inventory, session, config, size);
+        if (isNumericLayout(session))
+            inventory.setItem(size - 5, filler(config));
+        else
+            renderInfo(inventory, session, config, size);
+
         fillNav(inventory, session, config, size);
 
         player.openInventory(inventory);
     }
 
-    public void handleClick(Player player, AreaEditorSession session, int rawSlot) {
+    public void handleClick(Player player, AreaEditorSession session, int rawSlot, ClickType click) {
         if (session == null)
             return;
 
@@ -207,6 +223,11 @@ public class AreaEditorManager {
                 && session.getPage() == AreaEditorSession.PAGE_MOB
                 && (rawSlot == 1 || rawSlot == 4 || rawSlot == 7)) {
             handleMobTab(player, session, rawSlot);
+            return;
+        }
+
+        if (isNumericLayout(session)) {
+            handleNumericClick(player, session, config, rawSlot, click);
             return;
         }
 
@@ -603,6 +624,93 @@ public class AreaEditorManager {
             if (item != null)
                 inventory.setItem(slots[i], item);
         }
+    }
+
+    private void renderNumericContent(Inventory inventory, AreaEditorSession session, ConfigUtil config) {
+        ItemStack filler = filler(config);
+
+        for (int slot = contentStart(); slot < sizeFor() - 9; slot++)
+            inventory.setItem(slot, filler);
+
+        if (session.getPage() == AreaEditorSession.PAGE_DROP_CHANCE
+                && session.getCurrentRelic() == null) {
+            inventory.setItem(20, textItem(config.getAreaEditorFillerMaterial(),
+                    "<gray>No relics assigned</gray>"));
+            return;
+        }
+
+        int step = numericStep(session, config, false);
+
+        inventory.setItem(19, valueItem(config.getAreaEditorDecrementIconMaterial(),
+                config.getAreaEditorDecrementIconName().replace("%value%", String.valueOf(step)),
+                "<red>Click to decrease</red>"));
+        inventory.setItem(20, numericValueItem(session, config));
+        inventory.setItem(21, valueItem(config.getAreaEditorIncrementIconMaterial(),
+                config.getAreaEditorIncrementIconName().replace("%value%", String.valueOf(step)),
+                "<green>Click to increase</green>"));
+
+        if (session.getPage() == AreaEditorSession.PAGE_DROP_CHANCE && sizeFor() >= 50)
+            inventory.setItem(40, contentItem(session, "REMOVEDROP", config));
+    }
+
+    private ItemStack numericValueItem(AreaEditorSession session, ConfigUtil config) {
+        String hint = "<gray>Click a +/- button to change.</gray>";
+
+        return switch (session.getPage()) {
+            case AreaEditorSession.PAGE_COUNT -> valueItem(config.getAreaEditorCountIconMaterial(),
+                    config.getAreaEditorCountIconName().replace("%count%",
+                            String.valueOf(session.getCount())), hint);
+            case AreaEditorSession.PAGE_LEVEL -> valueItem(config.getAreaEditorLevelIconMaterial(),
+                    config.getAreaEditorLevelIconName().replace("%value%",
+                            String.valueOf(session.getLevel())), hint);
+            case AreaEditorSession.PAGE_RESPAWN -> valueItem(config.getAreaEditorRespawnIconMaterial(),
+                    config.getAreaEditorRespawnIconName().replace("%value%",
+                            String.valueOf(session.getRespawnSeconds())), hint);
+            case AreaEditorSession.PAGE_RESPAWN_COUNT -> valueItem(config.getAreaEditorRespawnIconMaterial(),
+                    config.getAreaEditorRespawnCountIconName().replace("%value%",
+                            String.valueOf(session.getRespawnCount())), hint);
+            default -> {
+                String relic = session.getCurrentRelic();
+                yield relic == null
+                        ? filler(config)
+                        : valueItem(config.getAreaEditorDropChanceIconMaterial(),
+                        config.getAreaEditorDropChanceIconName().replace("%value%",
+                                String.valueOf((int) session.getRelicChance(relic))), hint);
+            }
+        };
+    }
+
+    private int numericStep(AreaEditorSession session, ConfigUtil config, boolean shift) {
+        List<Integer> increments = switch (session.getPage()) {
+            case AreaEditorSession.PAGE_COUNT -> config.getAreaEditorCountIncrements();
+            case AreaEditorSession.PAGE_LEVEL -> config.getAreaEditorLevelIncrements();
+            case AreaEditorSession.PAGE_RESPAWN -> config.getAreaEditorRespawnIncrements();
+            case AreaEditorSession.PAGE_RESPAWN_COUNT -> config.getAreaEditorRespawnCountIncrements();
+            default -> config.getAreaEditorDropChanceIncrements();
+        };
+
+        if (increments == null || increments.isEmpty())
+            return 1;
+
+        return Math.max(1, shift ? increments.getLast() : increments.getFirst());
+    }
+
+    private void handleNumericClick(Player player, AreaEditorSession session, ConfigUtil config,
+                                    int rawSlot, ClickType click) {
+        if (rawSlot < contentStart() || rawSlot >= sizeFor() - 9)
+            return;
+
+        if (session.getPage() == AreaEditorSession.PAGE_DROP_CHANCE
+                && sizeFor() >= 50 && rawSlot == 40) {
+            handleContent(player, session, "REMOVEDROP");
+            return;
+        }
+
+        if (rawSlot != 19 && rawSlot != 21)
+            return;
+
+        int step = numericStep(session, config, click.isShiftClick());
+        stepValue(player, session, rawSlot == 21 ? step : -step);
     }
 
     private void renderContent(Inventory inventory, AreaEditorSession session, ConfigUtil config) {

@@ -451,7 +451,16 @@ via `Math.sqrt` of the squared value only when needed.
   left-click opens a 5-step wizard (mob select - count - level - respawn - boss) that writes a per-spawn
   `spawn-entries` entry bound to the clicked block. Wand boss right-click was removed (boss set via the GUI).
   Config section `area-editor.*` (title/rows/filler/nav icons, count/level/respawn increments + smallest,
-  +/- and counter icons, boss yes/no icons, mob/chest icon fallbacks, page-nav lore). SPAWN wizard boss YES/NO
+  +/- and counter icons, boss yes/no icons, mob/chest icon fallbacks, page-nav lore). Numeric wizard pages
+  (count/level/respawn/respawn-count/drop-chance) render in the BossCreator style when `area-editor.rows`
+  gives size >= 32: fixed `[-][value][+]` triple at slots 19/20/21 (configured dec/inc icons with
+  "Click to decrease/increase" lore, the configured counter icon + live value + "Click a +/- button to
+  change." hint in the center), remaining content slots filled with `area-editor.filler-*`, the duplicate
+  nav-center value item replaced by filler, and click handling routed by slot through
+  `handleNumericClick`/`numericStep` (plain click = first `*-increments` entry, shift-click = last;
+  drop-chance page keeps its REMOVEDROP button at slot 40 when size >= 50) - `AreaEditorListener` passes
+  the `ClickType` through. Smaller configured sizes fall back to the legacy flat DEC/INC key list.
+  SPAWN wizard boss YES/NO
   page uses the same full-size GUI with the two buttons stacked at the exact center (slots 13/22 in the default
   36-slot layout, center column with equal margins on both axes).
   Bottom nav row: back = first cell, prev-page = center -1, question = center,

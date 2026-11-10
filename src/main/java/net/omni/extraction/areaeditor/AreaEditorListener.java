@@ -49,7 +49,7 @@ public class AreaEditorListener implements Listener {
         if (session == null)
             return;
 
-        plugin.getAreaEditorManager().handleClick(player, session, event.getRawSlot());
+        plugin.getAreaEditorManager().handleClick(player, session, event.getRawSlot(), click);
     }
 
     @EventHandler

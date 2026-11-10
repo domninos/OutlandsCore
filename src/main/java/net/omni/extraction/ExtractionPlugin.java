@@ -144,7 +144,6 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      - similarly, add an EntityUtil
      - fix loadout relic
-     - fix
      -
      -
      - drone custom entity model for texture
@@ -161,6 +160,11 @@ public final class ExtractionPlugin extends JavaPlugin {
         -
          - add "Time remaining" for all party
          -
+         - test mutators
+         -  test artifacts/charms
+         -  polish menus (custom GUI textures)
+         -  LocoUI skill tree
+         -  LocoUI artifacts/pets/charms UI - tbd
          -
          - daily/weekly missions
 
