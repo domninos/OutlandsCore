@@ -304,7 +304,9 @@ public enum Messages {
 
     EVENTS_MUTATORS_FORCED("events.mutators-forced", "<gray>Forced mutators: <white>%mutators%</white>.</gray>"),
     EVENTS_MUTATORS_ACTIVE("events.mutators-active", "<yellow>Mutators this event: <white>%mutators%</white>.</yellow>"),
+    EVENTS_MUTATORS_ONGOING("events.mutators-ongoing", "<yellow>Ongoing <white>%event%</white> mutators: <white>%mutators%</white>.</yellow>"),
     EVENTS_MUTATORS_NONE("events.mutators-none", "<gray>No mutators.</gray>"),
+    EVENTS_REGEN_SUPPRESSED("events.regen-suppressed", "<gray>Health regeneration is suppressed by <white>%event%</white> mutators.</gray>"),
 
     EVENTS_AREA_ANCHORED("events.area-anchored", "<gray>Event anchored to area <white>%area%</white>.</gray>"),
     EVENTS_NAME_SET("events.name-set", "<green>Event <white>%event%</white> now displays as <white>%name%</white>.</green>"),

@@ -92,18 +92,57 @@ public class EventPresentation {
             return;
         }
 
+        broadcastAll(Messages.EVENTS_MUTATORS_ACTIVE
+                .replace("mutators", mutatorNames(mutators)), event, instance);
+    }
+
+    private String mutatorNames(List<Mutator> mutators) {
         StringBuilder names = new StringBuilder();
 
         for (Mutator mutator : mutators) {
             if (!names.isEmpty())
                 names.append(", ");
 
-            names.append("<green>").append(mutator.type().name().toLowerCase(java.util.Locale.ROOT)
+            names.append("<green>").append(mutator.type().name().toLowerCase(Locale.ROOT)
                     .replace('_', ' ')).append("</green>");
         }
 
-        broadcastAll(Messages.EVENTS_MUTATORS_ACTIVE
-                .replace("mutators", names.toString()), event, instance);
+        return names.toString();
+    }
+
+    /**
+     * Tells a player who joined or entered the world mid-event which mutators
+     * are running. Only fires for events that actually have mutators.
+     */
+    public void showMutatorsFor(Player player) {
+        if (player == null || !player.isOnline())
+            return;
+
+        for (EventInstance instance : ctx.active().values()) {
+            List<Mutator> mutators = instance.getActiveMutators();
+
+            if (mutators == null || mutators.isEmpty())
+                continue;
+
+            String line = fill(Messages.EVENTS_MUTATORS_ONGOING
+                    .replace("mutators", mutatorNames(mutators)),
+                    instance.getEvent(), instance);
+
+            ctx.plugin().sendMessage(player, line);
+        }
+    }
+
+    /**
+     * The "why am I not healing" hint, sent when the NO_REGENERATION mutator
+     * actually cancels a SATIATED regen tick (throttled by the caller).
+     */
+    public void sendRegenSuppressed(Player player, EventInstance instance) {
+        if (player == null || instance == null)
+            return;
+
+        ctx.plugin().sendMessage(player, fill(
+                Messages.EVENTS_REGEN_SUPPRESSED.toString(),
+                instance.getEvent(), instance));
     }
 
     public void announceWave(EventInstance instance, int wave) {

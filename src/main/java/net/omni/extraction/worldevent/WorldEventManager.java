@@ -960,6 +960,14 @@ public class WorldEventManager {
         ctx.presentation().showBossBarsFor(player);
     }
 
+    public void showMutatorsFor(Player player) {
+        ctx.presentation().showMutatorsFor(player);
+    }
+
+    public void sendRegenSuppressed(Player player, EventInstance instance) {
+        ctx.presentation().sendRegenSuppressed(player, instance);
+    }
+
     public void hideBossBarsFor(Player player) {
         ctx.presentation().hideBossBarsFor(player);
     }

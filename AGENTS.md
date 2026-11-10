@@ -760,6 +760,12 @@ via `Math.sqrt` of the squared value only when needed.
     Broadcasts/titles go to ALL online players; sounds/boss bar/compass/completion loot only to players inside
     `settings.world-name`. Placeholders `%event%`/`%location%`/`%remaining%`/`%total%`/`%wave%`/`%waves%`
     (`%distance%` reserved).
+    Mutator notification for late joiners: `WorldEventListener.onJoin`/`onWorldChange` (entering the
+    extraction world) call `EventPresentation.showMutatorsFor(player)`, which sends the new
+    `events.mutators-ongoing` line per active event that actually has mutators (no "No mutators." spam);
+    mutators themselves are world-global, so late joiners are already affected. When the
+    `NO_REGENERATION` mutator cancels a `SATIATED` regen, `events.regen-suppressed` is sent to the
+    player, throttled per player (30s, `WorldEventListener.regenHints`, cleared on quit).
     Stale/expired sessions `endEvent(instance,false)` (despawn mobs, hide bar, remove waypoint, cancel).
     `/extraction events status|list|start {id}|stop [id|all]` (perm `extraction.admin`) + help + tab completer
     wired; `shutdown()` on disable; `reload()` on `/extraction reload`.

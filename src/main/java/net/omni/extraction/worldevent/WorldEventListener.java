@@ -26,11 +26,16 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class WorldEventListener implements Listener {
 
+    private static final long REGEN_HINT_COOLDOWN_MS = 30_000;
+
     private final ExtractionPlugin plugin;
+    private final Map<UUID, Long> regenHints = new HashMap<>();
 
     public WorldEventListener(ExtractionPlugin plugin) {
         this.plugin = plugin;
@@ -138,12 +143,18 @@ public class WorldEventListener implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        plugin.getWorldEventManager().showBossBarsFor(event.getPlayer());
+        Player player = event.getPlayer();
+
+        plugin.getWorldEventManager().showBossBarsFor(player);
+
+        if (isInExtractionWorld(player))
+            plugin.getWorldEventManager().showMutatorsFor(player);
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         plugin.getWorldEventManager().hideBossBarsFor(event.getPlayer());
+        regenHints.remove(event.getPlayer().getUniqueId());
     }
 
     @EventHandler
@@ -151,10 +162,17 @@ public class WorldEventListener implements Listener {
         WorldEventManager manager = plugin.getWorldEventManager();
         Player player = event.getPlayer();
 
-        if (plugin.getConfigUtil().getWorldName().equalsIgnoreCase(player.getWorld().getName()))
+        if (isInExtractionWorld(player)) {
             manager.showBossBarsFor(player);
-        else
+            manager.showMutatorsFor(player);
+        } else
             manager.hideBossBarsFor(player);
+    }
+
+    private boolean isInExtractionWorld(Player player) {
+        String worldName = plugin.getConfigUtil().getWorldName();
+        return worldName != null && !worldName.isBlank()
+                && worldName.equalsIgnoreCase(player.getWorld().getName());
     }
 
     @EventHandler
@@ -219,25 +237,37 @@ public class WorldEventListener implements Listener {
         if (manager == null)
             return;
 
-        boolean hasNoRegen = false;
+        EventInstance noRegenInstance = null;
+
         for (EventInstance inst : manager.getActiveEvents()) {
             Mutator nr = inst.getMutator(MutatorType.NO_REGENERATION);
 
             if (nr != null && nr.disableRegen()) {
-                hasNoRegen = true;
+                noRegenInstance = inst;
                 break;
             }
         }
 
-        if (!hasNoRegen)
+        if (noRegenInstance == null)
             return;
 
         String worldName = plugin.getConfigUtil().getWorldName();
         if (worldName == null || !worldName.equalsIgnoreCase(player.getWorld().getName()))
             return;
 
-        if (event.getRegainReason() == EntityRegainHealthEvent.RegainReason.SATIATED)
-            event.setCancelled(true);
+        if (event.getRegainReason() != EntityRegainHealthEvent.RegainReason.SATIATED)
+            return;
+
+        event.setCancelled(true);
+
+        long now = System.currentTimeMillis();
+        Long last = regenHints.get(player.getUniqueId());
+
+        if (last != null && now - last < REGEN_HINT_COOLDOWN_MS)
+            return;
+
+        regenHints.put(player.getUniqueId(), now);
+        manager.sendRegenSuppressed(player, noRegenInstance);
     }
 
     public void register() {
