@@ -147,17 +147,13 @@ public final class ExtractionPlugin extends JavaPlugin {
        - party/Invites should use DatabaseManager's supply (if async or sync)
      - For all tab completes, make sure to just return null if that argument is for online players. null = returns list of all online players.
      - also check all pattern matching, patterns (regex) should be a constant variable instead of inline initialization
-     - LootResolver should use ItemUtil (import all necessary methods from LootItemUtil to ItemUtil)
+     -
      - LootDropManager double beamViewRadius = config.getLootDropBeamViewRadius(); not used
      - have CorseManager's Npc have the arm and legs kinda broken (random torso turn)
      - AdminModeManager should have PlayerQuitEvent to PlayerListener
      - move MobTemplateManager's parseBoolean on StringUtils
      - have all Enchantment.getByKey and Particle.valueOf/Sound.valueOf should have a Util of their own (ref: ShopManager, EventPresentation#decodeSound)
-     - have UpgradeGUI utilize ItemUtil as well as UpgradeTokenUtil import relevant methods to ItemUtil
      -
-     -
-     - have all methods that check for nearestPlayer utilize GeomUtil#nearestPlayer (ref: RoamBehavior#nearestPlayer)
-     - have TerrainService#applyCrater utilize GeomUtil
      -
      - similarly, add an EntityUtil
      - make a BossBarManager, move all related to boss bars on that (ref: EventPresentation#setupBossBar)
@@ -296,8 +292,6 @@ public final class ExtractionPlugin extends JavaPlugin {
         configUtil.load();
         chatRenderer.setPrefix(configUtil.getPrefix());
 
-        UpgradeTokenUtil.init(this);
-        LootItemUtil.init(this);
         ItemUtil.init(this);
         LoadoutGUI.init(this);
         PacketGlow.init(this);

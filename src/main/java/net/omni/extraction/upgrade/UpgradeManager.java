@@ -4,7 +4,6 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.loadout.LoadoutSlot;
 import net.omni.extraction.util.ItemUtil;
-import net.omni.extraction.util.UpgradeTokenUtil;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
@@ -139,7 +138,7 @@ public class UpgradeManager {
             }
         }
 
-        ItemStack item = UpgradeTokenUtil.createTokenItem(material, displayName, loreBuilder.toString(), slot, tier);
+        ItemStack item = ItemUtil.createTokenItem(material, displayName, loreBuilder.toString(), slot, tier);
         tokenItemCache.put(tokenKey, item);
         return item.clone();
     }

@@ -5,6 +5,7 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.data.PlayerData;
 import net.omni.extraction.loadout.LoadoutSlot;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -83,10 +84,10 @@ public class UpgradeGUI {
         if (tier != null && tier.getMaterial() != null)
             item = plugin.getLoadoutManager().buildTierItem(tier);
         else
-            item = new ItemStack(Material.BARRIER);
+            item = ItemUtil.createItem(Material.BARRIER, null, null);
 
         if (item == null)
-            item = new ItemStack(Material.BARRIER);
+            item = ItemUtil.createItem(Material.BARRIER, null, null);
 
         ItemMeta meta = item.getItemMeta();
 
@@ -134,7 +135,7 @@ public class UpgradeGUI {
 
         if (material == null || material.isAir()) return;
 
-        ItemStack filler = new ItemStack(material);
+        ItemStack filler = ItemUtil.createItem(material, null, null);
         ItemMeta meta = filler.getItemMeta();
 
         if (meta != null) {

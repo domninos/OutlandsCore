@@ -1,5 +1,7 @@
 package net.omni.extraction.util;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.relics.RelicDefinition;
@@ -33,6 +35,15 @@ public class ItemUtil {
     private static NamespacedKey KEY_RELIC;
     private static NamespacedKey KEY_KIND;
     private static NamespacedKey KEY_ID;
+    private static NamespacedKey KEY_TOKEN;
+    private static NamespacedKey KEY_TOKEN_AMOUNT;
+    private static NamespacedKey KEY_TIME;
+    private static NamespacedKey KEY_TIME_MINUTES;
+    private static NamespacedKey KEY_IS_KEY;
+    private static NamespacedKey KEY_KEY_ID;
+    private static NamespacedKey KEY_UPGRADE_SLOT;
+    private static NamespacedKey KEY_UPGRADE_TIER;
+    private static NamespacedKey KEY_IS_UPGRADE_TOKEN;
 
     private static ExtractionPlugin PLUGIN;
 
@@ -41,6 +52,296 @@ public class ItemUtil {
         KEY_RELIC = new NamespacedKey(plugin, "is_relic");
         KEY_KIND = new NamespacedKey(plugin, "relic_kind");
         KEY_ID = new NamespacedKey(plugin, "relic_id");
+        KEY_TOKEN = new NamespacedKey(plugin, "is_loot_token");
+        KEY_TOKEN_AMOUNT = new NamespacedKey(plugin, "token_amount");
+        KEY_TIME = new NamespacedKey(plugin, "is_time_item");
+        KEY_TIME_MINUTES = new NamespacedKey(plugin, "time_minutes");
+        KEY_IS_KEY = new NamespacedKey(plugin, "is_key");
+        KEY_KEY_ID = new NamespacedKey(plugin, "key_id");
+        KEY_UPGRADE_SLOT = new NamespacedKey(plugin, "upgrade_slot");
+        KEY_UPGRADE_TIER = new NamespacedKey(plugin, "upgrade_tier");
+        KEY_IS_UPGRADE_TOKEN = new NamespacedKey(plugin, "is_upgrade_token");
+    }
+
+    public static ItemStack createTokenItem(String materialName, String displayName, String lore, int amount) {
+        Material material = Material.matchMaterial(materialName);
+
+        if (material == null)
+            material = Material.GOLD_INGOT;
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            meta.customName(MiniMessage.miniMessage().deserialize(displayName.replace("%amount%", String.valueOf(amount))));
+
+            if (lore != null && !lore.isEmpty()) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (String line : lore.split("\n"))
+                    loreLines.add(MiniMessage.miniMessage()
+                            .deserialize(line.replace("%amount%", String.valueOf(amount))));
+
+                meta.lore(loreLines);
+            }
+
+            meta.getPersistentDataContainer().set(KEY_TOKEN, PersistentDataType.BYTE, (byte) 1);
+            meta.getPersistentDataContainer().set(KEY_TOKEN_AMOUNT, PersistentDataType.INTEGER, Math.max(1, amount));
+            item.setItemMeta(meta);
+        }
+
+        item.setAmount(1);
+        return item;
+    }
+
+    public static int getTokenAmount(ItemStack item) {
+        if (!isTokenItem(item)) return 0;
+
+        Integer amount = item.getItemMeta()
+                .getPersistentDataContainer()
+                .get(KEY_TOKEN_AMOUNT, PersistentDataType.INTEGER);
+
+        return amount != null ? Math.max(1, amount) : 1;
+    }
+
+    public static boolean isTokenItem(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return false;
+        if (KEY_TOKEN == null) return false;
+
+        return item.getItemMeta().getPersistentDataContainer().has(KEY_TOKEN, PersistentDataType.BYTE);
+    }
+
+    public static ItemStack createTimeItem(String materialName, String displayName, String lore, int minutes) {
+        Material material = Material.matchMaterial(materialName);
+        if (material == null) material = Material.CLOCK;
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            String name = displayName;
+
+            if (name.contains("%time%")) {
+                name = name.replace("%time%", String.valueOf(minutes));
+            } else {
+                name = name + " <gray>(+" + minutes + " minute" + (minutes == 1 ? "" : "s") + ")</gray>";
+            }
+
+            meta.customName(MiniMessage.miniMessage().deserialize(name));
+
+            if (lore != null && !lore.isEmpty()) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (String line : lore.split("\n"))
+                    loreLines.add(MiniMessage.miniMessage()
+                            .deserialize(line.replace("%time%", String.valueOf(minutes))));
+
+                meta.lore(loreLines);
+            }
+
+            meta.getPersistentDataContainer().set(KEY_TIME, PersistentDataType.BYTE, (byte) 1);
+            meta.getPersistentDataContainer().set(KEY_TIME_MINUTES, PersistentDataType.INTEGER, Math.max(1, minutes));
+            item.setItemMeta(meta);
+        }
+
+        item.setAmount(1);
+        return item;
+    }
+
+    public static int getTimeMinutes(ItemStack item) {
+        if (!isTimeItem(item)) return 0;
+
+        Integer minutes = item.getItemMeta()
+                .getPersistentDataContainer()
+                .get(KEY_TIME_MINUTES, PersistentDataType.INTEGER);
+
+        return minutes != null ? Math.max(1, minutes) : 1;
+    }
+
+    public static boolean isTimeItem(ItemStack item) {
+        if (item == null || !item.hasItemMeta())
+            return false;
+
+        if (KEY_TIME == null)
+            return false;
+
+        return item.getItemMeta().getPersistentDataContainer().has(KEY_TIME, PersistentDataType.BYTE);
+    }
+
+    public static ItemStack createKeyItem(String keyId, Map<String, Object> def) {
+        String materialName = def.get("material") != null ? String.valueOf(def.get("material")) : "TRIPWIRE_HOOK";
+        String displayName = def.get("display-name") != null ? String.valueOf(def.get("display-name")) : keyId;
+
+        Material material = Material.matchMaterial(materialName);
+
+        if (material == null)
+            material = Material.TRIPWIRE_HOOK;
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            meta.customName(MiniMessage.miniMessage().deserialize(displayName.replace("%key%", keyId)));
+
+            Object loreObj = def.get("lore");
+
+            if (loreObj instanceof List<?> list) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (Object line : list) {
+                    if (line == null) continue;
+
+                    loreLines.add(MiniMessage.miniMessage()
+                            .deserialize(String.valueOf(line).replace("%key%", keyId)));
+                }
+
+                meta.lore(loreLines);
+            } else if (loreObj != null) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (String line : String.valueOf(loreObj).split("\n"))
+                    loreLines.add(MiniMessage.miniMessage().deserialize(line.replace("%key%", keyId)));
+
+                meta.lore(loreLines);
+            }
+
+            meta.getPersistentDataContainer().set(KEY_IS_KEY, PersistentDataType.BYTE, (byte) 1);
+            meta.getPersistentDataContainer().set(KEY_KEY_ID, PersistentDataType.STRING, keyId);
+            item.setItemMeta(meta);
+        }
+
+        item.setAmount(1);
+        return item;
+    }
+
+    public static ItemStack createEventItem(String eventItemId, Map<String, Object> def) {
+        String materialName = def.get("material") != null ? String.valueOf(def.get("material")) : "PAPER";
+        String displayName = def.get("display-name") != null ? String.valueOf(def.get("display-name")) : eventItemId;
+
+        Material material = Material.matchMaterial(materialName);
+
+        if (material == null)
+            material = Material.PAPER;
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta != null) {
+            meta.customName(MiniMessage.miniMessage().deserialize(displayName.replace("%item%", eventItemId)));
+
+            Object loreObj = def.get("lore");
+
+            if (loreObj instanceof List<?> list) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (Object line : list) {
+                    if (line == null) continue;
+
+                    loreLines.add(MiniMessage.miniMessage()
+                            .deserialize(String.valueOf(line).replace("%item%", eventItemId)));
+                }
+
+                meta.lore(loreLines);
+            } else if (loreObj != null) {
+                List<Component> loreLines = new ArrayList<>();
+
+                for (String line : String.valueOf(loreObj).split("\n"))
+                    loreLines.add(MiniMessage.miniMessage().deserialize(line.replace("%item%", eventItemId)));
+
+                meta.lore(loreLines);
+            }
+
+            item.setItemMeta(meta);
+        }
+
+        item.setAmount(1);
+        return item;
+    }
+
+    public static String getKeyId(ItemStack item) {
+        if (!isKeyItem(item)) return null;
+
+        return item.getItemMeta().getPersistentDataContainer().get(KEY_KEY_ID, PersistentDataType.STRING);
+    }
+
+    public static boolean isKeyItem(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return false;
+        if (KEY_IS_KEY == null) return false;
+
+        return item.getItemMeta().getPersistentDataContainer().has(KEY_IS_KEY, PersistentDataType.BYTE);
+    }
+
+    public static ItemStack createTokenItem(String materialName, String displayName, String lore,
+                                            String slot, int tier) {
+        Material material = Material.matchMaterial(materialName);
+        if (material == null)
+            material = Material.PAPER;
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null)
+            return item;
+
+        meta.customName(MiniMessage.miniMessage().deserialize(displayName));
+
+        if (lore != null && !lore.isEmpty()) {
+            List<Component> loreLines = new ArrayList<>();
+            for (String line : lore.split("\n"))
+                loreLines.add(MiniMessage.miniMessage().deserialize(line));
+
+            meta.lore(loreLines);
+        }
+
+        meta.getPersistentDataContainer().set(KEY_IS_UPGRADE_TOKEN, PersistentDataType.BYTE, (byte) 1);
+        meta.getPersistentDataContainer().set(KEY_UPGRADE_SLOT, PersistentDataType.STRING, slot);
+        meta.getPersistentDataContainer().set(KEY_UPGRADE_TIER, PersistentDataType.INTEGER, tier);
+
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public static String getUpgradeSlot(ItemStack item) {
+        if (!isUpgradeToken(item))
+            return null;
+
+        return item.getItemMeta().getPersistentDataContainer().get(KEY_UPGRADE_SLOT, PersistentDataType.STRING);
+    }
+
+    public static boolean isUpgradeToken(ItemStack item) {
+        if (item == null || !item.hasItemMeta())
+            return false;
+
+        if (KEY_IS_UPGRADE_TOKEN == null)
+            return false;
+
+        return item.getItemMeta().getPersistentDataContainer().has(KEY_IS_UPGRADE_TOKEN, PersistentDataType.BYTE);
+    }
+
+    public static int getUpgradeTier(ItemStack item) {
+        if (!isUpgradeToken(item))
+            return -1;
+
+        Integer tier = item.getItemMeta().getPersistentDataContainer().get(KEY_UPGRADE_TIER, PersistentDataType.INTEGER);
+
+        return tier != null ? tier : -1;
+    }
+
+    /**
+     * Consumes one from the item, returning the remaining stack or {@code null}
+     * when it was emptied. Callers must write the result back to the inventory
+     * (a stack read from an inventory is a live mirror, so clearing it via
+     * {@code setType(AIR)} would not clear the real slot).
+     */
+    public static ItemStack decrementOrNull(ItemStack item) {
+        if (item == null)
+            return null;
+
+        if (item.getAmount() > 1) {
+            item.setAmount(item.getAmount() - 1);
+            return item;
+        }
+
+        return null;
     }
 
     /**

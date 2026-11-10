@@ -3,7 +3,7 @@ package net.omni.extraction.backpack;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.ItemSerializationUtil;
-import net.omni.extraction.util.LootItemUtil;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -576,11 +576,11 @@ public class BackpackManager {
 
         ItemStack[] contents = player.getInventory().getContents();
         for (ItemStack item : contents)
-            if (LootItemUtil.isKeyItem(item) && keyId.equals(LootItemUtil.getKeyId(item)))
+            if (ItemUtil.isKeyItem(item) && keyId.equals(ItemUtil.getKeyId(item)))
                 return true;
 
         ItemStack offHand = player.getInventory().getItemInOffHand();
-        if (LootItemUtil.isKeyItem(offHand) && keyId.equals(LootItemUtil.getKeyId(offHand)))
+        if (ItemUtil.isKeyItem(offHand) && keyId.equals(ItemUtil.getKeyId(offHand)))
             return true;
 
         for (ItemStack item : contents)
@@ -592,7 +592,7 @@ public class BackpackManager {
 
     private boolean containsKey(List<ItemStack> items, String keyId) {
         for (ItemStack item : items)
-            if (LootItemUtil.isKeyItem(item) && keyId.equals(LootItemUtil.getKeyId(item)))
+            if (ItemUtil.isKeyItem(item) && keyId.equals(ItemUtil.getKeyId(item)))
                 return true;
 
         return false;
@@ -604,14 +604,14 @@ public class BackpackManager {
 
         ItemStack[] contents = player.getInventory().getContents();
         for (int i = 0; i < contents.length; i++)
-            if (LootItemUtil.isKeyItem(contents[i]) && keyId.equals(LootItemUtil.getKeyId(contents[i]))) {
-                player.getInventory().setItem(i, LootItemUtil.decrementOrNull(contents[i]));
+            if (ItemUtil.isKeyItem(contents[i]) && keyId.equals(ItemUtil.getKeyId(contents[i]))) {
+                player.getInventory().setItem(i, ItemUtil.decrementOrNull(contents[i]));
                 return;
             }
 
         ItemStack offHand = player.getInventory().getItemInOffHand();
-        if (LootItemUtil.isKeyItem(offHand) && keyId.equals(LootItemUtil.getKeyId(offHand))) {
-            player.getInventory().setItemInOffHand(LootItemUtil.decrementOrNull(offHand));
+        if (ItemUtil.isKeyItem(offHand) && keyId.equals(ItemUtil.getKeyId(offHand))) {
+            player.getInventory().setItemInOffHand(ItemUtil.decrementOrNull(offHand));
             return;
         }
 
@@ -622,8 +622,8 @@ public class BackpackManager {
             List<ItemStack> bag = readContents(contents[i]);
 
             for (int b = 0; b < bag.size(); b++) {
-                if (LootItemUtil.isKeyItem(bag.get(b)) && keyId.equals(LootItemUtil.getKeyId(bag.get(b)))) {
-                    bag.set(b, LootItemUtil.decrementOrNull(bag.get(b)));
+                if (ItemUtil.isKeyItem(bag.get(b)) && keyId.equals(ItemUtil.getKeyId(bag.get(b)))) {
+                    bag.set(b, ItemUtil.decrementOrNull(bag.get(b)));
                     player.getInventory().setItem(i, withData(contents[i], getUid(contents[i]),
                             getTier(contents[i]), getPages(contents[i]), bag));
                     return;
@@ -635,8 +635,8 @@ public class BackpackManager {
             List<ItemStack> bag = readContents(offHand);
 
             for (int b = 0; b < bag.size(); b++) {
-                if (LootItemUtil.isKeyItem(bag.get(b)) && keyId.equals(LootItemUtil.getKeyId(bag.get(b)))) {
-                    bag.set(b, LootItemUtil.decrementOrNull(bag.get(b)));
+                if (ItemUtil.isKeyItem(bag.get(b)) && keyId.equals(ItemUtil.getKeyId(bag.get(b)))) {
+                    bag.set(b, ItemUtil.decrementOrNull(bag.get(b)));
                     player.getInventory().setItemInOffHand(withData(offHand, getUid(offHand),
                             getTier(offHand), getPages(offHand), bag));
                     return;

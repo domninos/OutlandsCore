@@ -6,7 +6,7 @@ import net.omni.extraction.data.PlayerDataManager;
 import net.omni.extraction.loadout.LoadoutSlot;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.upgrade.*;
-import net.omni.extraction.util.UpgradeTokenUtil;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -72,7 +72,7 @@ public class UpgradeGUIListener implements Listener {
             return;
         }
 
-        if (!UpgradeTokenUtil.isUpgradeToken(token))
+        if (!ItemUtil.isUpgradeToken(token))
             return;
 
         applyUpgrade(player, token, slot, event);
@@ -121,8 +121,8 @@ public class UpgradeGUIListener implements Listener {
     }
 
     private void applyUpgrade(Player player, ItemStack token, LoadoutSlot slot, InventoryClickEvent event) {
-        String tokenSlot = UpgradeTokenUtil.getUpgradeSlot(token);
-        int tokenTier = UpgradeTokenUtil.getUpgradeTier(token);
+        String tokenSlot = ItemUtil.getUpgradeSlot(token);
+        int tokenTier = ItemUtil.getUpgradeTier(token);
 
         if (tokenSlot == null || tokenTier <= 0 || !tokenMatches(slot, tokenSlot)) {
             plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", slot.getDisplayName()));
@@ -235,8 +235,8 @@ public class UpgradeGUIListener implements Listener {
             ItemStack token = resolveDragToken(event, rawSlot);
             if (token == null) return;
 
-            String tokenSlot = UpgradeTokenUtil.getUpgradeSlot(token);
-            int tokenTier = UpgradeTokenUtil.getUpgradeTier(token);
+            String tokenSlot = ItemUtil.getUpgradeSlot(token);
+            int tokenTier = ItemUtil.getUpgradeTier(token);
 
             if (tokenSlot == null || tokenTier <= 0) return;
 
@@ -248,19 +248,19 @@ public class UpgradeGUIListener implements Listener {
     private ItemStack resolveDragToken(InventoryDragEvent event, int rawSlot) {
         ItemStack newItem = event.getNewItems().get(rawSlot);
 
-        if (UpgradeTokenUtil.isUpgradeToken(newItem))
+        if (ItemUtil.isUpgradeToken(newItem))
             return newItem;
 
         ItemStack oldCursor = event.getOldCursor();
-        if (UpgradeTokenUtil.isUpgradeToken(oldCursor))
+        if (ItemUtil.isUpgradeToken(oldCursor))
             return oldCursor;
 
         ItemStack cursor = event.getView().getCursor();
-        if (UpgradeTokenUtil.isUpgradeToken(cursor))
+        if (ItemUtil.isUpgradeToken(cursor))
             return cursor;
 
         for (ItemStack item : event.getNewItems().values()) {
-            if (UpgradeTokenUtil.isUpgradeToken(item))
+            if (ItemUtil.isUpgradeToken(item))
                 return item;
         }
 
@@ -328,15 +328,15 @@ public class UpgradeGUIListener implements Listener {
     }
 
     private boolean matchesToken(ItemStack item, ItemStack token) {
-        if (token == null || !UpgradeTokenUtil.isUpgradeToken(item)) return false;
+        if (token == null || !ItemUtil.isUpgradeToken(item)) return false;
         if (item.getType() != token.getType()) return false;
 
-        String slotA = UpgradeTokenUtil.getUpgradeSlot(item);
-        String slotB = UpgradeTokenUtil.getUpgradeSlot(token);
+        String slotA = ItemUtil.getUpgradeSlot(item);
+        String slotB = ItemUtil.getUpgradeSlot(token);
 
         if (slotA == null || !slotA.equalsIgnoreCase(slotB)) return false;
 
-        return UpgradeTokenUtil.getUpgradeTier(item) == UpgradeTokenUtil.getUpgradeTier(token);
+        return ItemUtil.getUpgradeTier(item) == ItemUtil.getUpgradeTier(token);
     }
 
     @EventHandler

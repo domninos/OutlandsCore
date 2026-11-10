@@ -3,7 +3,7 @@ package net.omni.extraction.loot;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.integration.ExternalItemProvider;
 import net.omni.extraction.relics.RelicDefinition;
-import net.omni.extraction.util.LootItemUtil;
+import net.omni.extraction.util.ItemUtil;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
@@ -85,7 +85,7 @@ public class LootResolver {
             }
 
             result.add(cached("event|" + itemId.toLowerCase(Locale.ROOT) + "|" + amount, () -> {
-                ItemStack item = LootItemUtil.createEventItem(itemId, def);
+                ItemStack item = ItemUtil.createEventItem(itemId, def);
                 item.setAmount(Math.max(1, amount));
                 return item;
             }));
@@ -157,13 +157,13 @@ public class LootResolver {
                         }
                     }
 
-                    result.add(cached("token|" + key + "|" + amount, () -> LootItemUtil.createTokenItem(mat, name,
+                    result.add(cached("token|" + key + "|" + amount, () -> ItemUtil.createTokenItem(mat, name,
                             loreBuilder.isEmpty() ? null : loreBuilder.toString(), amount)));
                 } else {
                     String mat = plugin.getConfigUtil().getLootTokenItemMaterial();
                     String name = plugin.getConfigUtil().getLootTokenItemName();
                     result.add(cached("token|<legacy>|" + amount,
-                            () -> LootItemUtil.createTokenItem(mat, name, null, amount)));
+                            () -> ItemUtil.createTokenItem(mat, name, null, amount)));
                 }
             }
             case "UPGRADE" -> {
@@ -199,11 +199,11 @@ public class LootResolver {
                         }
                     }
 
-                    result.add(cached("time|" + key + "|" + minutes, () -> LootItemUtil.createTimeItem(mat, name,
+                    result.add(cached("time|" + key + "|" + minutes, () -> ItemUtil.createTimeItem(mat, name,
                             loreBuilder.isEmpty() ? null : loreBuilder.toString(), Math.max(1, minutes))));
                 } else {
                     result.add(cached("time|<legacy>|" + amount,
-                            () -> LootItemUtil.createTimeItem(DEFAULT_TIME_MATERIAL, DEFAULT_TIME_NAME, null, amount)));
+                            () -> ItemUtil.createTimeItem(DEFAULT_TIME_MATERIAL, DEFAULT_TIME_NAME, null, amount)));
                 }
             }
             default -> plugin.getLogger().warning("Unknown loot entry type '" + type + "'.");
@@ -220,7 +220,7 @@ public class LootResolver {
             return null;
         }
 
-        return cached("key|" + keyId.toLowerCase(Locale.ROOT), () -> LootItemUtil.createKeyItem(keyId, def));
+        return cached("key|" + keyId.toLowerCase(Locale.ROOT), () -> ItemUtil.createKeyItem(keyId, def));
     }
 
     /**

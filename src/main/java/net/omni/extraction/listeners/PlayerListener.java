@@ -8,9 +8,7 @@ import net.omni.extraction.messages.Messages;
 import net.omni.extraction.pets.PetDefinition;
 import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.util.ItemUtil;
-import net.omni.extraction.util.LootItemUtil;
 import net.omni.extraction.util.Permissions;
-import net.omni.extraction.util.UpgradeTokenUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -232,7 +230,7 @@ public class PlayerListener implements Listener {
         if (plugin.getRunManager().isPlayerInRun(uuid)) {
             ItemStack dropped = event.getItemDrop().getItemStack();
 
-            if (UpgradeTokenUtil.isUpgradeToken(dropped)) {
+            if (ItemUtil.isUpgradeToken(dropped)) {
                 event.setCancelled(true);
                 plugin.sendMessage(player, Messages.LOADOUT_INVALID_TOKEN.replace("slot", "your loadout"));
             }
@@ -283,8 +281,8 @@ public class PlayerListener implements Listener {
 
         ItemStack item = player.getInventory().getItemInMainHand();
 
-        if (LootItemUtil.isTokenItem(item)) {
-            int amount = LootItemUtil.getTokenAmount(item);
+        if (ItemUtil.isTokenItem(item)) {
+            int amount = ItemUtil.getTokenAmount(item);
 
             boolean inRun = plugin.getRunManager().isPlayerInRun(player.getUniqueId());
             PlayerData pd = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
@@ -292,7 +290,7 @@ public class PlayerListener implements Listener {
 
             event.setCancelled(true);
             plugin.getTokenManager().addTokens(player.getUniqueId(), boosted);
-            player.getInventory().setItemInMainHand(LootItemUtil.decrementOrNull(item));
+            player.getInventory().setItemInMainHand(ItemUtil.decrementOrNull(item));
 
             String note = boosted != amount && pd != null
                     ? buildPetBoostNote(pd) : "";
@@ -343,9 +341,9 @@ public class PlayerListener implements Listener {
             return;
         }
 
-        if (!LootItemUtil.isTimeItem(item)) return;
+        if (!ItemUtil.isTimeItem(item)) return;
 
-        int minutes = LootItemUtil.getTimeMinutes(item);
+        int minutes = ItemUtil.getTimeMinutes(item);
         if (minutes <= 0) return;
 
         event.setCancelled(true);
@@ -354,7 +352,7 @@ public class PlayerListener implements Listener {
 
         if (run != null) {
             run.addTime(minutes * 60);
-            player.getInventory().setItemInMainHand(LootItemUtil.decrementOrNull(item));
+            player.getInventory().setItemInMainHand(ItemUtil.decrementOrNull(item));
 
             plugin.sendMessage(player, Messages.LOOT_TIME_ADDED.replace("time",
                     String.valueOf(minutes)));
@@ -364,7 +362,7 @@ public class PlayerListener implements Listener {
         PlayerData data = plugin.getPlayerDataManager().getLoaded(player.getUniqueId());
         data.addExtraTimeSeconds(minutes * 60);
         plugin.getPlayerDataManager().savePlayerShared(player.getUniqueId());
-        player.getInventory().setItemInMainHand(LootItemUtil.decrementOrNull(item));
+        player.getInventory().setItemInMainHand(ItemUtil.decrementOrNull(item));
 
         plugin.sendMessage(player, Messages.LOOT_TIME_BANKED.replace("time",
                 String.valueOf(minutes)));

@@ -8,7 +8,6 @@ import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.ItemUtil;
-import net.omni.extraction.util.LootItemUtil;
 import net.omni.extraction.util.StringUtils;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -432,15 +431,15 @@ public class LootEditorManager {
         if (item == null || item.getType().isAir())
             return null;
 
-        if (LootItemUtil.isTokenItem(item)) {
-            return entry("TOKENS", Math.max(1, LootItemUtil.getTokenAmount(item)));
+        if (ItemUtil.isTokenItem(item)) {
+            return entry("TOKENS", Math.max(1, ItemUtil.getTokenAmount(item)));
         }
 
-        if (LootItemUtil.isTimeItem(item))
+        if (ItemUtil.isTimeItem(item))
             return entry("TIME", 1);
 
-        if (LootItemUtil.isKeyItem(item)) {
-            String keyId = LootItemUtil.getKeyId(item);
+        if (ItemUtil.isKeyItem(item)) {
+            String keyId = ItemUtil.getKeyId(item);
             return keyId == null || keyId.isBlank() ? null : entry("KEY:" + keyId, 1);
         }
 
