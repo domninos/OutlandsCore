@@ -73,9 +73,15 @@ public class LootDropListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onEntityRemove(EntityRemoveEvent event) {
+        if (!(event.getEntity() instanceof Item item))
+            return;
+
+        if (event.getCause() == EntityRemoveEvent.Cause.UNLOAD)
+            return;
+
         LootDropManager manager = plugin.getLootDropManager();
 
-        if (manager != null && event.getEntity() instanceof Item item)
+        if (manager != null)
             manager.untrack(item);
     }
 

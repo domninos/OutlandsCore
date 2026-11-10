@@ -294,12 +294,18 @@ public class LootDropManager {
             return null;
 
         Location eye = player.getEyeLocation();
-        Vector eyeVector = eye.toVector();
+        double eyeX = eye.getX();
+        double eyeY = eye.getY();
+        double eyeZ = eye.getZ();
         Vector direction = eye.getDirection().normalize();
-        double blockDistanceSq = WorldUtil.blockRayDistanceSq(eye, direction, pickupRange);
+        double dirX = direction.getX();
+        double dirY = direction.getY();
+        double dirZ = direction.getZ();
 
         Item best = null;
         double bestDistanceSq = Double.MAX_VALUE;
+        double blockDistanceSq = Double.MAX_VALUE;
+        boolean rayDone = false;
         int centerX = eye.getBlockX() >> 4;
         int centerZ = eye.getBlockZ() >> 4;
 
@@ -322,26 +328,29 @@ public class LootDropManager {
                             || !item.getWorld().equals(player.getWorld()))
                         continue;
 
-                    Vector center = item.getLocation()
-                            .add(0, item.getHeight() * 0.5, 0)
-                            .toVector();
-                    Vector offset = center.subtract(eyeVector);
-                    double distanceSq = offset.lengthSquared();
+                    double offX = tracked.x - eyeX;
+                    double offY = tracked.y - eyeY;
+                    double offZ = tracked.z - eyeZ;
+                    double distanceSq = offX * offX + offY * offY + offZ * offZ;
 
                     if (distanceSq > pickupRangeSq || distanceSq >= bestDistanceSq)
                         continue;
 
-                    double along = offset.dot(direction);
+                    double along = offX * dirX + offY * dirY + offZ * dirZ;
 
                     if (along <= 0)
                         continue;
 
                     double perpendicularSq = distanceSq - (along * along);
-                    double allowed = pickupRaySize
-                            + Math.max(item.getWidth(), item.getHeight()) * 0.5;
+                    double allowed = pickupRaySize + tracked.halfWidth;
 
                     if (perpendicularSq > allowed * allowed)
                         continue;
+
+                    if (!rayDone) {
+                        blockDistanceSq = WorldUtil.blockRayDistanceSq(eye, direction, pickupRange);
+                        rayDone = true;
+                    }
 
                     if (blockDistanceSq < distanceSq - 0.25)
                         continue;
@@ -461,6 +470,9 @@ public class LootDropManager {
         if (!enabled || !glowEnabled || !clickPickup)
             return;
 
+        if (drops.isEmpty() && viewerGlow.isEmpty())
+            return;
+
         for (Player player : plugin.getExtractionManager().getExtractionPlayers()) {
             if (!isExtractionWorld(player.getWorld())) {
                 clearViewerGlow(player);
@@ -492,8 +504,10 @@ public class LootDropManager {
                     stale = new ArrayList<>();
 
                 stale.add(tracked);
-            } else
+            } else {
+                tracked.updateGeometry();
                 updateChunkKey(tracked, item.getLocation());
+            }
         }
 
         if (stale != null)
@@ -545,7 +559,10 @@ public class LootDropManager {
             return;
         }
 
-        clearViewerGlow(player);
+        for (Item glowing : current.values())
+            PacketGlow.setGlow(player, glowing, false);
+
+        current.clear();
         current.put(entityId, item);
         PacketGlow.setGlow(player, item, true);
     }
@@ -615,10 +632,24 @@ public class LootDropManager {
     private static final class TrackedDrop {
         private final Item item;
         private long chunkKey;
+        private double x;
+        private double y;
+        private double z;
+        private double halfWidth;
 
         private TrackedDrop(Item item, long chunkKey) {
             this.item = item;
             this.chunkKey = chunkKey;
+            updateGeometry();
+        }
+
+        private void updateGeometry() {
+            Location location = item.getLocation();
+
+            x = location.getX();
+            z = location.getZ();
+            y = location.getY() + item.getHeight() * 0.5;
+            halfWidth = Math.max(item.getWidth(), item.getHeight()) * 0.5;
         }
     }
 }
