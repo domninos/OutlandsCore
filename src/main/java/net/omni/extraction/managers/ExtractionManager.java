@@ -3,7 +3,6 @@ package net.omni.extraction.managers;
 import org.bukkit.entity.Player;
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
 import java.util.UUID;
 
@@ -29,12 +28,7 @@ public class ExtractionManager {
         if (uuid == null)
             return;
 
-        for (Iterator<Player> iterator = extractionPlayers.iterator(); iterator.hasNext(); ) {
-            Player player = iterator.next();
-
-            if (player.getUniqueId().equals(uuid))
-                iterator.remove();
-        }
+        extractionPlayers.removeIf(player -> player.getUniqueId().equals(uuid));
     }
 
     public boolean isExtractionPlayer(UUID uuid) {

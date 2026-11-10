@@ -3,7 +3,7 @@
 ## Project
 Extraction - a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 - Package: `net.omni.extraction`
-- Artifact: `net.omni:Extraction:1.2.3`
+- Artifact: `net.omni:Extraction:1.2.4`
 - Main class: `net.omni.extraction.ExtractionPlugin`
 - Data file: `extraction.db` under `plugins/Extraction/data/` by default; or MariaDB/MySQL when `storage.type: mysql` (see Storage below)
 - Permissions: `extraction.*` with children `extraction.admin`, `extraction.play`, `extraction.areas`, `extraction.party`, `extraction.bypass.cooldown`
@@ -12,10 +12,10 @@ Extraction - a PaperMC `1.21` (Java 21) PvE extraction gamemode plugin.
 
 ## Build & verify
 - Compile: `mvn clean compile`
-- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) - `target/Extraction-1.2.3.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.2.3.jar` into the server's `plugins/Extraction/` and restart - an IDE build does not deploy to the server folder.
-- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.2.3.jar` to confirm the server runs the current build.
+- **The deployable artifact is produced ONLY by `mvn clean package`** (`maven-shade-plugin` binds the `shade` goal to the `package` phase) - `target/Extraction-1.2.4.jar`. `mvn clean compile` only verifies compilation and never produces the jar. Copy `target/Extraction-1.2.4.jar` into the server's `plugins/Extraction/` and restart - an IDE build does not deploy to the server folder.
+- `ExtractionPlugin.onEnable` logs a jar identity line (version + jar file name + last-modified timestamp) so the deployed jar self-identifies; compare its timestamp to `target/Extraction-1.2.4.jar` to confirm the server runs the current build.
 - There is no test suite; compiling `mvn clean compile` is the verification step for syntax; `mvn clean package` is required before claiming a fix is deployed.
-- **Version-bump prompt (MAJOR releases only):** before declaring a major release/update finished, ask the user whether to bump the plugin version (`pom.xml` `<version>`); bump only on confirmation â€” do NOT prompt for small bugfix-only sessions. When a bump is confirmed, also update the version references inside this file (this section) so the docs stay in sync. Current version: `1.2.3` (bumped from `1.0.0` on 2026-11-03; â†’ 1.1.1 mid-day; â†’ 1.1.3 with the convoy-route rework; â†’ 1.1.4 with the loadout-wipe + wand-spawn-editor fixes; â†’ 1.2.0, re-bumped on 2026-11-08, with walls + natural mob loot/spawning + always-night; â†’ 1.2.3 on 2026-11-09 with loot beams + per-player glow + loadout pane variety).
+- **Version-bump prompt (MAJOR releases only):** before declaring a major release/update finished, ask the user whether to bump the plugin version (`pom.xml` `<version>`); bump only on confirmation â€” do NOT prompt for small bugfix-only sessions. When a bump is confirmed, also update the version references inside this file (this section) so the docs stay in sync. Current version: `1.2.4` (bumped from `1.0.0` on 2026-11-03; → 1.1.1 mid-day; → 1.1.3 with the convoy-route rework; → 1.1.4 with the loadout-wipe + wand-spawn-editor fixes; → 1.2.0, re-bumped on 2026-11-08, with walls + natural mob loot/spawning + always-night; → 1.2.3 on 2026-11-09 with loot beams + per-player glow + loadout pane variety; → 1.2.4 on 2026-11-10 with the BossBarManager centralization, live extraction-player set, beam view-radius, boss-style numeric wizard, and mojibake fixes).
 
 ## Conventions
 
