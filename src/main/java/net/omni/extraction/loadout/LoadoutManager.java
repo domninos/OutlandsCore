@@ -7,6 +7,7 @@ import net.omni.extraction.integration.ExternalItemProvider;
 import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.upgrade.UpgradeManager;
+import net.omni.extraction.util.EnchantmentUtil;
 import net.omni.extraction.upgrade.UpgradeTier;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -351,14 +352,10 @@ public class LoadoutManager {
 
     private void applyEnchantments(ItemStack item, UpgradeTier tier) {
         for (String enchStr : tier.getEnchantments()) {
-            try {
-                Enchantment enchantment = Enchantment.getByName(enchStr);
+            Enchantment enchantment = EnchantmentUtil.get(enchStr);
 
-                if (enchantment != null) {
-                    item.addUnsafeEnchantment(enchantment, 1);
-                }
-            } catch (IllegalArgumentException ignored) {
-            }
+            if (enchantment != null)
+                item.addUnsafeEnchantment(enchantment, 1);
         }
     }
 

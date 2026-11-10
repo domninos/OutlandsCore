@@ -150,9 +150,6 @@ public final class ExtractionPlugin extends JavaPlugin {
      -
      - LootDropManager double beamViewRadius = config.getLootDropBeamViewRadius(); not used
      - have CorseManager's Npc have the arm and legs kinda broken (random torso turn)
-     - AdminModeManager should have PlayerQuitEvent to PlayerListener
-     - move MobTemplateManager's parseBoolean on StringUtils
-     - have all Enchantment.getByKey and Particle.valueOf/Sound.valueOf should have a Util of their own (ref: ShopManager, EventPresentation#decodeSound)
      -
      -
      - similarly, add an EntityUtil
@@ -377,7 +374,6 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         registerCommands();
         registerListeners();
-        adminModeManager.register();
 
         areaManager.startAutoSave();
         areaManager.startStateTask();

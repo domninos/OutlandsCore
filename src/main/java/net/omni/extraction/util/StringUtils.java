@@ -1,5 +1,7 @@
 package net.omni.extraction.util;
 
+import java.util.Locale;
+
 public final class StringUtils {
     private StringUtils() {
     }
@@ -45,5 +47,15 @@ public final class StringUtils {
             return "";
 
         return s.replaceAll("<[^>]+>", "");
+    }
+
+    public static Boolean parseBoolean(String value) {
+        if (value == null) return null;
+
+        return switch (value.toLowerCase(Locale.ROOT)) {
+            case "true", "yes", "on", "1" -> Boolean.TRUE;
+            case "false", "no", "off", "0" -> Boolean.FALSE;
+            default -> null;
+        };
     }
 }

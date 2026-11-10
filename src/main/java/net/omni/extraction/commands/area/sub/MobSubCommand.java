@@ -6,6 +6,7 @@ import net.omni.extraction.commands.area.AreaCommandUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.mobs.MobTemplate;
 import net.omni.extraction.mobs.MobTemplateManager;
+import net.omni.extraction.util.StringUtils;
 import org.bukkit.command.CommandSender;
 
 import java.util.Arrays;
@@ -57,7 +58,7 @@ public class MobSubCommand implements SubCommand {
         Boolean explicitMythic = null;
 
         if (args.length >= 5) {
-            explicitMythic = MobTemplateManager.parseBoolean(args[4]);
+            explicitMythic = StringUtils.parseBoolean(args[4]);
 
             if (explicitMythic == null) {
                 plugin.sendMessage(sender, Messages.USAGE.replace("usage", "/areas mob create {id} {type} [mythic]"));

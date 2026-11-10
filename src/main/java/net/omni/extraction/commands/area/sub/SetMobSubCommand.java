@@ -6,7 +6,7 @@ import net.omni.extraction.area.AreaManager;
 import net.omni.extraction.area.AreaMobReference;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
-import net.omni.extraction.mobs.MobTemplateManager;
+import net.omni.extraction.util.StringUtils;
 import org.bukkit.command.CommandSender;
 
 import java.util.Locale;
@@ -62,7 +62,7 @@ public class SetMobSubCommand implements SubCommand {
                     reference.setCount(parsed);
                 }
                 case "boss" -> {
-                    Boolean parsed = MobTemplateManager.parseBoolean(value);
+                    Boolean parsed = StringUtils.parseBoolean(value);
                     if (parsed == null) throw new NumberFormatException();
                     reference.setBoss(parsed);
                 }

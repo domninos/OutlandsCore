@@ -11,9 +11,9 @@ import net.omni.extraction.pets.PetDefinition;
 import net.omni.extraction.relics.RelicDefinition;
 import net.omni.extraction.relics.RelicManager;
 import net.omni.extraction.upgrade.UpgradeTier;
+import net.omni.extraction.util.EnchantmentUtil;
 import net.omni.extraction.util.ItemUtil;
 import net.omni.extraction.util.StringUtils;
-import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -324,14 +324,7 @@ public class ShopManager {
 
         String enchName = String.valueOf(def.getOrDefault("enchant", ""));
         int level = ItemUtil.asInt(def.get("level"), 1);
-        Enchantment ench = Enchantment.getByName(enchName.toUpperCase(Locale.ROOT));
-        if (ench == null) {
-            // try registry-like fallback not needed; keep consistent with LoadoutManager
-            try {
-                ench = Enchantment.getByKey(NamespacedKey.minecraft(enchName.toLowerCase(Locale.ROOT)));
-            } catch (Exception ignored) {
-            }
-        }
+        Enchantment ench = EnchantmentUtil.get(enchName);
         if (ench == null) {
             plugin.sendMessage(player, Messages.SHOP_NO_ELIGIBLE_TARGET.toString());
             return;

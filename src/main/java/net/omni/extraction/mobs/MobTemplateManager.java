@@ -2,6 +2,7 @@ package net.omni.extraction.mobs;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.boss.BossTemplateManager;
+import net.omni.extraction.util.StringUtils;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -352,7 +353,7 @@ public class MobTemplateManager {
                     template.setType(value);
                 }
                 case "mythic" -> {
-                    Boolean parsed = parseBoolean(value);
+                    Boolean parsed = StringUtils.parseBoolean(value);
                     if (parsed == null) return false;
                     template.setMythic(parsed);
                 }
@@ -378,7 +379,7 @@ public class MobTemplateManager {
                     template.setCount(parsed);
                 }
                 case "baby" -> {
-                    Boolean parsed = parseBoolean(value);
+                    Boolean parsed = StringUtils.parseBoolean(value);
                     if (parsed == null) return false;
                     template.setBaby(parsed);
                 }
@@ -405,14 +406,5 @@ public class MobTemplateManager {
         return true;
     }
 
-    public static Boolean parseBoolean(String value) {
-        if (value == null) return null;
-
-        return switch (value.toLowerCase(Locale.ROOT)) {
-            case "true", "yes", "on", "1" -> Boolean.TRUE;
-            case "false", "no", "off", "0" -> Boolean.FALSE;
-            default -> null;
-        };
-    }
 }
 

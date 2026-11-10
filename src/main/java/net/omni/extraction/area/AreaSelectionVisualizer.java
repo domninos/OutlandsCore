@@ -1,6 +1,7 @@
 package net.omni.extraction.area;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.util.ParticleUtil;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -61,11 +62,8 @@ public class AreaSelectionVisualizer implements Listener {
         if (name == null)
             return Particle.DUST;
 
-        try {
-            return Particle.valueOf(name.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            return Particle.DUST;
-        }
+        Particle resolved = ParticleUtil.get(name);
+        return resolved != null ? resolved : Particle.DUST;
     }
 
     private Particle.DustOptions dust(int[] rgb) {

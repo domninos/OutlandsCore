@@ -6,9 +6,6 @@ import net.omni.extraction.messages.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
@@ -19,7 +16,7 @@ import java.util.*;
  * events. Toggling off restores the original gamemode and inventory.
  * State is session-local — a quit or shutdown restores immediately.
  */
-public class AdminModeManager implements Listener {
+public class AdminModeManager {
 
     private final ExtractionPlugin plugin;
     private final Map<UUID, SavedState> admins = new HashMap<>();
@@ -96,16 +93,11 @@ public class AdminModeManager implements Listener {
             plugin.sendMessage(player, Messages.ADMIN_MODE_OFF.toString());
     }
 
-    @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        buildMode.remove(event.getPlayer().getUniqueId());
+    public void handleQuit(Player player) {
+        buildMode.remove(player.getUniqueId());
 
-        if (isAdmin(event.getPlayer().getUniqueId()))
-            exit(event.getPlayer(), false);
-    }
-
-    public void register() {
-        Bukkit.getPluginManager().registerEvents(this, plugin);
+        if (isAdmin(player.getUniqueId()))
+            exit(player, false);
     }
 
     /**

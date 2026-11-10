@@ -8,6 +8,7 @@ import net.omni.extraction.messages.Messages;
 import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
 import net.omni.extraction.worldevent.WorldEvent.WaveType;
+import net.omni.extraction.util.SoundUtil;
 import net.omni.extraction.worldevent.mutator.Mutator;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
@@ -392,13 +393,11 @@ public class EventPresentation {
     }
 
     public Sound decodeSound(String name) {
-        String key = name.toUpperCase(Locale.ROOT).replace('.', '_');
+        Sound sound = SoundUtil.get(name);
 
-        try {
-            return Sound.valueOf(key.replace(" ", "_"));
-        } catch (IllegalArgumentException e) {
+        if (sound == null)
             ctx.plugin().getLogger().warning("Unknown event sound '" + name + "'.");
-            return null;
-        }
+
+        return sound;
     }
 }

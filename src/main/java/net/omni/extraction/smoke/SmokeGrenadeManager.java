@@ -1,6 +1,7 @@
 package net.omni.extraction.smoke;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.util.ParticleUtil;
 import org.bukkit.*;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
@@ -258,11 +259,8 @@ public class SmokeGrenadeManager implements Runnable {
     }
 
     private Particle resolveParticle(String name) {
-        try {
-            return Particle.valueOf(name.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            return Particle.CAMPFIRE_COSY_SMOKE;
-        }
+        Particle particle = ParticleUtil.get(name);
+        return particle != null ? particle : Particle.CAMPFIRE_COSY_SMOKE;
     }
 
     public boolean blocksTargeting(Location location) {

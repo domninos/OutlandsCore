@@ -5,6 +5,7 @@ import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.WorldUtil;
 import net.omni.extraction.util.PacketGlow;
+import net.omni.extraction.util.ParticleUtil;
 import org.bukkit.*;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
@@ -593,13 +594,13 @@ public class LootDropManager {
         if (name == null || name.isBlank())
             return null;
 
-        try {
-            return Particle.valueOf(name.trim().toUpperCase());
-        } catch (IllegalArgumentException exception) {
+        Particle particle = ParticleUtil.get(name);
+
+        if (particle == null)
             plugin.getLogger().warning("Unknown loot-drop beam particle '" + name
                     + "' - beams disabled until the next reload.");
-            return null;
-        }
+
+        return particle;
     }
 
     private static final class TrackedDrop {

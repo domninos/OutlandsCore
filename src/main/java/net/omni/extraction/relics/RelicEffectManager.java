@@ -6,6 +6,7 @@ import net.omni.extraction.gameplay.RunManager;
 import net.omni.extraction.loadout.LoadoutGuiHolder;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.ItemUtil;
+import net.omni.extraction.util.ParticleUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
@@ -302,12 +303,9 @@ public class RelicEffectManager {
             return cached;
 
         String[] parts = spec.split(":", 2);
-        String particleName = parts[0].toUpperCase(Locale.ROOT).replace(' ', '_');
-        Particle particle;
+        Particle particle = ParticleUtil.get(parts[0]);
 
-        try {
-            particle = Particle.valueOf(particleName);
-        } catch (IllegalArgumentException e) {
+        if (particle == null) {
             plugin.getLogger().warning("Unknown relic particle '" + spec + "' (falling back to default).");
             return null;
         }

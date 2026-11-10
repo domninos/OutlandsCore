@@ -7,7 +7,7 @@ import net.omni.extraction.area.AreaMobReference;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.commands.area.AreaCommandUtil;
 import net.omni.extraction.messages.Messages;
-import net.omni.extraction.mobs.MobTemplateManager;
+import net.omni.extraction.util.StringUtils;
 import org.bukkit.command.CommandSender;
 
 public class AddMobSubCommand implements SubCommand {
@@ -67,7 +67,7 @@ public class AddMobSubCommand implements SubCommand {
             }
 
             if (args.length >= 5) {
-                Boolean boss = MobTemplateManager.parseBoolean(args[4]);
+                Boolean boss = StringUtils.parseBoolean(args[4]);
 
                 if (boss == null) throw new NumberFormatException();
 
