@@ -56,7 +56,6 @@ public class DroneManager {
     private final FancyNpcHook fancyNpcHook;
 
     private final Map<UUID, DroneSession> sessions = new ConcurrentHashMap<>();
-    private final Map<UUID, BossBar> bossBars = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lowHpWarnings = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastMoveSound = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> prevAscend = new ConcurrentHashMap<>();
@@ -109,10 +108,11 @@ public class DroneManager {
                     cleanupSession(session);
 
             }
+
+            plugin.getBossBarManager().remove(barKey(uuid));
         }
 
         sessions.clear();
-        bossBars.clear();
     }
 
     public boolean recall(Player player) {
@@ -120,9 +120,7 @@ public class DroneManager {
         if (session == null)
             return false;
 
-        BossBar bar = bossBars.remove(player.getUniqueId());
-        if (bar != null)
-            player.hideBossBar(bar);
+        plugin.getBossBarManager().remove(barKey(player.getUniqueId()));
 
 
         lowHpWarnings.remove(player.getUniqueId());
@@ -254,10 +252,10 @@ public class DroneManager {
 
         session.setTask(Bukkit.getScheduler().runTaskTimer(plugin, () -> tickSession(session), updateTicks, updateTicks));
 
-        BossBar bar = BossBar.bossBar(Component.text("Drone Battery: 100%")
+        String key = barKey(player.getUniqueId());
+        plugin.getBossBarManager().create(key, Component.text("Drone Battery: 100%")
                 .color(NamedTextColor.GREEN), 1.0f, BossBar.Color.GREEN, BossBar.Overlay.PROGRESS);
-        player.showBossBar(bar);
-        bossBars.put(player.getUniqueId(), bar);
+        plugin.getBossBarManager().show(key, player);
 
         return true;
     }
@@ -292,7 +290,7 @@ public class DroneManager {
         if (player == null || !player.isOnline()) {
             cleanupSession(session);
             sessions.remove(uuid);
-            bossBars.remove(uuid);
+            plugin.getBossBarManager().remove(barKey(uuid));
             return;
         }
 
@@ -307,19 +305,22 @@ public class DroneManager {
         session.drainBattery(DRAIN_PER_SECOND * updateTicks / 20.0);
         double battery = session.getBattery();
 
-        BossBar bar = bossBars.get(uuid);
-        if (bar != null) {
+        String key = barKey(uuid);
+        if (plugin.getBossBarManager().exists(key)) {
             float progress = (float) (battery / 100.0);
-            bar.progress(Math.clamp(progress, 0.0f, 1.0f));
+
             if (battery > 50) {
-                bar.color(BossBar.Color.GREEN);
-                bar.name(Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.GREEN));
+                plugin.getBossBarManager().updateColor(key, BossBar.Color.GREEN);
+                plugin.getBossBarManager().update(key, progress,
+                        Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.GREEN));
             } else if (battery > 20) {
-                bar.color(BossBar.Color.YELLOW);
-                bar.name(Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.YELLOW));
+                plugin.getBossBarManager().updateColor(key, BossBar.Color.YELLOW);
+                plugin.getBossBarManager().update(key, progress,
+                        Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.YELLOW));
             } else {
-                bar.color(BossBar.Color.RED);
-                bar.name(Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.RED));
+                plugin.getBossBarManager().updateColor(key, BossBar.Color.RED);
+                plugin.getBossBarManager().update(key, progress,
+                        Component.text("Drone Battery: " + (int) battery + "%").color(NamedTextColor.RED));
             }
         }
 
@@ -464,7 +465,7 @@ public class DroneManager {
         } else {
             cleanupSession(session);
             sessions.remove(session.getPlayerId());
-            bossBars.remove(session.getPlayerId());
+            plugin.getBossBarManager().remove(barKey(session.getPlayerId()));
             lastHum.remove(session.getPlayerId());
         }
     }
@@ -478,7 +479,7 @@ public class DroneManager {
         }
 
         sessions.remove(player.getUniqueId());
-        bossBars.remove(player.getUniqueId());
+        plugin.getBossBarManager().remove(barKey(player.getUniqueId()));
         lowHpWarnings.remove(player.getUniqueId());
         lastHum.remove(player.getUniqueId());
     }
@@ -486,5 +487,9 @@ public class DroneManager {
     public void handleWorldChange(Player player) {
         if (isInDrone(player))
             recall(player);
+    }
+
+    private static String barKey(UUID playerId) {
+        return "drone:" + playerId;
     }
 }

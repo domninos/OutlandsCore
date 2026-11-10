@@ -1,6 +1,5 @@
 package net.omni.extraction.area;
 
-import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.omni.extraction.ExtractionPlugin;
@@ -247,20 +246,24 @@ public class AreaClearManager {
     }
 
     private void updateBossBar(AreaClearSession session) {
-        BossBar bossBar = session.getBossBar();
-        if (bossBar == null) return;
-
         Area area = session.getArea();
+        String key = barKey(area);
+
+        if (!plugin.getBossBarManager().exists(key)) return;
+
         int total = session.getTotalMobs();
         int remaining = session.getMobs().size();
 
         float progress = total <= 0 ? 0f : (float) remaining / total;
-        bossBar.progress(Math.clamp(progress, 0f, 1f));
-        bossBar.name(MiniMessage.miniMessage().deserialize(
+        plugin.getBossBarManager().update(key, progress, MiniMessage.miniMessage().deserialize(
                 area.getBossBarTitle()
                         .replace("%area%", area.getName())
                         .replace("%remaining%", String.valueOf(remaining))
                         .replace("%total%", String.valueOf(total))));
+    }
+
+    private static String barKey(Area area) {
+        return "area:" + area.getName().toLowerCase(Locale.ROOT);
     }
 
     private boolean inside(Area area, Location location, double margin) {
@@ -364,8 +367,7 @@ public class AreaClearManager {
                     if (!area.contains(player.getLocation()))
                         continue;
 
-                    if (session.getBossBar() != null)
-                        player.showBossBar(session.getBossBar());
+                    plugin.getBossBarManager().show(barKey(area), player);
 
                     PacketGlow.setGlow(player, entity, true);
                 }
@@ -389,10 +391,7 @@ public class AreaClearManager {
 
         createLootChests(area, session, killer);
 
-        if (session.getBossBar() != null) {
-            for (Player player : Bukkit.getOnlinePlayers())
-                player.hideBossBar(session.getBossBar());
-        }
+        plugin.getBossBarManager().remove(barKey(area));
 
         area.setState(AreaState.COOLDOWN);
         area.setUnavailableUntil(System.currentTimeMillis() + area.getCooldownSeconds() * 1000L);
@@ -630,8 +629,7 @@ public class AreaClearManager {
             return;
         }
 
-        if (session.getBossBar() != null)
-            player.showBossBar(session.getBossBar());
+        plugin.getBossBarManager().show(barKey(area), player);
 
         applyGlow(player, session);
     }
@@ -662,10 +660,10 @@ public class AreaClearManager {
         area.setState(AreaState.IN_PROGRESS);
 
         if (area.isBossBarEnabled()) {
-            BossBar bossBar = BossBar.bossBar(
-                    Component.empty(), 1.0f, area.getBossBarColor(), area.getBossBarOverlay());
-            session.setBossBar(bossBar);
-            owner.showBossBar(bossBar);
+            String barId = barKey(area);
+            plugin.getBossBarManager().create(barId, Component.empty(), 1.0f,
+                    area.getBossBarColor(), area.getBossBarOverlay());
+            plugin.getBossBarManager().show(barId, owner);
         }
 
         spawnMobs(area, session);
@@ -822,7 +820,7 @@ public class AreaClearManager {
 
         if (session == null) return;
 
-        if (session.getBossBar() != null) player.hideBossBar(session.getBossBar());
+        plugin.getBossBarManager().hide(barKey(area), player);
         removeGlow(player, session);
     }
 
@@ -889,10 +887,7 @@ public class AreaClearManager {
 
         session.cancelRespawns();
 
-        if (session.getBossBar() != null) {
-            for (Player player : Bukkit.getOnlinePlayers())
-                player.hideBossBar(session.getBossBar());
-        }
+        plugin.getBossBarManager().remove(barKey(area));
 
         removeAllSpawnedSpills(session);
 
@@ -968,10 +963,7 @@ public class AreaClearManager {
         }
 
         for (AreaClearSession session : sessions.values()) {
-            if (session.getBossBar() != null) {
-                for (Player player : Bukkit.getOnlinePlayers())
-                    player.hideBossBar(session.getBossBar());
-            }
+            plugin.getBossBarManager().remove(barKey(session.getArea()));
 
             session.cancelRespawns();
             removeAllSpawnedSpills(session);

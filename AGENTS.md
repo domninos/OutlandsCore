@@ -357,6 +357,16 @@ via `Math.sqrt` of the squared value only when needed.
   kept so users can re-enable. `PlaceholderValues` resolve `%extraction_*%` for the actionbar + PAPI.
 - `messages/Messages.java` + `src/main/resources/messages.yml`, `managers/MessagesManager.java`,
   `managers/TokenManager.java`.
+- `managers/BossBarManager.java`: the single owner of every Adventure `BossBar` (keyed registry:
+  `event:<id>` world events, `area:<name>` area clears, `drone:<uuid>` drone battery). API:
+  `create/show/hide/hideFromAll/update(progress,title)/updateColor/remove/shutdown` + per-viewer
+  tracking so its own MONITOR `PlayerQuitEvent` handler clears stale viewer links. Sources keep
+  their local formatting/gates (`EventPresentation` fills event placeholders + the
+  `settings().bossBar()`/in-world gate; `AreaClearManager` fills `%area%/%remaining%/%total%` +
+  the `area.isBossBarEnabled()` gate; `DroneManager` keeps the green/yellow/red battery logic) and
+  delegate the bar lifecycle. `AreaClearSession`/`EventInstance` no longer hold `BossBar` fields;
+  `ExtractionPlugin` constructs it before `AreaManager`, registers its quit listener, and calls
+  `shutdown()` after the run/area-clear shutdowns.
 - `integration/PlaceholderAPIHook.java`: identifier `extraction` - keep the param list in sync with
   `scoreboard/PlaceholderValues`.
 - `pom.xml`: shade relocates `com.zaxxer.hikari` - `net.omni.extraction.libs.hikari`, excludes `META-INF/*`;

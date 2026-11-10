@@ -1,6 +1,5 @@
 package net.omni.extraction.worldevent;
 
-import net.kyori.adventure.bossbar.BossBar;
 import net.omni.extraction.area.Area;
 import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.worldevent.mutator.Mutator;
@@ -38,7 +37,6 @@ public class EventInstance {
     private final Map<UUID, Double> damageDealt = new HashMap<>();
     private final int wavesTotal;
     private int totalMobs;
-    private BossBar bossBar;
     private int currentWave;
     private long lastWaveTime;
     private int reinforcementsSpawned;
@@ -323,14 +321,6 @@ public class EventInstance {
 
     public void setOriginalWorldTime(long originalWorldTime) {
         this.originalWorldTime = originalWorldTime;
-    }
-
-    public BossBar getBossBar() {
-        return bossBar;
-    }
-
-    public void setBossBar(BossBar bossBar) {
-        this.bossBar = bossBar;
     }
 
     public boolean isCraterActive() {

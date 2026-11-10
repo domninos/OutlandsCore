@@ -1,9 +1,9 @@
 package net.omni.extraction.worldevent.service;
 
-import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
+import net.omni.extraction.managers.BossBarManager;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
@@ -39,13 +39,20 @@ public class EventPresentation {
     }
 
     public void setupBossBar(EventInstance instance) {
-        BossBar bossBar = BossBar.bossBar(Component.empty(), 1.0f,
-                instance.getEvent().getBossBarColor(), instance.getEvent().getBossBarOverlay());
-        instance.setBossBar(bossBar);
+        WorldEvent event = instance.getEvent();
+        BossBarManager bossBars = ctx.plugin().getBossBarManager();
+        String key = eventBarKey(event);
+
+        bossBars.create(key, Component.empty(), 1.0f,
+                event.getBossBarColor(), event.getBossBarOverlay());
 
         for (Player player : Bukkit.getOnlinePlayers())
             if (isInWorld(player))
-                player.showBossBar(bossBar);
+                bossBars.show(key, player);
+    }
+
+    private static String eventBarKey(WorldEvent event) {
+        return "event:" + event.getId();
     }
 
     public boolean isInWorld(Player player) {
@@ -121,19 +128,21 @@ public class EventPresentation {
     }
 
     public void updateBossBar(EventInstance instance) {
-        BossBar bossBar = instance.getBossBar();
-        if (bossBar == null)
+        WorldEvent event = instance.getEvent();
+        BossBarManager bossBars = ctx.plugin().getBossBarManager();
+        String key = eventBarKey(event);
+
+        if (!bossBars.exists(key))
             return;
 
-        WorldEvent event = instance.getEvent();
         int total = instance.countedTotal();
         int remaining = instance.countedRemaining();
 
         float progress = total <= 0 ? 0f : (float) remaining / total;
-        bossBar.progress(Math.clamp(progress, 0f, 1f));
 
         String title = event.getBossBarTitle() == null ? "" : event.getBossBarTitle();
-        bossBar.name(MiniMessage.miniMessage().deserialize(fill(title, event, instance)));
+        bossBars.update(key, progress,
+                MiniMessage.miniMessage().deserialize(fill(title, event, instance)));
     }
 
     public String fill(String message, WorldEvent event, EventInstance instance) {
@@ -281,10 +290,10 @@ public class EventPresentation {
         if (!ctx.settings().bossBar())
             return;
 
-        for (EventInstance instance : ctx.active().values()) {
-            if (instance.getBossBar() != null)
-                player.showBossBar(instance.getBossBar());
-        }
+        BossBarManager bossBars = ctx.plugin().getBossBarManager();
+
+        for (EventInstance instance : ctx.active().values())
+            bossBars.show(eventBarKey(instance.getEvent()), player);
 
         updateCompassFor(player);
     }
@@ -310,10 +319,10 @@ public class EventPresentation {
         if (player == null)
             return;
 
-        for (EventInstance instance : ctx.active().values()) {
-            if (instance.getBossBar() != null)
-                player.hideBossBar(instance.getBossBar());
-        }
+        BossBarManager bossBars = ctx.plugin().getBossBarManager();
+
+        for (EventInstance instance : ctx.active().values())
+            bossBars.hide(eventBarKey(instance.getEvent()), player);
 
         ctx.compassPlayers().remove(player.getUniqueId());
     }

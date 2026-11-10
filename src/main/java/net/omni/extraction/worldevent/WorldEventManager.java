@@ -261,11 +261,7 @@ public class WorldEventManager {
         instance.getMobs().clear();
         mobInstances.entrySet().removeIf(entry -> entry.getValue() == instance);
 
-        if (instance.getBossBar() != null) {
-            for (Player player : Bukkit.getOnlinePlayers())
-                player.hideBossBar(instance.getBossBar());
-        }
-
+        plugin.getBossBarManager().remove("event:" + event.getId());
         plugin.getHologramManager().removeWaypointHologram(event.getId());
         ctx.presentation().clearWaypointCache(event.getId());
 

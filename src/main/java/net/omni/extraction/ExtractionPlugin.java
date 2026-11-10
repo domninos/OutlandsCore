@@ -114,6 +114,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     private CorpseManager corpseManager;
     private PetManager petManager;
     private AdminModeManager adminModeManager;
+    private BossBarManager bossBarManager;
     private HologramManager hologramManager;
     private BukkitTask playerSaveTask;
     private LootTableManager lootTableManager;
@@ -140,19 +141,8 @@ public final class ExtractionPlugin extends JavaPlugin {
     /*
 
     TODO:
-     - party join,kick should only look for cached parties. if no party found, try loading on db. and once a party is loaded, always cache it. then have the other servers update their cache via a notice or could be through the bungeecord plugin messaging
-     - rework party database architecture. cache all players who joined that has a party. if player is in a party, load the entire party so if other party members joins again, no need to re-load the party off db.
-     - party/Invites should use DatabaseManager's supply (if async or sync)
-     -
-     - For all tab completes, make sure to just return null if that argument is for online players. null = returns list of all online players.
-     - also check all pattern matching, patterns (regex) should be a constant variable instead of inline initialization
-     -
-     - LootDropManager double beamViewRadius = config.getLootDropBeamViewRadius(); not used
-     - have CorseManager's Npc have the arm and legs kinda broken (random torso turn)
-     -
      -
      - similarly, add an EntityUtil
-     - make a BossBarManager, move all related to boss bars on that (ref: EventPresentation#setupBossBar)
      -
      -
      - drone custom entity model for texture
@@ -210,6 +200,9 @@ public final class ExtractionPlugin extends JavaPlugin {
 
         areaClearManager.shutdown();
         runManager.shutdown();
+
+        if (bossBarManager != null)
+            bossBarManager.shutdown();
 
         if (worldEventManager != null)
             worldEventManager.shutdown();
@@ -324,6 +317,8 @@ public final class ExtractionPlugin extends JavaPlugin {
         this.wallManager.load();
 
         this.smokeGrenadeManager = new SmokeGrenadeManager(this);
+
+        this.bossBarManager = new BossBarManager(this);
 
         this.areaManager = new AreaManager(this, mobResolver);
         this.areaManager.load();
@@ -458,6 +453,7 @@ public final class ExtractionPlugin extends JavaPlugin {
     }
 
     private void registerListeners() {
+        bossBarManager.register();
         new PlayerListener(this).register();
         new WallBombListener(this).register();
         new SmokeGrenadeListener(this).register();
@@ -626,6 +622,10 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     public CorpseManager getCorpseManager() {
         return corpseManager;
+    }
+
+    public BossBarManager getBossBarManager() {
+        return bossBarManager;
     }
 
     public PetManager getPetManager() {

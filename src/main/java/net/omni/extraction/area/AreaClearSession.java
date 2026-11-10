@@ -1,6 +1,5 @@
 package net.omni.extraction.area;
 
-import net.kyori.adventure.bossbar.BossBar;
 import net.omni.extraction.mobs.MobDrop;
 import org.bukkit.Location;
 import org.bukkit.scheduler.BukkitTask;
@@ -28,7 +27,6 @@ public class AreaClearSession {
     private final Map<UUID, BukkitTask> respawnTasks;
     private final Map<UUID, Integer> respawnCredits;
     private int totalMobs;
-    private BossBar bossBar;
 
     public AreaClearSession(Area area, UUID owner) {
         this.area = area;
@@ -44,7 +42,6 @@ public class AreaClearSession {
         this.respawnTasks = new HashMap<>();
         this.respawnCredits = new HashMap<>();
         this.totalMobs = 0;
-        this.bossBar = null;
     }
 
     public Area getArea() {
@@ -81,14 +78,6 @@ public class AreaClearSession {
 
     public void setTotalMobs(int totalMobs) {
         this.totalMobs = totalMobs;
-    }
-
-    public BossBar getBossBar() {
-        return bossBar;
-    }
-
-    public void setBossBar(BossBar bossBar) {
-        this.bossBar = bossBar;
     }
 
     public Set<Location> getChestLocations() {
