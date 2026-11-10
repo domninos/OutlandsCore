@@ -23,13 +23,13 @@ public class PartyChatSubCommand extends PartySub {
         if (player == null)
             return true;
 
-        if (args.length < 3) {
+        if (args.length < 2) {
             boolean newState = !plugin.getPartyManager().isPartyChatEnabled(player.getUniqueId());
             plugin.getPartyManager().setPartyChatMode(player, newState);
             return true;
         }
 
-        String text = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+        String text = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
         plugin.getPartyManager().chat(player, text);
         return true;
     }

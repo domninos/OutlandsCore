@@ -186,10 +186,12 @@ via `Math.sqrt` of the squared value only when needed.
   `commands/loadout/LoadoutCommand.java` (plain opener, unchanged).
 - `commands/boss/BossCommand.java` (extends `MainCommand`, `sub/` = list/create/edit/delete/rename/settype/spawn
   with shared `BossSub` base; bare/unknown = help; help kept in the command class).
-- `commands/party/PartyCommand.java` (plain handler class dispatched from `ExtractionCommand`'s `PartySubCommand`;
-  `sub/Party*SubCommand` files + shared `PartySub` base; `tabComplete(sender, args)` consumed by extraction tab).
-- `commands/walls/WallsCommand.java` (plain handler class; `sub/Wall{List,Remove,Create}SubCommand` + shared
-  `WallSub` base; owns the walls tab logic consumed by extraction tab).
+- `commands/party/PartyCommand.java` (extends `MainCommand`; all `sub/Party*SubCommand` files registered via
+  `registerSubCommands` + shared `PartySub` base; `ExtractionCommand`'s `PartySubCommand` owns one instance and
+  strips the `party` token before dispatch/tab; bare = party info, unknown = usage).
+- `commands/walls/WallsCommand.java` (extends `MainCommand`; registers `list`/`remove`, while `Create` stays the
+  default fallback so `/extraction walls {id} {radius} {horizontal|vertical} {time}` is preserved; owns the walls
+  tab logic; `WallsSubCommand` owns one instance and strips the `walls` token first).
 - `chests/StandaloneChestCommand.java` (`/extchest`, extends `MainCommand`, `sub/Chest{Add,List,Remove,Reload}SubCommand`
   + `chests/ExtchestTabCompleter`).
 - `config/ConfigKeys.java`, `config/ConfigUtil.java`, `config/ConfigManager.java` (routes each config
@@ -245,7 +247,8 @@ via `Math.sqrt` of the squared value only when needed.
   through the `BungeeCord` channel (`Forward`/`ForwardToPlayer`, subchannel `extraction:party`, Gson payload)
   - gated by `party.cross-server` - via the package-private `memberArray`/`forwardAll`/`forwardToPlayer`
   shared by `PartyChat`/`Invites`.
-  `commands/PartyCommand.java` dispatches the subcommands (wired into `ExtractionCommand`'s `PartySubCommand`).
+  `commands/party/PartyCommand.java` dispatches the subcommands (wired into `ExtractionCommand`'s
+  `PartySubCommand`, which strips the `party` token).
   **Threading:** every `PartyManager`/`PartyChat`/`Invites` DB operation runs on `DatabaseManager.supplyKeyed/
   runKeyed` (keyed by player UUID); player names/UUIDs/online targets are captured on the main thread before
   the async work, and cache indexing, chat delivery, and the BungeeCord relay run in a `mainExecutor()`

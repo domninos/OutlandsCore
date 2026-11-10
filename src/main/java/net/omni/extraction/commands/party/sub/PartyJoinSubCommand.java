@@ -26,13 +26,13 @@ public class PartyJoinSubCommand extends PartySub {
         if (player == null)
             return true;
 
-        plugin.getPartyManager().join(player, args.length >= 3 ? args[2] : null);
+        plugin.getPartyManager().join(player, args.length >= 2 ? args[1] : null);
         return true;
     }
 
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        if (args.length != 3)
+        if (args.length != 2)
             return List.of();
 
         List<String> names = new ArrayList<>();

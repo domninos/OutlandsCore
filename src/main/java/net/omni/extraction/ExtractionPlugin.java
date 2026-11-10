@@ -140,11 +140,10 @@ public final class ExtractionPlugin extends JavaPlugin {
     /*
 
     TODO:
-     - WallCommand + SubCommand
-     - PartyCommand + SubCommand
-       - party join,kick should just say that the target player does not have a party instead of force loading db.
-       - rework party database architecture. cache all players who joined that has a party. if player is in a party, load the entire party so if other party members joins again, no need to re-load the party off db.
-       - party/Invites should use DatabaseManager's supply (if async or sync)
+     - party join,kick should just say that the target player does not have a party instead of force loading db.
+     - rework party database architecture. cache all players who joined that has a party. if player is in a party, load the entire party so if other party members joins again, no need to re-load the party off db.
+     - party/Invites should use DatabaseManager's supply (if async or sync)
+     -
      - For all tab completes, make sure to just return null if that argument is for online players. null = returns list of all online players.
      - also check all pattern matching, patterns (regex) should be a constant variable instead of inline initialization
      -

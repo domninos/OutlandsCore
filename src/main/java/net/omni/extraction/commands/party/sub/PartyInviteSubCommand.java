@@ -27,18 +27,18 @@ public class PartyInviteSubCommand extends PartySub {
         if (player == null)
             return true;
 
-        if (args.length < 3) {
+        if (args.length < 2) {
             plugin.sendMessage(sender, Messages.PARTY_USAGE.replace("usage", USAGE));
             return true;
         }
 
-        plugin.getPartyManager().invite(player, args[2]);
+        plugin.getPartyManager().invite(player, args[1]);
         return true;
     }
 
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        if (args.length == 3)
+        if (args.length == 2)
             return null;
 
         return List.of();

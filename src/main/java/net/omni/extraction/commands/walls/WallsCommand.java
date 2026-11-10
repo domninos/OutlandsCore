@@ -1,12 +1,13 @@
 package net.omni.extraction.commands.walls;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.commands.SubCommand;
+import net.omni.extraction.commands.MainCommand;
 import net.omni.extraction.commands.walls.sub.WallCreateSubCommand;
 import net.omni.extraction.commands.walls.sub.WallListSubCommand;
 import net.omni.extraction.commands.walls.sub.WallRemoveSubCommand;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.Permissions;
+import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
@@ -15,19 +16,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class WallsCommand {
+public class WallsCommand extends MainCommand {
 
-    private final ExtractionPlugin plugin;
+    private static final String USAGE =
+            "/extraction walls [list|remove|{id} {radius} {horizontal|vertical} {time}]";
 
-    private final WallListSubCommand listSub;
-    private final WallRemoveSubCommand removeSub;
     private final WallCreateSubCommand createSub;
 
     public WallsCommand(ExtractionPlugin plugin) {
-        this.plugin = plugin;
-        this.listSub = new WallListSubCommand(plugin);
-        this.removeSub = new WallRemoveSubCommand(plugin);
+        super(plugin);
         this.createSub = new WallCreateSubCommand(plugin);
+        registerSubCommands(
+                new WallListSubCommand(plugin),
+                new WallRemoveSubCommand(plugin));
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        return handle(sender, args);
     }
 
     public boolean handle(CommandSender sender, String[] args) {
@@ -39,53 +45,52 @@ public class WallsCommand {
         if (sender instanceof Player player && plugin.getDroneManager().isInDrone(player))
             return true;
 
-        if (args.length < 2) {
-            plugin.sendMessage(sender, Messages.USAGE.replace("usage",
-                    "/extraction walls [list|remove|{id} {radius} {horizontal|vertical} {time}]"));
+        return executeSubCommands(sender, args);
+    }
+
+    @Override
+    protected boolean executeDefault(CommandSender sender, String[] args) {
+        if (args.length == 0) {
+            plugin.sendMessage(sender, Messages.USAGE.replace("usage", USAGE));
             return true;
         }
 
-        String sub = args[1].toLowerCase(Locale.ROOT);
-
-        if (sub.equals("list"))
-            return listSub.execute(sender, args);
-
-        if (sub.equals("remove"))
-            return removeSub.execute(sender, args);
-
-        return createSub.execute(sender, args);
+        String[] createArgs = new String[args.length + 1];
+        createArgs[0] = createSub.name();
+        System.arraycopy(args, 0, createArgs, 1, args.length);
+        return createSub.execute(sender, createArgs);
     }
 
+    @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
         if (!sender.hasPermission(Permissions.ADMIN))
             return List.of();
 
-        if (args.length == 2) {
+        if (args.length <= 1) {
             List<String> suggestions = new ArrayList<>(subNames());
-
             suggestions.addAll(plugin.getWallManager().getIds());
-
-            List<String> completions = new ArrayList<>();
-            StringUtil.copyPartialMatches(args[1], suggestions, completions);
-            return completions;
+            return partial(args.length == 0 ? "" : args[0], suggestions);
         }
 
-        switch (args[1].toLowerCase(Locale.ROOT)) {
+        switch (args[0].toLowerCase(Locale.ROOT)) {
             case "remove" -> {
-                return partial(args[2], removeSub.tabComplete(sender, args));
+                if (args.length == 2)
+                    return partial(args[1], List.copyOf(plugin.getWallManager().getIds()));
+
+                return List.of();
             }
             case "list" -> {
                 return List.of();
             }
             default -> {
+                if (args.length == 2)
+                    return partial(args[1], List.of("4", "6", "8"));
+
                 if (args.length == 3)
-                    return partial(args[2], List.of("4", "6", "8"));
+                    return partial(args[2], List.of("horizontal", "vertical"));
 
                 if (args.length == 4)
-                    return partial(args[3], List.of("horizontal", "vertical"));
-
-                if (args.length == 5)
-                    return partial(args[4], List.of("300s", "5m", "1h"));
+                    return partial(args[3], List.of("300s", "5m", "1h"));
             }
         }
 
@@ -93,12 +98,12 @@ public class WallsCommand {
     }
 
     private List<String> subNames() {
-        return List.of(listSub.name(), removeSub.name());
+        return List.of("list", "remove");
     }
 
-    private List<String> partial(Object rawArg, List<String> options) {
+    private List<String> partial(String rawArg, List<String> options) {
         List<String> completions = new ArrayList<>();
-        StringUtil.copyPartialMatches(String.valueOf(rawArg), options, completions);
+        StringUtil.copyPartialMatches(rawArg, options, completions);
         return completions;
     }
 }

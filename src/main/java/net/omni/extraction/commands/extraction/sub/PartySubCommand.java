@@ -5,14 +5,15 @@ import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.commands.party.PartyCommand;
 import org.bukkit.command.CommandSender;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class PartySubCommand implements SubCommand {
 
-    private final ExtractionPlugin plugin;
+    private final PartyCommand command;
 
     public PartySubCommand(ExtractionPlugin plugin) {
-        this.plugin = plugin;
+        this.command = new PartyCommand(plugin);
     }
 
     @Override
@@ -22,14 +23,15 @@ public class PartySubCommand implements SubCommand {
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
-        return new PartyCommand(plugin).handle(sender, args);
+        return command.handle(sender, subArgs(args));
     }
 
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        if (args.length < 2)
-            return List.of();
+        return command.tabComplete(sender, subArgs(args));
+    }
 
-        return new PartyCommand(plugin).tabComplete(sender, args);
+    private String[] subArgs(String[] args) {
+        return args.length <= 1 ? new String[0] : Arrays.copyOfRange(args, 1, args.length);
     }
 }
