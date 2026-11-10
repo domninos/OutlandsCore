@@ -9,19 +9,19 @@ import net.omni.extraction.worldevent.mutator.MutatorType;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.block.Chest;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
@@ -202,30 +202,18 @@ public class WorldEventListener implements Listener {
             event.setCancelled(true);
     }
 
+    // Harvest chests have no claim interaction: right-click opens them like any
+    // container; the close hook below manages the open animation and removal.
+
     @EventHandler
-    public void onInteract(PlayerInteractEvent event) {
-        if (plugin.getDroneManager().isInDrone(event.getPlayer())) return;
-
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK)
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player))
             return;
 
-        if (event.isCancelled())
+        if (!(event.getInventory().getHolder() instanceof Chest chest))
             return;
 
-        Block block = event.getClickedBlock();
-        if (block == null)
-            return;
-
-        WorldEventManager manager = plugin.getWorldEventManager();
-
-        if (!manager.isHarvestChest(block))
-            return;
-
-        Player player = event.getPlayer();
-        event.setCancelled(true);
-
-        if (manager.claimHarvestChest(player, block))
-            plugin.sendMessage(player, Messages.EVENTS_HARVEST.toString());
+        plugin.getWorldEventManager().handleHarvestChestClose(chest.getBlock());
     }
 
     @EventHandler(ignoreCancelled = true)

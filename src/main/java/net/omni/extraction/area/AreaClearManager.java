@@ -10,6 +10,7 @@ import net.omni.extraction.loot.LootResolver;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.mobs.MobDrop;
+import net.omni.extraction.util.PacketChest;
 import net.omni.extraction.util.PacketGlow;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
@@ -481,6 +482,9 @@ public class AreaClearManager {
                     filled = true;
                 }
 
+                PacketChest.setOpen(block, false);
+                PacketChest.setOpen(block, true);
+
                 Location chestLoc = block.getLocation();
                 session.addChestLocation(chestLoc);
                 chestSessions.put(locationKey(chestLoc), session);
@@ -623,6 +627,29 @@ public class AreaClearManager {
 
     public boolean isLootChest(Location location) {
         return location != null && chestSessions.containsKey(locationKey(location));
+    }
+
+    /**
+     * Called when a player closes a registered loot chest after the clear is
+     * over: emptied -> the chest closes; loot remains -> it stays open.
+     */
+    public void handleChestClose(Block block) {
+        if (block == null)
+            return;
+
+        Location location = block.getLocation();
+        AreaClearSession session = chestSessions.get(locationKey(location));
+
+        if (session == null)
+            return;
+
+        if (isActive(session.getArea()))
+            return;
+
+        boolean empty = !(block.getState() instanceof InventoryHolder holder)
+                || holder.getInventory().isEmpty();
+
+        PacketChest.setOpen(block, !empty);
     }
 
     public AreaClearSession getChestSession(Location location) {

@@ -912,12 +912,12 @@ public class WorldEventManager {
         return mobInstances.get(uuid);
     }
 
-    public boolean claimHarvestChest(Player player, Block block) {
-        return ctx.harvest().claimHarvestChest(player, block);
-    }
-
     public boolean isHarvestChest(Block block) {
         return ctx.harvest().isHarvestChest(block);
+    }
+
+    public void handleHarvestChestClose(Block block) {
+        ctx.harvest().handleChestClose(block);
     }
 
     // ---- convoy delegation ----

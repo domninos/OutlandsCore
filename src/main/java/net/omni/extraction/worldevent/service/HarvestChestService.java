@@ -2,10 +2,12 @@ package net.omni.extraction.worldevent.service;
 
 import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootTable;
+import net.omni.extraction.util.PacketChest;
 import net.omni.extraction.worldevent.EventInstance;
 import net.omni.extraction.worldevent.WorldEvent;
 import net.omni.extraction.worldevent.mutator.Mutator;
 import net.omni.extraction.worldevent.mutator.MutatorType;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -15,17 +17,24 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
 
 /**
- * Owns the temporary harvest (crater/event) chests: spawning them, rolling
- * their contents, and claiming them.
+ * Owns the temporary harvest (crater/event) chests: spawning them (open
+ * animation), rolling their contents, and removing each chest one minute
+ * after it has been emptied. Players open and loot them like any container —
+ * there is no claim interaction. Restoring event terrain happens when an
+ * instance's LAST chest is removed.
  */
 public class HarvestChestService {
 
+    private static final long REMOVE_DELAY_TICKS = 20L * 60;
+
     private final EventContext ctx;
     private final Map<Location, HarvestChest> harvestChests = new HashMap<>();
+    private final Map<Location, BukkitTask> removalTasks = new HashMap<>();
 
     public HarvestChestService(EventContext ctx) {
         this.ctx = ctx;
@@ -70,8 +79,8 @@ public class HarvestChestService {
             for (ItemStack item : content)
                 inventory.addItem(item);
 
-            harvestChests.put(block.getLocation(), new HarvestChest(instance,
-                    new ArrayList<>(Arrays.asList(inventory.getContents()))));
+            harvestChests.put(block.getLocation(), new HarvestChest(instance));
+            PacketChest.setOpen(block, true);
             spawned++;
         }
 
@@ -131,35 +140,58 @@ public class HarvestChestService {
     }
 
     /**
-     * Attempts to claim a harvest chest for the player: grants the rolled loot,
-     * breaks the block and unregisters it. Returns false when the block is not
-     * a harvest chest.
+     * Called when a player closes a harvest chest: loot remains -> the chest
+     * stays open; emptied -> the chest closes and is removed one minute later
+     * (the removal restores event terrain when it was the instance's last one).
      */
-    public boolean claimHarvestChest(Player player, Block block) {
-        if (player == null || block == null)
-            return false;
+    public void handleChestClose(Block block) {
+        if (block == null || !harvestChests.containsKey(block.getLocation()))
+            return;
 
-        HarvestChest chest = harvestChests.remove(block.getLocation());
-        if (chest == null)
-            return false;
-
-        block.setType(Material.AIR);
-
-        for (ItemStack item : chest.items) {
-            if (item == null || item.getType().isAir())
-                continue;
-
-            Map<Integer, ItemStack> leftovers = player.getInventory().addItem(item.clone());
-            for (ItemStack leftover : leftovers.values())
-                if (leftover != null)
-                    block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0.5, 0.5), leftover);
+        if (!isEmpty(block)) {
+            PacketChest.setOpen(block, true);
+            return;
         }
 
-        boolean anyLeft = harvestChests.values().stream().anyMatch(c -> c.instance == chest.instance);
+        PacketChest.setOpen(block, false);
+
+        Location location = block.getLocation();
+
+        if (removalTasks.containsKey(location))
+            return;
+
+        removalTasks.put(location, Bukkit.getScheduler().runTaskLater(ctx.plugin(),
+                () -> removeChest(location), REMOVE_DELAY_TICKS));
+    }
+
+    private boolean isEmpty(Block block) {
+        return !(block.getState() instanceof InventoryHolder holder)
+                || holder.getInventory().isEmpty();
+    }
+
+    private void removeChest(Location location) {
+        removalTasks.remove(location);
+
+        HarvestChest chest = harvestChests.remove(location);
+
+        if (chest == null)
+            return;
+
+        Block block = location.getBlock();
+
+        if (block.getState() instanceof InventoryHolder holder)
+            holder.getInventory().clear();
+
+        PacketChest.setOpen(block, false);
+
+        if (block.getType() == Material.CHEST)
+            block.setType(Material.AIR);
+
+        boolean anyLeft = harvestChests.values().stream()
+                .anyMatch(c -> c.instance == chest.instance);
+
         if (!anyLeft)
             ctx.terrain().restoreTerrain(chest.instance);
-
-        return true;
     }
 
     public boolean isHarvestChest(Block block) {
@@ -167,10 +199,10 @@ public class HarvestChestService {
     }
 
     /**
-     * Removes only this instance's unclaimed harvest chests — used when an event
+     * Removes only this instance's unlooted harvest chests — used when an event
      * ends WITHOUT success (expiry/no-players/admin stop). The block inventory is
      * cleared before the chest is turned to AIR so nothing spills to the ground.
-     * On success the chests stay until claimed instead (see endEvent).
+     * On success the chests stay until looted empty (+ removal delay) instead.
      */
     public void clearFor(EventInstance instance) {
         if (instance == null)
@@ -179,11 +211,12 @@ public class HarvestChestService {
         List<Location> remove = new ArrayList<>();
 
         for (Map.Entry<Location, HarvestChest> entry : harvestChests.entrySet()) {
-            if (entry.getValue().instance() == instance)
+            if (entry.getValue().instance == instance)
                 remove.add(entry.getKey());
         }
 
         for (Location location : remove) {
+            cancelRemovalTask(location);
             harvestChests.remove(location);
 
             Block block = location.getBlock();
@@ -201,20 +234,29 @@ public class HarvestChestService {
      */
     public void clearAll() {
         for (Location location : new ArrayList<>(harvestChests.keySet())) {
+            cancelRemovalTask(location);
+
             Block block = location.getBlock();
+
             if (block.getType() == Material.CHEST)
                 block.setType(Material.AIR);
         }
 
         harvestChests.clear();
+        removalTasks.clear();
+    }
+
+    private void cancelRemovalTask(Location location) {
+        BukkitTask task = removalTasks.remove(location);
+
+        if (task != null)
+            task.cancel();
     }
 
     /**
-     * A temporary harvest chest: the owning instance + its rolled loot.
+     * A temporary harvest chest: the owning event instance (loot lives inside
+     * the chest block itself; removal restores the instance's terrain).
      */
-    private record HarvestChest(EventInstance instance, List<ItemStack> items) {
-        public EventInstance instance() {
-            return instance;
-        }
+    private record HarvestChest(EventInstance instance) {
     }
 }

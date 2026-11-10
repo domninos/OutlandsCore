@@ -5,11 +5,13 @@ import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.PacketGlow;
 import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
+import org.bukkit.block.Chest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
@@ -105,6 +107,17 @@ public class AreaListener implements Listener {
         }
 
         event.setCancelled(false);
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player))
+            return;
+
+        if (!(event.getInventory().getHolder() instanceof Chest chest))
+            return;
+
+        plugin.getAreaClearManager().handleChestClose(chest.getBlock());
     }
 
     @EventHandler
