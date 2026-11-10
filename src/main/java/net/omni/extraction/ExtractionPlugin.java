@@ -503,8 +503,10 @@ public final class ExtractionPlugin extends JavaPlugin {
      * stay valid.
      */
     private void preloadOnlinePlayers() {
-        for (Player player : Bukkit.getOnlinePlayers())
+        for (Player player : Bukkit.getOnlinePlayers()) {
             playerDataManager.loadPlayer(player.getUniqueId(), null);
+            partyManager.loadPlayer(player);
+        }
     }
 
     private void stopSaveTask() {

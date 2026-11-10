@@ -45,7 +45,7 @@ class PartyChat {
     // ------------------------------------------------------------------
 
     void load(UUID uuid) {
-        plugin.getDatabaseManager().supplyKeyed(uuid, () -> readEnabled(uuid))
+        plugin.getDatabaseManager().supplyKeyed(PartyManager.PARTY_DB_KEY, () -> readEnabled(uuid))
                 .whenComplete((enabled, error) -> plugin.getDatabaseManager().mainExecutor().execute(() -> {
                     if (error != null) {
                         plugin.getLogger().log(Level.SEVERE, "Failed to load party chat mode for " + uuid, error);
@@ -56,7 +56,7 @@ class PartyChat {
                     if (Bukkit.getPlayer(uuid) == null)
                         return;
 
-                    chatEnabled.put(uuid, enabled);
+                    chatEnabled.putIfAbsent(uuid, enabled);
                 }));
     }
 
@@ -93,7 +93,7 @@ class PartyChat {
 
     void setEnabled(UUID uuid, boolean enabled) {
         chatEnabled.put(uuid, enabled);
-        plugin.getDatabaseManager().runKeyed(uuid, () -> persist(uuid, enabled));
+        plugin.getDatabaseManager().runKeyed(PartyManager.PARTY_DB_KEY, () -> persist(uuid, enabled));
     }
 
     private void persist(UUID uuid, boolean enabled) {
@@ -123,15 +123,15 @@ class PartyChat {
             return;
         }
 
-        plugin.getDatabaseManager().supplyKeyed(uuid, () -> partyManager.loadPartyOfPlayer(uuid))
-                .whenComplete((party, error) -> plugin.getDatabaseManager().mainExecutor().execute(() -> {
-                    if (error != null || party == null) {
-                        send(player, Messages.PARTY_NOT_IN);
-                        return;
-                    }
+        partyManager.onDb(() -> partyManager.loadPartyFromDb(uuid), party -> {
+            if (party == null) {
+                send(player, Messages.PARTY_NOT_IN);
+                return;
+            }
 
-                    deliver(player, party, message);
-                }));
+            partyManager.cacheLoaded(party);
+            deliver(player, party, message);
+        });
     }
 
     private void deliver(Player player, Party party, String message) {

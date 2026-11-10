@@ -25,16 +25,20 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 
 /**
- * Cross-server party system. The database is the source of truth; a small
- * per-server cache backs cheap lookups (placeholders) for online players.
- * Party chat and invites are relayed to other servers through the
- * {@code BungeeCord} plugin channel so members on other servers receive them.
- * Channel registration and inbound message parsing live in {@link PartyListener}.
+ * Cross-server party system. The database is the source of truth; a per-server
+ * cache keeps the complete roster of every party that has at least one member
+ * online on this server. Cache-only lookups back commands and placeholders,
+ * while a cache miss loads the entire party once and indexes every member.
+ *
+ * <p>Party chat and invites are relayed to other servers through the
+ * {@code BungeeCord} plugin channel. Roster changes relay a full snapshot with
+ * the party revision so receivers can update their cache without a database
+ * read.</p>
  *
  * <p><b>Threading.</b> Every database access runs on the off-thread worker
- * ({@code DatabaseManager.supplyKeyed}/{@code runKeyed}) and never on the Bukkit
- * main thread. A continuation that touches the cache, chat, or the plugin
- * channel hops back to the main thread through
+ * ({@code DatabaseManager.supplyKeyed}/{@code runKeyed}) under one shared party
+ * key and never on the Bukkit main thread. A continuation that touches the
+ * cache, chat, or the plugin channel hops back to the main thread through
  * {@code DatabaseManager.mainExecutor()}. Player names/UUIDs and online targets
  * are resolved on the main thread before the asynchronous work is submitted.</p>
  */
@@ -42,6 +46,7 @@ public class PartyManager {
 
     static final String BUNGEE_CHANNEL = "BungeeCord";
     static final String PARTY_CHANNEL = "extraction:party";
+    static final Object PARTY_DB_KEY = new Object();
 
     private final ExtractionPlugin plugin;
 
@@ -76,8 +81,19 @@ public class PartyManager {
     }
 
     public void handleQuit(Player player) {
-        membershipByPlayer.remove(player.getUniqueId());
-        partyChat.remove(player.getUniqueId());
+        UUID uuid = player.getUniqueId();
+        partyChat.remove(uuid);
+
+        Party party = getParty(uuid);
+
+        if (party == null) {
+            membershipByPlayer.remove(uuid);
+            return;
+        }
+
+        // Keep the complete roster cached while another member is online here.
+        if (!hasOtherOnlineMember(party, uuid))
+            forget(party);
     }
 
     /**
@@ -111,61 +127,88 @@ public class PartyManager {
     }
 
     /**
-     * The cached party of an online player, or {@code null}.
+     * The cached party of a player, or {@code null}.
      */
     public Party getParty(UUID playerUuid) {
         UUID id = membershipByPlayer.get(playerUuid);
         return id == null ? null : partiesById.get(id);
     }
 
+    Party getPartyById(UUID partyId) {
+        return partyId == null ? null : partiesById.get(partyId);
+    }
+
+    void cacheLoaded(Party party) {
+        if (party != null && hasOnlineMember(party))
+            index(party);
+    }
+
     public void create(Player player) {
         UUID uuid = player.getUniqueId();
         String playerName = player.getName();
 
-        onDb(uuid, () -> {
+        Party cached = getParty(uuid);
+        if (cached != null) {
+            send(player, Messages.PARTY_ALREADY_IN);
+            return;
+        }
+
+        onDb(() -> {
             Outcome outcome = new Outcome();
 
-            if (loadPartyOfPlayer(uuid) != null) {
-                outcome.action = Action.ALREADY_IN;
-                return outcome;
-            }
+            try {
+                outcome.party = db().inTransaction(conn -> {
+                    Party own = loadPartyOfPlayer(conn, uuid, false);
 
-            UUID id = UUID.randomUUID();
-            DatabaseManager database = db();
+                    if (own != null) {
+                        outcome.action = Action.ALREADY_IN;
+                        return own;
+                    }
 
-            try (Connection conn = database.getConnection()) {
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "INSERT INTO " + database.table("party") + " (id, leader, created_at) VALUES (?, ?, ?)")) {
-                    ps.setString(1, id.toString());
-                    ps.setString(2, uuid.toString());
-                    ps.setLong(3, System.currentTimeMillis());
-                    ps.executeUpdate();
-                }
+                    UUID id = UUID.randomUUID();
 
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "INSERT INTO " + database.table("party_member")
-                                + " (party_id, uuid, name, joined_at) VALUES (?, ?, ?, ?)")) {
-                    ps.setString(1, id.toString());
-                    ps.setString(2, uuid.toString());
-                    ps.setString(3, playerName);
-                    ps.setLong(4, System.currentTimeMillis());
-                    ps.executeUpdate();
-                }
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "INSERT INTO " + db().table("party")
+                                    + " (id, leader, created_at, revision) VALUES (?, ?, ?, ?)")) {
+                        ps.setString(1, id.toString());
+                        ps.setString(2, uuid.toString());
+                        ps.setLong(3, System.currentTimeMillis());
+                        ps.setLong(4, 1L);
+                        ps.executeUpdate();
+                    }
+
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "INSERT INTO " + db().table("party_member")
+                                    + " (party_id, uuid, name, joined_at) VALUES (?, ?, ?, ?)")) {
+                        ps.setString(1, id.toString());
+                        ps.setString(2, uuid.toString());
+                        ps.setString(3, playerName);
+                        ps.setLong(4, System.currentTimeMillis());
+                        ps.executeUpdate();
+                    }
+
+                    outcome.action = Action.CREATED;
+                    return loadPartyById(conn, id, false);
+                });
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to create party for " + playerName, e);
                 return null;
             }
 
-            outcome.action = Action.CREATED;
-            outcome.party = loadPartyById(id);
             return outcome;
         }, outcome -> {
+            if (outcome == null)
+                return;
+
+            if (outcome.party != null)
+                cacheLoaded(outcome.party);
+
             switch (outcome.action) {
                 case ALREADY_IN -> send(player, Messages.PARTY_ALREADY_IN);
                 case CREATED -> {
-                    if (outcome.party != null)
-                        index(outcome.party);
                     send(player, Messages.PARTY_CREATED);
+                    if (outcome.party != null)
+                        relayUpdate(player, outcome.party);
                 }
                 default -> {
                 }
@@ -182,58 +225,89 @@ public class PartyManager {
         String playerName = player.getName();
         int max = plugin.getConfigUtil().getPartyMaxMembers();
 
-        onDb(uuid, () -> {
+        Party cached = getParty(uuid);
+        if (cached != null) {
+            send(player, Messages.PARTY_ALREADY_IN);
+            return;
+        }
+
+        onDb(() -> {
             Outcome outcome = new Outcome();
 
-            if (loadPartyOfPlayer(uuid) != null) {
-                outcome.action = Action.ALREADY_IN;
-                return outcome;
-            }
+            try {
+                outcome.party = db().inTransaction(conn -> {
+                    Party own = loadPartyOfPlayer(conn, uuid, false);
 
-            Invites.Invite invite = invites.findFor(playerName, targetName);
+                    if (own != null) {
+                        outcome.action = Action.ALREADY_IN;
+                        return own;
+                    }
 
-            if (invite == null || invite.expiresAt() < System.currentTimeMillis()) {
-                if (invite != null)
-                    invites.deleteFor(playerName);
-                outcome.action = Action.NO_INVITE;
-                return outcome;
-            }
+                    Invites.Invite invite = invites.findFor(conn, playerName, targetName);
 
-            Party party = loadPartyById(invite.partyId());
+                    if (invite == null || invite.expiresAt() < System.currentTimeMillis()) {
+                        if (invite != null)
+                            invites.deleteFor(conn, playerName);
+                        outcome.action = Action.NO_INVITE;
+                        return null;
+                    }
 
-            if (party == null) {
-                invites.deleteFor(playerName);
-                outcome.action = Action.NO_INVITE;
-                return outcome;
-            }
+                    Party party = loadPartyById(conn, invite.partyId(), true);
 
-            if (party.getMemberCount() >= max) {
-                outcome.action = Action.FULL;
-                return outcome;
-            }
+                    if (party == null) {
+                        invites.deleteFor(conn, playerName);
+                        outcome.action = Action.NO_INVITE;
+                        return null;
+                    }
 
-            DatabaseManager database = db();
+                    if (party.isMember(uuid)) {
+                        outcome.action = Action.ALREADY_IN;
+                        return party;
+                    }
 
-            try (Connection conn = database.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(
-                         "INSERT INTO " + database.table("party_member")
-                                 + " (party_id, uuid, name, joined_at) VALUES (?, ?, ?, ?)")) {
-                ps.setString(1, party.getId().toString());
-                ps.setString(2, uuid.toString());
-                ps.setString(3, playerName);
-                ps.setLong(4, System.currentTimeMillis());
-                ps.executeUpdate();
+                    Invites.Invite locked = invites.findForParty(conn, party.getId(), playerName, targetName);
+
+                    if (locked == null || locked.expiresAt() < System.currentTimeMillis()) {
+                        if (locked != null)
+                            invites.deleteFor(conn, playerName);
+                        outcome.action = Action.NO_INVITE;
+                        return null;
+                    }
+
+                    if (party.getMemberCount() >= max) {
+                        outcome.action = Action.FULL;
+                        return null;
+                    }
+
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "INSERT INTO " + db().table("party_member")
+                                    + " (party_id, uuid, name, joined_at) VALUES (?, ?, ?, ?)")) {
+                        ps.setString(1, party.getId().toString());
+                        ps.setString(2, uuid.toString());
+                        ps.setString(3, playerName);
+                        ps.setLong(4, System.currentTimeMillis());
+                        ps.executeUpdate();
+                    }
+
+                    invites.deleteFor(conn, playerName);
+                    bumpRevision(conn, party.getId());
+
+                    outcome.action = Action.JOINED;
+                    return loadPartyById(conn, party.getId(), false);
+                });
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to join party for " + playerName, e);
                 return null;
             }
 
-            invites.deleteFor(playerName);
-
-            outcome.action = Action.JOINED;
-            outcome.party = loadPartyById(party.getId());
             return outcome;
         }, outcome -> {
+            if (outcome == null)
+                return;
+
+            if (outcome.party != null)
+                cacheLoaded(outcome.party);
+
             switch (outcome.action) {
                 case ALREADY_IN -> send(player, Messages.PARTY_ALREADY_IN);
                 case NO_INVITE -> send(player, Messages.PARTY_NO_INVITE
@@ -244,7 +318,6 @@ public class PartyManager {
                         membershipByPlayer.remove(uuid);
                         return;
                     }
-                    index(outcome.party);
                     send(player, Messages.PARTY_JOINED.replace("player", outcome.party.getLeaderName()));
                     broadcast(outcome.party, uuid, Messages.PARTY_MEMBER_JOINED.replace("player", playerName));
                     relayUpdate(player, outcome.party);
@@ -259,65 +332,57 @@ public class PartyManager {
         UUID uuid = player.getUniqueId();
         String playerName = player.getName();
 
-        onDb(uuid, () -> {
+        onDb(() -> {
             Outcome outcome = new Outcome();
 
-            Party party = loadPartyOfPlayer(uuid);
+            try {
+                outcome.party = db().inTransaction(conn -> {
+                    Party party = loadPartyOfPlayer(conn, uuid, true);
 
-            if (party == null || !party.isMember(uuid)) {
-                outcome.action = Action.NOT_IN;
-                return outcome;
-            }
-
-            DatabaseManager database = db();
-            UUID newLeader = null;
-            boolean disbanded = false;
-
-            try (Connection conn = database.getConnection()) {
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "DELETE FROM " + database.table("party_member") + " WHERE party_id = ? AND uuid = ?")) {
-                    ps.setString(1, party.getId().toString());
-                    ps.setString(2, uuid.toString());
-                    ps.executeUpdate();
-                }
-
-                if (party.getMemberCount() <= 1) {
-                    deleteParty(conn, party.getId());
-                    disbanded = true;
-                } else if (party.isLeader(uuid)) {
-                    UUID next = party.firstMemberExcept(uuid);
-                    newLeader = next;
+                    if (party == null || !party.isMember(uuid)) {
+                        outcome.action = Action.NOT_IN;
+                        return null;
+                    }
 
                     try (PreparedStatement ps = conn.prepareStatement(
-                            "UPDATE " + database.table("party") + " SET leader = ? WHERE id = ?")) {
-                        ps.setString(1, next.toString());
-                        ps.setString(2, party.getId().toString());
+                            "DELETE FROM " + db().table("party_member") + " WHERE party_id = ? AND uuid = ?")) {
+                        ps.setString(1, party.getId().toString());
+                        ps.setString(2, uuid.toString());
                         ps.executeUpdate();
                     }
-                }
+
+                    if (party.getMemberCount() <= 1) {
+                        deleteParty(conn, party.getId());
+                        outcome.action = Action.DISBANDED;
+                        return party;
+                    }
+
+                    if (party.isLeader(uuid)) {
+                        UUID next = party.firstMemberExcept(uuid);
+                        outcome.member = next;
+
+                        try (PreparedStatement ps = conn.prepareStatement(
+                                "UPDATE " + db().table("party")
+                                        + " SET leader = ?, revision = revision + 1 WHERE id = ?")) {
+                            ps.setString(1, next.toString());
+                            ps.setString(2, party.getId().toString());
+                            ps.executeUpdate();
+                        }
+                    } else {
+                        bumpRevision(conn, party.getId());
+                    }
+
+                    outcome.action = Action.LEFT;
+                    return loadPartyById(conn, party.getId(), false);
+                });
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to leave party for " + playerName, e);
                 return null;
             }
 
-            outcome.party = party;
-            outcome.member = newLeader;
-
-            if (disbanded) {
-                outcome.action = Action.DISBANDED;
-                return outcome;
-            }
-
-            outcome.party = loadPartyById(party.getId());
-            outcome.action = Action.LEFT;
             return outcome;
         }, outcome -> {
-            if (outcome == null) {
-                send(player, Messages.PARTY_NOT_IN);
-                return;
-            }
-
-            if (outcome.action == Action.NOT_IN) {
+            if (outcome == null || outcome.action == Action.NOT_IN) {
                 send(player, Messages.PARTY_NOT_IN);
                 return;
             }
@@ -325,18 +390,23 @@ public class PartyManager {
             send(player, Messages.PARTY_LEFT);
 
             if (outcome.action == Action.DISBANDED) {
-                forget(outcome.party);
-                membershipByPlayer.remove(uuid);
+                if (outcome.party != null) {
+                    clearChatFor(outcome.party);
+                    forget(outcome.party);
+                    relayDisband(player, outcome.party);
+                }
                 return;
             }
 
             if (outcome.party == null) {
                 membershipByPlayer.remove(uuid);
+                partyChat.remove(uuid);
                 return;
             }
 
-            index(outcome.party);
+            cacheLoaded(outcome.party);
             membershipByPlayer.remove(uuid);
+            partyChat.remove(uuid);
             broadcast(outcome.party, uuid, Messages.PARTY_MEMBER_LEFT.replace("player", playerName));
 
             if (outcome.member != null) {
@@ -351,56 +421,88 @@ public class PartyManager {
     public void kick(Player player, String targetName) {
         UUID uuid = player.getUniqueId();
 
-        onDb(uuid, () -> {
+        // Cache-first: a loaded party already has the full roster. The mutation below still
+        // re-validates leadership/membership against the database before deleting.
+        Party cached = getParty(uuid);
+
+        if (cached != null) {
+            if (!cached.isLeader(uuid)) {
+                send(player, Messages.PARTY_LEADER_ONLY);
+                return;
+            }
+
+            UUID cachedTarget = memberUuidByName(cached, targetName);
+
+            if (cachedTarget == null) {
+                send(player, Messages.PARTY_TARGET_NOT_MEMBER.replace("player", targetName));
+                return;
+            }
+
+            if (cachedTarget.equals(uuid)) {
+                send(player, Messages.PARTY_CANNOT_KICK_SELF);
+                return;
+            }
+        }
+
+        onDb(() -> {
             Outcome outcome = new Outcome();
 
-            Party party = loadPartyOfPlayer(uuid);
+            try {
+                outcome.party = db().inTransaction(conn -> {
+                    Party party = loadPartyOfPlayer(conn, uuid, true);
 
-            if (party == null) {
-                outcome.action = Action.NOT_IN;
-                return outcome;
-            }
+                    if (party == null || !party.isMember(uuid)) {
+                        outcome.action = Action.NOT_IN;
+                        return null;
+                    }
 
-            if (!party.isLeader(uuid)) {
-                outcome.action = Action.LEADER_ONLY;
-                return outcome;
-            }
+                    if (!party.isLeader(uuid)) {
+                        outcome.action = Action.LEADER_ONLY;
+                        return null;
+                    }
 
-            UUID targetUuid = memberUuidByName(party, targetName);
+                    UUID targetUuid = memberUuidByName(party, targetName);
 
-            if (targetUuid == null) {
-                outcome.action = Action.TARGET_NOT_MEMBER;
-                return outcome;
-            }
+                    if (targetUuid == null) {
+                        outcome.action = Action.TARGET_NOT_MEMBER;
+                        return null;
+                    }
 
-            if (targetUuid.equals(uuid)) {
-                outcome.action = Action.CANNOT_KICK_SELF;
-                return outcome;
-            }
+                    if (targetUuid.equals(uuid)) {
+                        outcome.action = Action.CANNOT_KICK_SELF;
+                        return null;
+                    }
 
-            DatabaseManager database = db();
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "DELETE FROM " + db().table("party_member") + " WHERE party_id = ? AND uuid = ?")) {
+                        ps.setString(1, party.getId().toString());
+                        ps.setString(2, targetUuid.toString());
+                        ps.executeUpdate();
+                    }
 
-            try (Connection conn = database.getConnection()) {
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "DELETE FROM " + database.table("party_member") + " WHERE party_id = ? AND uuid = ?")) {
-                    ps.setString(1, party.getId().toString());
-                    ps.setString(2, targetUuid.toString());
-                    ps.executeUpdate();
-                }
+                    invites.delete(conn, party, targetName);
+                    bumpRevision(conn, party.getId());
 
-                invites.delete(party, targetName);
+                    outcome.action = Action.KICKED;
+                    outcome.party = loadPartyById(conn, party.getId(), false);
+                    outcome.member = targetUuid;
+                    outcome.name = targetName;
+                    return outcome.party;
+                });
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.SEVERE, "Failed to kick " + targetName, e);
                 return null;
             }
 
-            outcome.action = Action.KICKED;
-            outcome.party = loadPartyById(party.getId());
-            outcome.member = targetUuid;
-            outcome.name = targetName;
             return outcome;
         }, outcome -> {
-            switch (Objects.requireNonNull(outcome).action) {
+            if (outcome == null)
+                return;
+
+            if (outcome.party != null)
+                cacheLoaded(outcome.party);
+
+            switch (outcome.action) {
                 case NOT_IN -> send(player, Messages.PARTY_NOT_IN);
                 case LEADER_ONLY -> send(player, Messages.PARTY_LEADER_ONLY);
                 case TARGET_NOT_MEMBER -> send(player, Messages.PARTY_TARGET_NOT_MEMBER.replace("player", targetName));
@@ -416,15 +518,18 @@ public class PartyManager {
         UUID targetUuid = outcome.member;
         String targetName = outcome.name;
 
-        membershipByPlayer.remove(targetUuid);
+        if (targetUuid != null) {
+            membershipByPlayer.remove(targetUuid);
+            partyChat.remove(targetUuid);
+        }
+
         send(player, Messages.PARTY_KICKED_MEMBER.replace("player", targetName));
 
-        Player online = Bukkit.getPlayer(targetUuid);
+        Player online = targetUuid == null ? null : Bukkit.getPlayer(targetUuid);
         if (online != null)
             send(online, Messages.PARTY_KICKED);
 
         if (outcome.party != null) {
-            index(outcome.party);
             broadcast(outcome.party, targetUuid, Messages.PARTY_MEMBER_KICKED.replace("player", targetName));
             relayUpdate(player, outcome.party);
         }
@@ -437,46 +542,55 @@ public class PartyManager {
     public void disband(Player player) {
         UUID uuid = player.getUniqueId();
 
-        onDb(uuid, () -> {
+        onDb(() -> {
             Outcome outcome = new Outcome();
 
-            Party party = loadPartyOfPlayer(uuid);
+            try {
+                outcome.party = db().inTransaction(conn -> {
+                    Party party = loadPartyOfPlayer(conn, uuid, true);
 
-            if (party == null) {
-                outcome.action = Action.NOT_IN;
-                return outcome;
-            }
+                    if (party == null || !party.isMember(uuid)) {
+                        outcome.action = Action.NOT_IN;
+                        return null;
+                    }
 
-            if (!party.isLeader(uuid)) {
-                outcome.action = Action.LEADER_ONLY;
-                return outcome;
-            }
+                    if (!party.isLeader(uuid)) {
+                        outcome.action = Action.LEADER_ONLY;
+                        return null;
+                    }
 
-            DatabaseManager database = db();
-
-            try (Connection conn = database.getConnection()) {
-                deleteParty(conn, party.getId());
+                    deleteParty(conn, party.getId());
+                    outcome.action = Action.DISBANDED;
+                    return party;
+                });
             } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "Failed to disband party " + party.getId(), e);
+                plugin.getLogger().log(Level.SEVERE, "Failed to disband party for " + uuid, e);
                 return null;
             }
 
-            outcome.action = Action.DISBANDED;
-            outcome.party = party;
             return outcome;
         }, outcome -> {
+            if (outcome == null)
+                return;
+
             switch (outcome.action) {
                 case NOT_IN -> send(player, Messages.PARTY_NOT_IN);
                 case LEADER_ONLY -> send(player, Messages.PARTY_LEADER_ONLY);
-                default -> {
+                case DISBANDED -> {
+                    if (outcome.party == null)
+                        return;
+
                     for (UUID member : outcome.party.getMembers().keySet()) {
                         Player online = Bukkit.getPlayer(member);
                         if (online != null)
                             send(online, Messages.PARTY_DISBANDED);
                     }
 
+                    clearChatFor(outcome.party);
                     forget(outcome.party);
-                    relayUpdate(player, outcome.party);
+                    relayDisband(player, outcome.party);
+                }
+                default -> {
                 }
             }
         });
@@ -485,8 +599,8 @@ public class PartyManager {
     /**
      * Runs {@code work} on the off-thread worker and {@code onMain} back on the Bukkit main thread.
      */
-    <T> void onDb(UUID key, Supplier<T> work, Consumer<T> onMain) {
-        db().supplyKeyed(key, work).whenComplete((value, error) -> {
+    <T> void onDb(Supplier<T> work, Consumer<T> onMain) {
+        db().supplyKeyed(PARTY_DB_KEY, work).whenComplete((value, error) -> {
             if (error != null) {
                 plugin.getLogger().log(Level.SEVERE, "Party database task failed", error);
                 return;
@@ -503,19 +617,9 @@ public class PartyManager {
     /**
      * The (freshly loaded) party a player belongs to, or {@code null}.
      */
-    public Party loadPartyOfPlayer(UUID uuid) {
-        DatabaseManager database = db();
-
-        try (Connection conn = database.getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "SELECT party_id FROM " + database.table("party_member") + " WHERE uuid = ?")) {
-            ps.setString(1, uuid.toString());
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next())
-                    return null;
-                return loadPartyById(UUID.fromString(rs.getString("party_id")));
-            }
+    Party loadPartyFromDb(UUID uuid) {
+        try (Connection conn = db().getConnection()) {
+            return loadPartyOfPlayer(conn, uuid, false);
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to load party for " + uuid, e);
             return null;
@@ -526,27 +630,103 @@ public class PartyManager {
         return plugin.getDatabaseManager();
     }
 
-    private void deleteParty(Connection conn, UUID id) throws SQLException {
-        DatabaseManager database = db();
-
+    Party loadPartyOfPlayer(Connection conn, UUID uuid, boolean forUpdate) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
-                "DELETE FROM " + database.table("party_member") + " WHERE party_id = ?")) {
+                "SELECT party_id FROM " + db().table("party_member") + " WHERE uuid = ?")) {
+            ps.setString(1, uuid.toString());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next())
+                    return null;
+                return loadPartyById(conn, UUID.fromString(rs.getString("party_id")), forUpdate);
+            }
+        }
+    }
+
+    Party loadPartyById(Connection conn, UUID id, boolean forUpdate) throws SQLException {
+        UUID leader;
+        long createdAt;
+        long revision;
+
+        String sql = "SELECT leader, created_at, revision FROM " + db().table("party") + " WHERE id = ?";
+
+        if (forUpdate && db().isMysql())
+            sql += " FOR UPDATE";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, id.toString());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next())
+                    return null;
+                leader = UUID.fromString(rs.getString("leader"));
+                createdAt = rs.getLong("created_at");
+                revision = rs.getLong("revision");
+            }
+        }
+
+        Party party = new Party(id, leader, createdAt, revision);
+
+        String memberSql = "SELECT uuid, name FROM " + db().table("party_member")
+                + " WHERE party_id = ? ORDER BY joined_at ASC";
+
+        if (forUpdate && db().isMysql())
+            memberSql += " FOR UPDATE";
+
+        try (PreparedStatement ps = conn.prepareStatement(memberSql)) {
+            ps.setString(1, id.toString());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next())
+                    party.addMember(UUID.fromString(rs.getString("uuid")), rs.getString("name"));
+            }
+        }
+
+        return party;
+    }
+
+    private void bumpRevision(Connection conn, UUID id) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE " + db().table("party") + " SET revision = revision + 1 WHERE id = ?")) {
+            ps.setString(1, id.toString());
+            ps.executeUpdate();
+        }
+    }
+
+    private void deleteParty(Connection conn, UUID id) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "DELETE FROM " + db().table("party_member") + " WHERE party_id = ?")) {
             ps.setString(1, id.toString());
             ps.executeUpdate();
         }
 
         // Pending invites live in party.invites and are removed with the row.
         try (PreparedStatement ps = conn.prepareStatement(
-                "DELETE FROM " + database.table("party") + " WHERE id = ?")) {
+                "DELETE FROM " + db().table("party") + " WHERE id = ?")) {
             ps.setString(1, id.toString());
             ps.executeUpdate();
         }
     }
 
     private void forget(Party party) {
-        partiesById.remove(party.getId());
+        forgetById(party.getId());
+    }
 
-        membershipByPlayer.entrySet().removeIf(entry -> entry.getValue().equals(party.getId()));
+    private void forgetById(UUID id) {
+        Party removed = partiesById.remove(id);
+
+        if (removed == null) {
+            membershipByPlayer.entrySet().removeIf(entry -> entry.getValue().equals(id));
+            return;
+        }
+
+        for (UUID member : removed.getMembers().keySet())
+            membershipByPlayer.remove(member, id);
+    }
+
+    private void clearChatFor(Party party) {
+        for (UUID member : party.getMembers().keySet())
+            partyChat.remove(member);
     }
 
     private void relayUpdate(Player carrier, Party party) {
@@ -554,49 +734,31 @@ public class PartyManager {
             return;
 
         JsonObject payload = new JsonObject();
+        payload.addProperty("v", 2);
         payload.addProperty("action", "update");
+        payload.addProperty("id", party.getId().toString());
+        payload.addProperty("leader", party.getLeader().toString());
+        payload.addProperty("createdAt", party.getCreatedAt());
+        payload.addProperty("revision", party.getRevision());
         payload.add("members", memberArray(party));
 
+        JsonObject names = new JsonObject();
+        for (Map.Entry<UUID, String> member : party.getMembers().entrySet())
+            names.addProperty(member.getKey().toString(), member.getValue());
+
+        payload.add("names", names);
         forwardAll(carrier, payload);
     }
 
-    private Party loadPartyById(UUID id) {
-        DatabaseManager database = db();
+    private void relayDisband(Player carrier, Party party) {
+        if (!plugin.getConfigUtil().isPartyCrossServer())
+            return;
 
-        try (Connection conn = database.getConnection()) {
-            UUID leader;
-            long createdAt;
-
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT leader, created_at FROM " + database.table("party") + " WHERE id = ?")) {
-                ps.setString(1, id.toString());
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next())
-                        return null;
-                    leader = UUID.fromString(rs.getString("leader"));
-                    createdAt = rs.getLong("created_at");
-                }
-            }
-
-            Party party = new Party(id, leader, createdAt);
-
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT uuid, name FROM " + database.table("party_member")
-                            + " WHERE party_id = ? ORDER BY joined_at ASC")) {
-                ps.setString(1, id.toString());
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next())
-                        party.addMember(UUID.fromString(rs.getString("uuid")), rs.getString("name"));
-                }
-            }
-
-            return party;
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to load party " + id, e);
-            return null;
-        }
+        JsonObject payload = new JsonObject();
+        payload.addProperty("v", 2);
+        payload.addProperty("action", "disband");
+        payload.addProperty("id", party.getId().toString());
+        forwardAll(carrier, payload);
     }
 
     JsonArray memberArray(Party party) {
@@ -635,25 +797,31 @@ public class PartyManager {
 
     public void list(Player player) {
         UUID uuid = player.getUniqueId();
+        Party cached = getParty(uuid);
 
-        onDb(uuid, () -> {
-            Outcome outcome = new Outcome();
-            outcome.party = loadPartyOfPlayer(uuid);
-            outcome.action = outcome.party == null ? Action.NOT_IN : Action.LIST;
-            return outcome;
-        }, outcome -> {
-            if (outcome.action == Action.NOT_IN) {
+        if (cached != null) {
+            sendList(player, cached);
+            return;
+        }
+
+        onDb(() -> loadPartyFromDb(uuid), party -> {
+            if (party == null) {
                 send(player, Messages.PARTY_LIST_EMPTY);
                 return;
             }
 
-            send(player, Messages.PARTY_LIST_HEADER
-                    .replace("count", String.valueOf(outcome.party.getMemberCount()),
-                            "max", String.valueOf(plugin.getConfigUtil().getPartyMaxMembers()),
-                            "leader", outcome.party.getLeaderName()));
-
-            sendRoster(player, outcome.party);
+            cacheLoaded(party);
+            sendList(player, party);
         });
+    }
+
+    private void sendList(Player player, Party party) {
+        send(player, Messages.PARTY_LIST_HEADER
+                .replace("count", String.valueOf(party.getMemberCount()),
+                        "max", String.valueOf(plugin.getConfigUtil().getPartyMaxMembers()),
+                        "leader", party.getLeaderName()));
+
+        sendRoster(player, party);
     }
 
     // ------------------------------------------------------------------
@@ -670,14 +838,23 @@ public class PartyManager {
 
         Player target = Bukkit.getPlayerExact(targetName);
         UUID targetUuid = target != null ? target.getUniqueId() : null;
+        Party cached = targetUuid != null ? getParty(targetUuid) : findCachedPartyByMemberName(targetName);
 
-        onDb(uuid, () -> {
+        if (cached != null) {
+            sendInfo(player, targetName, cached);
+            return;
+        }
+
+        onDb(() -> {
             Outcome outcome = new Outcome();
 
-            Party party = targetUuid != null ? loadPartyOfPlayer(targetUuid) : null;
+            Party party = targetUuid != null ? loadPartyFromDb(targetUuid) : null;
 
             if (party == null) {
-                Party own = loadPartyOfPlayer(uuid);
+                Party own = getParty(uuid);
+
+                if (own == null)
+                    own = loadPartyFromDb(uuid);
 
                 if (own != null && memberUuidByName(own, targetName) != null)
                     party = own;
@@ -687,18 +864,25 @@ public class PartyManager {
             outcome.action = party == null ? Action.NOT_IN : Action.INFO;
             return outcome;
         }, outcome -> {
-            if (outcome.action == Action.NOT_IN) {
+            if (outcome == null || outcome.action == Action.NOT_IN) {
                 send(player, Messages.PARTY_INFO_NOT_IN.replace("player", targetName));
                 return;
             }
 
-            send(player, Messages.PARTY_INFO_HEADER
-                    .replace("player", targetName,
-                            "count", String.valueOf(outcome.party.getMemberCount()),
-                            "max", String.valueOf(plugin.getConfigUtil().getPartyMaxMembers())));
+            if (outcome.party != null)
+                cacheLoaded(outcome.party);
 
-            sendRoster(player, outcome.party);
+            sendInfo(player, targetName, outcome.party);
         });
+    }
+
+    private void sendInfo(Player player, String targetName, Party party) {
+        send(player, Messages.PARTY_INFO_HEADER
+                .replace("player", targetName,
+                        "count", String.valueOf(party.getMemberCount()),
+                        "max", String.valueOf(plugin.getConfigUtil().getPartyMaxMembers())));
+
+        sendRoster(player, party);
     }
 
     public void chat(Player player, String message) {
@@ -720,6 +904,14 @@ public class PartyManager {
         for (Map.Entry<UUID, String> entry : party.getMembers().entrySet()) {
             if (entry.getValue().equalsIgnoreCase(name))
                 return entry.getKey();
+        }
+        return null;
+    }
+
+    private Party findCachedPartyByMemberName(String name) {
+        for (Party party : partiesById.values()) {
+            if (memberUuidByName(party, name) != null)
+                return party;
         }
         return null;
     }
@@ -761,27 +953,125 @@ public class PartyManager {
         switch (action) {
             case "chat" -> partyChat.handleRelay(payload);
             case "invite" -> invites.handleRelay(payload);
-            case "update" -> {
-                for (JsonElement member : payload.getAsJsonArray("members")) {
-                    Player online = Bukkit.getPlayer(UUID.fromString(member.getAsString()));
-                    if (online != null)
-                        loadPlayer(online);
-                }
-            }
+            case "update" -> handleUpdateRelay(payload);
+            case "disband" -> handleDisbandRelay(payload);
             default -> {
             }
+        }
+    }
+
+    private void handleUpdateRelay(JsonObject payload) {
+        if (!payload.has("id")) {
+            // Backwards-compatible notice from an older server: reload online members.
+            for (JsonElement member : payload.getAsJsonArray("members")) {
+                Player online = Bukkit.getPlayer(UUID.fromString(member.getAsString()));
+
+                if (online == null)
+                    continue;
+
+                Party cached = getParty(online.getUniqueId());
+
+                if (cached != null)
+                    forget(cached);
+
+                loadPlayer(online);
+            }
+            return;
+        }
+
+        Party incoming = parseParty(payload);
+
+        if (incoming == null)
+            return;
+
+        Party existing = partiesById.get(incoming.getId());
+
+        if (existing != null && existing.getRevision() >= incoming.getRevision())
+            return;
+
+        if (!hasOnlineMember(incoming))
+            return;
+
+        if (existing != null) {
+            for (UUID member : existing.getMembers().keySet()) {
+                if (!incoming.isMember(member))
+                    partyChat.remove(member);
+            }
+        }
+
+        index(incoming);
+    }
+
+    private void handleDisbandRelay(JsonObject payload) {
+        if (!payload.has("id"))
+            return;
+
+        UUID id = UUID.fromString(payload.get("id").getAsString());
+        Party existing = partiesById.get(id);
+
+        if (existing == null) {
+            membershipByPlayer.entrySet().removeIf(entry -> entry.getValue().equals(id));
+            return;
+        }
+
+        clearChatFor(existing);
+        forgetById(id);
+    }
+
+    private Party parseParty(JsonObject payload) {
+        try {
+            UUID id = UUID.fromString(payload.get("id").getAsString());
+            UUID leader = UUID.fromString(payload.get("leader").getAsString());
+            long createdAt = payload.has("createdAt") ? payload.get("createdAt").getAsLong() : 0L;
+            long revision = payload.has("revision") ? payload.get("revision").getAsLong() : 0L;
+            Party party = new Party(id, leader, createdAt, revision);
+
+            JsonObject names = payload.has("names") && payload.get("names").isJsonObject()
+                    ? payload.getAsJsonObject("names") : null;
+
+            for (JsonElement element : payload.getAsJsonArray("members")) {
+                String uuidText;
+                String name = null;
+
+                if (element.isJsonObject()) {
+                    JsonObject member = element.getAsJsonObject();
+                    uuidText = member.get("uuid").getAsString();
+
+                    if (member.has("name"))
+                        name = member.get("name").getAsString();
+                } else {
+                    uuidText = element.getAsString();
+                }
+
+                UUID memberUuid = UUID.fromString(uuidText);
+
+                if (name == null && names != null && names.has(uuidText))
+                    name = names.get(uuidText).getAsString();
+
+                party.addMember(memberUuid, name == null ? uuidText : name);
+            }
+
+            return party;
+        } catch (RuntimeException e) {
+            return null;
         }
     }
 
     public void loadPlayer(Player player) {
         UUID uuid = player.getUniqueId();
 
+        partyChat.load(uuid);
+
+        if (getParty(uuid) != null)
+            return;
+
         if (!loading.add(uuid))
             return;
 
-        partyChat.load(uuid);
-
-        db().supplyKeyed(uuid, () -> loadPartyOfPlayer(uuid)).whenComplete((party, error) -> db().mainExecutor().execute(() -> {
+        db().supplyKeyed(PARTY_DB_KEY, () -> {
+            Party cached = getParty(uuid);
+            return cached != null ? cached : loadPartyFromDb(uuid);
+        }).whenComplete((party, error) -> db().mainExecutor().execute(() -> {
             loading.remove(uuid);
 
             if (error != null) {
@@ -789,20 +1079,43 @@ public class PartyManager {
                 return;
             }
 
-            // A late completion must not resurrect a player who already quit.
-            if (Bukkit.getPlayer(uuid) == null) {
+            if (party == null) {
                 membershipByPlayer.remove(uuid);
                 return;
             }
 
-            if (party == null)
-                membershipByPlayer.remove(uuid);
-            else
+            if (hasOnlineMember(party))
                 index(party);
+            else
+                membershipByPlayer.remove(uuid);
         }));
     }
 
+    private boolean hasOnlineMember(Party party) {
+        for (UUID member : party.getMembers().keySet()) {
+            if (Bukkit.getPlayer(member) != null)
+                return true;
+        }
+        return false;
+    }
+
+    private boolean hasOtherOnlineMember(Party party, UUID exclude) {
+        for (UUID member : party.getMembers().keySet()) {
+            if (member.equals(exclude))
+                continue;
+
+            if (Bukkit.getPlayer(member) != null)
+                return true;
+        }
+        return false;
+    }
+
     private void index(Party party) {
+        Party existing = partiesById.get(party.getId());
+
+        if (existing != null && existing.getRevision() > party.getRevision())
+            return;
+
         partiesById.put(party.getId(), party);
 
         for (UUID member : party.getMembers().keySet())

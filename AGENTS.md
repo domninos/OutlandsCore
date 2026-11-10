@@ -141,7 +141,8 @@ via `Math.sqrt` of the squared value only when needed.
 - `ExtractionPlugin.java`: main class. onEnable: `initChatRenderer()` (detection lines use `getLogger()` --
   before the prefix is loaded) - `configUtil` load + `chatRenderer.setPrefix(configUtil.getPrefix())` -
   messages file/manager - data/managers - registerCommands + registerListeners - start tasks; ends with
-  `preloadOnlinePlayers()` (async-loads data for anyone already online, e.g. after `/extraction reload`).
+  `preloadOnlinePlayers()` (async-loads player data + warms the party cache for anyone already online, e.g.
+  after `/extraction reload`).
   onDisable: `playerDataManager.onDisable()` FIRST (flips `disabled` so saves become synchronous) - stops
   the scheduled tasks - **`databaseManager.drain()`** (waits out every in-flight worker task so the pool and
   the main thread never write at once) - `areaClearManager`/`runManager`/`worldEventManager`/party shutdowns
@@ -224,38 +225,46 @@ via `Math.sqrt` of the squared value only when needed.
   Tradeoff: a hard crash can lose the buffered (non-immediate) window. `loadRowInto` uses explicit
   `DatabaseManager.PLAYER_COLUMNS` and only marks a player loaded on a successful query (failures keep it unloaded
   and never persist it).
-- `party/Party.java` (roster: id, leader, ordered members), `party/PartyManager.java`: DB-backed
+- `party/Party.java` (roster: id, leader, ordered members, revision), `party/PartyManager.java`: DB-backed
   cross-server party system (`/extraction party`), built after the data managers. Roster lives in the
   `party`/`party_member` tables and pending invites are a JSON array in `party.invites` (keyed by lowercased
-  target *name* so they work across servers); a per-server cache (`membershipByPlayer`/`partiesById`) backs
-  cheap lookups and
-  `%extraction_party%` (leader name; `PlaceholderValues`). Public ops: `create/invite/join/leave/kick/disband/
-  list/info/chat`. Chat and invite logic are split out: `party/PartyChat.java` owns `chat` + the per-player
-  **party chat mode** (toggled via `/extraction party chat on|off`, persisted in `party_member.chat_enabled`
-  so it works across servers, scoped to the player's current membership - it resets to OFF when they leave,
-  are kicked, or the party disbands) + the relay-out/in for `chat`; `party/Invites.java` owns the invite
-  lifecycle (sending, `findFor`/`deleteFor`, the `Invite` record, read-modify-write of the `party.invites`
-  JSON column) + the relay-out/in for `invite`. `PartyChat` caches the flag (loaded on join, removed on quit,
-  default OFF) and `PartyManager` exposes `setPartyChatMode`/`isPartyChatEnabled`. When enabled, the
-  `PartyListener` `AsyncChatEvent` handler cancels the player's normal chat and routes it to the party
-  (only while they are in a party - a toggled-on player outside a party keeps global chat; delivery is
-  scheduled onto the main thread). `party/PartyListener.java` owns ALL party event handling - the Bukkit
-  join/quit/chat handlers (`loadPlayer`/`handleQuit`/`onAsyncChat`) plus the `BungeeCord` plugin channel
-  (register/unregister of outgoing+incoming in `register()`/`shutdown()`, and `onPluginMessageReceived`
-  framing - `PartyManager.handleRelay`). `PartyManager.handleRelay` dispatches decoded payloads to
-  `PartyChat`/`Invites` (chat/invite) and reloads caches (update). The outbound side relays chat + invites
-  through the `BungeeCord` channel (`Forward`/`ForwardToPlayer`, subchannel `extraction:party`, Gson payload)
-  - gated by `party.cross-server` - via the package-private `memberArray`/`forwardAll`/`forwardToPlayer`
-  shared by `PartyChat`/`Invites`.
+  target *name* so they work across servers); `party.revision` is bumped on every roster mutation
+  (create/join/leave/kick/leader change) and is the cross-server update ordering token. A per-server cache
+  (`membershipByPlayer`/`partiesById`) keeps the **complete roster** of every party with at least one member
+  online on this server (including offline members), backs cheap cache-only lookups and
+  `%extraction_party%` (leader name; `PlaceholderValues`), and is evicted when the last local online member
+  quits. `loadPlayer` loads the whole party once and indexes every member, so another member joining needs no
+  DB read; `join`/`kick` check the cache first and only touch the DB on a miss. Public ops: `create/invite/
+  join/leave/kick/disband/list/info/chat`. Chat and invite logic are split out: `party/PartyChat.java` owns
+  `chat` + the per-player **party chat mode** (toggled via `/extraction party chat on|off`, persisted in
+  `party_member.chat_enabled` so it works across servers, scoped to the player's current membership - it
+  resets to OFF when they leave, are kicked, or the party disbands) + the relay-out/in for `chat`;
+  `party/Invites.java` owns the invite lifecycle (sending, `findFor`/`findForParty`/`deleteFor`/`delete`, the
+  `Invite` record, read-modify-write of the `party.invites` JSON column) + the relay-out/in for `invite`.
+  `PartyChat` caches the flag (loaded on join, removed on quit, default OFF) and `PartyManager` exposes
+  `setPartyChatMode`/`isPartyChatEnabled`. When enabled, the `PartyListener` `AsyncChatEvent` handler cancels
+  the player's normal chat and routes it to the party (only while they are in a party - a toggled-on player
+  outside a party keeps global chat; delivery is scheduled onto the main thread). `party/PartyListener.java`
+  owns ALL party event handling - the Bukkit join/quit/chat handlers (`loadPlayer`/`handleQuit`/`onAsyncChat`)
+  plus the `BungeeCord` plugin channel (register/unregister of outgoing+incoming in `register()`/`shutdown()`,
+  and `onPluginMessageReceived` framing - `PartyManager.handleRelay`). `PartyManager.handleRelay` dispatches
+  decoded payloads to `PartyChat`/`Invites` (chat/invite), applies full-roster `update` snapshots by revision
+  (ignores non-newer revisions, indexes only when a member is online), and handles `disband` tombstones.
+  Older UUID-only update notices fall back to reloading online members. The outbound side relays chat +
+  invites + full roster snapshots/disbands through the `BungeeCord` channel (`Forward`/`ForwardToPlayer`,
+  subchannel `extraction:party`, Gson payload) - gated by `party.cross-server` - via the package-private
+  `memberArray`/`forwardAll`/`forwardToPlayer` shared by `PartyChat`/`Invites`.
   `commands/party/PartyCommand.java` dispatches the subcommands (wired into `ExtractionCommand`'s
   `PartySubCommand`, which strips the `party` token).
-  **Threading:** every `PartyManager`/`PartyChat`/`Invites` DB operation runs on `DatabaseManager.supplyKeyed/
-  runKeyed` (keyed by player UUID); player names/UUIDs/online targets are captured on the main thread before
-  the async work, and cache indexing, chat delivery, and the BungeeCord relay run in a `mainExecutor()`
-  continuation. `Invites` serializes its read-modify-write of the shared `party.invites` column through a
-  single in-process lock (a nested `supplyKeyed` would deadlock the single-threaded SQLite pool). `loadPlayer`
-  guards against duplicate in-flight loads (`loading` set) and against a late completion resurrecting a quit
-  player (checks `Bukkit.getPlayer`); `asyncChat` reads the cache only.
+  **Threading:** every `PartyManager`/`PartyChat`/`Invites` DB operation runs on
+  `DatabaseManager.supplyKeyed/runKeyed` under the single shared `PartyManager.PARTY_DB_KEY`; player
+  names/UUIDs/online targets are captured on the main thread before the async work, and cache indexing, chat
+  delivery, and the BungeeCord relay run in a `mainExecutor()` continuation. Roster/invite mutations use
+  `DatabaseManager.inTransaction` (a raw `Connection` transaction); MySQL locks the `party` row with
+  `SELECT ... FOR UPDATE`, SQLite relies on its single DB worker + the shared key. Invites no longer use an
+  in-process lock (a nested `supplyKeyed` would deadlock the single-threaded SQLite pool).
+  `loadPlayer` guards against duplicate in-flight loads (`loading` set) and against a late completion
+  resurrecting a quit player (checks `Bukkit.getPlayer`); `asyncChat` reads the cache only.
 - `event/PlayerEnterAreaEvent.java`, `event/PlayerLeaveAreaEvent.java`: non-cancellable custom Bukkit events
   (`org.bukkit.event.Event`) fired by `AreaManager` on area enter/leave transitions (incl. on quit).
 - `gameplay/RunManager.java`: enterRun / extractPlayer / handleDeath / handleDisconnect / shutdown /
@@ -363,9 +372,10 @@ via `Math.sqrt` of the squared value only when needed.
   the player at the server spawn (warn) rather than dropping them into the extraction world.
 - Config-toggleable storage backend (`storage.type: sqlite` default / `mysql`) + `/extraction admin migratedb`
   one-time SQLite-MySQL row copy; MariaDB driver loaded via `plugin.yml` `libraries:`.
-- Cross-server party system (`/extraction party`): DB-backed (`party`/`party_member`), per-server
-  cache, BungeeCord `extraction:party` relay for chat/invites, `party.yml` config, `extraction.party` permission,
-  `%extraction_party%` returns the leader name.
+- Cross-server party system (`/extraction party`): DB-backed (`party`/`party_member` with revision +
+  invites), full-roster per-server cache, BungeeCord `extraction:party` relay for chat/invites/roster
+  snapshots/disbands, `party.yml` config, `extraction.party` permission, `%extraction_party%` returns the
+  leader name.
 - Mob containment (AreaClearManager), MythicMob attribute copy, default loadout, `/upgrade` + `/tokens`
   commands, periodic area state task, Extraction spawn (`/extraction setspawn`) + lobby spawn
   (`/extraction setlobby`), configurable chat prefix

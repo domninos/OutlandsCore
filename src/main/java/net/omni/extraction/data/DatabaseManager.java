@@ -415,6 +415,7 @@ public class DatabaseManager {
                 + "id VARCHAR(36) PRIMARY KEY, "
                 + "leader VARCHAR(36) NOT NULL, "
                 + "created_at BIGINT NOT NULL, "
+                + "revision BIGINT NOT NULL DEFAULT 0, "
                 + "invites " + invitesColumnDef() + ")"
                 + tableSuffix());
 
@@ -428,6 +429,7 @@ public class DatabaseManager {
                 + tableSuffix());
 
         // Back-fill the columns on pre-existing tables (CREATE IF NOT EXISTS is a no-op then).
+        ensureColumn(stmt, table("party"), "revision", "BIGINT NOT NULL DEFAULT 0");
         ensureColumn(stmt, table("party"), "invites", invitesColumnDef());
         ensureColumn(stmt, table("party_member"), "chat_enabled", "TINYINT NOT NULL DEFAULT 0");
 
@@ -531,6 +533,39 @@ public class DatabaseManager {
 
     public Connection getConnection() throws SQLException {
         return dataSource.getConnection();
+    }
+
+    /**
+     * Runs {@code work} in a single connection transaction. Must be called from
+     * the off-thread database worker.
+     */
+    public <T> T inTransaction(SqlTransaction<T> work) throws SQLException {
+        try (Connection conn = getConnection()) {
+            boolean autoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+
+            try {
+                T result = work.apply(conn);
+                conn.commit();
+                return result;
+            } catch (SQLException | RuntimeException failure) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ignored) {
+                }
+                throw failure;
+            } finally {
+                try {
+                    conn.setAutoCommit(autoCommit);
+                } catch (SQLException ignored) {
+                }
+            }
+        }
+    }
+
+    @FunctionalInterface
+    public interface SqlTransaction<T> {
+        T apply(Connection connection) throws SQLException;
     }
 
     /**

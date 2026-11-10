@@ -11,13 +11,15 @@ public class Party {
 
     private final UUID id;
     private final long createdAt;
+    private final long revision;
     private final Map<UUID, String> members = new LinkedHashMap<>();
     private UUID leader;
 
-    public Party(UUID id, UUID leader, long createdAt) {
+    public Party(UUID id, UUID leader, long createdAt, long revision) {
         this.id = id;
         this.leader = leader;
         this.createdAt = createdAt;
+        this.revision = revision;
     }
 
     public UUID getId() {
@@ -26,6 +28,10 @@ public class Party {
 
     public long getCreatedAt() {
         return createdAt;
+    }
+
+    public long getRevision() {
+        return revision;
     }
 
     public UUID getLeader() {
