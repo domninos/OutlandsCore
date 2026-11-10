@@ -5,10 +5,6 @@ import net.kyori.adventure.text.Component;
 import net.omni.extraction.ExtractionPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,7 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-public class BossBarManager implements Listener {
+public class BossBarManager {
 
     private final ExtractionPlugin plugin;
     private final Map<String, BossBar> bars = new HashMap<>();
@@ -26,10 +22,6 @@ public class BossBarManager implements Listener {
 
     public BossBarManager(ExtractionPlugin plugin) {
         this.plugin = plugin;
-    }
-
-    public void register() {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
     public BossBar create(String key, Component title, float progress,
@@ -126,9 +118,11 @@ public class BossBarManager implements Listener {
             remove(key);
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onQuit(PlayerQuitEvent event) {
-        UUID playerId = event.getPlayer().getUniqueId();
+    public void handleQuit(Player player) {
+        if (player == null)
+            return;
+
+        UUID playerId = player.getUniqueId();
         Set<String> keys = keysByViewer.remove(playerId);
 
         if (keys == null)

@@ -3,18 +3,19 @@ package net.omni.extraction.managers;
 import org.bukkit.entity.Player;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.UUID;
 
 public class ExtractionManager {
 
-    private final Set<UUID> extractionPlayers = new HashSet<>();
+    private final Set<Player> extractionPlayers = new HashSet<>();
 
     public void addExtractionPlayer(Player player) {
-        if (player == null)
+        if (player == null || !player.isOnline())
             return;
 
-        extractionPlayers.add(player.getUniqueId());
+        extractionPlayers.add(player);
     }
 
     public void removeExtraction(Player player) {
@@ -25,19 +26,29 @@ public class ExtractionManager {
     }
 
     public void removeExtraction(UUID uuid) {
-        extractionPlayers.remove(uuid);
+        if (uuid == null)
+            return;
+
+        for (Iterator<Player> iterator = extractionPlayers.iterator(); iterator.hasNext(); ) {
+            Player player = iterator.next();
+
+            if (player.getUniqueId().equals(uuid))
+                iterator.remove();
+        }
     }
 
     public boolean isExtractionPlayer(UUID uuid) {
-        return extractionPlayers.contains(uuid);
+        if (uuid == null)
+            return false;
+
+        for (Player player : extractionPlayers)
+            if (player.getUniqueId().equals(uuid))
+                return true;
+
+        return false;
     }
 
-    /**
-     * Live UUID set — hot callers (actionbar/scoreboard ticks) resolve
-     * {@code Bukkit.getPlayer(uuid)} inline instead of materializing a
-     * per-tick player set.
-     */
-    public Set<UUID> getExtractionPlayersUUID() {
+    public Set<Player> getExtractionPlayers() {
         return extractionPlayers;
     }
 

@@ -211,6 +211,7 @@ public class PlayerListener implements Listener {
         plugin.getPlayerDataManager().unloadPlayer(uuid);
         plugin.getGuiManager().removePlayer(uuid);
         plugin.getAdminModeManager().handleQuit(player);
+        plugin.getBossBarManager().handleQuit(player);
         lastBlockBlocked.remove(uuid);
         lastRightClickTick.remove(uuid);
     }

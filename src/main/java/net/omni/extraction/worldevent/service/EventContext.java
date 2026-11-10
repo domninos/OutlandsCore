@@ -154,18 +154,6 @@ public class EventContext {
         if (worldName == null || worldName.isBlank())
             return List.of();
 
-        List<Player> result = new ArrayList<>();
-
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (!worldName.equalsIgnoreCase(player.getWorld().getName()))
-                continue;
-
-            if (!plugin.getExtractionManager().isExtractionPlayer(player.getUniqueId()))
-                continue;
-
-            result.add(player);
-        }
-
-        return result;
+        return new ArrayList<>(plugin.getExtractionManager().getExtractionPlayers());
     }
 }

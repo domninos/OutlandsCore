@@ -143,6 +143,8 @@ public final class ExtractionPlugin extends JavaPlugin {
     TODO:
      -
      - similarly, add an EntityUtil
+     - fix loadout relic
+     - fix
      -
      -
      - drone custom entity model for texture
@@ -453,7 +455,6 @@ public final class ExtractionPlugin extends JavaPlugin {
     }
 
     private void registerListeners() {
-        bossBarManager.register();
         new PlayerListener(this).register();
         new WallBombListener(this).register();
         new SmokeGrenadeListener(this).register();

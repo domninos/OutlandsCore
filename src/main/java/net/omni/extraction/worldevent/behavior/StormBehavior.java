@@ -218,10 +218,8 @@ public class StormBehavior {
         boolean anyDarkness = cfg.darknessLevel() > 0;
         Map<UUID, Set<PotionEffectType>> tracked = instance.getStormEffects();
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (!ctx.presentation().isInWorld(player))
-                continue;
-
+        for (Player player : new ArrayList<>(
+                ctx.plugin().getExtractionManager().getExtractionPlayers())) {
             Location playerLoc = player.getLocation();
             boolean inside = false;
 

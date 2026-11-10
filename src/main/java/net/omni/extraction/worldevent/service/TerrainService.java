@@ -324,7 +324,7 @@ public class TerrainService {
         double strength = event.getPushStrength();
         double up = event.getPushUp();
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        for (Player player : ctx.plugin().getExtractionManager().getExtractionPlayers()) {
             if (player.getWorld() != world)
                 continue;
 

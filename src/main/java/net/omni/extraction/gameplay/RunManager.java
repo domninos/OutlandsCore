@@ -353,6 +353,7 @@ public class RunManager {
 
         plugin.getPetManager().removePet(uuid);
 
+        plugin.getExtractionManager().removeExtraction(uuid);
         plugin.getRelicEffectManager().clearRun(uuid);
     }
 

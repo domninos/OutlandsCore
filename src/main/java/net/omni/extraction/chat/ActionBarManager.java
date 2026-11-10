@@ -50,11 +50,8 @@ public class ActionBarManager {
         overlays.clear();
         lastText.clear();
 
-        for (UUID uuid : plugin.getExtractionManager().getExtractionPlayersUUID()) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null)
-                player.sendActionBar(Component.empty());
-        }
+        for (Player player : plugin.getExtractionManager().getExtractionPlayers())
+            player.sendActionBar(Component.empty());
     }
 
     public void reload() {

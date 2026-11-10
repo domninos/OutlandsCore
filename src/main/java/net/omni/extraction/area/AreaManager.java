@@ -295,11 +295,8 @@ public class AreaManager {
     }
 
     private void checkPlayerAreas() {
-        for (UUID uuid : plugin.getExtractionManager().getExtractionPlayersUUID()) {
-            Player player = Bukkit.getPlayer(uuid);
-
-            if (player == null)
-                continue;
+        for (Player player : plugin.getExtractionManager().getExtractionPlayers()) {
+            UUID uuid = player.getUniqueId();
 
             Area area = getAreaAt(player.getLocation());
             String current = area == null ? null : area.getName().toLowerCase(Locale.ROOT);
@@ -349,10 +346,10 @@ public class AreaManager {
             if (!area.isReady() || !hasMobs(area))
                 continue;
 
-            for (UUID uuid : plugin.getExtractionManager().getExtractionPlayersUUID()) {
-                Player player = Bukkit.getPlayer(uuid);
+            for (Player player : plugin.getExtractionManager().getExtractionPlayers()) {
+                UUID uuid = player.getUniqueId();
 
-                if (player == null || !area.contains(player.getLocation()))
+                if (!area.contains(player.getLocation()))
                     continue;
 
                 if (plugin.getRunManager().isPlayerInRun(uuid))

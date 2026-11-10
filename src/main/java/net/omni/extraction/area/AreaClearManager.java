@@ -91,13 +91,7 @@ public class AreaClearManager {
         if (worldName == null || worldName.isBlank())
             return !Bukkit.getOnlinePlayers().isEmpty();
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (!worldName.equalsIgnoreCase(player.getWorld().getName())) continue;
-            if (plugin.getExtractionManager().isExtractionPlayer(player.getUniqueId()))
-                return true;
-        }
-
-        return false;
+        return !plugin.getExtractionManager().getExtractionPlayers().isEmpty();
     }
 
     private void containMobs() {

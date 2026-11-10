@@ -122,10 +122,7 @@ public class EventLootService {
         if (table == null || completionRolls <= 0)
             return;
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (!ctx.presentation().isInWorld(player))
-                continue;
-
+        for (Player player : ctx.plugin().getExtractionManager().getExtractionPlayers()) {
             List<ItemStack> rewards = new ArrayList<>();
 
             for (int i = 0; i < completionRolls; i++) {

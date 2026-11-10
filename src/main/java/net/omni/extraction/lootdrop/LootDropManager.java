@@ -3,9 +3,9 @@ package net.omni.extraction.lootdrop;
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.messages.Messages;
-import net.omni.extraction.util.WorldUtil;
 import net.omni.extraction.util.PacketGlow;
 import net.omni.extraction.util.ParticleUtil;
+import net.omni.extraction.util.WorldUtil;
 import org.bukkit.*;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
@@ -21,7 +21,6 @@ public class LootDropManager {
 
     private static final long SWEEP_TICKS = 40L;
     private static final int GLOW_CHUNK_RADIUS = 1;
-    private static final int BEAM_CHUNK_RADIUS = 2;
 
     private final ExtractionPlugin plugin;
     private final NamespacedKey pendingKey;
@@ -48,6 +47,7 @@ public class LootDropManager {
     private double beamHeight;
     private double beamSpacing;
     private int beamMaxParticles;
+    private int beamChunkRadius;
     private boolean glowEnabled;
     private String worldName;
 
@@ -100,7 +100,7 @@ public class LootDropManager {
         if (current == null)
             return;
 
-        for (Item item : new ArrayList<>(current.values()))
+        for (Item item : current.values())
             PacketGlow.setGlow(player, item, false);
     }
 
@@ -131,6 +131,7 @@ public class LootDropManager {
 
     private void clearGlowForItem(Item item) {
         int entityId = item.getEntityId();
+        List<UUID> emptiedViewers = null;
 
         for (Map.Entry<UUID, Map<Integer, Item>> entry : viewerGlow.entrySet()) {
             Map<Integer, Item> current = entry.getValue();
@@ -144,9 +145,17 @@ public class LootDropManager {
             if (viewer != null)
                 PacketGlow.setGlow(viewer, item, false);
 
-            if (current.isEmpty())
-                viewerGlow.remove(entry.getKey());
+            if (current.isEmpty()) {
+                if (emptiedViewers == null)
+                    emptiedViewers = new ArrayList<>();
+
+                emptiedViewers.add(entry.getKey());
+            }
         }
+
+        if (emptiedViewers != null)
+            for (UUID viewerId : emptiedViewers)
+                viewerGlow.remove(viewerId);
     }
 
     public void reload() {
@@ -169,7 +178,7 @@ public class LootDropManager {
         this.beamHeight = config.getLootDropBeamHeight();
         this.beamSpacing = config.getLootDropBeamSpacing();
         this.beamMaxParticles = config.getLootDropBeamMaxParticles();
-        double beamViewRadius = config.getLootDropBeamViewRadius();
+        this.beamChunkRadius = (int) Math.ceil(config.getLootDropBeamViewRadius() / 16.0);
         this.glowEnabled = config.isLootDropGlowEnabled();
         int glowUpdateTicks = config.getLootDropGlowUpdateTicks();
         this.worldName = config.getWorldName();
@@ -415,7 +424,7 @@ public class LootDropManager {
         if (!enabled || !beamEnabled || beamParticle == null)
             return;
 
-        Set<Long> activeChunks = activeChunkKeys(BEAM_CHUNK_RADIUS);
+        Set<Long> activeChunks = activeChunkKeys(beamChunkRadius);
 
         if (activeChunks.isEmpty())
             return;
@@ -428,7 +437,7 @@ public class LootDropManager {
             if (ids == null)
                 continue;
 
-            for (UUID entityId : new ArrayList<>(ids)) {
+            for (UUID entityId : ids) {
                 if (particleBudget <= 0)
                     return;
 
@@ -452,7 +461,7 @@ public class LootDropManager {
         if (!enabled || !glowEnabled || !clickPickup)
             return;
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        for (Player player : plugin.getExtractionManager().getExtractionPlayers()) {
             if (!isExtractionWorld(player.getWorld())) {
                 clearViewerGlow(player);
                 continue;
@@ -507,7 +516,7 @@ public class LootDropManager {
     private Set<Long> activeChunkKeys(int chunkRadius) {
         Set<Long> active = new HashSet<>();
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        for (Player player : plugin.getExtractionManager().getExtractionPlayers()) {
             if (!isExtractionWorld(player.getWorld()))
                 continue;
 

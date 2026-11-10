@@ -46,9 +46,8 @@ public class EventPresentation {
         bossBars.create(key, Component.empty(), 1.0f,
                 event.getBossBarColor(), event.getBossBarOverlay());
 
-        for (Player player : Bukkit.getOnlinePlayers())
-            if (isInWorld(player))
-                bossBars.show(key, player);
+        for (Player player : ctx.plugin().getExtractionManager().getExtractionPlayers())
+            bossBars.show(key, player);
     }
 
     private static String eventBarKey(WorldEvent event) {
@@ -261,10 +260,7 @@ public class EventPresentation {
 
         EventInstance instance = ctx.active().values().iterator().next();
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (!isInWorld(player))
-                continue;
-
+        for (Player player : ctx.plugin().getExtractionManager().getExtractionPlayers()) {
             player.setCompassTarget(instance.getTrackLocation());
             ctx.compassPlayers().add(player.getUniqueId());
         }
@@ -363,12 +359,8 @@ public class EventPresentation {
         if (sound == null)
             return;
 
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (!isInWorld(player))
-                continue;
-
+        for (Player player : ctx.plugin().getExtractionManager().getExtractionPlayers())
             player.playSound(player.getLocation(), sound, event.getSoundVolume(), event.getSoundPitch());
-        }
     }
 
     /**

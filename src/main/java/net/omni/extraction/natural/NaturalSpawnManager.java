@@ -122,12 +122,19 @@ public class NaturalSpawnManager {
     private List<Player> anchors(ConfigUtil config, World world) {
         List<Player> anchors = new ArrayList<>();
 
+        if (config.isNaturalSpawnerRequireExtraction()) {
+            for (Player player : plugin.getExtractionManager().getExtractionPlayers()) {
+                if (player.isDead() || !player.getWorld().equals(world))
+                    continue;
+
+                anchors.add(player);
+            }
+
+            return anchors;
+        }
+
         for (Player player : world.getPlayers()) {
             if (player.isDead())
-                continue;
-
-            if (config.isNaturalSpawnerRequireExtraction()
-                    && !plugin.getExtractionManager().isExtractionPlayer(player.getUniqueId()))
                 continue;
 
             anchors.add(player);

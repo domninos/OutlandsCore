@@ -360,13 +360,29 @@ via `Math.sqrt` of the squared value only when needed.
 - `managers/BossBarManager.java`: the single owner of every Adventure `BossBar` (keyed registry:
   `event:<id>` world events, `area:<name>` area clears, `drone:<uuid>` drone battery). API:
   `create/show/hide/hideFromAll/update(progress,title)/updateColor/remove/shutdown` + per-viewer
-  tracking so its own MONITOR `PlayerQuitEvent` handler clears stale viewer links. Sources keep
+  tracking. NOT a Listener (managers never implement Listener): `PlayerListener.onPlayerQuit` calls
+  `handleQuit(player)` to clear stale viewer links. Sources keep
   their local formatting/gates (`EventPresentation` fills event placeholders + the
   `settings().bossBar()`/in-world gate; `AreaClearManager` fills `%area%/%remaining%/%total%` +
   the `area.isBossBarEnabled()` gate; `DroneManager` keeps the green/yellow/red battery logic) and
   delegate the bar lifecycle. `AreaClearSession`/`EventInstance` no longer hold `BossBar` fields;
-  `ExtractionPlugin` constructs it before `AreaManager`, registers its quit listener, and calls
-  `shutdown()` after the run/area-clear shutdowns.
+  `ExtractionPlugin` constructs it before `AreaManager` and calls `shutdown()` after the run/area-clear shutdowns.
+- `managers/ExtractionManager.java`: the central "in Extraction" flag. Stores **live `Player`
+  instances** (`Set<Player>`), added only on successful `enterRun` and removed on every exit path
+  (`extractPlayer`/`handleDeath`/`handleDisconnect` + `AreaSelectionVisualizer.onQuit` as the
+  quit safety net). `getExtractionPlayers()` returns the **live** `Set<Player>` (no defensive copy -
+  zero `Bukkit.getPlayer` resolution on hot paths); callers must never mutate the set while
+  iterating, and a call site whose loop can synchronously remove a player must snapshot it itself
+  (e.g. StormBehavior's damage tick - `player.damage()` can kill mid-iteration, and death calls
+  `removeExtraction`). Every
+  "online players + extraction-world check" loop uses it instead of
+  `Bukkit.getOnlinePlayers()` + world/flag filtering (LootDropManager beam/glow chunks,
+  `EventContext.eligiblePlayers`, `AreaClearManager.hasEligibleExtractionPlayer`,
+  `NaturalSpawnManager.anchors` when `require-extraction-players`, ActionBar/Scoreboard/AreaManager
+  ticks, EventPresentation boss-bar/compass/sound audiences, StormBehavior zones,
+  EventLootService completion loot, TerrainService crater push-out). Broadcasts/titles stay
+  ALL-online (no world check), and `NaturalSpawnManager` keeps `world.getPlayers()` when
+  `require-extraction-players: false`.
 - `integration/PlaceholderAPIHook.java`: identifier `extraction` - keep the param list in sync with
   `scoreboard/PlaceholderValues`.
 - `pom.xml`: shade relocates `com.zaxxer.hikari` - `net.omni.extraction.libs.hikari`, excludes `META-INF/*`;
