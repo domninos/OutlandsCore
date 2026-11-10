@@ -173,14 +173,69 @@ public class EventPresentation {
         if (!bossBars.exists(key))
             return;
 
-        int total = instance.countedTotal();
-        int remaining = instance.countedRemaining();
+        Float healthProgress = bossHealthProgress(instance);
+        float progress;
 
-        float progress = total <= 0 ? 0f : (float) remaining / total;
+        if (healthProgress != null) {
+            progress = healthProgress;
+        } else {
+            int total = instance.countedTotal();
+            int remaining = instance.countedRemaining();
+
+            progress = total <= 0 ? 0f : (float) remaining / total;
+        }
 
         String title = event.getBossBarTitle() == null ? "" : event.getBossBarTitle();
         bossBars.update(key, progress,
                 MiniMessage.miniMessage().deserialize(fill(title, event, instance)));
+    }
+
+    /**
+     * Health-based bar fill for boss-only fights. The roam/miniboss leader is
+     * always health-mapped; any other event maps its bar to health once the
+     * remaining mobs are exclusively bosses. Convoys are excluded (their bar
+     * stays count-based; route progress lives in the title). Returns null when
+     * the rule does not apply so the caller falls back to remaining/total.
+     */
+    private Float bossHealthProgress(EventInstance instance) {
+        WorldEvent event = instance.getEvent();
+
+        if (event.isConvoy())
+            return null;
+
+        if (event.isRoam()) {
+            UUID leaderId = instance.getRoamLeader();
+            Entity leader = leaderId == null ? null : Bukkit.getEntity(leaderId);
+
+            if (!(leader instanceof LivingEntity living))
+                return null;
+
+            double max = maxHealth(living);
+            return max <= 0 ? null : (float) Math.clamp(living.getHealth() / max, 0.0, 1.0);
+        }
+
+        Set<UUID> mobs = instance.getMobs();
+        Set<UUID> bosses = instance.getBosses();
+
+        if (mobs.isEmpty() || !bosses.containsAll(mobs))
+            return null;
+
+        double health = 0;
+        double max = 0;
+        boolean any = false;
+
+        for (UUID mobId : mobs) {
+            Entity entity = Bukkit.getEntity(mobId);
+
+            if (!(entity instanceof LivingEntity living))
+                continue;
+
+            health += living.getHealth();
+            max += maxHealth(living);
+            any = true;
+        }
+
+        return any && max > 0 ? (float) Math.clamp(health / max, 0.0, 1.0) : null;
     }
 
     public String fill(String message, WorldEvent event, EventInstance instance) {

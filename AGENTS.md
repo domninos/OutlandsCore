@@ -274,6 +274,8 @@ via `Math.sqrt` of the squared value only when needed.
   `AreaClearManager`, `AreaSelectionVisualizer` (`getExtractionPlayers()`), wand listeners.
   `AreaClearSession` tracks `bossMobs` (from `AreaSpawnDefinition.isBoss()` at spawn) so `AreaClearManager.isBossMob(UUID)`
   lets `AreaListener.onEntityDeath` credit boss vs normal kills to the killer's run.
+  Area-clear boss bars are HEALTH-based once only boss mobs remain (`AreaClearManager.bossHealthProgress`:
+  aggregate `Σ health / Σ max` over the remaining bosses; regular mobs alive = the usual `%remaining%/%total%` count fill).
   Loot chests are **per-area lists** (`Area.chestLocations`, `loot.chest-locations` in the area file; legacy single
   `loot.chest-location` migrates on load). Each chest has an optional `type` = a loot table id (`AreaChestLocation.lootType`)
   and a stored container `Material` (`material:`, default CHEST; saved only when non-CHEST).
@@ -751,7 +753,10 @@ via `Math.sqrt` of the squared value only when needed.
     back only to `eligiblePlayers()`, so origins (and thus mobs/chests) stay in the extraction world. It spawns
     through the shared `AreaMobFactory` with the
     difficulty multiplier `1 + (level-1)*difficulty-step` on health/damage (event-boss drops = entry `drops` if set,
-    else template drops), drives an Adventure boss bar, per-in-World-player compass targeting, and a DH waypoint
+    else template drops), drives an Adventure boss bar (bar fill is HEALTH-based via
+    `EventPresentation.bossHealthProgress` when the fight is boss-only: roam/miniboss leader always maps
+    health/max; other events once all remaining mobs are bosses; convoys excluded - they keep count-based
+    fill with route progress in the title), per-in-World-player compass targeting, and a DH waypoint
     (`HologramManager.updateWaypointHologram`, name `extraction_event_<id>`), and pays completion loot to every
     online **in-World** player on success (per-kill rolls during the event, bosses x boss-roll-multiplier).
     `WorldEventListener` clears `EntityDeathEvent` drops/exp, rolls loot, `handleMobDeath` (success gate is

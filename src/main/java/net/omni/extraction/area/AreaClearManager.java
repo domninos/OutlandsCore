@@ -12,6 +12,7 @@ import net.omni.extraction.messages.Messages;
 import net.omni.extraction.mobs.MobDrop;
 import net.omni.extraction.util.PacketGlow;
 import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
@@ -248,12 +249,46 @@ public class AreaClearManager {
         int total = session.getTotalMobs();
         int remaining = session.getMobs().size();
 
-        float progress = total <= 0 ? 0f : (float) remaining / total;
+        Float healthProgress = bossHealthProgress(session);
+        float progress = healthProgress != null
+                ? healthProgress
+                : total <= 0 ? 0f : (float) remaining / total;
+
         plugin.getBossBarManager().update(key, progress, MiniMessage.miniMessage().deserialize(
                 area.getBossBarTitle()
                         .replace("%area%", area.getName())
                         .replace("%remaining%", String.valueOf(remaining))
                         .replace("%total%", String.valueOf(total))));
+    }
+
+    /**
+     * Health-based bar fill once the only remaining mobs of a clear are bosses;
+     * null (fall back to remaining/total) while regular mobs are still alive.
+     */
+    private Float bossHealthProgress(AreaClearSession session) {
+        Set<UUID> mobs = session.getMobs();
+
+        if (mobs.isEmpty() || !session.getBossMobs().containsAll(mobs))
+            return null;
+
+        double health = 0;
+        double max = 0;
+        boolean any = false;
+
+        for (UUID mobId : mobs) {
+            Entity entity = Bukkit.getEntity(mobId);
+
+            if (!(entity instanceof LivingEntity living))
+                continue;
+
+            health += living.getHealth();
+            max += living.getAttribute(Attribute.MAX_HEALTH) != null
+                    ? living.getAttribute(Attribute.MAX_HEALTH).getValue()
+                    : living.getHealth();
+            any = true;
+        }
+
+        return any && max > 0 ? (float) Math.clamp(health / max, 0.0, 1.0) : null;
     }
 
     private static String barKey(Area area) {
