@@ -68,21 +68,32 @@ public class LoadoutGUIListener implements Listener {
         LoadoutSlot clicked = topClick ? LoadoutGUI.getSlotFromClick(plugin, event.getRawSlot()) : null;
 
         // Charm/artifact cells are draggable like any other cell; SHIFT-click
-        // additionally opens the matching relic GUI.
+        // additionally opens the matching relic GUI. The window switch is
+        // deferred one tick (Paper reverts an openInventory performed during
+        // click handling - same pattern as UpgradeGUIListener's reopen).
         if (clicked != null && event.isShiftClick()) {
             switch (clicked) {
-                case CHARM -> plugin.getRelicManager().open(player, RelicManager.KIND_CHARM);
-                case ARTIFACT -> plugin.getRelicManager().open(player, RelicManager.KIND_ARTIFACT);
+                case CHARM -> {
+                    event.setCancelled(true);
+                    openRelicLater(player, RelicManager.KIND_CHARM);
+                }
+                case ARTIFACT -> {
+                    event.setCancelled(true);
+                    openRelicLater(player, RelicManager.KIND_ARTIFACT);
+                }
                 default -> {
                 }
             }
+
+            if (event.isCancelled())
+                return;
         }
 
         // Right-clicking an empty charm/artifact cell opens its relic GUI as well.
         if (clicked != null && event.getClick().isRightClick()) {
             if (event.getCursor().getType().isAir() && (clicked == LoadoutSlot.CHARM || clicked == LoadoutSlot.ARTIFACT)) {
                 event.setCancelled(true);
-                plugin.getRelicManager().open(player,
+                openRelicLater(player,
                         clicked == LoadoutSlot.CHARM ? RelicManager.KIND_CHARM : RelicManager.KIND_ARTIFACT);
                 return;
             }
@@ -146,6 +157,13 @@ public class LoadoutGUIListener implements Listener {
         }
 
         plugin.getGuiManager().markLoadoutTouched(player, event.getRawSlot());
+    }
+
+    private void openRelicLater(Player player, String kind) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (player.isOnline())
+                plugin.getRelicManager().open(player, kind);
+        });
     }
 
     private boolean isMatchingArmor(ItemStack item, LoadoutSlot slot) {

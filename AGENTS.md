@@ -606,6 +606,9 @@ via `Math.sqrt` of the squared value only when needed.
   so the moved marker persists in `loadout_items` and the old cell never regenerates it. The offhand pane is the
   only fixed drop-here target - empty cursor is always cancelled on it. Item on cursor replaces any pane.
   SHIFT+left/right-clicking a charm/artifact cell (pane or real item) opens the matching GUI
+  (deferred one tick via `LoadoutGUIListener.openRelicLater` - Paper reverts an `openInventory`
+  performed during click handling, same pattern as `UpgradeGUIListener.reopenUpgrade`; right-click on
+  an empty charm/artifact cell uses the same deferred open)
   (`RelicManager.open`) before the generic shift-click cancel.
   Stale pet-tagged panes left in saved loadout data render blank (`LoadoutGUI.isPetPlaceholder`) and are
   never granted; the data itself is kept (no purge).
