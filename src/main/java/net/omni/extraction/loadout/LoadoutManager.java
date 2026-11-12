@@ -13,6 +13,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.PotionMeta;
@@ -132,7 +133,7 @@ public class LoadoutManager {
                 continue;
 
             ItemStack item = !data.isCellCustomized(cell) && hiddenDefaults.contains(cell)
-                    ? null : resolveCellItem(data, cell);
+                    ? null : runGrant(resolveCellItem(data, cell));
 
             LoadoutSlot slot = LoadoutGUI.getSlotFromClick(plugin, cell);
 
@@ -194,12 +195,32 @@ public class LoadoutManager {
         if (def == null)
             return;
 
-        ItemStack item = plugin.getRelicEffectManager().equippedItem(data.getUuid(), def);
+        ItemStack item = runGrant(plugin.getRelicEffectManager().equippedItem(data.getUuid(), def));
 
         if (item == null)
             return;
 
         giveItem(player, item);
+    }
+
+    /**
+     * Run grants are cloned so the stored loadout data is never modified, and
+     * marked unbreakable (hidden tooltip) so gear never wears out during a run.
+     */
+    private ItemStack runGrant(ItemStack item) {
+        if (item == null || item.getType().isAir())
+            return item;
+
+        ItemStack copy = item.clone();
+        ItemMeta meta = copy.getItemMeta();
+
+        if (meta == null)
+            return copy;
+
+        meta.setUnbreakable(true);
+        meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+        copy.setItemMeta(meta);
+        return copy;
     }
 
     private ItemStack resolveCellItem(PlayerData data, int cell) {
