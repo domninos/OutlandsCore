@@ -351,10 +351,7 @@ loot-editor:
   max-level-name: "<yellow>Max Level: %value%</yellow>"
 
 # Run-death corpses: a player-skinned NPC left at the death spot (FancyNpcs;
-# falls back to an ArmorStand when FancyNpcs is missing). The lying pose is
-# applied best-effort
-# FancyNpcs builds without a pose attribute spawn the
-# body standing.
+# falls back to an ArmorStand when FancyNpcs is missing).
 corpse:
   enabled: true
   despawn-seconds: 60

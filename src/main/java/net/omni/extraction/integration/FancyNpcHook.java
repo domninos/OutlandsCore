@@ -133,11 +133,30 @@ public class FancyNpcHook {
             FancyNpcsPlugin.get().getNpcManager().registerNpc(npc);
             npc.create();
             npc.spawnForAll();
+            reapplyPose(npc);
             return npc;
         } catch (Exception e) {
             plugin.getLogger().warning("Could not spawn FancyNpcs corpse for " + ownerName
                     + ", falling back to armor stand: " + e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Pushes the NPC's attributes (pose/equipment) to every viewer. FancyNpcs
+     * only applies attributes in {@code update}, never in {@code spawn}, so a
+     * corpse spawned with a sleeping pose stands until this runs (and late
+     * viewers/visibility respawns need it re-sent).
+     */
+    public void reapplyPose(Npc npc) {
+        if (npc == null)
+            return;
+
+        try {
+            npc.updateForAll(false);
+        } catch (Exception e) {
+            plugin.getLogger().warning("Could not re-apply corpse pose for " + npcName(npc)
+                    + ": " + e.getMessage());
         }
     }
 

@@ -24,6 +24,7 @@ public class CorpseManager {
     private final ExtractionPlugin plugin;
     private final FancyNpcHook hook;
     private final Map<UUID, Corpse> corpses = new HashMap<>();
+
     public CorpseManager(ExtractionPlugin plugin, FancyNpcHook hook) {
         this.plugin = plugin;
         this.hook = hook;
