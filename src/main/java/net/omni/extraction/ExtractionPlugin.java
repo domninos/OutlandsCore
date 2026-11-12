@@ -142,8 +142,20 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     TODO:
      -
+     - Implemented standalone loot chest that you can configure (Wire this to a command - non area binded)
+     -
+     -
+     -
+     - Fix placeholder on purchasing %amount%
+     -
+     - Fix loadout relic gui right click trigger (sometimes gets removed)
+     - Check for mutations (no regen)
+     -
      - similarly, add an EntityUtil
-     - fix loadout relic
+     - fix loadout relic (TEST)
+     -
+     - add placeholder to events progress
+     -
      -
      -
      - drone custom entity model for texture

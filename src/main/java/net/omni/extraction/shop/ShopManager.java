@@ -70,7 +70,9 @@ public class ShopManager {
             }
 
             int dropped = giveOrDrop(player, toGive);
-            String name = String.valueOf(def.getOrDefault("name", entry.getKey()));
+            String name = String.valueOf(def.getOrDefault("name", entry.getKey()))
+                    .replace("%amount%", String.valueOf(ItemUtil.asInt(def.get("amount"), 1)))
+                    .replace("%cost%", String.valueOf(cost));
 
             plugin.sendMessage(player, Messages.SHOP_PURCHASED
                     .replace("item", StringUtils.stripTags(name),

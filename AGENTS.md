@@ -164,7 +164,8 @@ via `Math.sqrt` of the squared value only when needed.
   `tabComplete`; `AreaTabCompleter`/`BossTabCompleter` keep their own full logic (already-split).
 - `commands/extraction/ExtractionCommand.java` (the `/extraction` command, extends `MainCommand`): default =
   enter / toggle-extract via RunManager (private `enter`, not a SubCommand) + `sub/` files: `About`,
-  `Admin` (bare = admin-mode toggle; setspawn/setlobby/packinfo/migratedb/setname/spawnmob/addhologram/
+  `Admin` (bare = admin-mode toggle, which teleports an admin outside the extraction world to
+  `settings.spawn`; setspawn/setlobby/packinfo/migratedb/setname/spawnmob/addhologram/
   sethologram/delhologram), `Build`, `Events` (status/start/stop/route), `Help` (categorized help),
   `Loadout` (delegates `LoadoutCommand`), `Party` (delegates `PartyCommand`), `Reload` (full reload chain;
   re-applies the prefix via `configUtil.reloadConfig()` + `chatRenderer.setPrefix`), `Shop`, `Tokens`,
@@ -1156,6 +1157,16 @@ via `Math.sqrt` of the squared value only when needed.
   full removal plays `ENTITY_ITEM_PICKUP`. Drone pilots are excluded; cooldowns cleared on quit.
   Reload (`/extraction reload` -> `LootDropManager.reload()`) keeps tracked items, restarts tasks
   (new `beam.update-ticks`/`glow.update-ticks`) and clears glow; disable purges the registry.
+- Session fixes: bare `/extraction admin` teleports an admin who is outside the extraction world to
+  `settings.spawn` (fallback: that world's spawn) when admin mode turns on (`AdminModeManager.toggle` ->
+  `teleportToExtraction`; admins already in the world are left in place). `LoadoutManager.applyLoadout` grants
+  cloned, unbreakable gear (`runGrant`: `setUnbreakable(true)` + `HIDE_UNBREAKABLE`) so tools/armor never wear
+  out - stored loadout data is never mutated; `deliverActiveRelic` uses the same helper. Corpse NPCs re-apply
+  their sleeping pose right after `spawnForAll` and every 20 ticks for the corpse lifetime
+  (`FancyNpcHook.reapplyPose` -> `Npc#updateForAll(false)`; FancyNpcs only applies attributes in `update`, never
+  in `spawn`) so late joiners see the pose; `CorpseManager` cancels the per-corpse task on removal.
+  `ShopManager.purchaseConsumable` resolves `%amount%`/`%cost%` in the definition name before `stripTags`, so
+  the purchase message no longer shows a literal `%amount%`.
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;
