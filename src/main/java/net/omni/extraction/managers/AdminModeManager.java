@@ -2,9 +2,12 @@ package net.omni.extraction.managers;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.area.WandMode;
+import net.omni.extraction.config.ConfigUtil;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -73,7 +76,33 @@ public class AdminModeManager {
         if (wand != null)
             player.getInventory().setItem(0, wand);
 
+        teleportToExtraction(player);
         plugin.sendMessage(player, Messages.ADMIN_MODE_ON.toString());
+    }
+
+    /**
+     * Sends admins who toggle admin mode from outside the extraction world into
+     * it (the configured extraction spawn, else that world's spawn). Admins
+     * already inside the world are left where they are.
+     */
+    private void teleportToExtraction(Player player) {
+        ConfigUtil config = plugin.getConfigUtil();
+        World world = Bukkit.getWorld(config.getWorldName());
+
+        if (world == null) {
+            plugin.getLogger().warning("Admin mode teleport skipped: world '"
+                    + config.getWorldName() + "' is not loaded.");
+            return;
+        }
+
+        if (world.equals(player.getWorld()))
+            return;
+
+        Location spawn = config.getSpawnLocation();
+        Location target = spawn != null && world.equals(spawn.getWorld())
+                ? spawn : world.getSpawnLocation();
+
+        player.teleport(target);
     }
 
     public boolean isAdmin(UUID uuid) {
