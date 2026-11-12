@@ -142,11 +142,8 @@ public final class ExtractionPlugin extends JavaPlugin {
 
     TODO:
      -
-     - Implemented standalone loot chest that you can configure (Wire this to a command - non area binded)
+     - Implement standalone loot chest that you can configure (Wire this to a command - non area binded)
      -
-     -
-     -
-     - Fix placeholder on purchasing %amount%
      -
      - Fix loadout relic gui right click trigger (sometimes gets removed)
      - Check for mutations (no regen)

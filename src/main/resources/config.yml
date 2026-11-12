@@ -228,7 +228,8 @@ loot:
   #             section (loot_tables.yml) overrides this for chests using it
   #   empty   - the owner already claimed this chest's loot
   # Lines use MiniMessage (converted to DecentHolograms colors); %area% is the
-  # area name. Set a state to [] to hide the hologram in that state.
+  # area name (standalone /extchest holograms use "Loot" and also support
+  # %table% / %key%). Set a state to [] to hide the hologram in that state.
   chest-hologram:
     ongoing:
       - "<red><bold>AREA ONGOING</bold></red>"

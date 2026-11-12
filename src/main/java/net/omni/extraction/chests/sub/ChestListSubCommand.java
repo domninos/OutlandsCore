@@ -4,7 +4,6 @@ import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.chests.StandaloneChest;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
-import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 
 import java.util.Collection;
@@ -34,12 +33,9 @@ public class ChestListSubCommand implements SubCommand {
         plugin.sendMessage(sender, Messages.CHEST_LIST_HEADER.toString());
 
         for (StandaloneChest chest : chests) {
-            Location loc = chest.location();
-            String world = loc.getWorld() == null ? "?" : loc.getWorld().getName();
-
             plugin.sendMessage(sender, Messages.CHEST_LIST_ENTRY.replace(
                     "id", String.valueOf(chest.id()),
-                    "location", world + " " + loc.getBlockX() + " " + loc.getBlockY() + " " + loc.getBlockZ(),
+                    "location", chest.worldName() + " " + chest.x() + " " + chest.y() + " " + chest.z(),
                     "table", chest.lootTable() == null ? "none" : chest.lootTable(),
                     "key", chest.keyId() == null ? "-" : chest.keyId()));
         }

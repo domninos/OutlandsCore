@@ -1167,6 +1167,20 @@ via `Math.sqrt` of the squared value only when needed.
   in `spawn`) so late joiners see the pose; `CorpseManager` cancels the per-corpse task on removal.
   `ShopManager.purchaseConsumable` resolves `%amount%`/`%cost%` in the definition name before `stripTags`, so
   the purchase message no longer shows a literal `%amount%`.
+- Standalone loot chest hardening (`/extchest`, `chests/`): `StandaloneChest` stores the world **name** +
+  block coords (live `World` resolved on demand), so `chests.yml` is never truncated when a world is unloaded
+  (`load` keeps + warns, `save` always writes, `fillIfEmpty`/`isReady`/`location()` return null for missing
+  worlds). Registration validates `AreaChestLocation.isSupported` (config `containers`, shulker wildcard) and
+  rejects blocks already registered to an area's loot chests (`chest.already-area`); chest types collapse to the
+  min-corner anchor via new shared `AreaChestLocation.doubleAnchor`/`containerBlocks` helpers, both halves are
+  indexed (`world:x:y:z` map for O(1) `at`, plus an adjacent-block fallback for halves/worlds indexed late),
+  filled once as a combined inventory and protected/openable on either half. Empty chests fill immediately in
+  `start()` (before the refill task), `remove` clears both halves before unregistering, and new
+  `/extchest settable {id} {loot-table|none}` + `/extchest setkey {id} {key|remove}` mutate + save + refill/
+  refresh; tab completion offers ids/`all`, tables/`none` and keys/`remove` (prefix-filtered via
+  `chests/sub/ChestCommandUtil`). Standalone holograms use the loot table's `hologram:` lines in the ready
+  state and substitute `%area%` ("Loot"), `%table%` and `%key%` (messages `chest.set-table`, `chest.set-key`,
+  `chest.set-key-removed`).
 
 ## Important Details
 - Platform: PaperMC 1.21.11 (paper-api 1.21.11-R0.1-SNAPSHOT), Java 21 target; package `net.omni.extraction`;

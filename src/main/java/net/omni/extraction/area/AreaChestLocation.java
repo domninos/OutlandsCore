@@ -2,9 +2,14 @@ package net.omni.extraction.area;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.type.Chest;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -81,6 +86,81 @@ public class AreaChestLocation {
 
     public static boolean isChestType(Material material) {
         return material == Material.CHEST || material == Material.TRAPPED_CHEST;
+    }
+
+    public static Location doubleAnchor(Location location, Material containerType) {
+        if (location == null || location.getWorld() == null || !isChestType(containerType))
+            return location;
+
+        Block block = location.getBlock();
+
+        for (int[] offset : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            Block neighbor = block.getRelative(offset[0], 0, offset[1]);
+
+            if (isChestType(neighbor.getType()) && canMergeWith(block, offset[0] != 0, neighbor))
+                return minBlock(location, neighbor.getLocation());
+        }
+
+        return location;
+    }
+
+    public static List<Block> containerBlocks(Location anchor, Material containerType) {
+        List<Block> blocks = new ArrayList<>();
+
+        if (anchor == null || anchor.getWorld() == null)
+            return blocks;
+
+        Block block = anchor.getBlock();
+        blocks.add(block);
+
+        if (!isChestType(containerType))
+            return blocks;
+
+        for (int[] offset : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            Block neighbor = block.getRelative(offset[0], 0, offset[1]);
+
+            if (isChestType(neighbor.getType()) && canMergeWith(block, offset[0] != 0, neighbor))
+                blocks.add(neighbor);
+        }
+
+        return blocks;
+    }
+
+    private static boolean canMergeWith(Block chest, boolean alongX, Block neighbor) {
+        BlockFace first = chestFacing(chest);
+        BlockFace second = chestFacing(neighbor);
+
+        if (first == null || second == null)
+            return false;
+
+        return alongX
+                ? isNorthSouth(first) && isNorthSouth(second)
+                : isEastWest(first) && isEastWest(second);
+    }
+
+    private static Location minBlock(Location a, Location b) {
+        if (a.getBlockX() != b.getBlockX())
+            return a.getBlockX() < b.getBlockX() ? a : b;
+
+        if (a.getBlockZ() != b.getBlockZ())
+            return a.getBlockZ() < b.getBlockZ() ? a : b;
+
+        return a;
+    }
+
+    private static BlockFace chestFacing(Block block) {
+        if (block.getBlockData() instanceof Chest chest)
+            return chest.getFacing();
+
+        return null;
+    }
+
+    private static boolean isNorthSouth(BlockFace facing) {
+        return facing == BlockFace.NORTH || facing == BlockFace.SOUTH;
+    }
+
+    private static boolean isEastWest(BlockFace facing) {
+        return facing == BlockFace.EAST || facing == BlockFace.WEST;
     }
 
     public Location getLocation() {

@@ -6,6 +6,7 @@ import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.command.CommandSender;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ChestRemoveSubCommand implements SubCommand {
@@ -32,7 +33,7 @@ public class ChestRemoveSubCommand implements SubCommand {
 
         if (args.length < 2) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage",
-                    "/extchest {add {loot-table} [key]|list|remove {id}}"));
+                    "/extchest remove {id|all}"));
             return true;
         }
 
@@ -47,8 +48,11 @@ public class ChestRemoveSubCommand implements SubCommand {
 
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        if (args.length == 2)
-            return List.of("all");
+        if (args.length == 2) {
+            List<String> ids = new ArrayList<>(ChestCommandUtil.chestIds(plugin));
+            ids.add("all");
+            return ChestCommandUtil.matching(ids, args[1]);
+        }
 
         return List.of();
     }

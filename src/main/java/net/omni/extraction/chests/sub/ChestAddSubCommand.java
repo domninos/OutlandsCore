@@ -6,7 +6,6 @@ import net.omni.extraction.messages.Messages;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class ChestAddSubCommand implements SubCommand {
@@ -42,7 +41,10 @@ public class ChestAddSubCommand implements SubCommand {
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
         if (args.length == 2 && plugin.getLootTableManager() != null)
-            return new ArrayList<>(plugin.getLootTableManager().getIds());
+            return ChestCommandUtil.matching(plugin.getLootTableManager().getIds(), args[1]);
+
+        if (args.length == 3)
+            return ChestCommandUtil.matching(plugin.getConfigUtil().getKeyDefinitions().keySet(), args[2]);
 
         return List.of();
     }

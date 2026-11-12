@@ -1,12 +1,18 @@
 package net.omni.extraction.chests;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.area.Area;
+import net.omni.extraction.area.AreaChestLocation;
 import net.omni.extraction.loot.LootEntry;
 import net.omni.extraction.loot.LootTable;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.HologramUtils;
 import net.omni.extraction.util.ItemUtil;
-import org.bukkit.*;
+import net.omni.extraction.util.StringUtils;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.command.CommandSender;
@@ -24,7 +30,7 @@ import java.util.*;
 
 /**
  * Loot containers registered outside any area (/extchest). Each chest has a
- * loot table (optionally a key requirement, honured on open like area chests)
+ * loot table (optionally a key requirement, honoured on open like area chests)
  * and is refilled automatically once its inventory is fully looted. A
  * DecentHolograms hologram tracks its ready/empty state.
  */
@@ -34,6 +40,7 @@ public class StandaloneChestManager {
     private final File file;
     private final Random random;
     private final Map<Integer, StandaloneChest> chests;
+    private final Map<String, StandaloneChest> chestsByBlock;
     private final Map<Integer, Boolean> lastReady;
     private final Map<Integer, List<String>> lastLines;
     private BukkitTask refillTask;
@@ -44,6 +51,7 @@ public class StandaloneChestManager {
         this.file = new File(plugin.getDataFolder(), "chests.yml");
         this.random = new Random();
         this.chests = new TreeMap<>();
+        this.chestsByBlock = new HashMap<>();
         this.lastReady = new HashMap<>();
         this.lastLines = new HashMap<>();
         this.nextId = 1;
@@ -51,6 +59,7 @@ public class StandaloneChestManager {
 
     public void load() {
         chests.clear();
+        chestsByBlock.clear();
         lastReady.clear();
         lastLines.clear();
 
@@ -73,24 +82,27 @@ public class StandaloneChestManager {
             int id = ItemUtil.asInt(key, -1);
             if (id < 0) continue;
 
-            World world = Bukkit.getWorld(def.getString("world", ""));
-            if (world == null) {
-                plugin.getLogger().warning("Standalone chest " + id
-                        + " is in unloaded world '" + def.getString("world")
-                        + "' — skipped until that world loads.");
+            String worldName = def.getString("world", "");
+            if (worldName == null || worldName.isBlank()) {
+                plugin.getLogger().warning("Standalone chest " + id + " has no world — skipped.");
                 continue;
             }
 
             Material container = Material.matchMaterial(def.getString("container", "CHEST"));
 
-            StandaloneChest chest = new StandaloneChest(id,
-                    new Location(world, def.getInt("x"), def.getInt("y"), def.getInt("z")),
+            StandaloneChest chest = new StandaloneChest(id, worldName,
+                    def.getInt("x"), def.getInt("y"), def.getInt("z"),
                     container,
                     def.getString("loot-table"),
                     def.getString("key"));
 
             chests.put(id, chest);
+            index(chest);
             nextId = Math.max(nextId, id + 1);
+
+            if (Bukkit.getWorld(worldName) == null)
+                plugin.getLogger().warning("Standalone chest " + id + " is in unloaded world '"
+                        + worldName + "' — kept registered; it will fill once that world loads.");
         }
 
         plugin.sendConsole("<green>Loaded " + chests.size() + " standalone chest(s).</green>");
@@ -110,7 +122,7 @@ public class StandaloneChestManager {
         }
 
         Material container = target.getType();
-        if (!container.isBlock() || container.hasGravity()) {
+        if (!AreaChestLocation.isSupported(container)) {
             plugin.sendMessage(player, Messages.CHEST_NOT_CONTAINER.toString());
             return false;
         }
@@ -128,19 +140,28 @@ public class StandaloneChestManager {
             return false;
         }
 
-        for (StandaloneChest chest : chests.values()) {
-            if (chest.location().getWorld() == target.getWorld()
-                    && chest.location().getBlockX() == target.getX()
-                    && chest.location().getBlockY() == target.getY()
-                    && chest.location().getBlockZ() == target.getZ()) {
-                plugin.sendMessage(player, Messages.CHEST_ALREADY_REGISTERED.toString());
-                return false;
-            }
+        Location anchor = AreaChestLocation.doubleAnchor(target.getLocation(), container);
+
+        if (isAreaChest(anchor)) {
+            plugin.sendMessage(player, Messages.CHEST_ALREADY_AREA.toString());
+            return false;
         }
 
-        StandaloneChest chest = new StandaloneChest(nextId++,
-                target.getLocation(), container, lootTable, keyId);
+        if (at(anchor) != null) {
+            plugin.sendMessage(player, Messages.CHEST_ALREADY_REGISTERED.toString());
+            return false;
+        }
+
+        StandaloneChest chest = StandaloneChest.fromBlock(nextId++,
+                anchor, container, lootTable, keyId);
+
+        if (chest == null) {
+            plugin.sendMessage(player, Messages.CHEST_NOT_CONTAINER.toString());
+            return false;
+        }
+
         chests.put(chest.id(), chest);
+        index(chest);
         save();
 
         fillIfEmpty(chest);
@@ -155,11 +176,10 @@ public class StandaloneChestManager {
 
         for (StandaloneChest chest : chests.values()) {
             String base = "chests." + chest.id() + ".";
-            config.set(base + "world", chest.location().getWorld() == null
-                    ? "" : chest.location().getWorld().getName());
-            config.set(base + "x", chest.location().getBlockX());
-            config.set(base + "y", chest.location().getBlockY());
-            config.set(base + "z", chest.location().getBlockZ());
+            config.set(base + "world", chest.worldName());
+            config.set(base + "x", chest.x());
+            config.set(base + "y", chest.y());
+            config.set(base + "z", chest.z());
             config.set(base + "container", chest.container().name());
 
             if (chest.lootTable() != null)
@@ -183,33 +203,41 @@ public class StandaloneChestManager {
         if (chest == null)
             return false;
 
-        World world = Bukkit.getWorld(chest.location().getWorld() == null
-                ? "" : chest.location().getWorld().getName());
-        if (world == null)
+        Location anchor = chest.location();
+        if (anchor == null)
             return false;
 
-        Block block = chest.location().getBlock();
+        List<Block> blocks = AreaChestLocation.containerBlocks(anchor, chest.container());
 
-        if (block.getType() == Material.AIR) {
-            block.setType(chest.container());
-        } else if (block.getType() != chest.container()) {
-            return false;
+        for (Block block : blocks)
+            if (!AreaChestLocation.isSupported(block.getType()))
+                block.setType(chest.container());
+
+        for (Block block : blocks) {
+            BlockState state = block.getState();
+
+            if (!(state instanceof InventoryHolder holder))
+                continue;
+
+            Inventory inventory = holder.getInventory();
+
+            if (!isEmpty(inventory))
+                return false;
+
+            for (ItemStack item : rollLoot(chest))
+                if (item != null)
+                    inventory.addItem(item);
+
+            return true;
         }
 
-        BlockState state = block.getState();
-        if (!(state instanceof InventoryHolder holder))
-            return false;
+        return false;
+    }
 
-        Inventory inventory = holder.getInventory();
-
-        for (ItemStack item : inventory.getContents()) {
+    private boolean isEmpty(Inventory inventory) {
+        for (ItemStack item : inventory.getContents())
             if (item != null && !item.getType().isAir())
                 return false;
-        }
-
-        for (ItemStack item : rollLoot(chest))
-            if (item != null)
-                inventory.addItem(item);
 
         return true;
     }
@@ -275,45 +303,136 @@ public class StandaloneChestManager {
         if (last != null && cached != null && last.equals(ready))
             return cached;
 
-        List<String> lines = buildHologramLines(ready);
+        List<String> lines = buildHologramLines(chest, ready);
         lastReady.put(chest.id(), ready);
         lastLines.put(chest.id(), lines);
         return lines;
     }
 
     private boolean isReady(StandaloneChest chest) {
-        World world = chest.location().getWorld();
-        if (world == null)
+        Location anchor = chest.location();
+        if (anchor == null)
             return false;
 
-        Block block = chest.location().getBlock();
+        Block block = anchor.getBlock();
 
         if (!(block.getState() instanceof InventoryHolder holder))
             return false;
 
-        for (ItemStack item : holder.getInventory().getContents()) {
-            if (item != null && !item.getType().isAir())
-                return true;
-        }
-
-        return false;
+        return !isEmpty(holder.getInventory());
     }
 
-    private List<String> buildHologramLines(boolean ready) {
-        List<String> raw = ready
-                ? plugin.getConfigUtil().getLootChestHologramReady()
-                : plugin.getConfigUtil().getLootChestHologramEmpty();
+    private List<String> buildHologramLines(StandaloneChest chest, boolean ready) {
+        List<String> raw = null;
+
+        if (ready && chest.lootTable() != null) {
+            LootTable table = plugin.getLootTableManager().get(chest.lootTable());
+
+            if (table != null && table.getHologram() != null && !table.getHologram().isEmpty())
+                raw = table.getHologram();
+        }
+
+        if (raw == null || raw.isEmpty())
+            raw = ready
+                    ? plugin.getConfigUtil().getLootChestHologramReady()
+                    : plugin.getConfigUtil().getLootChestHologramEmpty();
 
         if (raw == null || raw.isEmpty())
             return List.of();
 
+        String tableId = chest.lootTable() == null ? "-" : chest.lootTable();
+        String keyId = chest.keyId() == null ? "-" : keyDisplayName(chest.keyId());
+
         List<String> lines = new ArrayList<>();
-        for (String line : raw)
-            if (line != null)
-                lines.add(HologramUtils
-                        .toDh(line.replace("%area%", "Loot")));
+        for (String line : raw) {
+            if (line == null)
+                continue;
+
+            lines.add(HologramUtils.toDh(line
+                    .replace("%area%", "Loot")
+                    .replace("%table%", tableId)
+                    .replace("%key%", keyId)));
+        }
 
         return lines;
+    }
+
+    private String keyDisplayName(String keyId) {
+        Object name = plugin.getConfigUtil().getKeyDefinitions().get(keyId) instanceof Map<?, ?> def
+                ? def.get("display-name") : null;
+
+        return name != null ? StringUtils.stripTags(String.valueOf(name)) : keyId;
+    }
+
+    public boolean setTable(CommandSender sender, int id, String tableId) {
+        StandaloneChest chest = chests.get(id);
+
+        if (chest == null) {
+            sendNotFound(sender, id);
+            return false;
+        }
+
+        String normalized = null;
+
+        if (tableId != null && !tableId.isBlank()
+                && !tableId.equalsIgnoreCase("none")
+                && !tableId.equalsIgnoreCase("remove")) {
+            if (plugin.getLootTableManager().get(tableId) == null) {
+                plugin.sendMessage(sender, Messages.CHEST_UNKNOWN_TABLE.replace("table", tableId));
+                return false;
+            }
+
+            normalized = tableId;
+        }
+
+        StandaloneChest updated = chest.withTable(normalized);
+        chests.put(id, updated);
+        save();
+
+        fillIfEmpty(updated);
+        refreshHologram(updated);
+
+        plugin.sendMessage(sender, Messages.CHEST_SET_TABLE.replace(
+                "id", String.valueOf(id),
+                "table", normalized == null ? "none" : normalized));
+        return true;
+    }
+
+    public boolean setKey(CommandSender sender, int id, String keyId) {
+        StandaloneChest chest = chests.get(id);
+
+        if (chest == null) {
+            sendNotFound(sender, id);
+            return false;
+        }
+
+        String normalized = null;
+
+        if (keyId != null && !keyId.isBlank()
+                && !keyId.equalsIgnoreCase("none")
+                && !keyId.equalsIgnoreCase("remove")) {
+            if (!plugin.getConfigUtil().getKeyDefinitions().containsKey(keyId)) {
+                plugin.sendMessage(sender, Messages.CHEST_UNKNOWN_KEY.replace("key", keyId));
+                return false;
+            }
+
+            normalized = keyId;
+        }
+
+        StandaloneChest updated = chest.withKey(normalized);
+        chests.put(id, updated);
+        save();
+
+        refreshHologram(updated);
+
+        plugin.sendMessage(sender, normalized == null
+                ? Messages.CHEST_SET_KEY_REMOVED.replace("id", String.valueOf(id))
+                : Messages.CHEST_SET_KEY.replace("id", String.valueOf(id), "key", normalized));
+        return true;
+    }
+
+    private void sendNotFound(CommandSender sender, int id) {
+        plugin.sendMessage(sender, Messages.CHEST_NOT_FOUND.replace("id", String.valueOf(id)));
     }
 
     public void removeAll(CommandSender sender) {
@@ -325,18 +444,22 @@ public class StandaloneChestManager {
 
         if (sender instanceof Player player)
             plugin.sendMessage(player, Messages.CHEST_REMOVED_ALL.replace("count", String.valueOf(count)));
-
     }
 
-    public boolean remove(org.bukkit.command.CommandSender sender, int id) {
+    public boolean remove(CommandSender sender, int id) {
         StandaloneChest chest = chests.remove(id);
         lastReady.remove(id);
         lastLines.remove(id);
+
         if (chest == null) {
             if (sender instanceof Player player)
                 plugin.sendMessage(player, Messages.CHEST_NOT_FOUND.replace("id", String.valueOf(id)));
+
             return false;
         }
+
+        unindex(chest);
+        clearContainers(chest);
 
         plugin.getHologramManager().removeStandaloneHologram(id);
         save();
@@ -347,8 +470,29 @@ public class StandaloneChestManager {
         return true;
     }
 
+    private void clearContainers(StandaloneChest chest) {
+        Location anchor = chest.location();
+        if (anchor == null)
+            return;
+
+        List<Block> blocks = AreaChestLocation.containerBlocks(anchor, chest.container());
+
+        for (Block block : blocks) {
+            BlockState state = block.getState();
+
+            if (state instanceof InventoryHolder holder) {
+                holder.getInventory().clear();
+                return;
+            }
+        }
+    }
+
     public Collection<StandaloneChest> getAll() {
         return chests.values();
+    }
+
+    public StandaloneChest get(int id) {
+        return chests.get(id);
     }
 
     public boolean isEmpty() {
@@ -375,25 +519,97 @@ public class StandaloneChestManager {
         if (location == null || location.getWorld() == null)
             return null;
 
+        StandaloneChest direct = chestsByBlock.get(blockKey(location));
+        if (direct != null)
+            return direct;
+
+        // Fallback for chests indexed while their world was unloaded (and for
+        // the second half of a double chest that was merged after registration).
+        String worldName = location.getWorld().getName();
+
         for (StandaloneChest chest : chests.values()) {
+            if (!chest.worldName().equalsIgnoreCase(worldName))
+                continue;
+
+            if (chest.y() != location.getBlockY())
+                continue;
+
+            int dx = Math.abs(chest.x() - location.getBlockX());
+            int dz = Math.abs(chest.z() - location.getBlockZ());
+
+            if (dx + dz > 1)
+                continue;
+
             Location anchor = chest.location();
-
-            if (anchor.getWorld() == null || !anchor.getWorld().equals(location.getWorld()))
+            if (anchor == null)
                 continue;
 
-            if (anchor.getBlockX() != location.getBlockX()
-                    || anchor.getBlockY() != location.getBlockY()
-                    || anchor.getBlockZ() != location.getBlockZ())
-                continue;
-
-            return chest;
+            for (Block block : AreaChestLocation.containerBlocks(anchor, chest.container()))
+                if (block.getX() == location.getBlockX()
+                        && block.getY() == location.getBlockY()
+                        && block.getZ() == location.getBlockZ())
+                    return chest;
         }
 
         return null;
     }
 
+    private boolean isAreaChest(Location location) {
+        if (location == null || location.getWorld() == null)
+            return false;
+
+        for (Area area : plugin.getAreaManager().getAreas()) {
+            for (AreaChestLocation chest : area.getChestLocations()) {
+                Location chestLocation = chest.getLocation();
+
+                if (chestLocation == null || chestLocation.getWorld() == null)
+                    continue;
+
+                if (!chestLocation.getWorld().equals(location.getWorld()))
+                    continue;
+
+                for (Block block : AreaChestLocation.containerBlocks(chestLocation, chest.getContainerType()))
+                    if (block.getX() == location.getBlockX()
+                            && block.getY() == location.getBlockY()
+                            && block.getZ() == location.getBlockZ())
+                        return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void index(StandaloneChest chest) {
+        Location anchor = chest.location();
+        if (anchor == null)
+            return;
+
+        for (Block block : AreaChestLocation.containerBlocks(anchor, chest.container()))
+            chestsByBlock.put(blockKey(block.getLocation()), chest);
+    }
+
+    private void unindex(StandaloneChest chest) {
+        Location anchor = chest.location();
+        if (anchor == null)
+            return;
+
+        for (Block block : AreaChestLocation.containerBlocks(anchor, chest.container()))
+            chestsByBlock.remove(blockKey(block.getLocation()));
+    }
+
+    private static String blockKey(Location location) {
+        return location.getWorld().getName().toLowerCase(Locale.ROOT)
+                + ":" + location.getBlockX()
+                + ":" + location.getBlockY()
+                + ":" + location.getBlockZ();
+    }
+
     public void start() {
         stop();
+
+        // Fill empty chests immediately so a restart never leaves a registered
+        // chest empty until the first scheduled refill pass.
+        refillAll();
 
         long periodTicks = Math.max(30L, plugin.getConfigUtil()
                 .getLootStandaloneRefillSeconds()) * 20L;
@@ -409,7 +625,7 @@ public class StandaloneChestManager {
     }
 
     private void refillAll() {
-        for (StandaloneChest chest : new ArrayList<>(chests.values())) {
+        for (StandaloneChest chest : chests.values()) {
             if (fillIfEmpty(chest))
                 refreshHologram(chest);
         }

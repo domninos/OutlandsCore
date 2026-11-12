@@ -5,6 +5,8 @@ import net.omni.extraction.chests.sub.ChestAddSubCommand;
 import net.omni.extraction.chests.sub.ChestListSubCommand;
 import net.omni.extraction.chests.sub.ChestReloadSubCommand;
 import net.omni.extraction.chests.sub.ChestRemoveSubCommand;
+import net.omni.extraction.chests.sub.ChestSetKeySubCommand;
+import net.omni.extraction.chests.sub.ChestSetTableSubCommand;
 import net.omni.extraction.commands.MainCommand;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
@@ -21,7 +23,8 @@ import java.util.Locale;
  */
 public class StandaloneChestCommand extends MainCommand {
 
-    private static final String USAGE = "/extchest {add {loot-table} [key]|list|remove {id}}";
+    private static final String USAGE = "/extchest {add {loot-table} [key]|list|remove {id|all}|"
+            + "settable {id} {loot-table|none}|setkey {id} {key|remove}|reload}";
 
     public StandaloneChestCommand(ExtractionPlugin plugin) {
         super(plugin);
@@ -29,6 +32,8 @@ public class StandaloneChestCommand extends MainCommand {
                 new ChestAddSubCommand(plugin),
                 new ChestListSubCommand(plugin),
                 new ChestRemoveSubCommand(plugin),
+                new ChestSetTableSubCommand(plugin),
+                new ChestSetKeySubCommand(plugin),
                 new ChestReloadSubCommand(plugin));
     }
 
