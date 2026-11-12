@@ -1,4 +1,4 @@
-package net.omni.extraction.chests;
+package net.omni.extraction.commands.chest;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -7,11 +7,11 @@ import org.jspecify.annotations.NonNull;
 
 import java.util.List;
 
-public class ExtchestTabCompleter implements TabCompleter {
+public class ChestTabCompleter implements TabCompleter {
 
-    private final StandaloneChestCommand command;
+    private final ChestCommand command;
 
-    public ExtchestTabCompleter(StandaloneChestCommand command) {
+    public ChestTabCompleter(ChestCommand command) {
         this.command = command;
     }
 

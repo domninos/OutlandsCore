@@ -15,7 +15,7 @@ import net.omni.extraction.chat.ActionBarManager;
 import net.omni.extraction.chat.ChatRenderer;
 import net.omni.extraction.chat.PaperChatRenderer;
 import net.omni.extraction.chat.SpigotChatRenderer;
-import net.omni.extraction.chests.StandaloneChestCommand;
+import net.omni.extraction.commands.chest.ChestCommand;
 import net.omni.extraction.chests.StandaloneChestListener;
 import net.omni.extraction.chests.StandaloneChestManager;
 import net.omni.extraction.commands.area.AreaCommand;
@@ -464,7 +464,7 @@ public final class ExtractionPlugin extends JavaPlugin {
         new DroneCommand(this, droneManager).register();
         new PetsCommand(this).register();
         new BossCommand(this).register();
-        new StandaloneChestCommand(this).register();
+        new ChestCommand(this).register();
     }
 
     private void registerListeners() {

@@ -1,6 +1,7 @@
-package net.omni.extraction.chests.sub;
+package net.omni.extraction.commands.chest.sub;
 
 import net.omni.extraction.ExtractionPlugin;
+import net.omni.extraction.chests.StandaloneChestManager;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
 import org.bukkit.command.CommandSender;
@@ -8,29 +9,36 @@ import org.bukkit.command.CommandSender;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ChestSetTableSubCommand implements SubCommand {
+public class ChestRemoveSubCommand implements SubCommand {
 
     private final ExtractionPlugin plugin;
 
-    public ChestSetTableSubCommand(ExtractionPlugin plugin) {
+    public ChestRemoveSubCommand(ExtractionPlugin plugin) {
         this.plugin = plugin;
     }
 
     @Override
     public String name() {
-        return "settable";
+        return "remove";
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
-        if (args.length < 3) {
+        StandaloneChestManager manager = plugin.getStandaloneChestManager();
+
+        if (args.length >= 2 && args[1].equalsIgnoreCase("all")) {
+            manager.removeAll(sender);
+            return true;
+        }
+
+        if (args.length < 2) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage",
-                    "/extchest settable {id} {loot-table|none}"));
+                    "/extchest remove {id|all}"));
             return true;
         }
 
         try {
-            plugin.getStandaloneChestManager().setTable(sender, Integer.parseInt(args[1]), args[2]);
+            manager.remove(sender, Integer.parseInt(args[1]));
         } catch (NumberFormatException e) {
             plugin.sendMessage(sender, Messages.CHEST_NOT_FOUND.replace("id", args[1]));
         }
@@ -40,18 +48,10 @@ public class ChestSetTableSubCommand implements SubCommand {
 
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        if (args.length == 2)
-            return ChestCommandUtil.matching(ChestCommandUtil.chestIds(plugin), args[1]);
-
-        if (args.length == 3) {
-            List<String> tables = new ArrayList<>();
-
-            if (plugin.getLootTableManager() != null)
-                tables.addAll(plugin.getLootTableManager().getIds());
-
-            tables.add("none");
-
-            return ChestCommandUtil.matching(tables, args[2]);
+        if (args.length == 2) {
+            List<String> ids = new ArrayList<>(ChestCommandUtil.chestIds(plugin));
+            ids.add("all");
+            return ChestCommandUtil.matching(ids, args[1]);
         }
 
         return List.of();

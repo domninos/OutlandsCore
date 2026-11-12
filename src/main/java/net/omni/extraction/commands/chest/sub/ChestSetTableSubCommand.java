@@ -1,4 +1,4 @@
-package net.omni.extraction.chests.sub;
+package net.omni.extraction.commands.chest.sub;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.commands.SubCommand;
@@ -8,29 +8,29 @@ import org.bukkit.command.CommandSender;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ChestSetKeySubCommand implements SubCommand {
+public class ChestSetTableSubCommand implements SubCommand {
 
     private final ExtractionPlugin plugin;
 
-    public ChestSetKeySubCommand(ExtractionPlugin plugin) {
+    public ChestSetTableSubCommand(ExtractionPlugin plugin) {
         this.plugin = plugin;
     }
 
     @Override
     public String name() {
-        return "setkey";
+        return "settable";
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (args.length < 3) {
             plugin.sendMessage(sender, Messages.USAGE.replace("usage",
-                    "/extchest setkey {id} {key|remove}"));
+                    "/extchest settable {id} {loot-table|none}"));
             return true;
         }
 
         try {
-            plugin.getStandaloneChestManager().setKey(sender, Integer.parseInt(args[1]), args[2]);
+            plugin.getStandaloneChestManager().setTable(sender, Integer.parseInt(args[1]), args[2]);
         } catch (NumberFormatException e) {
             plugin.sendMessage(sender, Messages.CHEST_NOT_FOUND.replace("id", args[1]));
         }
@@ -44,11 +44,14 @@ public class ChestSetKeySubCommand implements SubCommand {
             return ChestCommandUtil.matching(ChestCommandUtil.chestIds(plugin), args[1]);
 
         if (args.length == 3) {
-            List<String> keys = new ArrayList<>(
-                    plugin.getConfigUtil().getKeyDefinitions().keySet());
-            keys.add("remove");
+            List<String> tables = new ArrayList<>();
 
-            return ChestCommandUtil.matching(keys, args[2]);
+            if (plugin.getLootTableManager() != null)
+                tables.addAll(plugin.getLootTableManager().getIds());
+
+            tables.add("none");
+
+            return ChestCommandUtil.matching(tables, args[2]);
         }
 
         return List.of();

@@ -1,4 +1,4 @@
-package net.omni.extraction.chests.sub;
+package net.omni.extraction.commands.chest.sub;
 
 import net.omni.extraction.ExtractionPlugin;
 import net.omni.extraction.commands.SubCommand;

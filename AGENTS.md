@@ -194,8 +194,8 @@ via `Math.sqrt` of the squared value only when needed.
 - `commands/walls/WallsCommand.java` (extends `MainCommand`; registers `list`/`remove`, while `Create` stays the
   default fallback so `/extraction walls {id} {radius} {horizontal|vertical} {time}` is preserved; owns the walls
   tab logic; `WallsSubCommand` owns one instance and strips the `walls` token first).
-- `chests/StandaloneChestCommand.java` (`/extchest`, extends `MainCommand`, `sub/Chest{Add,List,Remove,Reload}SubCommand`
-  + `chests/ExtchestTabCompleter`).
+- `commands/chest/ChestCommand.java` (`/extchest`, extends `MainCommand`, `sub/Chest{Add,List,Remove,Reload,`
+  `SetTable,SetKey}SubCommand` + `ChestTabCompleter`; domain classes stay in `chests/`).
 - `config/ConfigKeys.java`, `config/ConfigUtil.java`, `config/ConfigManager.java` (routes each config
   path to its owning split file), `config/ExtractionConfig.java` (generic per-file YAML IO).
 - `data/DatabaseManager.java` (SQLite `extraction.db` by default, or MariaDB/MySQL when `storage.type: mysql`;
@@ -1178,7 +1178,7 @@ via `Math.sqrt` of the squared value only when needed.
   `start()` (before the refill task), `remove` clears both halves before unregistering, and new
   `/extchest settable {id} {loot-table|none}` + `/extchest setkey {id} {key|remove}` mutate + save + refill/
   refresh; tab completion offers ids/`all`, tables/`none` and keys/`remove` (prefix-filtered via
-  `chests/sub/ChestCommandUtil`). Standalone holograms use the loot table's `hologram:` lines in the ready
+  `commands/chest/sub/ChestCommandUtil`). Standalone holograms use the loot table's `hologram:` lines in the ready
   state and substitute `%area%` ("Loot"), `%table%` and `%key%` (messages `chest.set-table`, `chest.set-key`,
   `chest.set-key-removed`).
 

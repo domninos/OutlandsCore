@@ -1,13 +1,13 @@
-package net.omni.extraction.chests;
+package net.omni.extraction.commands.chest;
 
 import net.omni.extraction.ExtractionPlugin;
-import net.omni.extraction.chests.sub.ChestAddSubCommand;
-import net.omni.extraction.chests.sub.ChestListSubCommand;
-import net.omni.extraction.chests.sub.ChestReloadSubCommand;
-import net.omni.extraction.chests.sub.ChestRemoveSubCommand;
-import net.omni.extraction.chests.sub.ChestSetKeySubCommand;
-import net.omni.extraction.chests.sub.ChestSetTableSubCommand;
 import net.omni.extraction.commands.MainCommand;
+import net.omni.extraction.commands.chest.sub.ChestAddSubCommand;
+import net.omni.extraction.commands.chest.sub.ChestListSubCommand;
+import net.omni.extraction.commands.chest.sub.ChestReloadSubCommand;
+import net.omni.extraction.commands.chest.sub.ChestRemoveSubCommand;
+import net.omni.extraction.commands.chest.sub.ChestSetKeySubCommand;
+import net.omni.extraction.commands.chest.sub.ChestSetTableSubCommand;
 import net.omni.extraction.commands.SubCommand;
 import net.omni.extraction.messages.Messages;
 import net.omni.extraction.util.Permissions;
@@ -21,12 +21,12 @@ import java.util.Locale;
 /**
  * /extchest — admin management of standalone loot chests (perm extraction.areas).
  */
-public class StandaloneChestCommand extends MainCommand {
+public class ChestCommand extends MainCommand {
 
     private static final String USAGE = "/extchest {add {loot-table} [key]|list|remove {id|all}|"
             + "settable {id} {loot-table|none}|setkey {id} {key|remove}|reload}";
 
-    public StandaloneChestCommand(ExtractionPlugin plugin) {
+    public ChestCommand(ExtractionPlugin plugin) {
         super(plugin);
         registerSubCommands(
                 new ChestAddSubCommand(plugin),
@@ -68,6 +68,6 @@ public class StandaloneChestCommand extends MainCommand {
         }
 
         command.setExecutor(this);
-        command.setTabCompleter(new ExtchestTabCompleter(this));
+        command.setTabCompleter(new ChestTabCompleter(this));
     }
 }
